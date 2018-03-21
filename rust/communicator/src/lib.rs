@@ -1,12 +1,2 @@
-mod client;
-mod network;
-
-// mod network {
-//     fn connect() {
-//     }
-
-//     mod server {
-//         fn connect() {
-//         }
-//     }
-// }
+pub mod client;
+pub mod network;
