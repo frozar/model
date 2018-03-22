@@ -20,7 +20,7 @@ fn main() {
 
     // 4th example
     let mut spaces = "   ";
-    // This foolowing line will not compile:
+    // This following line will not compile:
     // a mutable variable cannot change its type during its life
     // spaces = spaces.len();
 }
