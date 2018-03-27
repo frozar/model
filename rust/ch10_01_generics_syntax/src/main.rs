@@ -1,5 +1,6 @@
 fn main() {
     example_01();
+    example_02();
     example_03();
     example_04();
     example_05();
@@ -42,36 +43,64 @@ fn example_01() {
     println!("The largest number is {}", result);
 }
 
-//   error[E0369]: binary operation `>` cannot be applied to type `T`
-//   --> src/main.rs:45:12
-//    |
-// 45 |         if item > largest {
-//    |            ^^^^^^^^^^^^^^
-//    |
-//    = note: `T` might need a bound for `std::cmp::PartialOrd`
-// fn largest<T>(list: &[T]) -> T {
-//     let mut largest = list[0];
+// The Copy trait does the allocation on the stack
+fn largest<T: PartialOrd + Copy>(list: &[T]) -> T {
+    let mut largest = list[0];
 
-//     for &item in list.iter() {
-//         if item > largest {
-//             largest = item;
-//         }
-//     }
+    for &item in list.iter() {
+        if item > largest {
+            largest = item;
+        }
+    }
 
-//     largest
-// }
+    largest
+}
 
-// fn example_02() {
-//     let number_list = vec![34, 50, 25, 100, 65];
+// The Clone trait could do allocation on the heap if the input type
+// does regularly allocation on the heap as 'String' does.
+fn largest_maybe_on_heap<T: PartialOrd + Clone>(list: &[T]) -> T {
+    let mut largest = list[0].clone();
 
-//     let result = largest(&number_list);
-//     println!("The largest number is {}", result);
+    for item in list.iter() {
+        if *item > largest {
+            largest = (*item).clone();
+        }
+    }
 
-//     let char_list = vec!['y', 'm', 'a', 'q'];
+    // alternative implementation
+    // for ref item in list.iter() {
+    //     if **item > largest {
+    //         largest = (**item).clone();
+    //     }
+    // }
 
-//     let result = largest(&char_list);
-//     println!("The largest char is {}", result);
-// }
+    largest
+}
+
+// Without Copy or Clone trait
+fn largest_without<T: PartialOrd>(list: &[T]) -> &T {
+    let mut largest = &list[0];
+
+    for item in list.iter() {
+        if *item > *largest {
+            largest = item;
+        }
+    }
+
+    largest
+}
+
+fn example_02() {
+    let number_list = vec![34, 50, 25, 100, 65];
+
+    let result = largest(&number_list);
+    println!("The largest number is {}", result);
+
+    let char_list = vec!['y', 'm', 'a', 'q'];
+
+    let result = largest(&char_list);
+    println!("The largest char is {}", result);
+}
 
 struct Point<T> {
     x: T,
