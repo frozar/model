@@ -3,7 +3,7 @@ fn main() {
     let s2 = s1;
 
     // println!("{}, world!", s1);
-    // The above line would not compile because "let _s2 = s1;" does a move.
+    // The above line would not compile because "let s2 = s1;" does a move.
     // This means all use of s1 after this line will result in an error
     // because "s1" does exist any more in this scope. Compiler error:
     // error[E0382]: use of moved value: `s1`
@@ -17,14 +17,14 @@ fn main() {
     //   |
     //   = note: move occurs because `s1` has type `std::string::String`, which does not implement the `Copy` trait
 
-    // An explicit call to "clone" method do a deep copy of the data,
+    // An explicit call to "clone" method does a deep copy of the data,
     // which alleviate the ownership matter
     let s1 = String::from("hello");
     let s2 = s1.clone();
 
     println!("s1 = {}, s2 = {}", s1, s2);
 
-    // With primitif type, as the data is store in the stack, the
+    // With primitif type, as the data is store on the stack, the
     // problem doesn't appear
     let x = 5;
     let y = x;
