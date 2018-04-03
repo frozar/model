@@ -82,7 +82,10 @@ fn largest_without<T: PartialOrd>(list: &[T]) -> &T {
     let mut largest = &list[0];
 
     for item in list.iter() {
-        if *item > *largest {
+        // You doesn't need to use '*' even if the iter and largest
+        // variable are references
+        // if *item > *largest {
+        if item > largest {
             largest = item;
         }
     }
