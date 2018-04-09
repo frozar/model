@@ -17,6 +17,12 @@ fn main() {
     );
 }
 
+// For a closure, 3 kinds exist:
+// Fn    : borrows from environment immutably
+// FnOnce: take the owner of variables from the environment. It consumes variable.
+//         it can be call only Once.
+// FnMut : borrows from environment with mutability.
+
 // IMPL 0
 // struct Cacher<T>
 //     where T: Fn(u32) -> u32
