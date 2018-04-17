@@ -20,6 +20,7 @@ fn example_01() {
     // let c = Cons(4, Box::new(a));
 }
 
+#[derive(Debug)]
 enum List_2 {
     Cons(i32, Rc<List_2>),
     Nil,
@@ -47,4 +48,12 @@ fn example_03() {
         println!("count after creating c = {}", Rc::strong_count(&a));
     }
     println!("count after c goes out of scope = {}", Rc::strong_count(&a));
+    println!("a after = {:?}", a);
+
+    // Read a value from the cons list type.
+    let var = match *a {
+        List_2::Cons(val, ref list) => Some(val),
+        List_2::Nil                 => None,
+    };
+    println!("var after = {:?}", var);
 }
