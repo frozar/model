@@ -5,3 +5,6 @@ def scrabble_score(word, scoretable):
         if letter in scoretable:
             score += scoretable[letter]
     return score
+
+# To generate the ".so" file with pythran:
+# $ pythran scrabble.py
