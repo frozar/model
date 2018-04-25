@@ -51,9 +51,8 @@ fn example_03() {
     println!("a after = {:?}", a);
 
     // Read a value from the cons list type.
-    let var = match *a {
-        List_2::Cons(val, ref list) => Some(val),
-        List_2::Nil                 => None,
+    match *a {
+        List_2::Cons(val, ref list) => println!("var after = {:?}", val),
+        List_2::Nil                 => (),
     };
-    println!("var after = {:?}", var);
 }
