@@ -12,9 +12,10 @@ impl Post {
     }
 
     pub fn add_text(&mut self, text: &str) {
-        self.content.push_str(text);
-        // let wk_text = self.state.as_ref().unwrap().add_text(&text, self);
+        let content_text = self.content.clone();
+        let wk_text = self.state.as_ref().unwrap().add_text(&text, content_text.as_str());
         // self.content.push_str(wk_text);
+        self.content = String::from(wk_text);
     }
     
     pub fn content(&self) -> &str {
@@ -50,9 +51,9 @@ trait State {
         ""
     }
 
-    // fn add_text<'a>(&self, text: &'a str, post: &'a mut Post) -> &'a str {
-    //     post.content()
-    // }
+    fn add_text<'a>(&self, _text: &'a str, content: &'a str) -> &'a str {
+        content
+    }
 }
 
 struct Draft {}
@@ -70,9 +71,9 @@ impl State for Draft {
         self
     }
 
-    // fn add_text<'a>(&self, text: &'a str, post: &'a mut Post) -> &'a str {
-    //     text
-    // }
+    fn add_text<'a>(&self, text: &'a str, _content: &'a str) -> &'a str {
+        text
+    }
 }
 
 struct PendingReview {

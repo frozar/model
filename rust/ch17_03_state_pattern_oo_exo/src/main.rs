@@ -10,7 +10,13 @@ fn main() {
     post.request_review();
     assert_eq!("", post.content());
 
+    post.add_text("Today, nothing");
+    assert_eq!("", post.content());
+
     post.reject();
+    assert_eq!("", post.content());
+
+    post.add_text("Today, nothing");
     assert_eq!("", post.content());
 
     post.request_review();
@@ -18,5 +24,6 @@ fn main() {
 
     post.approve();
     post.approve();
-    assert_eq!("I ate a salad for lunch today", post.content());
+    // assert_eq!("I ate a salad for lunch today", post.content());
+    assert_eq!("Today, nothing", post.content());
 }
