@@ -60,7 +60,7 @@ def lookahead(iterable):
     # Report the last value.
     yield last, False
 
-def walk(cursor, nb_indent, ast_dump_str, has_more = True, depth_has_no_more = -1):
+def walk(cursor, nb_indent, has_more = True, depth_has_no_more = -1):
     opening = None
     if (nb_indent == 0):
         opening = ""
@@ -197,20 +197,11 @@ def walk(cursor, nb_indent, ast_dump_str, has_more = True, depth_has_no_more = -
     if (nb_token * 2 < len(token_str)):
         token_str = token_str[ : nb_token] + [" ... "] + token_str[ -nb_token : ]
     
-    # print \
-    #     opening + \
-    #     connector + \
-    #     cursor_str + " : " + \
-    #     " ".join(token_str)
-
-    ast_dump_str += opening + \
-                    connector + \
-                    cursor_str + " : " + \
-                    " ".join(token_str) + \
-                    "\n"
-
-    print len(ast_dump_str)
-    # print "AST DUMP STR", ast_dump_str
+    ast_dump_str = opening + \
+                   connector + \
+                   cursor_str + " : " + \
+                   " ".join(token_str) + \
+                   "\n"
 
     # for i, child in enumerate(cursor.get_children()):
     #     child_tokens = list(child.get_tokens())
@@ -252,7 +243,11 @@ def walk(cursor, nb_indent, ast_dump_str, has_more = True, depth_has_no_more = -
         else:
             depth_has_no_more = -1
 
-        walk(child, nb_indent + 1, ast_dump_str, has_more, depth_has_no_more)
+        sub_ast_dump_str = walk(child, nb_indent + 1, has_more, depth_has_no_more)
+
+        ast_dump_str += sub_ast_dump_str
+
+    return ast_dump_str
 
 def main():
     args = parse_arguments(sys.argv[1:])
@@ -270,18 +265,12 @@ def main():
     tu = idx.parse(fake_input, args=['-std=c++11'],
                    unsaved_files=[(fake_input, source_contents)], options = 0)
 
-    # ## Compute the output
-    # dest_contents = get_dest_contents(tu, source_contents)
+    ## Compute the Abstract Syntac Tree (AST) dump
+    ast_dump_str = walk(tu.cursor, 0, has_more = True, depth_has_no_more = -1)
 
-    # ## Write output
-    # write_output(dest_contents, output_file_name)
+    ## Write output
+    write_output(ast_dump_str, output_file_name)
 
-    # tu = index.parse(source)
-    ## Print the AST dump
-    ast_dump_str = ""
-    walk(tu.cursor, 0, ast_dump_str, has_more = True, depth_has_no_more = -1)
-    # ast_dump_str += "\n"
-    print "|" + ast_dump_str + "|"
 
 if __name__ == '__main__':
     main()
