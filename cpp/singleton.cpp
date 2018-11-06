@@ -56,4 +56,4 @@ int main()
   return 0;
 }
 
-// g++ -o singleton singleton.cpp && ./singleton
+// g++ -o singleton singleton.cpp && valgrind --leak-check=full --show-leak-kinds=all ./singleton
