@@ -27,9 +27,12 @@ int main(int argc, char ** argv) {
     Foo foo;
 
     myStruct var0(5);
-    std::cout << "var0.t         : " << *(var0.t) << std::endl;
+    std::cout << "var0.t               : " << *(var0.t) << std::endl;
     foo.Add(var0);
-    std::cout << "foo.m_tata[0].t: " << *(foo.m_tata[0].t) << std::endl;
+    std::cout << "foo.m_tata[0].t      : " << *(foo.m_tata[0].t) << std::endl;
+    std::cout << "bool(var0.t)         : " << bool(var0.t) << std::endl;
+    std::cout << "bool(foo.m_tata[0].t): " << bool(foo.m_tata[0].t) << std::endl;
+    std::cout << std::endl;
 
     myStruct var2(2);
     std::cout << "var2.t         : " << *(var2.t) << std::endl;
