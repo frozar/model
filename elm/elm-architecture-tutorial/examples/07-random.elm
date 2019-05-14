@@ -1,9 +1,11 @@
-module Main exposing (Model, Msg(..), init, main, subscriptions, update, view)
+module Main exposing (Model, Msg(..), init, main, roll, subscriptions, update, view, viewDice, viewDiceDot)
 
 import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Process
+import Task
 import Random
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
@@ -27,13 +29,14 @@ main =
 
 
 type alias Model =
-    { dieFace : Int
+    { dieFace1 : Int
+    , dieFace2 : Int
     }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( Model 1
+    ( Model 1 6
     , Cmd.none
     )
 
@@ -44,7 +47,9 @@ init _ =
 
 type Msg
     = Roll
-    | NewFace Int
+    | NewFace10 Int
+    | NewFace11 Int
+    | NewFace2 Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -52,11 +57,23 @@ update msg model =
     case msg of
         Roll ->
             ( model
-            , Random.generate NewFace roll
+            , Random.generate NewFace10 roll
             )
 
-        NewFace newFace ->
-            ( Model newFace
+        NewFace10 newFace ->
+            ( { model | dieFace1 = newFace }
+            , Random.generate NewFace11 roll
+            -- , Process.sleep 100 |> Task.perform ((Random.generate NewFace11 roll) ())
+            -- , Process.sleep 1000 |> ((Task.perform (\_ -> Random.generate NewFace11 roll)) ())
+            )
+
+        NewFace11 newFace ->
+            ( { model | dieFace1 = newFace }
+            , Random.generate NewFace2 roll
+            )
+
+        NewFace2 newFace ->
+            ( { model | dieFace2 = newFace }
             , Cmd.none
             )
 
@@ -83,9 +100,11 @@ view : Model -> Html Msg
 view model =
     div [ Html.Attributes.style "text-align" "center" ]
         [ div []
-            [ viewDice model.dieFace
+            [ viewDice model.dieFace1
+            , viewDice model.dieFace2
             ]
-        , div [] [ Html.text (String.fromInt model.dieFace) ]
+        , div [] [ Html.text (String.fromInt model.dieFace1) ]
+        , div [] [ Html.text (String.fromInt model.dieFace2) ]
         , button [ onClick Roll ] [ Html.text "Roll" ]
         ]
 

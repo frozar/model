@@ -4394,9 +4394,10 @@ function _Browser_load(url)
 		}
 	}));
 }
-var author$project$Main$Model = function (dieFace) {
-	return {dieFace: dieFace};
-};
+var author$project$Main$Model = F2(
+	function (dieFace1, dieFace2) {
+		return {dieFace1: dieFace1, dieFace2: dieFace2};
+	});
 var elm$core$Basics$False = {$: 'False'};
 var elm$core$Basics$True = {$: 'True'};
 var elm$core$Result$isOk = function (result) {
@@ -4876,7 +4877,7 @@ var elm$core$Platform$Cmd$batch = _Platform_batch;
 var elm$core$Platform$Cmd$none = elm$core$Platform$Cmd$batch(_List_Nil);
 var author$project$Main$init = function (_n0) {
 	return _Utils_Tuple2(
-		author$project$Main$Model(1),
+		A2(author$project$Main$Model, 1, 6),
 		elm$core$Platform$Cmd$none);
 };
 var elm$core$Platform$Sub$batch = _Platform_batch;
@@ -4884,17 +4885,100 @@ var elm$core$Platform$Sub$none = elm$core$Platform$Sub$batch(_List_Nil);
 var author$project$Main$subscriptions = function (model) {
 	return elm$core$Platform$Sub$none;
 };
-var author$project$Main$NewFace = function (a) {
-	return {$: 'NewFace', a: a};
+var author$project$Main$NewFace10 = function (a) {
+	return {$: 'NewFace10', a: a};
+};
+var author$project$Main$NewFace11 = function (a) {
+	return {$: 'NewFace11', a: a};
+};
+var author$project$Main$NewFace2 = function (a) {
+	return {$: 'NewFace2', a: a};
+};
+var elm$core$Basics$negate = function (n) {
+	return -n;
+};
+var elm$core$Basics$abs = function (n) {
+	return (n < 0) ? (-n) : n;
+};
+var elm$core$List$foldrHelper = F4(
+	function (fn, acc, ctr, ls) {
+		if (!ls.b) {
+			return acc;
+		} else {
+			var a = ls.a;
+			var r1 = ls.b;
+			if (!r1.b) {
+				return A2(fn, a, acc);
+			} else {
+				var b = r1.a;
+				var r2 = r1.b;
+				if (!r2.b) {
+					return A2(
+						fn,
+						a,
+						A2(fn, b, acc));
+				} else {
+					var c = r2.a;
+					var r3 = r2.b;
+					if (!r3.b) {
+						return A2(
+							fn,
+							a,
+							A2(
+								fn,
+								b,
+								A2(fn, c, acc)));
+					} else {
+						var d = r3.a;
+						var r4 = r3.b;
+						var res = (ctr > 500) ? A3(
+							elm$core$List$foldl,
+							fn,
+							acc,
+							elm$core$List$reverse(r4)) : A4(elm$core$List$foldrHelper, fn, acc, ctr + 1, r4);
+						return A2(
+							fn,
+							a,
+							A2(
+								fn,
+								b,
+								A2(
+									fn,
+									c,
+									A2(fn, d, res))));
+					}
+				}
+			}
+		}
+	});
+var elm$core$List$foldr = F3(
+	function (fn, acc, ls) {
+		return A4(elm$core$List$foldrHelper, fn, acc, 0, ls);
+	});
+var elm$core$List$map = F2(
+	function (f, xs) {
+		return A3(
+			elm$core$List$foldr,
+			F2(
+				function (x, acc) {
+					return A2(
+						elm$core$List$cons,
+						f(x),
+						acc);
+				}),
+			_List_Nil,
+			xs);
+	});
+var elm$core$List$sum = function (numbers) {
+	return A3(elm$core$List$foldl, elm$core$Basics$add, 0, numbers);
 };
 var elm$core$Basics$identity = function (x) {
 	return x;
 };
-var elm$random$Random$Generate = function (a) {
-	return {$: 'Generate', a: a};
+var elm$core$Bitwise$and = _Bitwise_and;
+var elm$random$Random$Generator = function (a) {
+	return {$: 'Generator', a: a};
 };
-var elm$core$Task$andThen = _Scheduler_andThen;
-var elm$core$Task$succeed = _Scheduler_succeed;
 var elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
 var elm$random$Random$Seed = F2(
 	function (a, b) {
@@ -4905,6 +4989,98 @@ var elm$random$Random$next = function (_n0) {
 	var incr = _n0.b;
 	return A2(elm$random$Random$Seed, ((state0 * 1664525) + incr) >>> 0, incr);
 };
+var elm$core$Bitwise$xor = _Bitwise_xor;
+var elm$random$Random$peel = function (_n0) {
+	var state = _n0.a;
+	var word = (state ^ (state >>> ((state >>> 28) + 4))) * 277803737;
+	return ((word >>> 22) ^ word) >>> 0;
+};
+var elm$random$Random$float = F2(
+	function (a, b) {
+		return elm$random$Random$Generator(
+			function (seed0) {
+				var seed1 = elm$random$Random$next(seed0);
+				var range = elm$core$Basics$abs(b - a);
+				var n1 = elm$random$Random$peel(seed1);
+				var n0 = elm$random$Random$peel(seed0);
+				var lo = (134217727 & n1) * 1.0;
+				var hi = (67108863 & n0) * 1.0;
+				var val = ((hi * 1.34217728e8) + lo) / 9.007199254740992e15;
+				var scaled = (val * range) + a;
+				return _Utils_Tuple2(
+					scaled,
+					elm$random$Random$next(seed1));
+			});
+	});
+var elm$random$Random$getByWeight = F3(
+	function (_n0, others, countdown) {
+		getByWeight:
+		while (true) {
+			var weight = _n0.a;
+			var value = _n0.b;
+			if (!others.b) {
+				return value;
+			} else {
+				var second = others.a;
+				var otherOthers = others.b;
+				if (_Utils_cmp(
+					countdown,
+					elm$core$Basics$abs(weight)) < 1) {
+					return value;
+				} else {
+					var $temp$_n0 = second,
+						$temp$others = otherOthers,
+						$temp$countdown = countdown - elm$core$Basics$abs(weight);
+					_n0 = $temp$_n0;
+					others = $temp$others;
+					countdown = $temp$countdown;
+					continue getByWeight;
+				}
+			}
+		}
+	});
+var elm$random$Random$map = F2(
+	function (func, _n0) {
+		var genA = _n0.a;
+		return elm$random$Random$Generator(
+			function (seed0) {
+				var _n1 = genA(seed0);
+				var a = _n1.a;
+				var seed1 = _n1.b;
+				return _Utils_Tuple2(
+					func(a),
+					seed1);
+			});
+	});
+var elm$random$Random$weighted = F2(
+	function (first, others) {
+		var normalize = function (_n0) {
+			var weight = _n0.a;
+			return elm$core$Basics$abs(weight);
+		};
+		var total = normalize(first) + elm$core$List$sum(
+			A2(elm$core$List$map, normalize, others));
+		return A2(
+			elm$random$Random$map,
+			A2(elm$random$Random$getByWeight, first, others),
+			A2(elm$random$Random$float, 0, total));
+	});
+var author$project$Main$roll = A2(
+	elm$random$Random$weighted,
+	_Utils_Tuple2(15, 1),
+	_List_fromArray(
+		[
+			_Utils_Tuple2(15, 2),
+			_Utils_Tuple2(15, 3),
+			_Utils_Tuple2(15, 4),
+			_Utils_Tuple2(15, 5),
+			_Utils_Tuple2(100 - (5 * 15), 6)
+		]));
+var elm$random$Random$Generate = function (a) {
+	return {$: 'Generate', a: a};
+};
+var elm$core$Task$andThen = _Scheduler_andThen;
+var elm$core$Task$succeed = _Scheduler_succeed;
 var elm$random$Random$initialSeed = function (x) {
 	var _n0 = elm$random$Random$next(
 		A2(elm$random$Random$Seed, 0, 1013904223));
@@ -4970,22 +5146,6 @@ var elm$random$Random$onSelfMsg = F3(
 	function (_n0, _n1, seed) {
 		return elm$core$Task$succeed(seed);
 	});
-var elm$random$Random$Generator = function (a) {
-	return {$: 'Generator', a: a};
-};
-var elm$random$Random$map = F2(
-	function (func, _n0) {
-		var genA = _n0.a;
-		return elm$random$Random$Generator(
-			function (seed0) {
-				var _n1 = genA(seed0);
-				var a = _n1.a;
-				var seed1 = _n1.b;
-				return _Utils_Tuple2(
-					func(a),
-					seed1);
-			});
-	});
 var elm$random$Random$cmdMap = F2(
 	function (func, _n0) {
 		var generator = _n0.a;
@@ -5000,128 +5160,37 @@ var elm$random$Random$generate = F2(
 			elm$random$Random$Generate(
 				A2(elm$random$Random$map, tagger, generator)));
 	});
-var elm$core$Basics$negate = function (n) {
-	return -n;
-};
-var elm$core$Bitwise$and = _Bitwise_and;
-var elm$core$Bitwise$xor = _Bitwise_xor;
-var elm$random$Random$peel = function (_n0) {
-	var state = _n0.a;
-	var word = (state ^ (state >>> ((state >>> 28) + 4))) * 277803737;
-	return ((word >>> 22) ^ word) >>> 0;
-};
-var elm$random$Random$int = F2(
-	function (a, b) {
-		return elm$random$Random$Generator(
-			function (seed0) {
-				var _n0 = (_Utils_cmp(a, b) < 0) ? _Utils_Tuple2(a, b) : _Utils_Tuple2(b, a);
-				var lo = _n0.a;
-				var hi = _n0.b;
-				var range = (hi - lo) + 1;
-				if (!((range - 1) & range)) {
-					return _Utils_Tuple2(
-						(((range - 1) & elm$random$Random$peel(seed0)) >>> 0) + lo,
-						elm$random$Random$next(seed0));
-				} else {
-					var threshhold = (((-range) >>> 0) % range) >>> 0;
-					var accountForBias = function (seed) {
-						accountForBias:
-						while (true) {
-							var x = elm$random$Random$peel(seed);
-							var seedN = elm$random$Random$next(seed);
-							if (_Utils_cmp(x, threshhold) < 0) {
-								var $temp$seed = seedN;
-								seed = $temp$seed;
-								continue accountForBias;
-							} else {
-								return _Utils_Tuple2((x % range) + lo, seedN);
-							}
-						}
-					};
-					return accountForBias(seed0);
-				}
-			});
-	});
 var author$project$Main$update = F2(
 	function (msg, model) {
-		if (msg.$ === 'Roll') {
-			return _Utils_Tuple2(
-				model,
-				A2(
-					elm$random$Random$generate,
-					author$project$Main$NewFace,
-					A2(elm$random$Random$int, 1, 6)));
-		} else {
-			var newFace = msg.a;
-			return _Utils_Tuple2(
-				author$project$Main$Model(newFace),
-				elm$core$Platform$Cmd$none);
+		switch (msg.$) {
+			case 'Roll':
+				return _Utils_Tuple2(
+					model,
+					A2(elm$random$Random$generate, author$project$Main$NewFace10, author$project$Main$roll));
+			case 'NewFace10':
+				var newFace = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{dieFace1: newFace}),
+					A2(elm$random$Random$generate, author$project$Main$NewFace11, author$project$Main$roll));
+			case 'NewFace11':
+				var newFace = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{dieFace1: newFace}),
+					A2(elm$random$Random$generate, author$project$Main$NewFace2, author$project$Main$roll));
+			default:
+				var newFace = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{dieFace2: newFace}),
+					elm$core$Platform$Cmd$none);
 		}
 	});
 var author$project$Main$Roll = {$: 'Roll'};
-var elm$core$List$foldrHelper = F4(
-	function (fn, acc, ctr, ls) {
-		if (!ls.b) {
-			return acc;
-		} else {
-			var a = ls.a;
-			var r1 = ls.b;
-			if (!r1.b) {
-				return A2(fn, a, acc);
-			} else {
-				var b = r1.a;
-				var r2 = r1.b;
-				if (!r2.b) {
-					return A2(
-						fn,
-						a,
-						A2(fn, b, acc));
-				} else {
-					var c = r2.a;
-					var r3 = r2.b;
-					if (!r3.b) {
-						return A2(
-							fn,
-							a,
-							A2(
-								fn,
-								b,
-								A2(fn, c, acc)));
-					} else {
-						var d = r3.a;
-						var r4 = r3.b;
-						var res = (ctr > 500) ? A3(
-							elm$core$List$foldl,
-							fn,
-							acc,
-							elm$core$List$reverse(r4)) : A4(elm$core$List$foldrHelper, fn, acc, ctr + 1, r4);
-						return A2(
-							fn,
-							a,
-							A2(
-								fn,
-								b,
-								A2(
-									fn,
-									c,
-									A2(fn, d, res))));
-					}
-				}
-			}
-		}
-	});
-var elm$core$List$foldr = F3(
-	function (fn, acc, ls) {
-		return A4(elm$core$List$foldrHelper, fn, acc, 0, ls);
-	});
-var elm$core$List$append = F2(
-	function (xs, ys) {
-		if (!ys.b) {
-			return xs;
-		} else {
-			return A3(elm$core$List$foldr, elm$core$List$cons, ys, xs);
-		}
-	});
 var elm$json$Json$Decode$map = _Json_map1;
 var elm$json$Json$Decode$map2 = _Json_map2;
 var elm$json$Json$Decode$succeed = _Json_succeed;
@@ -5139,26 +5208,291 @@ var elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
 };
 var elm$svg$Svg$trustedNode = _VirtualDom_nodeNS('http://www.w3.org/2000/svg');
 var elm$svg$Svg$circle = elm$svg$Svg$trustedNode('circle');
-var elm$svg$Svg$rect = elm$svg$Svg$trustedNode('rect');
 var elm$svg$Svg$Attributes$cx = _VirtualDom_attribute('cx');
 var elm$svg$Svg$Attributes$cy = _VirtualDom_attribute('cy');
 var elm$svg$Svg$Attributes$fill = _VirtualDom_attribute('fill');
-var elm$svg$Svg$Attributes$height = _VirtualDom_attribute('height');
 var elm$svg$Svg$Attributes$r = _VirtualDom_attribute('r');
+var author$project$Main$viewDiceDot = F3(
+	function (dice_min_i, dice_length_i, value) {
+		var dice_center_i = (((dice_length_i - dice_min_i) / 2) | 0) + dice_min_i;
+		var dice_center_s = elm$core$String$fromInt(dice_center_i);
+		var diagSE_x = elm$core$String$fromInt(dice_center_i + ((dice_length_i / 3) | 0));
+		var diagSE_y = diagSE_x;
+		var diagSW_y = diagSE_y;
+		var diagNW_x = elm$core$String$fromInt(dice_center_i - ((dice_length_i / 3) | 0));
+		var diagNW_y = diagNW_x;
+		var diagSW_x = diagNW_x;
+		var diagNE_y = diagNW_y;
+		var diagNE_x = diagSE_x;
+		switch (value) {
+			case 1:
+				return _List_fromArray(
+					[
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(dice_center_s),
+								elm$svg$Svg$Attributes$cy(dice_center_s),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil)
+					]);
+			case 2:
+				return _List_fromArray(
+					[
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagNW_x),
+								elm$svg$Svg$Attributes$cy(diagNW_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil),
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagSE_x),
+								elm$svg$Svg$Attributes$cy(diagSE_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil)
+					]);
+			case 3:
+				return _List_fromArray(
+					[
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagNW_x),
+								elm$svg$Svg$Attributes$cy(diagNW_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil),
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(dice_center_s),
+								elm$svg$Svg$Attributes$cy(dice_center_s),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil),
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagSE_x),
+								elm$svg$Svg$Attributes$cy(diagSE_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil)
+					]);
+			case 4:
+				return _List_fromArray(
+					[
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagNW_x),
+								elm$svg$Svg$Attributes$cy(diagNW_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil),
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagSW_x),
+								elm$svg$Svg$Attributes$cy(diagSW_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil),
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagNE_x),
+								elm$svg$Svg$Attributes$cy(diagNE_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil),
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagSE_x),
+								elm$svg$Svg$Attributes$cy(diagSE_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil)
+					]);
+			case 5:
+				return _List_fromArray(
+					[
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(dice_center_s),
+								elm$svg$Svg$Attributes$cy(dice_center_s),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil),
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagNW_x),
+								elm$svg$Svg$Attributes$cy(diagNW_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil),
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagSW_x),
+								elm$svg$Svg$Attributes$cy(diagSW_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil),
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagNE_x),
+								elm$svg$Svg$Attributes$cy(diagNE_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil),
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagSE_x),
+								elm$svg$Svg$Attributes$cy(diagSE_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil)
+					]);
+			case 6:
+				return _List_fromArray(
+					[
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagNW_x),
+								elm$svg$Svg$Attributes$cy(diagNW_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil),
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagNE_x),
+								elm$svg$Svg$Attributes$cy(diagNE_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil),
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagNW_x),
+								elm$svg$Svg$Attributes$cy(dice_center_s),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil),
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagNE_x),
+								elm$svg$Svg$Attributes$cy(dice_center_s),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil),
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagSW_x),
+								elm$svg$Svg$Attributes$cy(diagSW_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil),
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(diagSE_x),
+								elm$svg$Svg$Attributes$cy(diagSE_y),
+								elm$svg$Svg$Attributes$r('10')
+							]),
+						_List_Nil)
+					]);
+			default:
+				return _List_fromArray(
+					[
+						A2(
+						elm$svg$Svg$circle,
+						_List_fromArray(
+							[
+								elm$svg$Svg$Attributes$cx(dice_center_s),
+								elm$svg$Svg$Attributes$cy(dice_center_s),
+								elm$svg$Svg$Attributes$r('60'),
+								elm$svg$Svg$Attributes$fill('red')
+							]),
+						_List_Nil)
+					]);
+		}
+	});
+var elm$core$List$append = F2(
+	function (xs, ys) {
+		if (!ys.b) {
+			return xs;
+		} else {
+			return A3(elm$core$List$foldr, elm$core$List$cons, ys, xs);
+		}
+	});
+var elm$svg$Svg$rect = elm$svg$Svg$trustedNode('rect');
+var elm$svg$Svg$svg = elm$svg$Svg$trustedNode('svg');
+var elm$svg$Svg$Attributes$height = _VirtualDom_attribute('height');
 var elm$svg$Svg$Attributes$rx = _VirtualDom_attribute('rx');
 var elm$svg$Svg$Attributes$ry = _VirtualDom_attribute('ry');
 var elm$svg$Svg$Attributes$stroke = _VirtualDom_attribute('stroke');
 var elm$svg$Svg$Attributes$strokeWidth = _VirtualDom_attribute('stroke-width');
+var elm$svg$Svg$Attributes$viewBox = _VirtualDom_attribute('viewBox');
 var elm$svg$Svg$Attributes$width = _VirtualDom_attribute('width');
 var elm$svg$Svg$Attributes$x = _VirtualDom_attribute('x');
 var elm$svg$Svg$Attributes$y = _VirtualDom_attribute('y');
-var author$project$Main$viewDiceBorder = F2(
-	function (dice_min_i, dice_length_i) {
-		var dice_min_s = elm$core$String$fromInt(dice_min_i);
-		var dice_length_s = elm$core$String$fromInt(dice_length_i);
-		var dice_center_i = (((dice_length_i - dice_min_i) / 2) | 0) + dice_min_i;
-		var dice_center_s = elm$core$String$fromInt(dice_center_i);
-		return A2(
+var author$project$Main$viewDice = function (dieFace) {
+	var offset = 2;
+	var length_i = 150;
+	var length_s = elm$core$String$fromInt(length_i);
+	var dice_min_i = 0 + offset;
+	var dice_min_s = elm$core$String$fromInt(dice_min_i);
+	var dice_length_i = length_i - (2 * offset);
+	var dice_length_s = elm$core$String$fromInt(dice_length_i);
+	return A2(
+		elm$svg$Svg$svg,
+		_List_fromArray(
+			[
+				elm$svg$Svg$Attributes$width(length_s),
+				elm$svg$Svg$Attributes$height(length_s),
+				elm$svg$Svg$Attributes$viewBox('0 0 ' + (length_s + (' ' + length_s))),
+				elm$svg$Svg$Attributes$fill('black'),
+				elm$svg$Svg$Attributes$stroke('black'),
+				elm$svg$Svg$Attributes$strokeWidth('3')
+			]),
+		A2(
 			elm$core$List$append,
 			_List_fromArray(
 				[
@@ -5168,9 +5502,7 @@ var author$project$Main$viewDiceBorder = F2(
 						[
 							elm$svg$Svg$Attributes$x(dice_min_s),
 							elm$svg$Svg$Attributes$y(dice_min_s),
-							elm$svg$Svg$Attributes$fill('none'),
-							elm$svg$Svg$Attributes$stroke('black'),
-							elm$svg$Svg$Attributes$strokeWidth('3'),
+							elm$svg$Svg$Attributes$fill('white'),
 							elm$svg$Svg$Attributes$width(dice_length_s),
 							elm$svg$Svg$Attributes$height(dice_length_s),
 							elm$svg$Svg$Attributes$rx('10'),
@@ -5178,42 +5510,14 @@ var author$project$Main$viewDiceBorder = F2(
 						]),
 					_List_Nil)
 				]),
-			_List_fromArray(
-				[
-					A2(
-					elm$svg$Svg$circle,
-					_List_fromArray(
-						[
-							elm$svg$Svg$Attributes$cx('50'),
-							elm$svg$Svg$Attributes$cy('50'),
-							elm$svg$Svg$Attributes$r('10'),
-							elm$svg$Svg$Attributes$fill('black')
-						]),
-					_List_Nil)
-				]));
-	});
-var elm$svg$Svg$svg = elm$svg$Svg$trustedNode('svg');
-var elm$svg$Svg$Attributes$viewBox = _VirtualDom_attribute('viewBox');
-var author$project$Main$viewDice = function (dieFace) {
-	var offset = 5;
-	var length_i = 150;
-	var length_s = elm$core$String$fromInt(length_i);
-	var dice_min_i = 0 + offset;
-	var dice_length_i = length_i - (2 * offset);
-	return A2(
-		elm$svg$Svg$svg,
-		_List_fromArray(
-			[
-				elm$svg$Svg$Attributes$width(length_s),
-				elm$svg$Svg$Attributes$height(length_s),
-				elm$svg$Svg$Attributes$viewBox('0 0 ' + (length_s + (' ' + length_s)))
-			]),
-		A2(author$project$Main$viewDiceBorder, dice_min_i, dice_length_i));
+			A3(author$project$Main$viewDiceDot, dice_min_i, dice_length_i, dieFace)));
 };
 var elm$html$Html$button = _VirtualDom_node('button');
 var elm$html$Html$div = _VirtualDom_node('div');
 var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
+var elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
+var elm$html$Html$Attributes$style = elm$virtual_dom$VirtualDom$style;
 var elm$virtual_dom$VirtualDom$Normal = function (a) {
 	return {$: 'Normal', a: a};
 };
@@ -5234,7 +5538,10 @@ var elm$html$Html$Events$onClick = function (msg) {
 var author$project$Main$view = function (model) {
 	return A2(
 		elm$html$Html$div,
-		_List_Nil,
+		_List_fromArray(
+			[
+				A2(elm$html$Html$Attributes$style, 'text-align', 'center')
+			]),
 		_List_fromArray(
 			[
 				A2(
@@ -5242,7 +5549,8 @@ var author$project$Main$view = function (model) {
 				_List_Nil,
 				_List_fromArray(
 					[
-						author$project$Main$viewDice(model.dieFace)
+						author$project$Main$viewDice(model.dieFace1),
+						author$project$Main$viewDice(model.dieFace2)
 					])),
 				A2(
 				elm$html$Html$div,
@@ -5250,7 +5558,15 @@ var author$project$Main$view = function (model) {
 				_List_fromArray(
 					[
 						elm$html$Html$text(
-						elm$core$String$fromInt(model.dieFace))
+						elm$core$String$fromInt(model.dieFace1))
+					])),
+				A2(
+				elm$html$Html$div,
+				_List_Nil,
+				_List_fromArray(
+					[
+						elm$html$Html$text(
+						elm$core$String$fromInt(model.dieFace2))
 					])),
 				A2(
 				elm$html$Html$button,
@@ -5286,20 +5602,6 @@ var elm$core$Task$Perform = function (a) {
 	return {$: 'Perform', a: a};
 };
 var elm$core$Task$init = elm$core$Task$succeed(_Utils_Tuple0);
-var elm$core$List$map = F2(
-	function (f, xs) {
-		return A3(
-			elm$core$List$foldr,
-			F2(
-				function (x, acc) {
-					return A2(
-						elm$core$List$cons,
-						f(x),
-						acc);
-				}),
-			_List_Nil,
-			xs);
-	});
 var elm$core$Task$map = F2(
 	function (func, taskA) {
 		return A2(
