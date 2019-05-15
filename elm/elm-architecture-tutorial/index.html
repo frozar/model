@@ -4394,9 +4394,9 @@ function _Browser_load(url)
 		}
 	}));
 }
-var author$project$Main$Model = F2(
-	function (dieFace1, dieFace2) {
-		return {dieFace1: dieFace1, dieFace2: dieFace2};
+var author$project$Main$Model = F3(
+	function (dieFace1, dieFace2, rolling) {
+		return {dieFace1: dieFace1, dieFace2: dieFace2, rolling: rolling};
 	});
 var elm$core$Basics$False = {$: 'False'};
 var elm$core$Basics$True = {$: 'True'};
@@ -4877,7 +4877,7 @@ var elm$core$Platform$Cmd$batch = _Platform_batch;
 var elm$core$Platform$Cmd$none = elm$core$Platform$Cmd$batch(_List_Nil);
 var author$project$Main$init = function (_n0) {
 	return _Utils_Tuple2(
-		A2(author$project$Main$Model, 1, 6),
+		A3(author$project$Main$Model, 1, 6, false),
 		elm$core$Platform$Cmd$none);
 };
 var elm$core$Platform$Sub$batch = _Platform_batch;
@@ -4885,15 +4885,19 @@ var elm$core$Platform$Sub$none = elm$core$Platform$Sub$batch(_List_Nil);
 var author$project$Main$subscriptions = function (model) {
 	return elm$core$Platform$Sub$none;
 };
+var author$project$Main$Continue2 = function (a) {
+	return {$: 'Continue2', a: a};
+};
 var author$project$Main$NewFace10 = function (a) {
 	return {$: 'NewFace10', a: a};
 };
 var author$project$Main$NewFace11 = function (a) {
 	return {$: 'NewFace11', a: a};
 };
-var author$project$Main$NewFace2 = function (a) {
-	return {$: 'NewFace2', a: a};
-};
+var author$project$Main$Rolled2 = F2(
+	function (a, b) {
+		return {$: 'Rolled2', a: a, b: b};
+	});
 var elm$core$Basics$negate = function (n) {
 	return -n;
 };
@@ -5065,7 +5069,7 @@ var elm$random$Random$weighted = F2(
 			A2(elm$random$Random$getByWeight, first, others),
 			A2(elm$random$Random$float, 0, total));
 	});
-var author$project$Main$roll = A2(
+var author$project$Main$oneToSix = A2(
 	elm$random$Random$weighted,
 	_Utils_Tuple2(15, 1),
 	_List_fromArray(
@@ -5076,6 +5080,12 @@ var author$project$Main$roll = A2(
 			_Utils_Tuple2(15, 5),
 			_Utils_Tuple2(100 - (5 * 15), 6)
 		]));
+var elm$random$Random$constant = function (value) {
+	return elm$random$Random$Generator(
+		function (seed) {
+			return _Utils_Tuple2(value, seed);
+		});
+};
 var elm$random$Random$Generate = function (a) {
 	return {$: 'Generate', a: a};
 };
@@ -5160,34 +5170,161 @@ var elm$random$Random$generate = F2(
 			elm$random$Random$Generate(
 				A2(elm$random$Random$map, tagger, generator)));
 	});
+var elm$random$Random$map2 = F3(
+	function (func, _n0, _n1) {
+		var genA = _n0.a;
+		var genB = _n1.a;
+		return elm$random$Random$Generator(
+			function (seed0) {
+				var _n2 = genA(seed0);
+				var a = _n2.a;
+				var seed1 = _n2.b;
+				var _n3 = genB(seed1);
+				var b = _n3.a;
+				var seed2 = _n3.b;
+				return _Utils_Tuple2(
+					A2(func, a, b),
+					seed2);
+			});
+	});
+var author$project$Main$roll2 = F2(
+	function (maxBounces, aRolled) {
+		return A2(
+			elm$random$Random$generate,
+			elm$core$Basics$identity,
+			A3(
+				elm$random$Random$map2,
+				aRolled,
+				elm$random$Random$constant(maxBounces - 1),
+				author$project$Main$oneToSix));
+	});
+var elm$core$Process$sleep = _Process_sleep;
+var elm$core$Task$Perform = function (a) {
+	return {$: 'Perform', a: a};
+};
+var elm$core$Task$init = elm$core$Task$succeed(_Utils_Tuple0);
+var elm$core$Task$map = F2(
+	function (func, taskA) {
+		return A2(
+			elm$core$Task$andThen,
+			function (a) {
+				return elm$core$Task$succeed(
+					func(a));
+			},
+			taskA);
+	});
+var elm$core$Task$map2 = F3(
+	function (func, taskA, taskB) {
+		return A2(
+			elm$core$Task$andThen,
+			function (a) {
+				return A2(
+					elm$core$Task$andThen,
+					function (b) {
+						return elm$core$Task$succeed(
+							A2(func, a, b));
+					},
+					taskB);
+			},
+			taskA);
+	});
+var elm$core$Task$sequence = function (tasks) {
+	return A3(
+		elm$core$List$foldr,
+		elm$core$Task$map2(elm$core$List$cons),
+		elm$core$Task$succeed(_List_Nil),
+		tasks);
+};
+var elm$core$Task$spawnCmd = F2(
+	function (router, _n0) {
+		var task = _n0.a;
+		return _Scheduler_spawn(
+			A2(
+				elm$core$Task$andThen,
+				elm$core$Platform$sendToApp(router),
+				task));
+	});
+var elm$core$Task$onEffects = F3(
+	function (router, commands, state) {
+		return A2(
+			elm$core$Task$map,
+			function (_n0) {
+				return _Utils_Tuple0;
+			},
+			elm$core$Task$sequence(
+				A2(
+					elm$core$List$map,
+					elm$core$Task$spawnCmd(router),
+					commands)));
+	});
+var elm$core$Task$onSelfMsg = F3(
+	function (_n0, _n1, _n2) {
+		return elm$core$Task$succeed(_Utils_Tuple0);
+	});
+var elm$core$Task$cmdMap = F2(
+	function (tagger, _n0) {
+		var task = _n0.a;
+		return elm$core$Task$Perform(
+			A2(elm$core$Task$map, tagger, task));
+	});
+_Platform_effectManagers['Task'] = _Platform_createManager(elm$core$Task$init, elm$core$Task$onEffects, elm$core$Task$onSelfMsg, elm$core$Task$cmdMap);
+var elm$core$Task$command = _Platform_leaf('Task');
+var elm$core$Task$perform = F2(
+	function (toMessage, task) {
+		return elm$core$Task$command(
+			elm$core$Task$Perform(
+				A2(elm$core$Task$map, toMessage, task)));
+	});
 var author$project$Main$update = F2(
 	function (msg, model) {
 		switch (msg.$) {
 			case 'Roll':
 				return _Utils_Tuple2(
-					model,
-					A2(elm$random$Random$generate, author$project$Main$NewFace10, author$project$Main$roll));
+					_Utils_update(
+						model,
+						{rolling: true}),
+					A2(elm$random$Random$generate, author$project$Main$NewFace10, author$project$Main$oneToSix));
 			case 'NewFace10':
 				var newFace = msg.a;
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
 						{dieFace1: newFace}),
-					A2(elm$random$Random$generate, author$project$Main$NewFace11, author$project$Main$roll));
+					A2(elm$random$Random$generate, author$project$Main$NewFace11, author$project$Main$oneToSix));
 			case 'NewFace11':
 				var newFace = msg.a;
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
 						{dieFace1: newFace}),
-					A2(elm$random$Random$generate, author$project$Main$NewFace2, author$project$Main$roll));
+					A2(author$project$Main$roll2, 5, author$project$Main$Rolled2));
+			case 'Rolled2':
+				if (!msg.a) {
+					var value = msg.b;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{dieFace2: value, rolling: false}),
+						elm$core$Platform$Cmd$none);
+				} else {
+					var maxBounces = msg.a;
+					var value = msg.b;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{dieFace2: value}),
+						A2(
+							elm$core$Task$perform,
+							function (_n1) {
+								return author$project$Main$Continue2(maxBounces);
+							},
+							elm$core$Process$sleep(1000)));
+				}
 			default:
-				var newFace = msg.a;
+				var maxBounces = msg.a;
 				return _Utils_Tuple2(
-					_Utils_update(
-						model,
-						{dieFace2: newFace}),
-					elm$core$Platform$Cmd$none);
+					model,
+					A2(author$project$Main$roll2, maxBounces, author$project$Main$Rolled2));
 		}
 	});
 var author$project$Main$Roll = {$: 'Roll'};
@@ -5516,6 +5653,15 @@ var elm$html$Html$button = _VirtualDom_node('button');
 var elm$html$Html$div = _VirtualDom_node('div');
 var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
+var elm$json$Json$Encode$bool = _Json_wrap;
+var elm$html$Html$Attributes$boolProperty = F2(
+	function (key, bool) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			elm$json$Json$Encode$bool(bool));
+	});
+var elm$html$Html$Attributes$disabled = elm$html$Html$Attributes$boolProperty('disabled');
 var elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var elm$html$Html$Attributes$style = elm$virtual_dom$VirtualDom$style;
 var elm$virtual_dom$VirtualDom$Normal = function (a) {
@@ -5572,7 +5718,8 @@ var author$project$Main$view = function (model) {
 				elm$html$Html$button,
 				_List_fromArray(
 					[
-						elm$html$Html$Events$onClick(author$project$Main$Roll)
+						elm$html$Html$Events$onClick(author$project$Main$Roll),
+						elm$html$Html$Attributes$disabled(model.rolling)
 					]),
 				_List_fromArray(
 					[
@@ -5598,82 +5745,6 @@ var elm$core$Basics$never = function (_n0) {
 		continue never;
 	}
 };
-var elm$core$Task$Perform = function (a) {
-	return {$: 'Perform', a: a};
-};
-var elm$core$Task$init = elm$core$Task$succeed(_Utils_Tuple0);
-var elm$core$Task$map = F2(
-	function (func, taskA) {
-		return A2(
-			elm$core$Task$andThen,
-			function (a) {
-				return elm$core$Task$succeed(
-					func(a));
-			},
-			taskA);
-	});
-var elm$core$Task$map2 = F3(
-	function (func, taskA, taskB) {
-		return A2(
-			elm$core$Task$andThen,
-			function (a) {
-				return A2(
-					elm$core$Task$andThen,
-					function (b) {
-						return elm$core$Task$succeed(
-							A2(func, a, b));
-					},
-					taskB);
-			},
-			taskA);
-	});
-var elm$core$Task$sequence = function (tasks) {
-	return A3(
-		elm$core$List$foldr,
-		elm$core$Task$map2(elm$core$List$cons),
-		elm$core$Task$succeed(_List_Nil),
-		tasks);
-};
-var elm$core$Task$spawnCmd = F2(
-	function (router, _n0) {
-		var task = _n0.a;
-		return _Scheduler_spawn(
-			A2(
-				elm$core$Task$andThen,
-				elm$core$Platform$sendToApp(router),
-				task));
-	});
-var elm$core$Task$onEffects = F3(
-	function (router, commands, state) {
-		return A2(
-			elm$core$Task$map,
-			function (_n0) {
-				return _Utils_Tuple0;
-			},
-			elm$core$Task$sequence(
-				A2(
-					elm$core$List$map,
-					elm$core$Task$spawnCmd(router),
-					commands)));
-	});
-var elm$core$Task$onSelfMsg = F3(
-	function (_n0, _n1, _n2) {
-		return elm$core$Task$succeed(_Utils_Tuple0);
-	});
-var elm$core$Task$cmdMap = F2(
-	function (tagger, _n0) {
-		var task = _n0.a;
-		return elm$core$Task$Perform(
-			A2(elm$core$Task$map, tagger, task));
-	});
-_Platform_effectManagers['Task'] = _Platform_createManager(elm$core$Task$init, elm$core$Task$onEffects, elm$core$Task$onSelfMsg, elm$core$Task$cmdMap);
-var elm$core$Task$command = _Platform_leaf('Task');
-var elm$core$Task$perform = F2(
-	function (toMessage, task) {
-		return elm$core$Task$command(
-			elm$core$Task$Perform(
-				A2(elm$core$Task$map, toMessage, task)));
-	});
 var elm$core$String$length = _String_length;
 var elm$core$String$slice = _String_slice;
 var elm$core$String$dropLeft = F2(

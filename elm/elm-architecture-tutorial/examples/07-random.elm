@@ -1,14 +1,14 @@
-module Main exposing (Model, Msg(..), init, main, roll, subscriptions, update, view, viewDice, viewDiceDot)
+module Main exposing (Model, Msg(..), init, main, subscriptions, update, view, viewDice, viewDiceDot)
 
 import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Process
-import Task
 import Random
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
+import Task
 
 
 
@@ -31,12 +31,13 @@ main =
 type alias Model =
     { dieFace1 : Int
     , dieFace2 : Int
+    , rolling : Bool
     }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( Model 1 6
+    ( Model 1 6 False
     , Cmd.none
     )
 
@@ -47,40 +48,43 @@ init _ =
 
 type Msg
     = Roll
-    | NewFace10 Int
-    | NewFace11 Int
-    | NewFace2 Int
+    | Rolled Int Int Int
+    | Continue Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Roll ->
-            ( model
-            , Random.generate NewFace10 roll
+            ( { model | rolling = True }
+            , roll 3
             )
 
-        NewFace10 newFace ->
-            ( { model | dieFace1 = newFace }
-            , Random.generate NewFace11 roll
-            -- , Process.sleep 100 |> Task.perform ((Random.generate NewFace11 roll) ())
-            -- , Process.sleep 1000 |> ((Task.perform (\_ -> Random.generate NewFace11 roll)) ())
-            )
-
-        NewFace11 newFace ->
-            ( { model | dieFace1 = newFace }
-            , Random.generate NewFace2 roll
-            )
-
-        NewFace2 newFace ->
-            ( { model | dieFace2 = newFace }
+        Rolled 0 value1 value2 ->
+            ( { model | rolling = False, dieFace1 = value1, dieFace2 = value2 }
             , Cmd.none
             )
 
+        Rolled nbBounces value1 value2 ->
+            ( { model | dieFace1 = value1, dieFace2 = value2 }
+            , Process.sleep 1000 |> Task.perform (\_ -> Continue nbBounces)
+            )
 
-roll : Random.Generator Int
-roll =
+        Continue nbBounces ->
+            ( model
+            , roll nbBounces
+            )
+
+
+oneToSix : Random.Generator Int
+oneToSix =
     Random.weighted ( 15, 1 ) [ ( 15, 2 ), ( 15, 3 ), ( 15, 4 ), ( 15, 5 ), ( 100 - (5 * 15), 6 ) ]
+
+
+roll : Int -> Cmd Msg
+roll nbBounces =
+    Random.map3 Rolled (Random.constant (nbBounces - 1)) oneToSix oneToSix
+        |> Random.generate identity
 
 
 
@@ -105,7 +109,7 @@ view model =
             ]
         , div [] [ Html.text (String.fromInt model.dieFace1) ]
         , div [] [ Html.text (String.fromInt model.dieFace2) ]
-        , button [ onClick Roll ] [ Html.text "Roll" ]
+        , button [ onClick Roll, disabled model.rolling ] [ Html.text "Roll" ]
         ]
 
 
@@ -192,147 +196,42 @@ viewDiceDot dice_min_i dice_length_i value =
     in
     case value of
         1 ->
-            [ circle
-                [ cx dice_center_s
-                , cy dice_center_s
-                , r "10"
-                ]
-                []
+            [ circleSvg dice_center_s dice_center_s
             ]
 
         2 ->
-            [ circle
-                [ cx diagNW_x
-                , cy diagNW_y
-                , r "10"
-                ]
-                []
-            , circle
-                [ cx diagSE_x
-                , cy diagSE_y
-                , r "10"
-                ]
-                []
+            [ circleSvg diagNW_x diagNW_y
+            , circleSvg diagSE_x diagSE_y
             ]
 
         3 ->
-            [ circle
-                [ cx diagNW_x
-                , cy diagNW_y
-                , r "10"
-                ]
-                []
-            , circle
-                [ cx dice_center_s
-                , cy dice_center_s
-                , r "10"
-                ]
-                []
-            , circle
-                [ cx diagSE_x
-                , cy diagSE_y
-                , r "10"
-                ]
-                []
+            [ circleSvg diagNW_x diagNW_y
+            , circleSvg dice_center_s dice_center_s
+            , circleSvg diagSE_x diagSE_y
             ]
 
         4 ->
-            [ circle
-                [ cx diagNW_x
-                , cy diagNW_y
-                , r "10"
-                ]
-                []
-            , circle
-                [ cx diagSW_x
-                , cy diagSW_y
-                , r "10"
-                ]
-                []
-            , circle
-                [ cx diagNE_x
-                , cy diagNE_y
-                , r "10"
-                ]
-                []
-            , circle
-                [ cx diagSE_x
-                , cy diagSE_y
-                , r "10"
-                ]
-                []
+            [ circleSvg diagNW_x diagNW_y
+            , circleSvg diagNE_x diagNE_y
+            , circleSvg diagSW_x diagSW_y
+            , circleSvg diagSE_x diagSE_y
             ]
 
         5 ->
-            [ circle
-                [ cx dice_center_s
-                , cy dice_center_s
-                , r "10"
-                ]
-                []
-            , circle
-                [ cx diagNW_x
-                , cy diagNW_y
-                , r "10"
-                ]
-                []
-            , circle
-                [ cx diagSW_x
-                , cy diagSW_y
-                , r "10"
-                ]
-                []
-            , circle
-                [ cx diagNE_x
-                , cy diagNE_y
-                , r "10"
-                ]
-                []
-            , circle
-                [ cx diagSE_x
-                , cy diagSE_y
-                , r "10"
-                ]
-                []
+            [ circleSvg dice_center_s dice_center_s
+            , circleSvg diagNW_x diagNW_y
+            , circleSvg diagNE_x diagNE_y
+            , circleSvg diagSW_x diagSW_y
+            , circleSvg diagSE_x diagSE_y
             ]
 
         6 ->
-            [ circle
-                [ cx diagNW_x
-                , cy diagNW_y
-                , r "10"
-                ]
-                []
-            , circle
-                [ cx diagNE_x
-                , cy diagNE_y
-                , r "10"
-                ]
-                []
-            , circle
-                [ cx diagNW_x
-                , cy dice_center_s
-                , r "10"
-                ]
-                []
-            , circle
-                [ cx diagNE_x
-                , cy dice_center_s
-                , r "10"
-                ]
-                []
-            , circle
-                [ cx diagSW_x
-                , cy diagSW_y
-                , r "10"
-                ]
-                []
-            , circle
-                [ cx diagSE_x
-                , cy diagSE_y
-                , r "10"
-                ]
-                []
+            [ circleSvg diagNW_x diagNW_y
+            , circleSvg diagNE_x diagNE_y
+            , circleSvg diagNW_x dice_center_s
+            , circleSvg diagNE_x dice_center_s
+            , circleSvg diagSW_x diagSW_y
+            , circleSvg diagSE_x diagSE_y
             ]
 
         _ ->
@@ -344,3 +243,8 @@ viewDiceDot dice_min_i dice_length_i value =
                 ]
                 []
             ]
+
+
+circleSvg : String -> String -> Html Msg
+circleSvg cx_ cy_ =
+    circle [ cx cx_, cy cy_, r "10" ] []
