@@ -2,6 +2,7 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Debug
+import Set
 import Html exposing (Html, button, div, span, text)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
@@ -23,11 +24,17 @@ type alias Board =
     List (List (Maybe Queen))
 
 
+type SelectedQueen
+    = Available Queen
+    | Placed Queen
+    | NothingSelected
+
+
 type alias Model =
-    { selectedAvailableQueen : Maybe Queen
-    , selectedPlacedQueen : Maybe Queen
+    { selectedQueen : SelectedQueen
     , queens : List Queen
     , board : Board
+    , queenAgainst : (Set.Set ( ( Queen, Queen ) ) )
     }
 
 
@@ -37,7 +44,7 @@ nbPiece =
 
 noneQueen : Queen
 noneQueen =
-    "qi"
+    "xx"
 
 
 initQueens : List Queen
@@ -54,10 +61,10 @@ initBoard =
 
 init : Model
 init =
-    { selectedAvailableQueen = Nothing
-    , selectedPlacedQueen = Nothing
+    { selectedQueen = NothingSelected
     , queens = initQueens
     , board = initBoard
+    , queenAgainst = (Set.empty)
     }
 
 
@@ -75,88 +82,90 @@ update : Msg -> Model -> Model
 update msg model =
     case msg of
         Select queen ->
-            case model.selectedPlacedQueen of
-                Just selectedPlacedQueen ->
+            case model.selectedQueen of
+                Placed selectedPlacedQueen ->
                     { model
                         | queens = selectedPlacedQueen :: model.queens
                         , board = removeQueenBoard model.board selectedPlacedQueen
-                        , selectedPlacedQueen = Nothing
-                        , selectedAvailableQueen = Nothing
+                        , selectedQueen = NothingSelected
                     }
 
-                Nothing ->
+                Available selectedAvailableQueen ->
                     { model
-                        | selectedAvailableQueen = Just queen
-                        , selectedPlacedQueen = Nothing
+                        | selectedQueen = Available queen
+                    }
+
+                NothingSelected ->
+                    { model
+                        | selectedQueen = Available queen
                     }
 
         SelectCell i j ->
             case hasQueenAt model.board i j of
                 Just queen ->
-                    case model.selectedPlacedQueen of
-                        Just alreadySelectedQueen ->
+                    case model.selectedQueen of
+                        Placed alreadySelectedQueen ->
                             if alreadySelectedQueen == queen then
                                 { model
                                     | board = removeQueenBoard model.board queen --placeQueen model.board queen i j
                                     , queens = alreadySelectedQueen :: model.queens
-                                    , selectedPlacedQueen = Nothing
-                                    , selectedAvailableQueen = Nothing
+                                    , selectedQueen = NothingSelected
                                 }
 
                             else
                                 { model
-                                    | selectedPlacedQueen = Just queen
-                                    , selectedAvailableQueen = Nothing
+                                    | selectedQueen = Placed queen
                                 }
 
-                        Nothing ->
+                        Available alreadySelectedQueen ->
                             { model
-                                | selectedPlacedQueen = Just queen
-                                , selectedAvailableQueen = Nothing
+                                | selectedQueen = Placed queen
+                            }
+
+                        NothingSelected ->
+                            { model
+                                | selectedQueen = Placed queen
                             }
 
                 Nothing ->
-                    case model.selectedAvailableQueen of
-                        Just queen ->
+                    case model.selectedQueen of
+                        Available queen ->
                             { model
                                 | queens = removeQueenAvailable queen model.queens
                                 , board = placeQueen model.board queen i j
-                                , selectedAvailableQueen = Nothing
-                                , selectedPlacedQueen = Nothing
+                                , selectedQueen = NothingSelected
                             }
 
-                        Nothing ->
-                            case model.selectedPlacedQueen of
-                                Just queen ->
-                                    { model
-                                        | board = placeQueen model.board queen i j
-                                        , selectedAvailableQueen = Nothing
-                                        , selectedPlacedQueen = Nothing
-                                    }
+                        Placed queen ->
+                            { model
+                                | board = placeQueen model.board queen i j
+                                , selectedQueen = NothingSelected
+                            }
 
-                                Nothing ->
-                                    model
+                        NothingSelected ->
+                            model
 
         Reset ->
-            Debug.log "reset" { model | selectedAvailableQueen = Nothing, selectedPlacedQueen = Nothing, queens = initQueens, board = initBoard }
+            { model
+                | selectedQueen = NothingSelected
+                , queens = initQueens
+                , board = initBoard
+            }
 
 
 hasQueenAt : Board -> Int -> Int -> Maybe Queen
 hasQueenAt board iPlace jPlace =
-    case List.head (Debug.log "hasQueenAt i" (List.reverse (List.take (iPlace + 1) board))) of
+    case List.head (List.reverse (List.take (iPlace + 1) board)) of
         Just listQueen ->
-            case List.head (Debug.log "hasQueenAt j" (List.reverse (List.take (jPlace + 1) listQueen))) of
+            case List.head (List.reverse (List.take (jPlace + 1) listQueen)) of
                 Just maybeQueen ->
-                    Debug.log "hasQueenAt - maybeQueen"
-                        maybeQueen
+                    maybeQueen
 
                 Nothing ->
-                    Debug.log "hasQueenAt - Nothing 1"
-                        Nothing
+                    Nothing
 
         Nothing ->
-            Debug.log "hasQueenAt - Nothing 0"
-                Nothing
+            Nothing
 
 
 removeQueenBoard : Board -> Queen -> Board
@@ -188,7 +197,6 @@ placeQueen board queen iPlace jPlace =
             List.indexedMap
                 (\j maybeQueen ->
                     if (i == iPlace) && (j == jPlace) then
-                        -- Just { queen | selected = False }
                         Just queen
 
                     else
@@ -213,36 +221,17 @@ removeQueenAvailable queen listQueen =
     List.filter (\q -> q /= queen) listQueen
 
 
-isSelected : Model -> Queen -> Bool
-isSelected model queen =
-    case model.selectedAvailableQueen of
-        Just q1 ->
-            if q1 == queen then
-                True
+isSelected : SelectedQueen -> Queen -> Bool
+isSelected selectedQueen queen =
+    case selectedQueen of
+        Available q1 ->
+            q1 == queen
 
-            else
-                case model.selectedPlacedQueen of
-                    Just q2 ->
-                        if q2 == queen then
-                            True
+        Placed q1 ->
+            q1 == queen
 
-                        else
-                            False
-
-                    Nothing ->
-                        False
-
-        Nothing ->
-            case model.selectedPlacedQueen of
-                Just q ->
-                    if q == queen then
-                        True
-
-                    else
-                        False
-
-                Nothing ->
-                    False
+        NothingSelected ->
+            False
 
 
 
@@ -254,84 +243,84 @@ view model =
     div []
         [ div []
             [ button [ onClick Reset ] [ text "RAZ" ] ]
+        , viewBoard model.board model.selectedQueen
         , div []
-            [ div [] (List.map (viewQueen True model) model.queens)
+            [ div [] (List.map (viewQueen model.selectedQueen) model.queens)
             ]
-        , viewBoard model
         ]
 
 
-viewBoard : Model -> Html Msg
-viewBoard model =
+viewBoard : Board -> SelectedQueen -> Html Msg
+viewBoard board selectedQueen =
     Html.tbody
-        [ style "celingspace" "0px"
-        , style "border-spacing" "0px"
-        , style "border-collapse" "collapse"
-        , style "margin-left" "auto"
-        , style "margin-right" "auto"
-        ]
+        []
         (List.indexedMap
             (\i listQueen ->
                 Html.tr []
                     (List.indexedMap
-                        (\j queen ->
-                            Html.td
-                                [ style "border" "1px solid #505050"
-                                , style "text-align" "center"
-                                , style "padding" "0px"
-                                , style "width" "2rem"
-                                , style "height" "2rem"
-                                , style "background-color"
-                                    (if modBy 2 (i + j) == 0 then
-                                        "black"
-
-                                     else
-                                        "white"
-                                    )
-                                , onClick (SelectCell i j)
-                                ]
-                                [ case queen of
-                                    Just q ->
-                                        span
-                                            [ style "color"
-                                                (if isSelected model q then
-                                                    "red"
-
-                                                 else if modBy 2 (i + j) == 0 then
-                                                    "white"
-
-                                                 else
-                                                    "black"
-                                                )
-                                            ]
-                                            [ text q ]
-
-                                    Nothing ->
-                                        span
-                                            [ style "color"
-                                                (if modBy 2 (i + j) == 0 then
-                                                    "white"
-
-                                                 else
-                                                    "black"
-                                                )
-                                            ]
-                                            [ text "X" ]
-                                ]
+                        (\j maybeQueen ->
+                            viewBoardCell selectedQueen maybeQueen i j
                         )
                         listQueen
                     )
             )
-            model.board
+            board
         )
 
 
-viewQueen : Bool -> Model -> Queen -> Html Msg
-viewQueen debug model queen =
+viewBoardCell : SelectedQueen -> Maybe Queen -> Int -> Int -> Html Msg
+viewBoardCell selectedQueen maybeQueen i j =
+    Html.td
+        [ style "border" "1px solid #505050"
+        , style "text-align" "center"
+        , style "padding" "0px"
+        , style "width" "2rem"
+        , style "height" "2rem"
+        , style "background-color"
+            (if modBy 2 (i + j) == 0 then
+                "black"
+
+             else
+                "white"
+            )
+        , onClick (SelectCell i j)
+        ]
+        [ case maybeQueen of
+            Just queen ->
+                span
+                    [ style "color"
+                        (if isSelected selectedQueen queen then
+                            "red"
+
+                         else if modBy 2 (i + j) == 0 then
+                            "white"
+
+                         else
+                            "black"
+                        )
+                    ]
+                    [ text queen ]
+
+            Nothing ->
+                span
+                    [ style "color"
+                        (if modBy 2 (i + j) == 0 then
+                            "white"
+
+                         else
+                            "black"
+                        )
+                    ]
+                    [ text "" ]
+        ]
+
+
+viewQueen : SelectedQueen -> Queen -> Html Msg
+viewQueen selectedQueen queen =
     div
         [ onClick (Select queen)
         , style "color"
-            (if isSelected model queen then
+            (if isSelected selectedQueen queen then
                 "red"
 
              else
