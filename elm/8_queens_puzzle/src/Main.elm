@@ -1,8 +1,8 @@
 module Main exposing (Model, Msg(..), init, main, update, view)
 
+import Array exposing (Array)
 import Browser
 import Debug
-import Set
 import Html exposing (Html, button, div, span, text)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
@@ -20,8 +20,12 @@ type alias Queen =
     String
 
 
+type alias Position =
+    ( Int, Int )
+
+
 type alias Board =
-    List (List (Maybe Queen))
+    Array (Array (Maybe Queen))
 
 
 type SelectedQueen
@@ -34,7 +38,7 @@ type alias Model =
     { selectedQueen : SelectedQueen
     , queens : List Queen
     , board : Board
-    , queenAgainst : (Set.Set ( ( Queen, Queen ) ) )
+    , queenAgainst : List ( Position, Position )
     }
 
 
@@ -56,7 +60,7 @@ initQueens =
 
 initBoard : Board
 initBoard =
-    List.repeat nbPiece (List.repeat nbPiece Nothing)
+    Array.repeat nbPiece (Array.repeat nbPiece Nothing)
 
 
 init : Model
@@ -64,7 +68,7 @@ init =
     { selectedQueen = NothingSelected
     , queens = initQueens
     , board = initBoard
-    , queenAgainst = (Set.empty)
+    , queenAgainst = []
     }
 
 
@@ -83,14 +87,18 @@ update msg model =
     case msg of
         Select queen ->
             case model.selectedQueen of
-                Placed selectedPlacedQueen ->
-                    { model
-                        | queens = selectedPlacedQueen :: model.queens
-                        , board = removeQueenBoard model.board selectedPlacedQueen
-                        , selectedQueen = NothingSelected
-                    }
-
                 Available selectedAvailableQueen ->
+                    if queen == selectedAvailableQueen then
+                        { model
+                            | selectedQueen = NothingSelected
+                        }
+
+                    else
+                        { model
+                            | selectedQueen = Available queen
+                        }
+
+                Placed selectedPlacedQueen ->
                     { model
                         | selectedQueen = Available queen
                     }
@@ -102,15 +110,18 @@ update msg model =
 
         SelectCell i j ->
             case hasQueenAt model.board i j of
+                -- If a queen is selected on the board
                 Just queen ->
                     case model.selectedQueen of
                         Placed alreadySelectedQueen ->
+                            -- If it is the double click on a placed queen
                             if alreadySelectedQueen == queen then
                                 { model
-                                    | board = removeQueenBoard model.board queen --placeQueen model.board queen i j
+                                    | board = removeQueenBoard model.board queen
                                     , queens = alreadySelectedQueen :: model.queens
                                     , selectedQueen = NothingSelected
                                 }
+                                -- If the click is on another queen
 
                             else
                                 { model
@@ -127,19 +138,30 @@ update msg model =
                                 | selectedQueen = Placed queen
                             }
 
+                -- If an empty cell is selected on the board
                 Nothing ->
                     case model.selectedQueen of
                         Available queen ->
+                            let
+                                updatedBoard =
+                                    placeQueen model.board queen i j
+                            in
                             { model
                                 | queens = removeQueenAvailable queen model.queens
-                                , board = placeQueen model.board queen i j
+                                , board = updatedBoard
                                 , selectedQueen = NothingSelected
+                                , queenAgainst = updateQueenAgainst updatedBoard
                             }
 
                         Placed queen ->
+                            let
+                                updatedBoard =
+                                    placeQueen model.board queen i j
+                            in
                             { model
-                                | board = placeQueen model.board queen i j
+                                | board = updatedBoard
                                 , selectedQueen = NothingSelected
+                                , queenAgainst = updateQueenAgainst updatedBoard
                             }
 
                         NothingSelected ->
@@ -150,14 +172,97 @@ update msg model =
                 | selectedQueen = NothingSelected
                 , queens = initQueens
                 , board = initBoard
+                , queenAgainst = []
             }
+
+
+arrayDrop : Int -> Array a -> Array a
+arrayDrop n array =
+    Array.slice n (Array.length array) array
+
+
+getQueenPositionRow : Int -> Int -> Array (Maybe Queen) -> List Position -> List Position
+getQueenPositionRow i j maybeQueens listPosition =
+    case Array.get 0 maybeQueens of
+        Just maybeQueen ->
+            case maybeQueen of
+                Just queen ->
+                    getQueenPositionRow
+                        i
+                        (j + 1)
+                        (arrayDrop 1 maybeQueens)
+                        (( i, j ) :: listPosition)
+
+                Nothing ->
+                    getQueenPositionRow
+                        i
+                        (j + 1)
+                        (arrayDrop 1 maybeQueens)
+                        listPosition
+
+        Nothing ->
+            listPosition
+
+
+getQueenPositionBoard : Int -> Array (Array (Maybe Queen)) -> List Position -> List Position
+getQueenPositionBoard i board listPosition =
+    case Array.get 0 board of
+        Just maybeQueens ->
+            getQueenPositionBoard
+                (i + 1)
+                (arrayDrop 1 board)
+                (getQueenPositionRow i 0 maybeQueens listPosition)
+
+        Nothing ->
+            listPosition
+
+
+getPlacedQueens : Board -> List Position
+getPlacedQueens board =
+    getQueenPositionBoard 0 board []
+
+
+areAgainst : Position -> Position -> Bool
+areAgainst ( i0, j0 ) ( i1, j1 ) =
+    (i0 == i1)
+        || (j0 == j1)
+        || (abs (i0 - i1) == abs (j0 - j1))
+
+
+getQueenAgainst : List Position -> List ( Position, Position ) -> List ( Position, Position )
+getQueenAgainst listQueenPosition res =
+    case List.head listQueenPosition of
+        Just ( i, j ) ->
+            let
+                listQueenAgainst =
+                    List.filterMap
+                        (\pos ->
+                            if areAgainst ( i, j ) pos then
+                                Just ( ( i, j ), pos )
+
+                            else
+                                Nothing
+                        )
+                        (List.drop 1 listQueenPosition)
+            in
+            getQueenAgainst
+                (List.drop 1 listQueenPosition)
+                (List.append listQueenAgainst res)
+
+        Nothing ->
+            res
+
+
+updateQueenAgainst : Board -> List ( Position, Position )
+updateQueenAgainst board =
+    getQueenAgainst (getPlacedQueens board) []
 
 
 hasQueenAt : Board -> Int -> Int -> Maybe Queen
 hasQueenAt board iPlace jPlace =
-    case List.head (List.reverse (List.take (iPlace + 1) board)) of
-        Just listQueen ->
-            case List.head (List.reverse (List.take (jPlace + 1) listQueen)) of
+    case Array.get iPlace board of
+        Just arrayQueen ->
+            case Array.get jPlace arrayQueen of
                 Just maybeQueen ->
                     maybeQueen
 
@@ -170,9 +275,9 @@ hasQueenAt board iPlace jPlace =
 
 removeQueenBoard : Board -> Queen -> Board
 removeQueenBoard board queen =
-    List.map
-        (\listQueen ->
-            List.map
+    Array.map
+        (\arrayQueen ->
+            Array.map
                 (\maybeQueen ->
                     case maybeQueen of
                         Just q ->
@@ -185,16 +290,16 @@ removeQueenBoard board queen =
                         Nothing ->
                             Nothing
                 )
-                listQueen
+                arrayQueen
         )
         board
 
 
 placeQueen : Board -> Queen -> Int -> Int -> Board
 placeQueen board queen iPlace jPlace =
-    List.indexedMap
-        (\i listQueen ->
-            List.indexedMap
+    Array.indexedMap
+        (\i arrayQueen ->
+            Array.indexedMap
                 (\j maybeQueen ->
                     if (i == iPlace) && (j == jPlace) then
                         Just queen
@@ -211,7 +316,7 @@ placeQueen board queen iPlace jPlace =
                             Nothing ->
                                 Nothing
                 )
-                listQueen
+                arrayQueen
         )
         board
 
@@ -222,13 +327,13 @@ removeQueenAvailable queen listQueen =
 
 
 isSelected : SelectedQueen -> Queen -> Bool
-isSelected selectedQueen queen =
+isSelected selectedQueen q0 =
     case selectedQueen of
         Available q1 ->
-            q1 == queen
+            q0 == q1
 
         Placed q1 ->
-            q1 == queen
+            q0 == q1
 
         NothingSelected ->
             False
@@ -243,33 +348,79 @@ view model =
     div []
         [ div []
             [ button [ onClick Reset ] [ text "RAZ" ] ]
-        , viewBoard model.board model.selectedQueen
+        , viewBoard model.board model.selectedQueen model.queenAgainst
         , div []
             [ div [] (List.map (viewQueen model.selectedQueen) model.queens)
             ]
         ]
 
 
-viewBoard : Board -> SelectedQueen -> Html Msg
-viewBoard board selectedQueen =
+viewBoard : Board -> SelectedQueen -> List ( Position, Position ) -> Html Msg
+viewBoard board selectedQueen queenAgainst =
     Html.tbody
         []
-        (List.indexedMap
-            (\i listQueen ->
-                Html.tr []
-                    (List.indexedMap
-                        (\j maybeQueen ->
-                            viewBoardCell selectedQueen maybeQueen i j
+        (Array.toList
+            (Array.indexedMap
+                (\i arrayQueen ->
+                    Html.tr []
+                        (Array.toList
+                            (Array.indexedMap
+                                (\j maybeQueen ->
+                                    viewBoardCell selectedQueen queenAgainst maybeQueen i j
+                                )
+                                arrayQueen
+                            )
                         )
-                        listQueen
-                    )
+                )
+                board
             )
-            board
         )
 
 
-viewBoardCell : SelectedQueen -> Maybe Queen -> Int -> Int -> Html Msg
-viewBoardCell selectedQueen maybeQueen i j =
+isCellBetweenAgainstQueen : Position -> ( Position, Position ) -> Bool
+isCellBetweenAgainstQueen ( i, j ) ( ( i0, j0 ), ( i1, j1 ) ) =
+    if i0 == i1 then
+        (i == i0)
+            && (((j0 < j) && (j < j1))
+                    || ((j1 < j) && (j < j0))
+               )
+
+    else if j0 == j1 then
+        (j == j0)
+            && (((i0 < i) && (i < i1))
+                    || ((i1 < i) && (i < i0))
+               )
+
+    else if (0 < (i1 - i0)) && (0 < (j1 - j0)) && (i1 - i0) == (j1 - j0) then
+        -- Diagonal lower - right
+        (i0 < i) && (i < i1) && (j0 < j) && (j < j1) && ((i - i0) == (j - j0))
+
+    else if (0 < (i1 - i0)) && (0 < (j0 - j1)) && (i1 - i0) == (j0 - j1) then
+        -- Diagonal upper - right
+        (i0 < i) && (i < i1) && (j1 < j) && (j < j0) && ((i - i0) == (j - j1))
+
+    else if (0 < (i0 - i1)) && (0 < (j1 - j0)) && (i0 - i1) == (j1 - j0) then
+        -- Diagonal lower - left
+        (i1 < i) && (i < i0) && (j0 < j) && (j < j1) && ((i - i1) == (j - j0))
+
+    else if (0 < (i0 - i1)) && (0 < (j0 - j1)) && (i0 - i1) == (j0 - j1) then
+        -- Diagonal upper - left
+        (i1 < i) && (i < i0) && (j1 < j) && (j < j0) && ((i - i1) == (j - j1))
+
+    else
+        False
+
+
+isCellBetweenAgainstQueens : Position -> List ( Position, Position ) -> Bool
+isCellBetweenAgainstQueens ( i, j ) queenAgainst =
+    List.foldr
+        (\coupleQueen res -> res || isCellBetweenAgainstQueen ( i, j ) coupleQueen)
+        False
+        queenAgainst
+
+
+viewBoardCell : SelectedQueen -> List ( Position, Position ) -> Maybe Queen -> Int -> Int -> Html Msg
+viewBoardCell selectedQueen queenAgainst maybeQueen i j =
     Html.td
         [ style "border" "1px solid #505050"
         , style "text-align" "center"
@@ -311,7 +462,12 @@ viewBoardCell selectedQueen maybeQueen i j =
                             "black"
                         )
                     ]
-                    [ text "" ]
+                    [ if isCellBetweenAgainstQueens ( i, j ) queenAgainst then
+                        text "X"
+
+                      else
+                        text ""
+                    ]
         ]
 
 
