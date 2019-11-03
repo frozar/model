@@ -3,7 +3,7 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 import Array exposing (Array)
 import Browser
 import Debug
-import Html exposing (Html, button, div, span, text)
+import Html exposing (Html, button, div, h1, span, text)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 
@@ -116,10 +116,15 @@ update msg model =
                         Placed alreadySelectedQueen ->
                             -- If it is the double click on a placed queen
                             if alreadySelectedQueen == queen then
+                                let
+                                    updatedBoard =
+                                        removeQueenBoard model.board queen
+                                in
                                 { model
-                                    | board = removeQueenBoard model.board queen
+                                    | board = updatedBoard
                                     , queens = alreadySelectedQueen :: model.queens
                                     , selectedQueen = NothingSelected
+                                    , queenAgainst = updateQueenAgainst updatedBoard
                                 }
                                 -- If the click is on another queen
 
@@ -345,36 +350,55 @@ isSelected selectedQueen q0 =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ div []
-            [ button [ onClick Reset ] [ text "RAZ" ] ]
+    div
+        [ style "text-align" "center"
+        ]
+        [ h1 [] [ text "8 Queens Puzzle" ]
         , viewBoard model.board model.selectedQueen model.queenAgainst
         , div []
-            [ div [] (List.map (viewQueen model.selectedQueen) model.queens)
+            [ span [] (List.map (viewQueen model.selectedQueen) model.queens)
             ]
+        , div []
+            [ div [] [ viewVictory model ] ]
+        , div []
+            [ button [ onClick Reset ] [ text "RAZ" ] ]
         ]
+
+
+viewVictory : Model -> Html Msg
+viewVictory model =
+    if List.isEmpty model.queens && List.isEmpty model.queenAgainst then
+        text "VICTORY"
+
+    else
+        text ""
 
 
 viewBoard : Board -> SelectedQueen -> List ( Position, Position ) -> Html Msg
 viewBoard board selectedQueen queenAgainst =
-    Html.tbody
-        []
-        (Array.toList
-            (Array.indexedMap
-                (\i arrayQueen ->
-                    Html.tr []
-                        (Array.toList
-                            (Array.indexedMap
-                                (\j maybeQueen ->
-                                    viewBoardCell selectedQueen queenAgainst maybeQueen i j
+    Html.table
+        [ style "margin-left" "auto"
+        , style "margin-right" "auto"
+        ]
+        [ Html.tbody
+            []
+            (Array.toList
+                (Array.indexedMap
+                    (\i arrayQueen ->
+                        Html.tr []
+                            (Array.toList
+                                (Array.indexedMap
+                                    (\j maybeQueen ->
+                                        viewBoardCell selectedQueen queenAgainst maybeQueen i j
+                                    )
+                                    arrayQueen
                                 )
-                                arrayQueen
                             )
-                        )
+                    )
+                    board
                 )
-                board
             )
-        )
+        ]
 
 
 isCellBetweenAgainstQueen : Position -> ( Position, Position ) -> Bool
@@ -473,8 +497,11 @@ viewBoardCell selectedQueen queenAgainst maybeQueen i j =
 
 viewQueen : SelectedQueen -> Queen -> Html Msg
 viewQueen selectedQueen queen =
-    div
+    span
         [ onClick (Select queen)
+        , style "padding" "0.45em"
+
+        -- , style "width" "50px"
         , style "color"
             (if isSelected selectedQueen queen then
                 "red"

@@ -5899,17 +5899,23 @@ var author$project$Main$update = F2(
 					switch (_n3.$) {
 						case 'Placed':
 							var alreadySelectedQueen = _n3.a;
-							return _Utils_eq(alreadySelectedQueen, queen) ? _Utils_update(
-								model,
-								{
-									board: A2(author$project$Main$removeQueenBoard, model.board, queen),
-									queens: A2(elm$core$List$cons, alreadySelectedQueen, model.queens),
-									selectedQueen: author$project$Main$NothingSelected
-								}) : _Utils_update(
-								model,
-								{
-									selectedQueen: author$project$Main$Placed(queen)
-								});
+							if (_Utils_eq(alreadySelectedQueen, queen)) {
+								var updatedBoard = A2(author$project$Main$removeQueenBoard, model.board, queen);
+								return _Utils_update(
+									model,
+									{
+										board: updatedBoard,
+										queenAgainst: author$project$Main$updateQueenAgainst(updatedBoard),
+										queens: A2(elm$core$List$cons, alreadySelectedQueen, model.queens),
+										selectedQueen: author$project$Main$NothingSelected
+									});
+							} else {
+								return _Utils_update(
+									model,
+									{
+										selectedQueen: author$project$Main$Placed(queen)
+									});
+							}
 						case 'Available':
 							var alreadySelectedQueen = _n3.a;
 							return _Utils_update(
@@ -6274,44 +6280,55 @@ var author$project$Main$viewBoardCell = F5(
 				}()
 				]));
 	});
+var elm$html$Html$table = _VirtualDom_node('table');
 var elm$html$Html$tbody = _VirtualDom_node('tbody');
 var elm$html$Html$tr = _VirtualDom_node('tr');
 var author$project$Main$viewBoard = F3(
 	function (board, selectedQueen, queenAgainst) {
 		return A2(
-			elm$html$Html$tbody,
-			_List_Nil,
-			elm$core$Array$toList(
-				A2(
-					elm$core$Array$indexedMap,
-					F2(
-						function (i, arrayQueen) {
-							return A2(
-								elm$html$Html$tr,
-								_List_Nil,
-								elm$core$Array$toList(
-									A2(
-										elm$core$Array$indexedMap,
-										F2(
-											function (j, maybeQueen) {
-												return A5(author$project$Main$viewBoardCell, selectedQueen, queenAgainst, maybeQueen, i, j);
-											}),
-										arrayQueen)));
-						}),
-					board)));
+			elm$html$Html$table,
+			_List_fromArray(
+				[
+					A2(elm$html$Html$Attributes$style, 'margin-left', 'auto'),
+					A2(elm$html$Html$Attributes$style, 'margin-right', 'auto')
+				]),
+			_List_fromArray(
+				[
+					A2(
+					elm$html$Html$tbody,
+					_List_Nil,
+					elm$core$Array$toList(
+						A2(
+							elm$core$Array$indexedMap,
+							F2(
+								function (i, arrayQueen) {
+									return A2(
+										elm$html$Html$tr,
+										_List_Nil,
+										elm$core$Array$toList(
+											A2(
+												elm$core$Array$indexedMap,
+												F2(
+													function (j, maybeQueen) {
+														return A5(author$project$Main$viewBoardCell, selectedQueen, queenAgainst, maybeQueen, i, j);
+													}),
+												arrayQueen)));
+								}),
+							board)))
+				]));
 	});
 var author$project$Main$Select = function (a) {
 	return {$: 'Select', a: a};
 };
-var elm$html$Html$div = _VirtualDom_node('div');
 var author$project$Main$viewQueen = F2(
 	function (selectedQueen, queen) {
 		return A2(
-			elm$html$Html$div,
+			elm$html$Html$span,
 			_List_fromArray(
 				[
 					elm$html$Html$Events$onClick(
 					author$project$Main$Select(queen)),
+					A2(elm$html$Html$Attributes$style, 'padding', '0.45em'),
 					A2(
 					elm$html$Html$Attributes$style,
 					'color',
@@ -6322,6 +6339,16 @@ var author$project$Main$viewQueen = F2(
 					elm$html$Html$text(queen)
 				]));
 	});
+var elm$core$List$isEmpty = function (xs) {
+	if (!xs.b) {
+		return true;
+	} else {
+		return false;
+	}
+};
+var author$project$Main$viewVictory = function (model) {
+	return (elm$core$List$isEmpty(model.queens) && elm$core$List$isEmpty(model.queenAgainst)) ? elm$html$Html$text('VICTORY') : elm$html$Html$text('');
+};
 var elm$core$List$map = F2(
 	function (f, xs) {
 		return A3(
@@ -6337,12 +6364,51 @@ var elm$core$List$map = F2(
 			xs);
 	});
 var elm$html$Html$button = _VirtualDom_node('button');
+var elm$html$Html$div = _VirtualDom_node('div');
+var elm$html$Html$h1 = _VirtualDom_node('h1');
 var author$project$Main$view = function (model) {
 	return A2(
 		elm$html$Html$div,
-		_List_Nil,
 		_List_fromArray(
 			[
+				A2(elm$html$Html$Attributes$style, 'text-align', 'center')
+			]),
+		_List_fromArray(
+			[
+				A2(
+				elm$html$Html$h1,
+				_List_Nil,
+				_List_fromArray(
+					[
+						elm$html$Html$text('8 Queens Puzzle')
+					])),
+				A3(author$project$Main$viewBoard, model.board, model.selectedQueen, model.queenAgainst),
+				A2(
+				elm$html$Html$div,
+				_List_Nil,
+				_List_fromArray(
+					[
+						A2(
+						elm$html$Html$span,
+						_List_Nil,
+						A2(
+							elm$core$List$map,
+							author$project$Main$viewQueen(model.selectedQueen),
+							model.queens))
+					])),
+				A2(
+				elm$html$Html$div,
+				_List_Nil,
+				_List_fromArray(
+					[
+						A2(
+						elm$html$Html$div,
+						_List_Nil,
+						_List_fromArray(
+							[
+								author$project$Main$viewVictory(model)
+							]))
+					])),
 				A2(
 				elm$html$Html$div,
 				_List_Nil,
@@ -6358,20 +6424,6 @@ var author$project$Main$view = function (model) {
 							[
 								elm$html$Html$text('RAZ')
 							]))
-					])),
-				A3(author$project$Main$viewBoard, model.board, model.selectedQueen, model.queenAgainst),
-				A2(
-				elm$html$Html$div,
-				_List_Nil,
-				_List_fromArray(
-					[
-						A2(
-						elm$html$Html$div,
-						_List_Nil,
-						A2(
-							elm$core$List$map,
-							author$project$Main$viewQueen(model.selectedQueen),
-							model.queens))
 					]))
 			]));
 };
@@ -10033,13 +10085,6 @@ var elm$browser$Debugger$Overlay$uploadDecoder = A3(
 var elm$browser$Debugger$Report$Fine = {$: 'Fine'};
 var elm$browser$Debugger$Report$Impossible = {$: 'Impossible'};
 var elm$browser$Debugger$Report$Risky = {$: 'Risky'};
-var elm$core$List$isEmpty = function (xs) {
-	if (!xs.b) {
-		return true;
-	} else {
-		return false;
-	}
-};
 var elm$browser$Debugger$Report$some = function (list) {
 	return !elm$core$List$isEmpty(list);
 };
