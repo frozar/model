@@ -5,8 +5,9 @@
             ;; but it must be available in the node_module directory, so
             ;; previously installed through npm command
             ;; ["md5.js" :as md5]
-            ["react-rough" :as reactrough]
-            ;; ["react-rough" :refer [Rectangle]]
+            ;; ["react-rough" :as reactrough]
+            ["react-rough" :default reactrough]
+            ["react-rough" :refer [Rectangle]]
             ))
 
 ;; (defn md5-hash [text]
@@ -16,24 +17,24 @@
 
 (defn toy-fn []
   ;; (println (md5-hash "toto"))
+  ;; (prn 2)
   )
 
 (defn current-page []
   [:<>
    [:h1 "Roughjs example"]
-   [:div "ok"]
-   [:> reactrough/default
-    [:> reactrough/Rectangle {:x 15 :y 15 :width 90 :height 80 :fill "red"}]
+   [:> reactrough
+    [:> Rectangle {:x 15 :y 15 :width 90 :height 80 :fill "red"}]
     ]
    ]
   )
 
-(defn mount-page []
-  (reagent/render [current-page] (.getElementById js/document "root")))
+(defn mount-page [component]
+  (reagent/render [component] (.getElementById js/document "root")))
 
 (defn basic-page []
   (toy-fn)
-  (mount-page))
+  (mount-page current-page))
 
 ;; This metadata for the "reload!" function is there to manage the behavior of
 ;; the application during development. When a source file is modified, the
@@ -42,11 +43,9 @@
 ;; documentation:
 ;; https://shadow-cljs.github.io/docs/UsersGuide.html#_lifecycle_hooks
 (defn ^:dev/after-load reload! []
-  (println "In reload")
   (basic-page)
   )
 
-(defn init []
-  (println "In init")
-  (basic-page)
+(defn init! []
+  (reload!)
   )

@@ -15,12 +15,10 @@ https://shadow-cljs.github.io/docs/UsersGuide.html
 # Dependancies
 
 ``` shell
-npm i react
-npm i create-react-class
-npm i react-dom
-npm i react-rough
-npm i roughjs
-npm i react-test-renderer
+# Reagent/React stuff
+npm i react create-react-class react-dom
+# Rough.js stuf
+npm i react-rough roughjs react-test-renderer
 ```
 
 # Compilation and Execution
