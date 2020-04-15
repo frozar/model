@@ -10,7 +10,10 @@ Download from http://example.com/FIXME.
 
 FIXME: explanation
 
-    $ java -jar majuscule-0.1.0-standalone.jar [args]
+```bash
+lein bin
+./target/default/majuscule-0.1.0-SNAPSHOT [string]
+```
 
 ## Options
 
