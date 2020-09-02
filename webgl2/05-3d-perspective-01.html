@@ -1,0 +1,700 @@
+<!-- Licensed under a BSD license. See license.html for license -->
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>WebGL2 - 2D Geometry Matrix Transform with Projection</title>
+  <link type="text/css" href="resources/webgl-tutorials.css" rel="stylesheet" />
+</head>
+
+<body>
+  <div class="description">
+    Drag sliders to translate, rotate, and scale.
+  </div>
+  <canvas id="canvas"></canvas>
+  <div id="uiContainer">
+    <div id="ui">
+      <div id="fudgeFactor"></div>
+      <div id="x"></div>
+      <div id="y"></div>
+      <div id="z"></div>
+      <div id="angleX"></div>
+      <div id="angleY"></div>
+      <div id="angleZ"></div>
+      <div id="scaleX"></div>
+      <div id="scaleY"></div>
+      <div id="scaleZ"></div>
+    </div>
+  </div>
+</body>
+<!--
+for most samples webgl-utils only provides shader compiling/linking and
+canvas resizing because why clutter the examples with code that's the same in every sample.
+See https://webgl2fundamentals.org/webgl/lessons/webgl-boilerplate.html
+and https://webgl2fundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
+for webgl-utils, m3, m4, and webgl-lessons-ui.
+-->
+<script src="resources/webgl-utils.js"></script>
+<script src="resources/webgl-lessons-ui.js"></script>
+<script>
+  "use strict";
+
+  var vertexShaderSource = `#version 300 es
+
+// an attribute is an input (in) to a vertex shader.
+// It will receive data from a buffer
+in vec4 a_position;
+in vec4 a_color;
+
+// A matrix to transform the positions by
+uniform mat4 u_matrix;
+
+// uniform float u_fudgeFactor;
+ 
+// a varying the color to the fragment shader
+out vec4 v_color;
+
+// all shaders have a main function
+void main() {
+  // // Multiply the position by the matrix.
+  // vec4 position = u_matrix * a_position;
+ 
+  // // Adjust the z to divide by
+  // float zToDivideBy = 1.0 + position.z * u_fudgeFactor;
+ 
+  // // Divide x and y by z.
+  // gl_Position = vec4(position.xy / zToDivideBy, position.zw);
+  gl_Position = u_matrix * a_position;
+
+  // Pass the color to the fragment shader.
+  v_color = a_color;
+}
+`;
+
+  var fragmentShaderSource = `#version 300 es
+
+precision highp float;
+ 
+// the varied color passed from the vertex shader
+in vec4 v_color;
+
+// we need to declare an output for the fragment shader
+out vec4 outColor;
+
+void main() {
+  outColor = v_color;
+}
+`;
+
+
+  function main() {
+    // Get A WebGL context
+    /** @type {HTMLCanvasElement} */
+    var canvas = document.querySelector("#canvas");
+    var gl = canvas.getContext("webgl2");
+    if (!gl) {
+      return;
+    }
+
+    // Use our boilerplate utils to compile the shaders and link into a program
+    var program = webglUtils.createProgramFromSources(gl,
+      [vertexShaderSource, fragmentShaderSource]);
+
+    // look up where the vertex data needs to go.
+    var positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+
+    // look up uniform locations
+    var colorLocation = gl.getUniformLocation(program, "u_color");
+    var matrixLocation = gl.getUniformLocation(program, "u_matrix");
+    var colorAttributeLocation = gl.getAttribLocation(program, "a_color");
+    var fudgeLocation = gl.getUniformLocation(program, "u_fudgeFactor");
+
+    // Create a buffer
+    var positionBuffer = gl.createBuffer();
+
+    // Create a vertex array object (attribute state)
+    var vao = gl.createVertexArray();
+
+    // and make it the one we're currently working with
+    gl.bindVertexArray(vao);
+
+    // Turn on the attribute
+    gl.enableVertexAttribArray(positionAttributeLocation);
+
+    // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    // Set Geometry.
+    setGeometry(gl);
+
+    // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
+    var size = 3;          // 3 components per iteration
+    var type = gl.FLOAT;   // the data is 32bit floats
+    var normalize = false; // don't normalize the data
+    var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
+    var offset = 0;        // start at the beginning of the buffer
+    gl.vertexAttribPointer(
+      positionAttributeLocation, size, type, normalize, stride, offset);
+
+    // create the color buffer, make it the current ARRAY_BUFFER
+    // and copy in the color values
+    var colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    setColors(gl);
+
+    // Turn on the attribute
+    gl.enableVertexAttribArray(colorAttributeLocation);
+
+    // Tell the attribute how to get data out of colorBuffer (ARRAY_BUFFER)
+    var size = 3;          // 3 components per iteration
+    var type = gl.UNSIGNED_BYTE;   // the data is 8bit unsigned bytes
+    var normalize = true;  // convert from 0-255 to 0.0-1.0
+    var stride = 0;        // 0 = move forward size * sizeof(type) each
+    // iteration to get the next color
+    var offset = 0;        // start at the beginning of the buffer
+    gl.vertexAttribPointer(
+      colorAttributeLocation, size, type, normalize, stride, offset);
+
+    function radToDeg(r) {
+      return r * 180 / Math.PI;
+    }
+
+    function degToRad(d) {
+      return d * Math.PI / 180;
+    }
+
+    // First let's make some variables
+    // to hold the translation,
+    var translation = [-150, 0, -360];
+    var rotation = [degToRad(0), degToRad(0), degToRad(0)];
+    var scale = [1, 1, 1];
+    var color = [Math.random(), Math.random(), Math.random(), 1];
+    var fieldOfViewRadians = degToRad(60);
+
+    drawScene();
+
+    // Setup a ui.
+    webglLessonsUI.setupSlider("#fieldOfView", { value: radToDeg(fieldOfViewRadians), slide: updateFieldOfView, min: 1, max: 179 });
+    webglLessonsUI.setupSlider("#x", { value: translation[0], slide: updatePosition(0), min: -200, max: 200 });
+    webglLessonsUI.setupSlider("#y", { value: translation[1], slide: updatePosition(1), min: -200, max: 200 });
+    webglLessonsUI.setupSlider("#z", { value: translation[2], slide: updatePosition(2), min: -1000, max: 0 });
+    webglLessonsUI.setupSlider("#angleX", { value: radToDeg(rotation[0]), slide: updateRotation(0), max: 360 });
+    webglLessonsUI.setupSlider("#angleY", { value: radToDeg(rotation[1]), slide: updateRotation(1), max: 360 });
+    webglLessonsUI.setupSlider("#angleZ", { value: radToDeg(rotation[2]), slide: updateRotation(2), max: 360 });
+    webglLessonsUI.setupSlider("#scaleX", { value: scale[0], slide: updateScale(0), min: -5, max: 5, step: 0.01, precision: 2 });
+    webglLessonsUI.setupSlider("#scaleY", { value: scale[1], slide: updateScale(1), min: -5, max: 5, step: 0.01, precision: 2 });
+    webglLessonsUI.setupSlider("#scaleZ", { value: scale[2], slide: updateScale(2), min: -5, max: 5, step: 0.01, precision: 2 });
+
+    function updateFieldOfView(event, ui) {
+      fieldOfViewRadians = degToRad(ui.value);
+      drawScene();
+    }
+
+    function updatePosition(index) {
+      return function (event, ui) {
+        translation[index] = ui.value;
+        drawScene();
+      };
+    }
+
+    function updateRotation(index) {
+      return function (event, ui) {
+        var angleInDegrees = ui.value;
+        var angleInRadians = degToRad(angleInDegrees);
+        rotation[index] = angleInRadians;
+        drawScene();
+      };
+    }
+
+    function updateScale(index) {
+      return function (event, ui) {
+        scale[index] = ui.value;
+        drawScene();
+      };
+    }
+
+    // Draw the scene.
+    function drawScene() {
+      webglUtils.resizeCanvasToDisplaySize(gl.canvas);
+
+      // Tell WebGL how to convert from clip space to pixels
+      gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+      // Clear the canvas
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      // tell webgl to cull faces
+      gl.enable(gl.CULL_FACE);
+
+      gl.enable(gl.DEPTH_TEST);
+
+      // Tell it to use our program (pair of shaders)
+      gl.useProgram(program);
+
+      // Bind the attribute/buffer set we want.
+      gl.bindVertexArray(vao);
+
+      // Set the color.
+      gl.uniform4fv(colorLocation, color);
+
+      // Compute the matrix
+      var aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+      var zNear = 1;
+      var zFar = 2000;
+      var matrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
+      matrix = m4.translate(matrix, translation[0], translation[1], translation[2]);
+      matrix = m4.xRotate(matrix, rotation[0]);
+      matrix = m4.yRotate(matrix, rotation[1]);
+      matrix = m4.zRotate(matrix, rotation[2]);
+      matrix = m4.scale(matrix, scale[0], scale[1], scale[2]);
+
+      // This matrix orient the F shape in the right way according to the camera space
+      // http://www.songho.ca/opengl/gl_transform.html
+      var modelMatrix = m4.identity;
+      modelMatrix = m4.zRotate(modelMatrix, degToRad(180));
+      modelMatrix = m4.yRotate(modelMatrix, degToRad(180));
+      matrix = m4.multiply(matrix, modelMatrix);
+
+      // Set the matrix.
+      let transpose = true;
+      // gl.uniformMatrix3fv(matrixLocation, transpose, matrix);
+      gl.uniformMatrix4fv(matrixLocation, transpose, matrix);
+
+      // Set the fudgeFactor
+      gl.uniform1f(fudgeLocation, fudgeFactor);
+
+      // Draw the geometry.
+      var primitiveType = gl.TRIANGLES;
+      var offset = 0;
+      var count = 16 * 6;
+      gl.drawArrays(primitiveType, offset, count);
+    }
+  }
+
+  function print(a) {
+    console.log("" + a[0] + ", " + a[1] + ", " + a[2]);
+    console.log("" + a[3] + ", " + a[4] + ", " + a[5]);
+    console.log("" + a[6] + ", " + a[7] + ", " + a[8]);
+  }
+
+  function transpose(a) {
+    return [a[0], a[3], a[6],
+    a[1], a[4], a[7],
+    a[2], a[5], a[8]];
+  }
+
+  // Fill the current ARRAY_BUFFER buffer
+  // with the values that define a letter 'F'.
+  function setGeometry(gl) {
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([
+        // left column front
+        0, 0, 0,
+        0, 150, 0,
+        30, 0, 0,
+        0, 150, 0,
+        30, 150, 0,
+        30, 0, 0,
+
+        // top rung front
+        30, 0, 0,
+        30, 30, 0,
+        100, 0, 0,
+        30, 30, 0,
+        100, 30, 0,
+        100, 0, 0,
+
+        // middle rung front
+        30, 60, 0,
+        30, 90, 0,
+        67, 60, 0,
+        30, 90, 0,
+        67, 90, 0,
+        67, 60, 0,
+
+        // left column back
+        0, 0, 30,
+        30, 0, 30,
+        0, 150, 30,
+        0, 150, 30,
+        30, 0, 30,
+        30, 150, 30,
+
+        // top rung back
+        30, 0, 30,
+        100, 0, 30,
+        30, 30, 30,
+        30, 30, 30,
+        100, 0, 30,
+        100, 30, 30,
+
+        // middle rung back
+        30, 60, 30,
+        67, 60, 30,
+        30, 90, 30,
+        30, 90, 30,
+        67, 60, 30,
+        67, 90, 30,
+
+        // top
+        0, 0, 0,
+        100, 0, 0,
+        100, 0, 30,
+        0, 0, 0,
+        100, 0, 30,
+        0, 0, 30,
+
+        // top rung right
+        100, 0, 0,
+        100, 30, 0,
+        100, 30, 30,
+        100, 0, 0,
+        100, 30, 30,
+        100, 0, 30,
+
+        // under top rung
+        30, 30, 0,
+        30, 30, 30,
+        100, 30, 30,
+        30, 30, 0,
+        100, 30, 30,
+        100, 30, 0,
+
+        // between top rung and middle
+        30, 30, 0,
+        30, 60, 30,
+        30, 30, 30,
+        30, 30, 0,
+        30, 60, 0,
+        30, 60, 30,
+
+        // top of middle rung
+        30, 60, 0,
+        67, 60, 30,
+        30, 60, 30,
+        30, 60, 0,
+        67, 60, 0,
+        67, 60, 30,
+
+        // right of middle rung
+        67, 60, 0,
+        67, 90, 30,
+        67, 60, 30,
+        67, 60, 0,
+        67, 90, 0,
+        67, 90, 30,
+
+        // bottom of middle rung.
+        30, 90, 0,
+        30, 90, 30,
+        67, 90, 30,
+        30, 90, 0,
+        67, 90, 30,
+        67, 90, 0,
+
+        // right of bottom
+        30, 90, 0,
+        30, 150, 30,
+        30, 90, 30,
+        30, 90, 0,
+        30, 150, 0,
+        30, 150, 30,
+
+        // bottom
+        0, 150, 0,
+        0, 150, 30,
+        30, 150, 30,
+        0, 150, 0,
+        30, 150, 30,
+        30, 150, 0,
+
+        // left side
+        0, 0, 0,
+        0, 0, 30,
+        0, 150, 30,
+        0, 0, 0,
+        0, 150, 30,
+        0, 150, 0,
+      ]),
+      gl.STATIC_DRAW);
+  }
+
+  // Fill the current ARRAY_BUFFER buffer with colors for the 'F'.
+  function setColors(gl) {
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Uint8Array([
+        // left column front
+        200, 70, 120,
+        200, 70, 120,
+        200, 70, 120,
+        200, 70, 120,
+        200, 70, 120,
+        200, 70, 120,
+
+        // top rung front
+        200, 70, 120,
+        200, 70, 120,
+        200, 70, 120,
+        200, 70, 120,
+        200, 70, 120,
+        200, 70, 120,
+
+        // middle rung front
+        200, 70, 120,
+        200, 70, 120,
+        200, 70, 120,
+        200, 70, 120,
+        200, 70, 120,
+        200, 70, 120,
+
+        // left column back
+        80, 70, 200,
+        80, 70, 200,
+        80, 70, 200,
+        80, 70, 200,
+        80, 70, 200,
+        80, 70, 200,
+
+        // top rung back
+        80, 70, 200,
+        80, 70, 200,
+        80, 70, 200,
+        80, 70, 200,
+        80, 70, 200,
+        80, 70, 200,
+
+        // middle rung back
+        80, 70, 200,
+        80, 70, 200,
+        80, 70, 200,
+        80, 70, 200,
+        80, 70, 200,
+        80, 70, 200,
+
+        // top
+        70, 200, 210,
+        70, 200, 210,
+        70, 200, 210,
+        70, 200, 210,
+        70, 200, 210,
+        70, 200, 210,
+
+        // top rung right
+        200, 200, 70,
+        200, 200, 70,
+        200, 200, 70,
+        200, 200, 70,
+        200, 200, 70,
+        200, 200, 70,
+
+        // under top rung
+        210, 100, 70,
+        210, 100, 70,
+        210, 100, 70,
+        210, 100, 70,
+        210, 100, 70,
+        210, 100, 70,
+
+        // between top rung and middle
+        210, 160, 70,
+        210, 160, 70,
+        210, 160, 70,
+        210, 160, 70,
+        210, 160, 70,
+        210, 160, 70,
+
+        // top of middle rung
+        70, 180, 210,
+        70, 180, 210,
+        70, 180, 210,
+        70, 180, 210,
+        70, 180, 210,
+        70, 180, 210,
+
+        // right of middle rung
+        100, 70, 210,
+        100, 70, 210,
+        100, 70, 210,
+        100, 70, 210,
+        100, 70, 210,
+        100, 70, 210,
+
+        // bottom of middle rung.
+        76, 210, 100,
+        76, 210, 100,
+        76, 210, 100,
+        76, 210, 100,
+        76, 210, 100,
+        76, 210, 100,
+
+        // right of bottom
+        140, 210, 80,
+        140, 210, 80,
+        140, 210, 80,
+        140, 210, 80,
+        140, 210, 80,
+        140, 210, 80,
+
+        // bottom
+        90, 130, 110,
+        90, 130, 110,
+        90, 130, 110,
+        90, 130, 110,
+        90, 130, 110,
+        90, 130, 110,
+
+        // left side
+        160, 160, 220,
+        160, 160, 220,
+        160, 160, 220,
+        160, 160, 220,
+        160, 160, 220,
+        160, 160, 220,
+      ]),
+      gl.STATIC_DRAW);
+  }
+
+  var m4 = {
+    identity:
+      [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1,
+      ],
+
+    translation: function (tx, ty, tz) {
+      return [
+        1, 0, 0, tx,
+        0, 1, 0, ty,
+        0, 0, 1, tz,
+        0, 0, 0, 1,
+      ];
+    },
+
+    xRotation: function (angleInRadians) {
+      var c = Math.cos(angleInRadians);
+      var s = Math.sin(angleInRadians);
+
+      return [
+        1, 0, 0, 0,
+        0, c, -s, 0,
+        0, s, c, 0,
+        0, 0, 0, 1,
+      ];
+    },
+
+    yRotation: function (angleInRadians) {
+      var c = Math.cos(angleInRadians);
+      var s = Math.sin(angleInRadians);
+
+      return [
+        c, 0, -s, 0,
+        0, 1, 0, 0,
+        s, 0, c, 0,
+        0, 0, 0, 1,
+      ];
+    },
+
+    zRotation: function (angleInRadians) {
+      var c = Math.cos(angleInRadians);
+      var s = Math.sin(angleInRadians);
+
+      return [
+        c, -s, 0, 0,
+        s, c, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1,
+      ];
+    },
+
+    scaling: function (sx, sy, sz) {
+      return [
+        sx, 0, 0, 0,
+        0, sy, 0, 0,
+        0, 0, sz, 0,
+        0, 0, 0, 1,
+      ];
+    },
+
+    translate: function (m, tx, ty, tz) {
+      return m4.multiply(m, m4.translation(tx, ty, tz));
+    },
+
+    xRotate: function (m, angleInRadians) {
+      return m4.multiply(m, m4.xRotation(angleInRadians));
+    },
+
+    yRotate: function (m, angleInRadians) {
+      return m4.multiply(m, m4.yRotation(angleInRadians));
+    },
+
+    zRotate: function (m, angleInRadians) {
+      return m4.multiply(m, m4.zRotation(angleInRadians));
+    },
+
+    scale: function (m, sx, sy, sz) {
+      return m4.multiply(m, m4.scaling(sx, sy, sz));
+    },
+
+    multiply: function multiply(a, b) {
+      let res = Array(4 * 4).fill(0);
+
+      for (let i = 0; i < 4; ++i) {
+        for (let j = 0; j < 4; ++j) {
+          let acc = 0;
+          for (let k = 0; k < 4; ++k) {
+            acc += a[i * 4 + k] * b[k * 4 + j];
+          }
+          res[i * 4 + j] = acc;
+        }
+      }
+
+      return res;
+    },
+
+    projection: function (width, height, depth) {
+      // Note: This matrix flips the Y axis so 0 is at the top.
+      return [
+        2 / width, 0, 0, -1,
+        0, -2 / height, 0, 1,
+        0, 0, 2 / depth, 0,
+        0, 0, 0, 1,
+      ];
+    },
+
+    orthographic: function (left, right, bottom, top, near, far) {
+      return [
+        2 / (right - left), 0, 0, (left + right) / (left - right),
+        0, 2 / (top - bottom), 0, (bottom + top) / (bottom - top),
+        // 0, 0, 2 / (near - far), (near + far) / (near - far),
+        0, 0, 2 / (far - near), (far + near) / (far - near),
+        0, 0, 0, 1,
+      ];
+    },
+
+    // Documentation links:
+    // http://www.songho.ca/opengl/gl_projectionmatrix.html
+    // https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/opengl-perspective-projection-matrix
+    // https://stackoverflow.com/questions/28286057/trying-to-understand-the-math-behind-the-perspective-matrix-in-webgl/28301213#28301213
+    perspective: function (fieldOfViewInRadians, aspect, near, far) {
+      var f = Math.tan(0.5 * (Math.PI - fieldOfViewInRadians));
+      var rangeInv = 1.0 / (far - near);
+
+      return [
+        f / aspect, 0, 0, 0,
+        0, f, 0, 0,
+        0, 0, -(far + near) * rangeInv, -2 * near * far * rangeInv,
+        0, 0, -1, 0
+      ];
+    }
+  };
+
+  main();
+</script>
+
+</html>
