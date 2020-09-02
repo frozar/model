@@ -216,7 +216,7 @@ void main() {
         modelMatrix = m4.xRotate(modelMatrix, Math.PI);
         modelMatrix = m4.translate(modelMatrix, -50, -75, -15);
         var matrix = m4.multiply(viewProjectionMatrix,
-          m4.multiply(translationMatrix, modelMatrix));
+          translationMatrix, modelMatrix);
 
         // Set the matrix.
         gl.uniformMatrix4fv(matrixLocation, true, matrix);
@@ -593,7 +593,8 @@ void main() {
       return m4.multiply(m, m4.scaling(sx, sy, sz));
     },
 
-    multiply: function multiply(a, b) {
+    // Give it an ugly name to avoid to use it outside
+    multiply2Matrices: function (a, b) {
       let res = Array(4 * 4).fill(0);
 
       for (let i = 0; i < 4; ++i) {
@@ -607,6 +608,14 @@ void main() {
       }
 
       return res;
+    },
+
+    multiply: function () {
+      // Transform arguments to an array to be able to call reduce
+      let arrayArgs = Array.prototype.slice.call(arguments);
+      return arrayArgs.reduce(
+        (resMat, currentMat) => m4.multiply2Matrices(resMat, currentMat),
+        m4.identity);
     },
 
     projection: function (width, height, depth) {
