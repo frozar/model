@@ -5,6 +5,9 @@
    [reagent.dom :as rdom]
    ))
 
+;; Inspiration: tutorial from Firecasts
+;; https://www.youtube.com/watch?v=2Vf1D-rUMwE
+
 (def config
   #js {:apiKey "AIzaSyARzybnP5Ko1ZkNaUxf_CXujIcO1wfpj0w",
        :authDomain "shadow-firebase-f4ad5.firebaseapp.com",
@@ -29,12 +32,31 @@
    (then (fn [] (js/console.log "Status saved!")))
    (catch (fn [error] (js/console.log "Got en error: " error)))))
 
-(defn click-handler []
+(defn fb-read []
+  (.. firebase
+      (firestore)
+      (doc "samples/sandwichData")
+      (get)
+      (then (fn [doc]
+              (when (and doc (.-exists doc))
+                (let [my-data
+                      (-> doc .data (js->clj :keywordize-keys true))]
+                  (js/console.log "Load status!" my-data)
+                  (set! (-> "#hotDogOutput"
+                            js/document.querySelector
+                            .-innerText)
+                        (str "Hot dog status: " (:hotDogStatus my-data)))))))
+      (catch (fn [error] (js/console.log "Got en error: " error)))))
+
+(defn save-handler []
   (let [text (-> "#latestHotDogStatus"
                  js/document.querySelector
                  .-value)
         data-to-save (clj->js {:hotDogStatus text})]
     (fb-write data-to-save)))
+
+(defn load-handler []
+  (fb-read))
 
 (defn basic-form []
   [:<>
@@ -42,9 +64,11 @@
    [:input {:type "textfield" :id "latestHotDogStatus"}]
    [:button
     {:id "saveButton"
-     :on-click click-handler}
+     :on-click save-handler}
     "Save"]
-   [:button {:id "loadButton"} "Load"]]
+   [:button
+    {:id "loadButton"
+     :on-click load-handler} "Load"]]
   )
 
 (defn mount-root [component]
