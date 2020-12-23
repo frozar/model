@@ -411,7 +411,6 @@ export default function LandingPage(props) {
               textAlign: matchesXS ? "center" : "inherit",
             }}
             direction={matchesXS ? "column" : "row"}
-            // spacing={matchesXS ? 10 : 0}
           >
             <Grid
               item
