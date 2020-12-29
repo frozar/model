@@ -439,7 +439,7 @@ export default function Contact(props) {
         message={alert.message}
         ContentProps={{ style: { backgroundColor: alert.backgroundColor } }}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        onClose={() => setAlert({ open: false })}
+        onClose={() => setAlert({ ...alert, open: false })}
         autoHideDuration={4000}
       />
       <Grid

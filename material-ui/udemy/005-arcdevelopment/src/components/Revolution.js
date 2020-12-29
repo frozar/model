@@ -52,7 +52,7 @@ export default function MobileApps(props) {
   };
 
   return (
-    <Grid contianer direction="column">
+    <Grid container direction="column">
       <Grid item className={classes.rowContainer} style={{ marginTop: "2em" }}>
         <Typography
           align={matchesMD ? "center" : undefined}

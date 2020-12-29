@@ -47,7 +47,7 @@ export default function About(props) {
   const matchesMD = useMediaQuery(theme.breakpoints.down("md"));
 
   return (
-    <Grid containre direction="column">
+    <Grid container direction="column">
       <Grid
         item
         className={classes.rowContainer}
