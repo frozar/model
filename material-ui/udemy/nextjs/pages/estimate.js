@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import ReactGA from "react-ga";
 import Head from "next/head";
 import { cloneDeep } from "lodash";
 import Lottie from "react-lottie";
@@ -574,6 +575,11 @@ export default function Estimate() {
 
   const sendEstimate = () => {
     setLoading(true);
+    ReactGA.event({
+      category: "Estimate",
+      action: "Estimate Sent",
+    });
+
     axios
       .get(
         "https://us-central1-material-ui-course-fc9f7.cloudfunctions.net/sendMail",
@@ -932,6 +938,10 @@ export default function Estimate() {
               getFeatures();
               getCustomFeatures();
               getCategory();
+              ReactGA.event({
+                category: "Estimate",
+                action: "Estimate Checked",
+              });
             }}
           >
             Get Estimate

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ReactGA from "react-ga";
 import AppBar from "@material-ui/core/AppBar";
 import Toolbar from "@material-ui/core/Toolbar";
 import useScrollTrigger from "@material-ui/core/useScrollTrigger";
@@ -9,7 +10,6 @@ import Button from "@material-ui/core/Button";
 import Link from "../Link";
 import Menu from "@material-ui/core/Menu";
 import MenuItem from "@material-ui/core/MenuItem";
-import useMediaQuery from "@material-ui/core/useMediaQuery";
 import { useTheme } from "@material-ui/core/styles";
 import SwipeableDrawer from "@material-ui/core/SwipeableDrawer";
 import IconButton from "@material-ui/core/IconButton";
@@ -128,11 +128,12 @@ export default function Header(props) {
   const classes = useStyles();
   const theme = useTheme();
   const iOS = process.browser && /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const matches = useMediaQuery(theme.breakpoints.down("md"));
 
   const [openDrawer, setOpenDrawer] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [openMenu, setOpenMenu] = useState(false);
+
+  const [previousURL, setPreviousURL] = useState("");
 
   const handleChange = (e, newValue) => {
     props.setValue(newValue);
@@ -201,6 +202,11 @@ export default function Header(props) {
 
   const { value, selectedIndex, setValue, setSelectedIndex } = props;
   useEffect(() => {
+    if (previousURL !== window.location.pathname) {
+      setPreviousURL(window.location.pathname);
+      ReactGA.pageview(window.location.pathname + window.location.search);
+    }
+
     [...menuOptions, ...routes].forEach((route) => {
       switch (window.location.pathname) {
         case `${route.link}`:
@@ -251,6 +257,10 @@ export default function Header(props) {
         className={classes.button}
         onClick={() => {
           props.setValue(5);
+          ReactGA.event({
+            category: "Estimate",
+            action: "Desktop Header Pressed",
+          });
         }}
       >
         Free Estimate
@@ -321,6 +331,10 @@ export default function Header(props) {
             onClick={() => {
               setOpenDrawer(false);
               props.setValue(5);
+              ReactGA.event({
+                category: "Estimate",
+                action: "Mobile Header Pressed",
+              });
             }}
             divider
             button

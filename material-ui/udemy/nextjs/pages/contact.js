@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import ReactGA from "react-ga";
 import Head from "next/head";
 import axios from "axios";
 import Link from "../src/Link";
@@ -136,6 +137,11 @@ export default function Contact(props) {
 
   const onConfirm = () => {
     setLoading(true);
+    ReactGA.event({
+      category: "Message",
+      action: "Message Sent",
+    });
+
     axios
       .get(
         "https://us-central1-material-ui-course-fc9f7.cloudfunctions.net/sendMail",
@@ -516,6 +522,10 @@ export default function Contact(props) {
             className={classes.estimateButton}
             onClick={() => {
               props.setValue(5);
+              ReactGA.event({
+                category: "Estimate",
+                action: "Contact Page Pressed",
+              });
             }}
           >
             Free Estimate
