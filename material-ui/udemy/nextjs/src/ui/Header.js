@@ -10,7 +10,6 @@ import Button from "@material-ui/core/Button";
 import Link from "../Link";
 import Menu from "@material-ui/core/Menu";
 import MenuItem from "@material-ui/core/MenuItem";
-import { useTheme } from "@material-ui/core/styles";
 import SwipeableDrawer from "@material-ui/core/SwipeableDrawer";
 import IconButton from "@material-ui/core/IconButton";
 import MenuIcon from "@material-ui/icons/Menu";
@@ -126,14 +125,11 @@ const useStyles = makeStyles((theme) => ({
 
 export default function Header(props) {
   const classes = useStyles();
-  const theme = useTheme();
   const iOS = process.browser && /iPad|iPhone|iPod/.test(navigator.userAgent);
 
   const [openDrawer, setOpenDrawer] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [openMenu, setOpenMenu] = useState(false);
-
-  const [previousURL, setPreviousURL] = useState("");
 
   const handleChange = (e, newValue) => {
     props.setValue(newValue);
@@ -200,33 +196,26 @@ export default function Header(props) {
     [anchorEl]
   );
 
-  const { value, selectedIndex, setValue, setSelectedIndex } = props;
-  useEffect(() => {
-    if (previousURL !== window.location.pathname) {
-      setPreviousURL(window.location.pathname);
-      ReactGA.pageview(window.location.pathname + window.location.search);
-    }
+  const path = typeof window !== "undefined" ? window.location.pathname : null;
 
-    [...menuOptions, ...routes].forEach((route) => {
-      switch (window.location.pathname) {
-        case `${route.link}`:
-          if (value !== route.activeIndex) {
-            setValue(route.activeIndex);
-            if (route.selectedIndex && route.selectedIndex !== selectedIndex) {
-              setSelectedIndex(route.selectedIndex);
-            }
-          }
-          break;
-        case "/estimate":
-          if (props.value !== 5) {
-            setValue(5);
-          }
-          break;
-        default:
-          break;
-      }
-    });
-  }, [value, setValue, menuOptions, selectedIndex, setSelectedIndex, routes]);
+  const activeIndex = () => {
+    const found = routes.find(({ link }) => link === path);
+    const menuFound = menuOptions.find(({ link }) => link === path);
+
+    if (menuFound) {
+      props.setValue(1);
+      props.setSelectedIndex(menuFound.selectedIndex);
+    } else if (found === undefined) {
+      props.setValue(false);
+    } else {
+      props.setValue(found.activeIndex);
+    }
+  };
+
+  useEffect(() => {
+    activeIndex();
+    ReactGA.pageview(window.location.pathname + window.location.search);
+  }, [path]);
 
   const tabs = (
     <React.Fragment>
