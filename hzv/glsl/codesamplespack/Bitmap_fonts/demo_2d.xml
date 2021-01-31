@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="Bitmap Font demo" width="800" height="400"
+          gl_version_major="3" gl_version_minor="2" />
+  
+
+<gpu_program name="gpu_prog_01" >
+    <raw_data_vs><![CDATA[	 
+#version 150
+in vec4 gxl3d_Position;
+in vec4 gxl3d_TexCoord0;
+in vec4 gxl3d_Color;
+//uniform mat4 gxl3d_ModelViewProjectionMatrix;
+uniform mat4 gxl3d_ViewProjectionMatrix;
+//uniform mat4 gxl3d_ViewMatrix;
+//uniform mat4 gxl3d_ProjectionMatrix;
+uniform mat4 gxl3d_ModelMatrix;
+uniform ivec4 gxl3d_Viewport;
+out vec4 Vertex_UV;
+out vec4 Vertex_Color;
+void main()
+{
+  vec4 P = gxl3d_Position;
+  vec4 Pw = gxl3d_ModelMatrix * P;
+  Pw.x = Pw.x - gxl3d_Viewport.z/2;
+  Pw.y = Pw.y + gxl3d_Viewport.w/2;
+  //mat4 VP = gxl3d_ProjectionMatrix * gxl3d_ViewMatrix;
+  //gl_Position = VP * Pw;    
+  gl_Position = gxl3d_ViewProjectionMatrix * Pw;		
+  Vertex_UV = gxl3d_TexCoord0;
+  Vertex_Color = gxl3d_Color;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+#version 150
+uniform sampler2D tex0;
+in vec4 Vertex_UV;
+in vec4 Vertex_Color;
+out vec4 Out_Color;
+void main (void)
+{
+  vec2 uv = Vertex_UV.xy;
+  uv.y *= -1.0;
+  vec3 t = texture(tex0,uv).rgb;
+  Out_Color = vec4(t * Vertex_Color.rgb, 1.0); 
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+ 
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+    
+winW, winH = gh_window.getsize(0)
+
+camera_ortho = gh_camera.create_ortho(-winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+gh_camera.set_position(camera_ortho, 0, 0, 1)
+
+
+local is_absolute_path = 0
+-- font = gh_utils.font_bm_create("comics01.fnt", is_absolute_path)
+-- font = gh_utils.font_bm_create("mangal_1024x1024.fnt", is_absolute_path)
+font = gh_utils.font_bm_create("impact.fnt", is_absolute_path)
+font_texture = gh_utils.font_bm_get_charset_texture(font)
+gh_utils.trace("font_texture="..font_texture)
+
+-- gh_object.set_scale(font, 0.5, 0.5, 1.0)
+--[[
+gh_utils.font_bm_draw_text_2d(font, 0, 20, 1.0, 1.0, 0.5, 1.0, "GLSL Hacker - line 1")
+gh_utils.font_bm_draw_text_2d(font, 0, 100, 1.0, 1.0, 0.5, 1.0, "GLSL Hacker - line 2")
+gh_utils.font_bm_draw_text_2d(font, 0, 180, 1.0, 1.0, 0.5, 1.0, "GLSL Hacker - line 3")
+gh_utils.font_bm_draw_text_2d(font, 0, 260, 1.0, 1.0, 0.5, 1.0, "GLSL Hacker - line 4")
+gh_utils.font_bm_draw_text_2d(font, 0, 340, 1.0, 1.0, 0.5, 1.0, "GLSL Hacker - line 5")
+gh_utils.font_bm_update(font)
+--]]
+
+glsl_prog = gh_node.getid("gpu_prog_01")
+
+
+GXL3D_RENDERER_BLEND_FACTOR_ZERO = 0
+GXL3D_RENDERER_BLEND_FACTOR_ONE = 1
+GXL3D_RENDERER_BLEND_FACTOR_SRC_ALPHA = 2
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_DST_ALPHA = 3
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_DST_COLOR = 4
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA = 5
+GXL3D_RENDERER_BLEND_FACTOR_DST_COLOR = 6
+GXL3D_RENDERER_BLEND_FACTOR_DST_ALPHA = 7
+GXL3D_RENDERER_BLEND_FACTOR_SRC_COLOR = 8
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_SRC_COLOR = 9
+
+
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+local elapsed_time = gh_utils.get_elapsed_time()
+
+gh_renderer.rasterizer_set_cull_state(0)
+gh_renderer.rasterizer_apply_states()
+
+gh_renderer.set_depth_test_state(0)
+
+gh_renderer.set_blending_state(1)
+gh_renderer.set_blending_factors(GXL3D_RENDERER_BLEND_FACTOR_ONE, GXL3D_RENDERER_BLEND_FACTOR_ONE)
+
+gh_camera.bind(camera_ortho)
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+gh_gpu_program.bind(glsl_prog)
+gh_texture.bind(font_texture, 0)
+
+
+local f = font
+gh_utils.font_bm_draw_reset(f)
+gh_utils.font_bm_draw_text_2d(f, 0, 20, 1.0, 1.0, 0.5, 1.0, "GLSL Hacker - line 1")
+gh_utils.font_bm_draw_text_2d(f, 0, 120, 1.0, 1.0, 0.5, 1.0, "GLSL Hacker - line 2")
+gh_utils.font_bm_draw_text_2d(f, 0, 220, 1.0, 1.0, 0.5, 1.0, "GLSL Hacker - line 3")
+gh_utils.font_bm_draw_text_2d(f, 0, 320, 1.0, 0.0, 0.5, 1.0, "Elapsed time:" .. elapsed_time)
+gh_utils.font_bm_draw_text_2d(f, 0, 420, 1.0, 1.0, 0.5, 1.0, "GLSL Hacker - line 4")
+gh_utils.font_bm_draw_text_2d(f, 0, 520, 1.0, 1.0, 0.5, 1.0, "GLSL Hacker - line 5")
+gh_utils.font_bm_update(f)
+
+sx = 0.8 + math.cos(elapsed_time)*0.2
+sy = 0.8 + math.sin(elapsed_time)*0.2
+gh_object.set_scale(f, sx, sy, 1.0)
+
+gh_utils.font_bm_render(f)
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+winW, winH = gh_window.getsize(0)
+
+gh_camera.update_ortho(camera_ortho, -winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

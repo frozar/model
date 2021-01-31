@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="Shader Toy, tissue demo (OpenGL 2.1)" 
+          width="800" height="600" 
+          gl_version_major="2" gl_version_minor="1"
+          build_opengl_extensions_list="0" />
+
+
+<gpu_program name="gpu_program" >
+	<raw_data_vs><![CDATA[	 
+void main()
+{	
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;		
+}
+  ]]></raw_data_vs>
+  
+	<raw_data_ps><![CDATA[	 
+
+// https://www.shadertoy.com/view/MdfGRn
+  
+uniform vec3      iResolution;     // viewport resolution (in pixels)
+uniform float     iGlobalTime;     // shader playback time (in seconds)
+uniform vec4      iMouse;          // mouse pixel coords. xy: current (if MLB down), zw: click
+uniform sampler2D iChannel0;
+
+mat2 m = mat2( 0.80,  0.60,
+              -0.60,  0.80 );
+
+float hash( float n )
+{
+    return fract(sin(n)*43758.5453);
+}
+
+float noise( in vec2 x )
+{
+    vec2 p = floor(x);
+    vec2 f = fract(x);
+    f = f*f*(3.0-2.0*f);
+    float n = p.x + p.y*57.0;
+    float res = mix(mix( hash(n+  0.0), hash(n+  1.0),f.x),
+                    mix( hash(n+ 57.0), hash(n+ 58.0),f.x),f.y);
+    return -1.0 + 2.0*res;
+}
+
+float fbm4( vec2 p )
+{
+    float f = 0.0;
+    f += 0.5000*noise( p ); p = m*p*2.02;
+    f += 0.2500*noise( p ); p = m*p*2.03;
+    f += 0.1250*noise( p ); p = m*p*2.01;
+    f += 0.0625*noise( p );
+    return f/0.9375;
+}
+
+
+void cell( in vec2 li, inout vec2 dmin, inout vec3 info, in vec2 ip, in vec2 f )
+{
+    float nn = (ip.x+li.x) + 57.0*(ip.y+li.y) ;
+    vec2 di = li - f + vec2(hash(nn), hash(nn+1217.0));
+    float d2 = dot(di,di);
+    if( d2<dmin.x )
+    {
+        info.xy = di;
+        info.z = nn;
+        dmin.y = dmin.x;
+        dmin.x = d2;
+    }
+    else if( d2<dmin.y )
+    {
+        dmin.y = d2;
+    }
+}
+
+vec2 celular( in vec2 x, inout vec3 info )
+{
+    vec2 ip = floor(x);
+    vec2 fp = fract(x);
+    
+    vec2 dmin = vec2( 2.0 );
+    cell( vec2(-1.0, -1.0), dmin, info, ip, fp );
+    cell( vec2( 0.0, -1.0), dmin, info, ip, fp );
+    cell( vec2( 1.0, -1.0), dmin, info, ip, fp );
+    cell( vec2(-1.0,  0.0), dmin, info, ip, fp );
+    cell( vec2( 0.0,  0.0), dmin, info, ip, fp );
+    cell( vec2( 1.0,  0.0), dmin, info, ip, fp );
+    cell( vec2(-1.0,  1.0), dmin, info, ip, fp );
+    cell( vec2( 0.0,  1.0), dmin, info, ip, fp );
+    cell( vec2( 1.0,  1.0), dmin, info, ip, fp );
+    return sqrt(dmin);
+}
+
+//------------------------------------------------------
+
+float funcS( vec2 p )
+{
+    p *= 1.1 + 0.2*sin(1.0*iGlobalTime)*(1.0-0.75*length(p));
+    p.x += iGlobalTime*0.04;
+    p *= 0.7;
+    p.x += 0.3*fbm4( 1.0*p.xy + vec2(-iGlobalTime,0.0)*0.04 );
+    p.y += 0.3*fbm4( 1.0*p.yx + vec2(0.0,-iGlobalTime)*0.04 );
+    vec3 info = vec3(0.0);
+    vec2 c = celular( 4.0*p, info );
+    float f = smoothstep( 0.0,0.5, c.y - c.x );
+    f -= 0.025*fbm4(48.0*info.xy);
+
+    return f;
+}
+
+float funcC( vec2 p, out vec4 res )
+{
+    p *= 1.1 + 0.2*sin(1.0*iGlobalTime)*(1.0-0.75*length(p));
+    p.x += iGlobalTime*0.04;
+    p *= 0.7;
+    p.x += 0.3*fbm4( 1.0*p.xy + vec2(-iGlobalTime,0.0)*0.04 );
+    p.y += 0.3*fbm4( 1.0*p.yx + vec2(0.0,-iGlobalTime)*0.04 );
+    vec3 info = vec3(0.0);
+    vec2 c = celular( 4.0*p, info );
+    float f = smoothstep( 0.0,0.5, c.y - c.x );
+    res  = vec4( c.xy, info.z, fbm4( 2.0*vec2(info.xy)) );
+    return f;
+}
+
+vec3 doMagic(vec2 p)
+{
+    // patternn    
+    vec4 c = vec4(0.0);
+    float f = funcC( p, c );
+
+    // normal
+    vec2 e = vec2( 2.0/iResolution.x, 0.0 );
+    vec3 nor = normalize(vec3(funcS(p+e.xy) - f,
+               funcS(p+e.yx) - f,
+                              16.0*e.x ));
+
+    vec3 col = vec3(1.0,1.0,1.0)*0.5;
+    col *= f;
+    col = mix( col, vec3(0.2,0.3,0.4), 1.0-c.x );
+    col *= 1.0 + 1.0*vec3(c.w*c.w);
+    col *= 1.0 + 0.2*f;
+
+    float dif = clamp( 0.2+0.8*dot( nor, vec3(0.57703) ), 0.0, 1.0 );
+    vec3 lig = dif*vec3(1.2,1.15,0.8) + nor.z*vec3(0.1,0.2,0.5) + vec3(0.5);
+    col *= lig;
+    col = 1.0-col;
+
+    return col;
+}
+
+void main(void)
+{
+    vec2 q = gl_FragCoord.xy / iResolution.xy;
+    vec2 p = -1.0 + 2.0 * q;
+    p.x *= iResolution.x/iResolution.y;
+    gl_FragColor = vec4( doMagic( p ), 1.0 );
+  
+} ]]></raw_data_ps>
+
+</gpu_program>
+
+
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+    
+winW, winH = gh_window.getsize()
+   
+font_a = gh_utils.font_create("Tahoma", 14)
+
+
+camera_ortho = gh_camera.create_ortho(-winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+gh_camera.set_position(camera_ortho, 0, 0, 1)
+
+
+gpu_prog_01 = gh_node.getid("gpu_program")
+
+-- local abs_path=0
+-- tex01 = gh_texture.create_from_file("data/1715-diffuse.jpg", 3, abs_path)
+
+mesh_quad = gh_mesh.create_quad(winW, winH)
+gh_object.use_gl2_vertex_array(mesh_quad, 1) -- *** Old OpenGL... ***
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(0)
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time()
+
+gh_renderer.set_depth_test_state(1)
+
+gh_camera.bind(camera_ortho)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+gh_gpu_program.bind(gpu_prog_01)
+gh_gpu_program.uniform1f(gpu_prog_01, "iGlobalTime", elapsed_time)
+gh_gpu_program.uniform3f(gpu_prog_01, "iResolution", winW, winH, 0)
+mouse_x, mouse_y = gh_input.mouse_getpos() 
+gh_gpu_program.uniform4f(gpu_prog_01, "iMouse", mouse_x, winH-mouse_y, 0, 0)
+-- gh_gpu_program.uniform1i(gpu_prog_01, "iChannel0", 0);
+
+-- gh_texture.bind(tex01, 0)
+gh_object.render(mesh_quad)
+
+gh_utils.font_render(font_a, 10, 20, 0.1, 0.1, 0.1, 1.0, "GLSL Hacker demo - Shader Toy Demo (www.shadertoy.com)")
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_ortho(camera_ortho, -winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+gh_mesh.update_quad_size(mesh_quad, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="Shader Toy, elevated demo (OpenGL 2.1)" 
+          width="800" height="600" 
+          gl_version_major="2" gl_version_minor="1"
+          build_opengl_extensions_list="0" />
+
+
+<gpu_program name="gpu_program" >
+	<raw_data_vs><![CDATA[	 
+void main()
+{	
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;		
+}
+  ]]></raw_data_vs>
+  
+	<raw_data_ps><![CDATA[	 
+
+// https://www.shadertoy.com/view/4ds3zn
+  
+uniform vec3      iResolution;     // viewport resolution (in pixels)
+uniform float     iGlobalTime;     // shader playback time (in seconds)
+uniform vec4      iMouse;          // mouse pixel coords. xy: current (if MLB down), zw: click
+uniform sampler2D iChannel0;
+
+// Created by inigo quilez - iq/2013
+// License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
+//
+// I can't recall where I learnt about this fractal.
+//
+// Coloring and fake occlusions are done by orbit trapping, as usual (unless somebody has invented
+// something new in the last 4 years that i'm unaware of, that is)
+//
+vec4 orb; 
+float ss;
+float map( vec3 p )
+{
+	float scale = 1.0;
+
+	orb = vec4(1000.0); 
+	
+	for( int i=0; i<8;i++ )
+	{
+		p = -1.0 + 2.0*fract(0.5*p+0.5);
+
+		float r2 = dot(p,p);
+		
+        orb = min( orb, vec4(abs(p),r2) );
+		
+		float k = max(ss/r2,0.1);
+		p     *= k;
+		scale *= k;
+	}
+	
+	return 0.25*abs(p.y)/scale;
+}
+
+float trace( in vec3 ro, in vec3 rd )
+{
+	float maxd = 100.0;
+	float precis = 0.001;
+    float h=precis*2.0;
+    float t = 0.0;
+    for( int i=0; i<200; i++ )
+    {
+        if( abs(h)<precis||t>maxd ) continue;//break;
+        t += h;
+	    h = map( ro+rd*t );
+    }
+
+    if( t>maxd ) t=-1.0;
+    return t;
+}
+
+vec3 calcNormal( in vec3 pos )
+{
+	vec3  eps = vec3(.0001,0.0,0.0);
+	vec3 nor;
+	nor.x = map(pos+eps.xyy) - map(pos-eps.xyy);
+	nor.y = map(pos+eps.yxy) - map(pos-eps.yxy);
+	nor.z = map(pos+eps.yyx) - map(pos-eps.yyx);
+	return normalize(nor);
+}
+
+void main(void)
+{
+	vec2 p = -1.0 + 2.0*gl_FragCoord.xy / iResolution.xy;
+    p.x *= iResolution.x/iResolution.y;
+
+	float time = iGlobalTime*0.25 + 0.01*iMouse.x;
+    ss = 1.1 + 0.5*smoothstep( -0.3, 0.3, cos(0.1*iGlobalTime) );
+	
+    // camera
+	vec3 ro = vec3( 2.8*cos(0.1+.33*time), 0.4 + 0.30*cos(0.37*time), 2.8*cos(0.5+0.35*time) );
+	vec3 ta = vec3( 1.9*cos(1.2+.41*time), 0.4 + 0.10*cos(0.27*time), 1.9*cos(2.0+0.38*time) );
+	float roll = 0.2*cos(0.1*time);
+	vec3 cw = normalize(ta-ro);
+	vec3 cp = vec3(sin(roll), cos(roll),0.0);
+	vec3 cu = normalize(cross(cw,cp));
+	vec3 cv = normalize(cross(cu,cw));
+	vec3 rd = normalize( p.x*cu + p.y*cv + 2.0*cw );
+
+
+    // trace	
+	vec3 col = vec3(0.0);
+	float t = trace( ro, rd );
+	if( t>0.0 )
+	{
+		vec4 tra = orb;
+		vec3 pos = ro + t*rd;
+		vec3 nor = calcNormal( pos );
+		
+		// lighting
+        vec3  light1 = vec3(  0.577, 0.577, -0.577 );
+        vec3  light2 = vec3( -0.707, 0.000,  0.707 );
+		float key = clamp( dot( light1, nor ), 0.0, 1.0 );
+		float bac = clamp( 0.2 + 0.8*dot( light2, nor ), 0.0, 1.0 );
+		float amb = (0.7+0.3*nor.y);
+		float ao = pow( clamp(tra.w*2.0,0.0,1.0), 1.2 );
+
+		vec3 brdf  = 1.0*vec3(0.40,0.40,0.40)*amb*ao;
+			 brdf += 1.0*vec3(1.00,1.00,1.00)*key*ao;
+			 brdf += 1.0*vec3(0.40,0.40,0.40)*bac*ao;
+
+        // material		
+		vec3 rgb = vec3(1.0);
+		rgb = mix( rgb, vec3(1.0,0.80,0.2), clamp(6.0*tra.y,0.0,1.0) );
+		rgb = mix( rgb, vec3(1.0,0.55,0.0), pow(clamp(1.0-2.0*tra.z,0.0,1.0),8.0) );
+
+		// color
+		col = rgb*brdf*exp(-0.2*t);
+	}
+
+	col = sqrt(col);
+	
+	col = mix( col, smoothstep( 0.0, 1.0, col ), 0.25 );
+	
+	gl_FragColor=vec4(col,1.0);
+}  ]]></raw_data_ps>
+
+</gpu_program>
+
+
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+    
+winW, winH = gh_window.getsize()
+   
+font_a = gh_utils.font_create("Tahoma", 14)
+
+
+camera_ortho = gh_camera.create_ortho(-winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+gh_camera.set_position(camera_ortho, 0, 0, 1)
+
+
+gpu_prog_01 = gh_node.getid("gpu_program")
+
+-- local abs_path=0
+-- tex01 = gh_texture.create_from_file("data/233.jpg", 3, abs_path)
+
+mesh_quad = gh_mesh.create_quad(winW, winH)
+gh_object.use_gl2_vertex_array(mesh_quad, 1) -- *** Old OpenGL... ***
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(0)
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time()
+
+gh_renderer.set_depth_test_state(1)
+
+gh_camera.bind(camera_ortho)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+gh_gpu_program.bind(gpu_prog_01)
+gh_gpu_program.uniform1f(gpu_prog_01, "iGlobalTime", elapsed_time)
+gh_gpu_program.uniform3f(gpu_prog_01, "iResolution", winW, winH, 0)
+mouse_x, mouse_y = gh_input.mouse_getpos() 
+gh_gpu_program.uniform4f(gpu_prog_01, "iMouse", mouse_x, winH-mouse_y, 0, 0)
+-- gh_gpu_program.uniform1i(gpu_prog_01, "iChannel0", 0);
+
+-- gh_texture.bind(tex01, 0)
+gh_object.render(mesh_quad)
+
+gh_utils.font_render(font_a, 10, 20, 0.3, 0.3, 0.3, 1.0, "GLSL Hacker demo - Shader Toy Demo (www.shadertoy.com)")
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_ortho(camera_ortho, -winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+gh_mesh.update_quad_size(mesh_quad, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

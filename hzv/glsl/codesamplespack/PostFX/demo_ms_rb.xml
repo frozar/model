@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="Post processing demo" 
+          width="800" height="600" 
+          gl_version_major="3" gl_version_minor="2" />
+
+          
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+
+gh_renderer.set_vsync(0)
+
+winW, winH = gh_window.getsize(0)
+    
+-- A font to display some information later.
+--
+font_a = gh_utils.font_create("Tahoma", 14)
+
+
+PF_U8_RGB = 1
+PF_U8_RGBA = 3
+PF_F32_RGBA = 6
+samples = 4
+
+rt_w = winW
+rt_h = winH
+
+rt01 = gh_render_target.create_rb(rt_w, rt_h, PF_U8_RGBA, samples)
+linear_filtering = 1
+rt02 = gh_render_target.create_ex(rt_w, rt_h, PF_U8_RGBA, linear_filtering, 0)
+
+if ((rt01 > 0) and (rt02 > 0)) then
+  gh_utils.trace("RTs ok.")
+else
+  gh_utils.trace("RTs ERROR.")
+end  
+
+
+
+
+local aspect = rt_w / rt_h
+camera = gh_camera.create_persp(60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, rt_w, rt_h)
+gh_camera.setpos(camera, 0, 0, 10)
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.setupvec(camera, 0, 1, 0, 0)
+
+-- An ortho camera for the 3D scene background image.
+--
+camera_ortho = gh_camera.create_ortho(-rt_w/2, rt_w/2, -rt_h/2, rt_h/2, -1.0, 1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, rt_w, rt_h)
+gh_camera.set_position(camera_ortho, 0, 0, 1)
+
+-- An ortho camera for the postfx fullscreen quad (as well as for the background quad of the 3D scene).
+-- This camera is created with default settings (it uses the current window's size).
+--
+camera_ortho_postfx = gh_camera.create_orthographic()
+
+-- Fullscreen quad for the postFX.
+--
+fullscreen_quad = gh_mesh.create_quad(winW, winH)
+
+
+
+-- GLSL shaders loading
+--
+local abs_path = 0
+
+gpu_prog_01 = gh_gpu_program.create_from_file("gpu_prog_01.glsl", abs_path)
+gh_node.set_name(gpu_prog_01, "gpu_prog_01") -- useful for the live coding manager. 
+
+gpu_prog_02 = gh_gpu_program.create_from_file("gpu_prog_02.glsl", abs_path)
+gh_node.set_name(gpu_prog_02, "gpu_prog_02") -- useful for the live coding manager. 
+
+gpu_prog_postfx_01 = gh_gpu_program.create_from_file("gpu_prog_postfx_01.glsl", abs_path)
+gh_node.set_name(gpu_prog_postfx_01, "gpu_prog_postfx_01") -- useful for the live coding manager. 
+
+
+
+
+
+-- Quad for the background image of the 3D scene.
+--
+mesh_quad = gh_mesh.create_quad(rt_w*0.6, rt_h*0.6)
+
+-- Main object of the 3D scene.
+--
+mesh = gh_mesh.create_torus(5.0, 2.0, 20)
+
+
+
+-- Textures loading.
+--
+bkg_tex = gh_texture.create_from_file("../data/bkg01.jpg", 0, abs_path)
+tex02 = gh_texture.create_from_file("../data/452-diffuse.jpg", 0, abs_path)
+
+
+
+
+		]]></raw_data>
+	</script> 
+
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time();
+    
+gh_renderer.set_scissor_state(0) 
+
+
+gh_render_target.bind(rt01)
+gh_render_target.clear_color_buffer(rt01, 0, 1, 0, 0, 1)
+gh_render_target.clear_depth_buffer(rt01, 1.0)
+
+gh_renderer.set_depth_test_state(1)
+
+gh_renderer.rasterizer_set_msaa_state(1)
+gh_renderer.rasterizer_apply_states()
+ 
+
+-- The bkg quad.
+--  
+gh_camera.bind(camera_ortho)
+
+gh_renderer.set_depth_test_state(0)
+gh_texture.bind(bkg_tex, 0)
+gh_gpu_program.bind(gpu_prog_02)
+gh_object.render(mesh_quad)
+    
+-- The torus.
+--
+gh_camera.bind(camera)
+
+gh_renderer.set_depth_test_state(1)
+gh_texture.bind(tex02, 0)
+gh_gpu_program.bind(gpu_prog_01)
+--gh_object.set_euler_angles(mesh, elapsed_time*10, 12, 30)
+gh_object.render(mesh)
+gh_gpu_program.bind(0)
+
+  
+gh_renderer.rasterizer_set_msaa_state(0)
+gh_renderer.rasterizer_apply_states()
+
+gh_render_target.bind(0)
+
+gh_render_target.resolve_multisampling(rt01, rt02)
+
+gh_renderer.set_viewport(0, 0, winW, winH)
+
+gh_renderer.clear_color_buffer(1.0, 0.0, 0.0, 1.0, 1.0)
+
+gh_renderer.set_depth_test_state(0)
+
+gh_texture.rt_color_bind(rt02, 0)
+
+gh_gpu_program.bind(gpu_prog_postfx_01)
+gh_gpu_program.uniform1f(gpu_prog_postfx_01, "elapsed_time", elapsed_time)
+gh_gpu_program.uniform1i(gpu_prog_postfx_01, "tex0", 0)
+
+gh_camera.bind(camera_ortho_postfx)
+gh_object.render(fullscreen_quad)
+  
+  
+  
+-- The useful info (under OSX with GL 3.2 core profile, the text is not displayed 
+-- because it relies on some GL2 code).
+--  
+gh_utils.font_render(font_a, 10, 20, 1.0, 1.0, 0.0, 1.0, "GLSL Hacker - Post processing (PostFX) demo")
+
+
+local mem_total = gh_renderer.get_gpu_memory_total_available_kb_nv() / 1024
+local mem_current = gh_renderer.get_gpu_memory_current_available_kb_nv() / 1024
+local mem_usage = gh_renderer.get_gpu_memory_usage_kb_nv() / 1024
+gh_utils.font_render(font_a, 10, 40, 0.0, 1.0, 0.0, 1.0, string.format("Mem stats - total: %d MB, current: %d MB, usage: %d MB ", mem_total, mem_current, mem_usage))
+
+
+
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+gh_camera.update_ortho(camera_ortho_postfx, -winW/2, winW/2, -winH/2, winH/2, -1.0, 1.0)
+gh_camera.set_viewport(camera_ortho_postfx, 0, 0, winW, winH)
+
+gh_mesh.update_quad_size(fullscreen_quad, winW, winH)
+
+rt_w = winW
+rt_h = winH
+gh_render_target.resize(rt01, rt_w, rt_h)
+gh_render_target.resize(rt02, rt_w, rt_h)
+
+aspect = winW / winH
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, rt_w, rt_h)
+
+gh_camera.update_ortho(camera_ortho, -rt_w/2, rt_w/2, -rt_h/2, rt_h/2, -1.0, 1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, rt_w, rt_h)
+
+gh_mesh.update_quad_size(mesh_quad, rt_w*0.6, rt_h*0.6)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

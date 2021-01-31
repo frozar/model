@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="Shader Toy, Old Video demo (OpenGL 2.1)" 
+          width="800" height="600" 
+          gl_version_major="2" gl_version_minor="1"
+          build_opengl_extensions_list="0" />
+
+
+<gpu_program name="gpu_program" >
+	<raw_data_vs><![CDATA[	 
+void main()
+{	
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;		
+}
+  ]]></raw_data_vs>
+  
+	<raw_data_ps><![CDATA[	 
+
+//https://www.shadertoy.com/view/Xdl3D8
+  
+uniform vec3      iResolution;     // viewport resolution (in pixels)
+uniform float     iGlobalTime;     // shader playback time (in seconds)
+uniform vec4      iMouse;          // mouse pixel coords. xy: current (if MLB down), zw: click
+uniform sampler2D iChannel0;
+
+#define BLACK_AND_WHITE
+#define LINES_AND_FLICKER
+#define BLOTCHES
+#define GRAIN
+
+#define FREQUENCY 15.0
+
+vec2 uv;
+
+float rand(vec2 co){
+    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
+float rand(float c){
+	return rand(vec2(c,1.0));
+}
+
+float randomLine(float seed)
+{
+	float b = 0.01 * rand(seed);
+	float a = rand(seed+1.0);
+	float c = rand(seed+2.0) - 0.5;
+	float mu = rand(seed+3.0);
+	
+	float l = 1.0;
+	
+	if ( mu > 0.2)
+		l = pow(  abs(a * uv.x + b * uv.y + c ), 1.0/8.0 );
+	else
+		l = 2.0 - pow( abs(a * uv.x + b * uv.y + c), 1.0/8.0 );				
+	
+	return mix(0.5, 1.0, l);
+}
+
+// Generate some blotches.
+float randomBlotch(float seed)
+{
+	float x = rand(seed);
+	float y = rand(seed+1.0);
+	float s = 0.01 * rand(seed+2.0);
+	
+	vec2 p = vec2(x,y) - uv;
+	p.x *= iResolution.x / iResolution.y;
+	float a = atan(p.y,p.x);
+	float v = 1.0;
+	float ss = s*s * (sin(6.2831*a*x)*0.1 + 1.0);
+	
+	if ( dot(p,p) < ss ) v = 0.2;
+	else
+		v = pow(dot(p,p) - ss, 1.0/16.0);
+	
+	return mix(0.3 + 0.2 * (1.0 - (s / 0.02)), 1.0, v);
+}
+
+
+void main(void)
+{
+	uv = gl_FragCoord.xy / iResolution.xy;
+	
+	if ( iMouse.z < 0.9 )
+	{		
+		// Set frequency of global effect to 20 variations per second
+		float t = float(int(iGlobalTime * FREQUENCY));
+		
+		// Get some image movement
+		vec2 suv = uv + 0.002 * vec2( rand(t), rand(t + 23.0));
+		
+		// Get the image
+    suv.y *= -1.0; // Fix for STB loader...
+		vec3 image = texture2D( iChannel0, vec2(suv.x, suv.y) ).xyz;
+		
+		#ifdef BLACK_AND_WHITE
+		// Pass it to B/W
+		float luma = dot( vec3(0.2126, 0.7152, 0.0722), image );
+		vec3 oldImage = luma * vec3(0.7, 0.7, 0.7);
+		#else
+		vec3 oldImage = image;
+		#endif
+		
+		// Create a time-varyting vignetting effect
+		float vI = 16.0 * (uv.x * (1.0-uv.x) * uv.y * (1.0-uv.y));
+		vI *= mix( 0.7, 1.0, rand(t + 0.5));
+		
+		// Add additive flicker
+		vI += 1.0 + 0.4 * rand(t+8.);
+		
+		// Add a fixed vignetting (independent of the flicker)
+		vI *= pow(16.0 * uv.x * (1.0-uv.x) * uv.y * (1.0-uv.y), 0.4);
+		
+		// Add some random lines (and some multiplicative flicker. Oh well.)
+		#ifdef LINES_AND_FLICKER
+		int l = int(8.0 * rand(t+7.0));
+		
+		if ( 0 < l ) vI *= randomLine( t+6.0+17.* float(0));
+		if ( 1 < l ) vI *= randomLine( t+6.0+17.* float(1));
+		if ( 2 < l ) vI *= randomLine( t+6.0+17.* float(2));		
+		if ( 3 < l ) vI *= randomLine( t+6.0+17.* float(3));
+		if ( 4 < l ) vI *= randomLine( t+6.0+17.* float(4));
+		if ( 5 < l ) vI *= randomLine( t+6.0+17.* float(5));
+		if ( 6 < l ) vI *= randomLine( t+6.0+17.* float(6));
+		if ( 7 < l ) vI *= randomLine( t+6.0+17.* float(7));
+		
+		#endif
+		
+		// Add some random blotches.
+		#ifdef BLOTCHES
+		int s = int( max(8.0 * rand(t+18.0) -2.0, 0.0 ));
+
+		if ( 0 < s ) vI *= randomBlotch( t+6.0+19.* float(0));
+		if ( 1 < s ) vI *= randomBlotch( t+6.0+19.* float(1));
+		if ( 2 < s ) vI *= randomBlotch( t+6.0+19.* float(2));
+		if ( 3 < s ) vI *= randomBlotch( t+6.0+19.* float(3));
+		if ( 4 < s ) vI *= randomBlotch( t+6.0+19.* float(4));
+		if ( 5 < s ) vI *= randomBlotch( t+6.0+19.* float(5));
+	
+		#endif
+	
+		// Show the image modulated by the defects
+        gl_FragColor.xyz = oldImage * vI;
+		
+		// Add some grain (thanks, Jose!)
+		#ifdef GRAIN
+        gl_FragColor.xyz *= (1.0+(rand(uv+t*.01)-.2)*.15);		
+        #endif		
+		
+	}
+	else
+	{
+		gl_FragColor = texture2D( iChannel0, uv );
+	}
+}  ]]></raw_data_ps>
+
+</gpu_program>
+
+
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+    
+winW, winH = gh_window.getsize()
+   
+font_a = gh_utils.font_create("Tahoma", 14)
+
+
+camera_ortho = gh_camera.create_ortho(-winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+gh_camera.set_position(camera_ortho, 0, 0, 1)
+
+
+gpu_prog_01 = gh_node.getid("gpu_program")
+
+local abs_path=0
+tex01 = gh_texture.create_from_file("data/geforce_gtx.jpg", 3, abs_path)
+
+mesh_quad = gh_mesh.create_quad(winW, winH)
+gh_object.use_gl2_vertex_array(mesh_quad, 1) -- *** Old OpenGL... ***
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(0)
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time()
+
+gh_renderer.set_depth_test_state(1)
+
+gh_camera.bind(camera_ortho)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+gh_gpu_program.bind(gpu_prog_01)
+gh_gpu_program.uniform1f(gpu_prog_01, "iGlobalTime", elapsed_time)
+gh_gpu_program.uniform3f(gpu_prog_01, "iResolution", winW, winH, 0)
+mouse_x, mouse_y = gh_input.mouse_getpos() 
+gh_gpu_program.uniform4f(gpu_prog_01, "iMouse", mouse_x, winH-mouse_y, 0, 0)
+gh_gpu_program.uniform1i(gpu_prog_01, "iChannel0", 0);
+
+gh_texture.bind(tex01, 0)
+gh_object.render(mesh_quad)
+
+gh_utils.font_render(font_a, 10, 20, 0.9, 0.1, 0.0, 1.0, "GLSL Hacker demo - Shader Toy Demo (www.shadertoy.com)")
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_ortho(camera_ortho, -winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+gh_mesh.update_quad_size(mesh_quad, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

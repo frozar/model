@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="GLSL Live Coding (OpenGL 2.1)" 
+          width="800" height="600" 
+          gl_version_major="2" gl_version_minor="1"
+          build_opengl_extensions_list="0" />
+
+
+<gpu_program name="gpu_program" >
+	<raw_data_vs><![CDATA[	 
+void main()
+{	
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;		
+}
+  ]]></raw_data_vs>
+  
+	<raw_data_ps><![CDATA[	 
+
+uniform float time;
+uniform vec2 mouse;
+uniform vec2 resolution;
+
+void main(void)
+{
+	//vec2 p = gl_FragCoord.xy / resolution.xy;
+	//gl_FragColor = vec4(p.x, p.x, p.x,1.0);
+  
+  vec2 uv = 2.0 * (gl_FragCoord.xy / resolution.xy) - 1.0;
+  float col=0.0;
+  float i=1.0;
+  vec2 spec = vec2(0.1, 0.4);
+  uv.x += sin(i*20.0 + spec.x*5.0*time*6.0 + uv.y*1.5) * spec.y;
+  col += abs(0.066/uv.x) * spec.y;
+  gl_FragColor = vec4(col, col, col, 1.0);
+	
+}  ]]></raw_data_ps>
+
+</gpu_program>
+
+
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+    
+winW, winH = gh_window.getsize()
+   
+font_a = gh_utils.font_create("Tahoma", 14)
+
+
+camera_ortho = gh_camera.create_ortho(-winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+gh_camera.set_position(camera_ortho, 0, 0, 1)
+
+
+gpu_prog_01 = gh_node.getid("gpu_program")
+
+mesh_quad = gh_mesh.create_quad(winW, winH)
+gh_object.use_gl2_vertex_array(mesh_quad, 1) -- *** Old OpenGL... ***
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(0)
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time()
+
+gh_renderer.set_depth_test_state(1)
+
+gh_camera.bind(camera_ortho)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+gh_gpu_program.bind(gpu_prog_01)
+gh_gpu_program.uniform1f(gpu_prog_01, "time", elapsed_time)
+gh_gpu_program.uniform2f(gpu_prog_01, "resolution", winW, winH)
+mouse_x, mouse_y = gh_input.mouse_getpos() 
+gh_gpu_program.uniform2f(gpu_prog_01, "mouse", mouse_x, winH-mouse_y)
+
+gh_object.render(mesh_quad)
+
+gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker demo - Live coding ready")
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_ortho(camera_ortho, -winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+gh_mesh.update_quad_size(mesh_quad, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

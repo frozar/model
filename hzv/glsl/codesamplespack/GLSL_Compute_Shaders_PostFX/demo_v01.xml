@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="GLSL Hacker - Compute shaders (OpenGL 4.3)" 
+          width="800" height="600" 
+          gl_version_major="4" gl_version_minor="3" />
+   
+  <gpu_program name="gpu_prog_01" >
+    <raw_data_vs><![CDATA[	 
+#version 420
+in vec4 gxl3d_Position;
+in vec4 gxl3d_TexCoord0;
+out vec4 Vertex_UV;
+uniform mat4 gxl3d_ModelViewProjectionMatrix;
+void main()
+{
+  gl_Position = gxl3d_ModelViewProjectionMatrix * gxl3d_Position;
+  Vertex_UV = gxl3d_TexCoord0;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+#version 420
+precision highp float;
+uniform sampler2D tex0;
+uniform sampler2D tex1;
+in vec4 Vertex_UV;
+out vec4 Out_Color;
+void main()
+{
+  vec2 uv = Vertex_UV.xy;
+  uv.y *= -1.0;
+  vec3 t0 = texture(tex0, uv).rgb * 0.9;
+  vec3 t1 = texture(tex1, uv).rgb * 0.5;
+  //Out_Color.rgb = t0;
+  Out_Color.rgb = t0 + t1;
+  //Out_Color.rgb = texture(tex0, uv).rgb;
+  //Out_Color.rgb = vec3(uv, 0.5);
+  //Out_Color.rgb = vec3(0.0, 0.0, 1.0);
+  Out_Color.a = 1.0;
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+ 
+ 
+  <gpu_program name="tex_gpu_prog" >
+    <raw_data_vs><![CDATA[	 
+#version 420
+in vec4 gxl3d_Position;
+in vec4 gxl3d_TexCoord0;
+out vec4 Vertex_UV;
+uniform mat4 gxl3d_ModelViewProjectionMatrix;
+void main()
+{
+  gl_Position = gxl3d_ModelViewProjectionMatrix * gxl3d_Position;
+  Vertex_UV = gxl3d_TexCoord0;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+#version 420
+uniform sampler2D tex0;
+in vec4 Vertex_UV;
+out vec4 Out_Color;
+void main()
+{
+  vec2 uv = Vertex_UV.xy;
+  uv.y *= -1.0;
+  vec3 t0 = texture(tex0, uv).rgb * 0.9;
+  Out_Color.rgb = t0;
+  Out_Color.a = 1.0;
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+ 
+ 
+<gpu_program name="compute_prog_01" >
+    <raw_data_cs><![CDATA[	 
+#version 430
+#extension GL_ARB_shader_image_load_store : enable
+uniform float roll;
+layout(r32f) uniform image2D dst_tex;
+uniform sampler2D src_tex;
+layout (local_size_x = 16, local_size_y = 16) in;
+void main() 
+{
+  ivec2 storePos = ivec2(gl_GlobalInvocationID.xy);
+  float localCoef = length(vec2(ivec2(gl_LocalInvocationID.xy)-4)/4.0) * 0.5;
+  float globalCoef = sin(float(gl_WorkGroupID.x+gl_WorkGroupID.y)*0.1 + roll)*0.5;
+  vec2 uv = vec2(storePos)/512.0;
+  float t0 = texture(src_tex, uv + vec2(sin(roll)*0.01)).x;  
+  imageStore(dst_tex, storePos, vec4(localCoef*globalCoef + t0, 0.0, 0.0, 0.0));  
+}
+]]></raw_data_cs>
+  </gpu_program>
+   
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+font_a = gh_utils.font_create("Tahoma", 14)
+
+camera = gh_camera.create_persp(60, 1.333, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+gh_camera.setpos(camera, 0, 10, 20)
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.setupvec(camera, 0, 1, 0, 0)
+
+
+compute_prog_01 = 0
+
+GL_ARB_compute_shader_ok = gh_renderer.check_opengl_extension("GL_ARB_compute_shader")
+-- GL_ARB_compute_shader_ok = 1
+
+if (GL_ARB_compute_shader_ok == 1) then
+  gpu_prog_01 = gh_node.getid("gpu_prog_01")
+
+  gh_gpu_program.bind(gpu_prog_01)
+  gh_gpu_program.uniform1i(gpu_prog_01, "tex0", 0)
+  gh_gpu_program.uniform1i(gpu_prog_01, "tex1", 1)
+  gh_gpu_program.bind(0)
+
+  compute_prog_01 = gh_node.getid("compute_prog_01")
+
+  gh_gpu_program.bind(compute_prog_01)
+  gh_gpu_program.uniform1i(compute_prog_01, "dst_tex", 0)
+  gh_gpu_program.uniform1i(compute_prog_01, "src_tex", 1)
+  gh_gpu_program.bind(0)
+end
+
+
+
+local PF_U8_RGB = 1
+local PF_U8_BGR = 2
+local PF_U8_RGBA = 3
+local PF_U8_BGRA = 4
+local PF_F32_RGB = 5
+local PF_F32_RGBA = 6
+local PF_F32_R = 7
+
+tex01 = 0
+if (GL_ARB_compute_shader_ok == 1) then
+  tex01 = gh_texture.create(512, 512, PF_F32_R)
+end
+
+local abs_path = 0
+tex02 = gh_texture.create_from_file("./opengl.jpg", PF_U8_RGB, abs_path)
+
+tex_gpu_prog = gh_node.getid("tex_gpu_prog")
+
+mesh_quad = gh_mesh.create_quad(36, 18)
+gh_object.use_gl2_vertex_array(mesh_quad, 0)
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(1)
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time();
+
+gh_camera.bind(camera)
+
+gh_renderer.set_depth_test_state(1)
+    
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+if (GL_ARB_compute_shader_ok == 1) then
+  gh_texture.bind(tex01, 0)
+  gh_texture.bind(tex02, 1)
+
+  local access_read_write_only = 0
+  local access_write_only = 1
+  local access_read_only = 2
+  gh_texture.image_bind(tex01, 0, access_write_only)
+  gh_texture.image_bind(tex02, 1, access_read_only)
+  gh_gpu_program.bind(compute_prog_01)
+  gh_gpu_program.uniform1i(compute_prog_01, "dst_tex", 0)
+  gh_gpu_program.uniform1i(compute_prog_01, "src_tex", 1)
+  gh_gpu_program.uniform1f(compute_prog_01, "roll", elapsed_time*10)
+  gh_gpu_program.run_compute(compute_prog_01, 512/16, 512/16, 1) -- 512^2 threads in blocks of 16^2
+
+  gh_gpu_program.bind(gpu_prog_01)
+  gh_gpu_program.uniform1i(gpu_prog_01, "tex0", 0)
+  gh_gpu_program.uniform1i(gpu_prog_01, "tex1", 1)
+else
+  gh_gpu_program.bind(tex_gpu_prog)
+  gh_texture.bind(tex02, 0)
+end
+
+gh_object.set_euler_angles(mesh_quad, 0, elapsed_time*10, 0)
+
+gh_object.render(mesh_quad)
+
+
+
+gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker demo - OpenGL 4.3 Compute Shader Test")
+if (GL_ARB_compute_shader_ok == 1) then
+  gh_utils.font_render(font_a, 10, 40, 0.2, 1.0, 0.0, 1.0, "- Compute Shaders (GL_ARB_compute_shader) supported ;)")
+else
+  gh_utils.font_render(font_a, 10, 40, 0.2, 1.0, 0.0, 1.0, "- Compute Shaders (GL_ARB_compute_shader) NOT supported :(")
+end
+		]]></raw_data>
+	</script> 
+	
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

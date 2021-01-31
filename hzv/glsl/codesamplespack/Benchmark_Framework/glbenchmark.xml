@@ -1,0 +1,458 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="OpenGL Benchmark" 
+          width="800" height="400" display_progress_bar="1"
+          gl_version_major="2" gl_version_minor="1" />
+  
+
+  <gpu_program name="simple_color_gpu_prog" >
+    <raw_data_vs><![CDATA[	 
+void main()
+{
+	gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;		
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+void main (void)
+{
+  gl_FragColor = vec4(0.2, 0.2, 0.2, 0.6);
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+  
+<!--
+Author: @h3r3
+http://www.postronic.org/h3/pid65.html
+http://glsl.heroku.com/e#2120.0
+A raymarched sunset+water.
+-->
+<gpu_program name="gpu_program" >
+	<raw_data_vs><![CDATA[	 
+void main()
+{	
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+	//gl_Position = ftransform();		
+    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;		
+}
+  ]]></raw_data_vs>
+  
+	<raw_data_ps><![CDATA[	 
+
+uniform float time;
+uniform vec2 mouse;
+uniform vec2 resolution;
+
+const bool USE_MOUSE = false; // Set this to true for God Mode :)
+
+const float PI = 3.14159265;
+const float MAX_RAYMARCH_DIST = 150.0;
+const float MIN_RAYMARCH_DELTA = 0.00015; 
+const float GRADIENT_DELTA = 0.015;
+float waveHeight1 = 0.005;
+float waveHeight2 = 0.004;
+float waveHeight3 = 0.001;
+
+// --------------------- START of SIMPLEX NOISE
+//
+// Description : Array and textureless GLSL 2D simplex noise function.
+//      Author : Ian McEwan, Ashima Arts.
+//  Maintainer : ijm
+//     Lastmod : 20110822 (ijm)
+//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
+//               Distributed under the MIT License. See LICENSE file.
+//               https://github.com/ashima/webgl-noise
+// 
+
+vec3 mod289(vec3 x) {
+  return x - floor(x * (1.0 / 289.0)) * 289.0;
+}
+
+vec2 mod289(vec2 x) {
+  return x - floor(x * (1.0 / 289.0)) * 289.0;
+}
+
+vec3 permute(vec3 x) {
+  return mod289(((x*34.0)+1.0)*x);
+}
+
+float snoise(vec2 v)
+  {
+  const vec4 C = vec4(0.211324865405187,  // (3.0-sqrt(3.0))/6.0
+                      0.366025403784439,  // 0.5*(sqrt(3.0)-1.0)
+                     -0.577350269189626,  // -1.0 + 2.0 * C.x
+                      0.024390243902439); // 1.0 / 41.0
+// First corner
+  vec2 i  = floor(v + dot(v, C.yy) );
+  vec2 x0 = v -   i + dot(i, C.xx);
+
+// Other corners
+  vec2 i1;
+  //i1.x = step( x0.y, x0.x ); // x0.x > x0.y ? 1.0 : 0.0
+  //i1.y = 1.0 - i1.x;
+  i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  // x0 = x0 - 0.0 + 0.0 * C.xx ;
+  // x1 = x0 - i1 + 1.0 * C.xx ;
+  // x2 = x0 - 1.0 + 2.0 * C.xx ;
+  vec4 x12 = x0.xyxy + C.xxzz;
+  x12.xy -= i1;
+
+// Permutations
+  i = mod289(i); // Avoid truncation effects in permutation
+  vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
+		+ i.x + vec3(0.0, i1.x, 1.0 ));
+
+  vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+  m = m*m ;
+  m = m*m ;
+
+// Gradients: 41 points uniformly over a line, mapped onto a diamond.
+// The ring size 17*17 = 289 is close to a multiple of 41 (41*7 = 287)
+
+  vec3 x = 2.0 * fract(p * C.www) - 1.0;
+  vec3 h = abs(x) - 0.5;
+  vec3 ox = floor(x + 0.5);
+  vec3 a0 = x - ox;
+
+// Normalise gradients implicitly by scaling m
+// Approximation of: m *= inversesqrt( a0*a0 + h*h );
+  m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+
+// Compute final noise value at P
+  vec3 g;
+  g.x  = a0.x  * x0.x  + h.x  * x0.y;
+  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+  return 130.0 * dot(m, g);
+}
+
+// --------------------- END of SIMPLEX NOISE
+
+
+float map(vec3 p) {
+	return p.y + (0.5 + waveHeight1 + waveHeight2 + waveHeight3) 
+		+ snoise(vec2(p.x + time * 0.4, p.z + time * 0.6)) * waveHeight1
+		+ snoise(vec2(p.x * 1.6 - time * 0.4, p.z * 1.7 - time * 0.6)) * waveHeight2
+	  	+ snoise(vec2(p.x * 6.6 - time * 1.0, p.z * 2.7 + time * 1.176)) * waveHeight3;
+}
+
+vec3 gradientNormalFast(vec3 p, float map_p) {
+    return normalize(vec3(
+        map_p - map(p - vec3(GRADIENT_DELTA, 0, 0)),
+        map_p - map(p - vec3(0, GRADIENT_DELTA, 0)),
+        map_p - map(p - vec3(0, 0, GRADIENT_DELTA))));
+}
+
+float intersect(vec3 p, vec3 ray_dir, out float map_p, out int iterations) {
+	iterations = 0;
+	if (ray_dir.y >= 0.0) { return -1.0; } // to see the sea you have to look down
+	
+	float zHigh = - 0.5;
+	float zLow = - 0.5 - ((waveHeight1 + waveHeight2 + waveHeight3) * 2.0);
+	float distMin = (zHigh - p.y) / ray_dir.y;
+	float distMax = (zLow - p.y) / ray_dir.y;
+
+	float distMid = distMin;
+	for (int i = 0; i < 50; i++) {
+		iterations++;
+		distMid += max(0.05 + float(i) * 0.002, map_p);
+		map_p = map(p + ray_dir * distMid);
+		if (map_p > 0.0) { 
+			distMin = distMid + map_p;
+		} else { 
+			distMax = distMid + map_p;
+			// interval found, now bisect inside it
+			for (int i = 0; i < 10; i++) {
+				iterations++;
+				distMid = distMin + (distMax - distMin) / 2.0;
+				map_p = map(p + ray_dir * distMid);
+				if (abs(map_p) < MIN_RAYMARCH_DELTA) return distMid;
+				if (map_p > 0.0) {
+					distMin = distMid + map_p;
+				} else {
+					distMax = distMid + map_p;
+				}
+			}
+			return distMid;
+		}
+	}
+	return distMin;
+}
+
+void main( void ) {
+	float waveHeight = USE_MOUSE ? mouse.x * 5.0 : cos(time * 0.03) * 1.2 + 1.6;
+	waveHeight1 *= waveHeight;
+	waveHeight2 *= waveHeight;
+	waveHeight3 *= waveHeight;
+	
+	vec2 position = vec2((gl_FragCoord.x - resolution.x / 2.0) / resolution.y, (gl_FragCoord.y - resolution.y / 2.0) / resolution.y);
+	vec3 ray_start = vec3(0, 0.2, -2);
+	vec3 ray_dir = normalize(vec3(position,0) - ray_start);
+	ray_start.y = cos(time * 0.5) * 0.2 - 0.25 + sin(time * 2.0) * 0.05;
+	
+	const float dayspeed = 0.04;
+	float subtime = max(-0.16, sin(time * dayspeed) * 0.2);
+	float middayperc = USE_MOUSE ? mouse.y * 0.3 - 0.15 : max(0.0, sin(subtime));
+	vec3 light1_pos = vec3(0.0, middayperc * 200.0, USE_MOUSE ? 200.0 : cos(subtime * dayspeed) * 200.0);
+	float sunperc = pow(max(0.0, min(dot(ray_dir, normalize(light1_pos)), 1.0)), 190.0 + max(0.0,light1_pos.y * 4.3));
+	vec3 suncolor = (1.0 - max(0.0, middayperc)) * vec3(1.5, 1.2, middayperc + 0.5) + max(0.0, middayperc) * vec3(1.0, 1.0, 1.0) * 4.0;
+	vec3 skycolor = vec3(middayperc + 0.8, middayperc + 0.7, middayperc + 0.5);
+	vec3 skycolor_now = suncolor * sunperc + (skycolor * (middayperc * 1.6 + 0.5)) * (1.0 - sunperc);
+	vec4 color; 
+	float map_p;
+	int iterations;
+	float dist = intersect(ray_start, ray_dir, map_p, iterations);
+	if (dist > 0.0) {
+		vec3 p = ray_start + ray_dir * dist;
+		vec3 light1_dir = normalize(light1_pos - p);
+        	vec3 n = gradientNormalFast(p, map_p);
+		vec3 ambient = skycolor_now * 0.1;
+        	vec3 diffuse1 = vec3(1.1, 1.1, 0.6) * max(0.0, dot(light1_dir, n)  * 2.8);
+		vec3 r = reflect(light1_dir, n);
+		vec3 specular1 = vec3(1.5, 1.2, 0.6) * (0.8 * pow(max(0.0, dot(r, ray_dir)), 200.0));	    
+		float fog = min(max(p.z * 0.07, 0.0), 1.0);
+        	color.rgb = (vec3(0.6,0.6,1.0) * diffuse1 + specular1 + ambient)  * (1.0 - fog) + skycolor_now * fog;
+    	} else {
+        	color.rgb = skycolor_now.rgb;
+    	}
+	gl_FragColor = color;
+  
+}
+  ]]></raw_data_ps>
+
+</gpu_program>
+  
+
+  
+ 
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+
+--[[ 
+=== BENCHMARK FRAMEWORK ===
+--]]
+
+gh_utils.set_progress_bar_percent(0)
+gh_utils.set_progress_bar_caption("Initializing in progress... 0%% completed")
+gh_utils.thread_sleep(100)
+
+
+winW, winH = gh_window.getsize(0)
+
+winW_start = winW
+winH_start = winH
+benchmark_ok = 1
+benchmark_title = "GLSL Hacker - Ray Marching Sunset benchmark"
+duration = 60 -- BENCHMARK DURATION in seconds!!!
+elapsed_time = 0;
+last_elapsed_time_fps = 0
+last_time = 0;
+total_frames = 0
+fps_frames = 0
+sum_fps = 0
+n_sum_fps = 0
+fps_avg = 0
+fps = 0
+fps_min = 10000
+fps_max = 0
+fps_score = 0
+
+renderer = gh_renderer.get_renderer_model() 
+
+font_a = gh_utils.font_create("Tahoma", 14)
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(0)
+
+
+GXL3D_RENDERER_BLEND_FACTOR_ZERO = 0
+GXL3D_RENDERER_BLEND_FACTOR_ONE = 1
+GXL3D_RENDERER_BLEND_FACTOR_SRC_ALPHA = 2
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_DST_ALPHA = 3
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_DST_COLOR = 4
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA = 5
+GXL3D_RENDERER_BLEND_FACTOR_DST_COLOR = 6
+GXL3D_RENDERER_BLEND_FACTOR_DST_ALPHA = 7
+GXL3D_RENDERER_BLEND_FACTOR_SRC_COLOR = 8
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_SRC_COLOR = 9
+
+--[[ 
+=== BENCHMARK FRAMEWORK ===
+--]]
+
+
+
+
+
+
+--[[ 
+ADD YOUR INIT CODE HERE...
+--]]
+
+camera = gh_camera.create_persp(60, 1.333, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+gh_camera.setpos(camera, 0, 20, 80)
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.setupvec(camera, 0, 1, 0, 0)
+
+w = winW
+h = winH
+camera_ortho = gh_camera.create_ortho(-w/2, w/2, -h/2, h/2, -1.0, 1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+gh_camera.set_position(camera_ortho, 0, 0, 1)
+
+
+gh_utils.set_progress_bar_percent(20)
+gh_utils.set_progress_bar_caption("Initializing in progress... 20%% completed")
+gh_utils.thread_sleep(100)
+
+
+gpu_prog_01 = gh_node.getid("gpu_program")
+gpu_prog_02 = gh_node.getid("simple_color_gpu_prog")
+
+gh_utils.set_progress_bar_percent(60)
+gh_utils.set_progress_bar_caption("Initializing in progress... 60%% completed")
+gh_utils.thread_sleep(200)
+
+
+mesh_quad = gh_mesh.create_quad(winW, winH)
+gh_object.use_gl2_vertex_array(mesh_quad, 1) -- *** Old OpenGL... ***
+
+gh_utils.set_progress_bar_percent(80)
+gh_utils.set_progress_bar_caption("Initializing in progress... 80%% completed")
+gh_utils.thread_sleep(100)
+
+
+bkg_quad = gh_mesh.create_quad(winW, 100)
+gh_object.use_gl2_vertex_array(bkg_quad, 1) -- *** Old OpenGL... ***
+gh_object.setpos(bkg_quad, 0, winH/2 - 60, 0)
+
+gh_utils.set_progress_bar_percent(100)
+gh_utils.set_progress_bar_caption("Initializing in progress... 100%% completed")
+gh_utils.thread_sleep(100)
+
+
+		]]></raw_data>
+	</script> 
+
+
+
+
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+-- BENCHMARK FRAMEWORK
+local cur_time = gh_utils.get_elapsed_time()
+local dt = cur_time - last_time
+last_time = cur_time;
+elapsed_time = elapsed_time + dt
+
+fps_frames = fps_frames + 1
+
+if ((elapsed_time - last_elapsed_time_fps) > 1.0) then
+  last_elapsed_time_fps = elapsed_time
+  fps = fps_frames
+  fps_frames = 0
+  if (fps_min > fps) then
+    fps_min = fps
+  end
+  if (fps_max < fps) then
+    fps_max = fps
+  end
+  sum_fps = sum_fps + fps
+  fps_avg = sum_fps / elapsed_time;
+  n_sum_fps = n_sum_fps + 1
+end
+-- BENCHMARK FRAMEWORK
+
+
+
+
+
+-- ADD YOUR RENDER CODE HERE
+
+gh_renderer.set_depth_test_state(1)
+
+gh_camera.bind(camera)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+gh_gpu_program.bind(gpu_prog_01)
+gh_gpu_program.uniform1f(gpu_prog_01, "time", elapsed_time)
+gh_gpu_program.uniform2f(gpu_prog_01, "resolution", winW, winH)
+mouse_x, mouse_y = gh_input.mouse_getpos() 
+gh_gpu_program.uniform2f(gpu_prog_01, "mouse", mouse_x, winH-mouse_y)
+
+gh_object.render(mesh_quad)
+
+gh_renderer.set_blending_state(1)
+gh_renderer.set_blending_factors(GXL3D_RENDERER_BLEND_FACTOR_SRC_ALPHA, GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+
+gh_camera.bind(camera_ortho)
+gh_renderer.set_depth_test_state(0)
+gh_gpu_program.bind(gpu_prog_02)
+gh_object.render(bkg_quad)
+
+gh_renderer.set_blending_state(0)
+
+
+
+
+-- BENCHMARK FRAMEWORK
+
+gh_utils.font_render(font_a, 10, 20, 1.0, 1.0, 0.0, 1.0, benchmark_title)
+
+if (benchmark_ok == 1) then
+  if (elapsed_time < duration) then
+    if ((winW_start ~= winW) or (winH_start ~= winH)) then
+      benchmark_ok = 0
+    end
+    total_frames = total_frames + 1
+    fps_score = fps_avg
+	gh_utils.font_render(font_a, 10, 50, 1.0, 1.0, 1.0, 1.0, string.format("BENCHMARKING... %d percent completed", (elapsed_time/duration)*100))
+  else  
+	gh_utils.font_render(font_a, 10, 50, 1.0, 1.0, 1.0, 1.0, string.format(">>>>>> SCORE: %d points, FPS: %d <<<<<<", total_frames, fps_score))
+	gh_utils.font_render(font_a, 10, 70, 1.0, 1.0, 1.0, 1.0, string.format(">>>>>> Renderer: %s, res: %d x %d <<<<<<", renderer, winW_start, winH_start))
+  end
+else  
+  gh_utils.font_render(font_a, 10, 50, 1.0, 1.0, 1.0, 1.0, "Do not resize the window during the benchmark. Benchmark aborted!")
+end     
+-- BENCHMARK FRAMEWORK
+
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_camera.update_ortho(camera_ortho, -winW/2, winW/2, -winH/2, winH/2, -1.0, 1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+gh_mesh.update_quad_size(mesh_quad, winW, winH)
+
+gh_mesh.update_quad_size(bkg_quad, winW, 100)
+gh_object.setpos(bkg_quad, 0, winH/2 - 60, 0)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

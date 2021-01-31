@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="OpenCL Test in Lua" width="600" height="300"
+          gl_version_major="2" gl_version_minor="1" />
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+    
+winW, winH = gh_window.getsize(0)
+font = gh_utils.font_create("Tahoma", 14)
+
+elapsed_time = gh_utils.get_elapsed_time()
+last_time = elapsed_time
+
+gh_renderer.set_vsync(1)
+
+cl_platforms = {}
+
+num_opencl_platforms = gh_opencl.get_num_platforms()
+if (num_opencl_platforms > 0) then
+	local i
+	for i=0, num_opencl_platforms-1 do
+    local P = {
+         vendor="", 
+         name="", 
+         version="", 
+         num_devices=0, 
+         devices = {}
+         }
+		
+		P.vendor, P.name, P.version = gh_opencl.get_platform_info(i)
+		P.num_devices = gh_opencl.get_num_devices(i)
+    if (P.num_devices > 0) then
+      local j
+      for j=0, P.num_devices-1 do
+        local D = {
+          vendor="", 
+          name="", 
+          version="", 
+          type="", 
+          max_compute_units = 0,
+          clock_frequency = 0,
+          flops = 0
+         }
+        D.vendor, D.name, D.version = gh_opencl.get_device_info(i, j)
+        local _type = gh_opencl.get_device_type(i, j)
+        if (_type == 1) then
+          D.type = "GPU"
+        elseif (_type == 2) then
+          D.type = "CPU"
+        else
+          D.type = "UNKNOWN"
+        end
+        
+        D.max_compute_units, D.clock_frequency, D.flops = gh_opencl.get_device_compute_units_info(i, j)
+        
+        P.devices[j+1] = D
+      end
+    end
+    
+    cl_platforms[i+1] = P
+  end
+end
+      
+
+		]]></raw_data>
+	</script> 
+  
+	
+  
+  
+  
+  
+  
+    <script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time()
+gh_renderer.clear_color_buffer(0.2, 0.2, 0.2, 1.0)
+
+gh_utils.font_render(font, 10, 20, 1.0, 1.0, 1.0, 1.0, "OpenCL Test (from Lua 5.2)")
+gh_utils.font_render(font, 10, 40, 0.6, 0.6, 0.0, 1.0, string.format("Elapsed time: %.3f sec.", elapsed_time))
+gh_utils.font_render(font, 10, 60, 1.0, 1.0, 0.0, 1.0, string.format("# OpenCL platforms: %d.", num_opencl_platforms))
+
+local y = 80
+local i
+for i=0, num_opencl_platforms-1 do
+  P = cl_platforms[i+1]
+  gh_utils.font_render(font, 10, y, 1.0, 1.0, 0.2, 1.0, string.format("> Platform %d: %s / %s / %s)", i, P.vendor, P.name, P.version))
+  y = y+20
+  local j
+  for j=0, P.num_devices-1 do
+    D = P.devices[j+1]
+    gh_utils.font_render(font, 20, y, 0.7, 1.0, 0.2, 1.0, string.format("+ Device %d (%s): %s / %s / %s)", j, D.type, D.vendor, D.name, D.version))
+    y = y+20
+    gh_utils.font_render(font, 40, y, 0.3, 0.8, 0.2, 1.0, string.format("- %d CU / %d MHz / %d FLOPS)", D.max_compute_units, D.clock_frequency, D.flops ))
+    y = y+20
+  end
+end
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+winW, winH = gh_window.getsize(0)
+gh_utils.font_set_viewport_info(font, 0, 0, winW, winH)
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

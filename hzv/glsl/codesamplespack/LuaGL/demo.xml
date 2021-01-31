@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="LuaGL" 
+          width="800" height="400" 
+          layer="1" 
+          gl_version_major="2" gl_version_minor="1" build_opengl_extensions_list="0" />
+
+  <gpu_program name="gpu_prog_01" >
+    <raw_data_vs><![CDATA[	 
+void main()
+{
+  vec4 pos = gl_Vertex;
+  gl_FrontColor = gl_Color;
+	gl_Position = gl_ModelViewProjectionMatrix * pos;		
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+void main()
+{
+  gl_FragColor.rgb = gl_Color.rgb;
+  gl_FragColor.a = 1.0;
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+  
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+
+gh_renderer.set_scissor_state(1)
+gh_renderer.set_vsync(0)
+
+winW, winH = gh_window.getsize(0)
+
+font_a = gh_utils.font_create("Tahoma", 14)
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+camera = gh_camera.create_persp(60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+gh_camera.setpos(camera, 0, 0, 20)
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.setupvec(camera, 0, 1, 0, 0)
+
+gpu_prog_01 = gh_node.getid("gpu_prog_01")
+
+g_wireframe = 0
+
+		]]></raw_data>
+	</script> 
+
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time();
+
+gh_renderer.set_viewport_scissor(0, 0, winW, winH)
+gh_renderer.clear_color_depth_buffers(0.1, 0.1, 0.2, 1.0, 1.0)
+
+gh_camera.load_fixed_mvp_matrices(camera, 1, 1, 0)
+gh_gpu_program.bind(gpu_prog_01)
+
+-- LuaGL code ===============================
+
+gl.Enable('DEPTH_TEST') 
+
+if (g_wireframe == 1) then
+  gl.PolygonMode('FRONT_AND_BACK', 'LINE')
+else
+  gl.PolygonMode('FRONT_AND_BACK', 'FILL')
+end
+
+gl.Disable('CULL_FACE')
+
+gl.Begin('TRIANGLES') 
+gl.Color(1, 0, 0)
+gl.Vertex(-10, -10, 0)
+
+gl.Color(0, 1, 0)
+gl.Vertex(0, 10, 0)
+
+gl.Color(0, 0, 1)
+gl.Vertex(10, -10, 0)
+
+gl.End()      			
+
+-- LuaGL code ===============================
+
+gh_gpu_program.bind(0)
+gh_utils.font_render(font_a, 10, 20, 1.0, 1.0, 0.0, 1.0, string.format("GLSL Hacker - LuaGL demo"))
+
+		]]></raw_data>
+	</script> 
+
+ 
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+  
+</glsl_hacker>

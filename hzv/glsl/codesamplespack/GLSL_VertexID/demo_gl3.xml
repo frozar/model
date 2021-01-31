@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="gl_VertexID (OpenGL 3)" 
+          width="800" height="400" 
+          gl_version_major="3" gl_version_minor="2" />
+  
+  <gpu_program name="gpu_prog_01" >
+    <raw_data_vs><![CDATA[	 
+#version 150
+in vec4 gxl3d_Position;
+uniform mat4 gxl3d_ModelViewProjectionMatrix; // Automatically passed by GLSL Hacker
+uniform int vertex_id;
+uniform int num_vertices;
+out vec4 Vertex_Color;
+void main()
+{
+  gl_Position = gxl3d_ModelViewProjectionMatrix * gxl3d_Position;
+  float c = float(gl_VertexID)/float(num_vertices);
+  if (gl_VertexID == vertex_id)
+    Vertex_Color = vec4(1.0, 0.0, 0.0, 1.0);
+  else
+    Vertex_Color = vec4(c, c, c, 1.0);
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+#version 140
+precision highp float;
+in vec4 Vertex_Color;
+out vec4 Out_Color;
+void main()
+{
+  Out_Color.rgb = Vertex_Color.rgb;
+  Out_Color.a = 1.0;
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+ 
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+font_a = gh_utils.font_create("Tahoma", 14)
+
+-- A perspective camera for the 3D scene (torus + background quad)
+-- The first three params are the position and the last three params are the lookat point.
+camera = gh_camera.create_perspective(0, 0, 30, 0, 0, 0)
+
+
+gpu_prog_01 = gh_node.getid("gpu_prog_01")
+
+
+mesh_torus = gh_mesh.create_torus(20, 10, 20)
+gh_object.setpos(mesh_torus, 0, 0, 0)
+num_vertices = gh_object.get_num_vertices(mesh_torus)
+vertex_index = 0
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(1)
+
+RENDERER_POLYGON_FACE_BACK = 0
+RENDERER_POLYGON_FACE_FRONT = 1
+RENDERER_POLYGON_FACE_BACK_FRONT = 2
+
+RENDERER_POLYGON_MODE_POINT = 0
+RENDERER_POLYGON_MODE_LINE = 1
+RENDERER_POLYGON_MODE_SOLID = 2
+
+
+		]]></raw_data>
+	</script> 
+
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time();
+
+gh_renderer.set_depth_test_state(1)
+
+local cam_x = 50.0 * math.cos(elapsed_time*0.5)
+local cam_y = 40.0 + 10.0 * math.cos(elapsed_time*0.8)
+local cam_z = 50.0 * math.sin(elapsed_time*0.5)
+--gh_camera.setpos(camera, cam_x, cam_y, cam_z)
+--gh_camera.setlookat(camera, 0, 20, 0)
+gh_camera.bind(camera)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+gh_renderer.rasterizer_set_polygon_mode(RENDERER_POLYGON_FACE_BACK_FRONT, RENDERER_POLYGON_MODE_LINE)
+gh_renderer.rasterizer_apply_states()
+
+
+gh_gpu_program.bind(gpu_prog_01)
+
+gh_gpu_program.uniform1i(gpu_prog_01, "vertex_id", vertex_index)
+vertex_index = math.floor(vertex_index + 0.1)
+if (vertex_index >= num_vertices) then
+  vertex_index = 0
+end
+
+gh_gpu_program.uniform1i(gpu_prog_01, "num_vertices", num_vertices)
+
+gh_object.set_euler_angles(mesh_torus, elapsed_time*20, elapsed_time*50, elapsed_time*10)
+gh_object.render(mesh_torus)
+
+gh_renderer.rasterizer_set_polygon_mode(RENDERER_POLYGON_FACE_BACK_FRONT, RENDERER_POLYGON_MODE_SOLID)
+gh_renderer.rasterizer_apply_states()
+
+gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker demo - gl_VertexID demo (GL3)")
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

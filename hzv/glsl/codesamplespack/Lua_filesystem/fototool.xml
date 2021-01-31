@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="Lua Filesystem Demo" width="800" height="400"
+          gl_version_major="2" gl_version_minor="1" />
+  
+  
+  
+  <gpu_program name="gpu_prog_01" >
+    <raw_data_vs><![CDATA[	 
+void main()
+{
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;		
+  gl_TexCoord[0] = gl_MultiTexCoord0;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+uniform sampler2D tex0;
+void main (void)
+{
+  vec2 uv = gl_TexCoord[0].xy;
+  uv.y *= -1.0;
+  vec3 t = texture2D(tex0,uv).rgb;
+  gl_FragColor = vec4(t, 1.0);
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+  <gpu_program name="gpu_prog_02" >
+    <raw_data_vs><![CDATA[	 
+void main()
+{
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;		
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+void main (void)
+{
+  gl_FragColor = vec4(1.0, .0, .0, 1.0);
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+    
+
+function get_texture_index()
+  g_cur_texture_index = g_cur_texture_index + 1
+
+  if (g_cur_texture_index >= g_num_textures) then
+    g_kill_app = 1
+    g_cur_texture_index = 1
+  end
+  
+  return g_cur_texture_index
+end   
+
+
+
+function KillTexture(t)
+	if (t > 0) then
+		gh_node.kill(t)
+	end
+end
+
+
+function LoadTexture(filename)
+	local abs_path = 1
+	local texture = gh_texture.create_from_file(filename, 0, abs_path)
+	if (texture > 0) then
+	    if (g_cur_texture > 0) then
+	      KillTexture(g_cur_texture)
+	    end
+	    g_cur_texture = texture
+		width, height, depth = gh_texture.get_size(texture)
+		gh_mesh.update_quad_size(mesh_quad, width*0.3, height*0.3)
+	end
+end
+
+	
+
+function list_files (path)
+    for file in lfs.dir(path) do
+        if file ~= "." and file ~= ".." then
+          local ext = string.find(file, ".jpg")
+          if (ext ~= nil) then
+            local f = path .. file
+            g_texture_filenames[g_num_textures] = file
+            g_texture_fullfilenames[g_num_textures] = f
+            g_num_textures = g_num_textures + 1
+            gh_utils.trace("Texture " .. g_num_textures .. ": " .. f)
+          end
+        end
+    end
+end
+
+
+demo_dir = gh_utils.get_scenegraph_dir()
+
+g_kill_app = 0
+
+g_num_textures = 1
+g_cur_texture_index = 0
+g_cur_texture = 0
+g_texture_filenames = {}
+g_texture_fullfilenames = {}
+
+
+ 
+    
+winW, winH = gh_window.getsize(0)
+font = gh_utils.font_create("Tahoma", 14)
+
+local aspect = winW/ winH
+camera = gh_camera.create_persp(60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+gh_camera.setpos(camera, 0, 0, 100)
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.setupvec(camera, 0, 1, 0, 0)
+
+
+mesh_quad = gh_mesh.create_quad(30, 20)
+gh_object.use_gl2_vertex_array(mesh_quad, 1) -- *** Old OpenGL... ***
+
+glsl_prog = gh_node.getid("gpu_prog_01")
+glsl_prog2 = gh_node.getid("gpu_prog_02")
+
+
+
+list_files(demo_dir)
+
+local index = get_texture_index()
+local tex_filename = g_texture_fullfilenames[index]
+LoadTexture(tex_filename)
+
+
+g_last_time = gh_utils.get_elapsed_time()
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+local elapsed_time = gh_utils.get_elapsed_time()
+
+local do_screenshot = 0
+
+local diff_time = elapsed_time - g_last_time
+
+
+if (diff_time > 4) then
+  g_last_time = elapsed_time
+  
+  local index = get_texture_index()
+
+  local tex_filename = g_texture_fullfilenames[index]
+  LoadTexture(tex_filename)
+  do_screenshot = 1
+
+end 
+
+
+
+
+gh_camera.bind(camera)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+
+if (g_cur_texture > 0) then
+  gh_texture.bind(g_cur_texture, 0)
+  gh_gpu_program.bind(glsl_prog)
+else
+  gh_gpu_program.bind(glsl_prog2)
+end
+
+
+gh_object.set_euler_angles(mesh_quad, 0, math.cos(elapsed_time*0.5)*20, 0)
+gh_object.render(mesh_quad)
+
+
+
+gh_utils.font_render(font, 10, 20, 0.2, 1.0, 0.0, 1.0, "Fototool 0.1.0")
+gh_utils.font_render(font, 10, 40, 0.6, 0.6, 0.0, 1.0, string.format("Elapsed time: %.3f sec.", elapsed_time))
+
+local filename = g_texture_filenames[g_cur_texture_index]
+gh_utils.font_render(font, 10, 60, 0.9, 0.9, 0.0, 1.0, string.format("Current texture" .. g_cur_texture_index .. ": %s", filename))
+
+--[[
+if (do_screenshot == 1) then
+  gh_utils.do_screenshot("scr_" .. g_cur_texture_index .. "_" .. filename, 0)
+end 
+--]]
+
+if (g_kill_app == 1) then
+  gh_window.post_signal(0, 9) -- 9 == kill window!
+end
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+winW, winH = gh_window.getsize(0)
+gh_utils.font_set_viewport_info(font, 0, 0, winW, winH)
+
+local aspect = winW/ winH
+gh_camera.update_persp(60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

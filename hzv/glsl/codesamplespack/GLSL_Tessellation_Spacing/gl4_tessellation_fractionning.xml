@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="GLSL Hacker - Tessellation Spacing Modes (GL4)" 
+          width="680" height="400" 
+          gl_version_major="4" gl_version_minor="0" />
+  
+  <gpu_program name="tess_prog_equal" filename_vs="vs.txt" filename_ps="ps.txt" filename_tcs="tcs.txt" >
+    <raw_data_tes><![CDATA[	 
+#version 400 compatibility
+
+//layout(triangles, fractional_even_spacing, ccw) in;
+//layout(triangles, fractional_odd_spacing, ccw) in;
+layout(triangles, equal_spacing, ccw) in;
+
+uniform mat4 gxl3d_ViewMatrix;
+uniform mat4 gxl3d_ProjectionMatrix;
+void main()
+{
+  float u = gl_TessCoord.x;
+  float v = gl_TessCoord.y;
+  float w = gl_TessCoord.z;
+
+  vec4 pos = vec4(0);
+  pos.xyz += u * gl_in[0].gl_Position.xyz;
+  pos.xyz += v * gl_in[1].gl_Position.xyz;
+  pos.xyz += w * gl_in[2].gl_Position.xyz;
+  pos.w = 1.0;
+
+  mat4 viewProjectionMatrix = gxl3d_ProjectionMatrix * gxl3d_ViewMatrix;
+  gl_Position = viewProjectionMatrix * pos;
+}
+  ]]></raw_data_tes>
+  </gpu_program>
+  
+
+
+  <gpu_program name="tess_prog_odd" filename_vs="vs.txt" filename_ps="ps.txt" filename_tcs="tcs.txt" >
+    <raw_data_tes><![CDATA[	 
+#version 400 compatibility
+
+//layout(triangles, fractional_even_spacing, ccw) in;
+layout(triangles, fractional_odd_spacing, ccw) in;
+//layout(triangles, equal_spacing, ccw) in;
+
+uniform mat4 gxl3d_ViewMatrix;
+uniform mat4 gxl3d_ProjectionMatrix;
+void main()
+{
+  float u = gl_TessCoord.x;
+  float v = gl_TessCoord.y;
+  float w = gl_TessCoord.z;
+
+  vec4 pos = vec4(0);
+  pos.xyz += u * gl_in[0].gl_Position.xyz;
+  pos.xyz += v * gl_in[1].gl_Position.xyz;
+  pos.xyz += w * gl_in[2].gl_Position.xyz;
+  pos.w = 1.0;
+
+  mat4 viewProjectionMatrix = gxl3d_ProjectionMatrix * gxl3d_ViewMatrix;
+  gl_Position = viewProjectionMatrix * pos;
+}
+  ]]></raw_data_tes>
+  </gpu_program>
+ 
+  
+  <gpu_program name="tess_prog_even" filename_vs="vs.txt" filename_ps="ps.txt" filename_tcs="tcs.txt" >
+    <raw_data_tes><![CDATA[	 
+#version 400 compatibility
+
+layout(triangles, fractional_even_spacing, ccw) in;
+//layout(triangles, fractional_odd_spacing, ccw) in;
+//layout(triangles, equal_spacing, ccw) in;
+
+uniform mat4 gxl3d_ViewMatrix;
+uniform mat4 gxl3d_ProjectionMatrix;
+void main()
+{
+  float u = gl_TessCoord.x;
+  float v = gl_TessCoord.y;
+  float w = gl_TessCoord.z;
+
+  vec4 pos = vec4(0);
+  pos.xyz += u * gl_in[0].gl_Position.xyz;
+  pos.xyz += v * gl_in[1].gl_Position.xyz;
+  pos.xyz += w * gl_in[2].gl_Position.xyz;
+  pos.w = 1.0;
+
+  mat4 viewProjectionMatrix = gxl3d_ProjectionMatrix * gxl3d_ViewMatrix;
+  gl_Position = viewProjectionMatrix * pos;
+}
+  ]]></raw_data_tes>
+  </gpu_program>
+
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+font_a = gh_utils.font_create("Tahoma", 14)
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+-- camera = gh_camera.create_perspective(0, 15, 20, 0, 0, 0)
+local aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+camera = gh_camera.create_persp(30, aspect, 0.1, 500.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+gh_camera.setpos(camera, 0, 15, 20)
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.setupvec(camera, 0, 1, 0, 0)
+
+
+
+mesh_plane = gh_mesh.create_plane(10, 10, 1, 1)
+
+GL_ARB_tessellation_shader_ok = gh_renderer.check_opengl_extension("GL_ARB_tessellation_shader")
+
+tess_prog = 0
+tess_prog_02 = 0
+tess_prog_03 = 0
+outer_tess_level = 3
+inner_tess_level = 3
+
+if (GL_ARB_tessellation_shader_ok == 1) then
+  tess_prog_equal = gh_node.getid("tess_prog_equal")
+  tess_prog_odd = gh_node.getid("tess_prog_odd")
+  tess_prog_even = gh_node.getid("tess_prog_even")
+  gh_object.set_tessellation_state(mesh_plane, 1)
+end
+
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(1)
+gh_renderer.set_depth_test_state(1)
+
+
+RENDERER_POLYGON_FACE_BACK = 0
+RENDERER_POLYGON_FACE_FRONT = 1
+RENDERER_POLYGON_FACE_BACK_FRONT = 2
+
+RENDERER_POLYGON_MODE_POINT = 0
+RENDERER_POLYGON_MODE_LINE = 1
+RENDERER_POLYGON_MODE_SOLID = 2
+
+
+		]]></raw_data>
+	</script> 
+
+ 
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time()
+
+gh_camera.set_position(camera, 0, 50, 5)
+gh_camera.bind(camera)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+
+-- Useful for live coding...
+outer_tess_level = 3
+inner_tess_level = 3
+
+
+gh_renderer.rasterizer_set_polygon_mode(RENDERER_POLYGON_FACE_BACK_FRONT, RENDERER_POLYGON_MODE_LINE)
+gh_renderer.rasterizer_apply_states()
+
+if (GL_ARB_tessellation_shader_ok == 1) then
+  gh_gpu_program.bind(tess_prog_equal)
+  gh_gpu_program.uniform1f(tess_prog_equal, "tessLevelOuter", outer_tess_level)
+  gh_gpu_program.uniform1f(tess_prog_equal, "tessLevelInner", inner_tess_level)
+  gh_gpu_program.uniform4f(tess_prog_equal, "color", 1, 0, 0, 1)
+  gh_object.set_position(mesh_plane, -15, 0, 5)
+  gh_object.set_euler_angles(mesh_plane, 0, 30, 0)
+  gh_object.render(mesh_plane)
+  
+
+  gh_gpu_program.bind(tess_prog_odd)
+  gh_gpu_program.uniform1f(tess_prog_odd, "tessLevelOuter", outer_tess_level)
+  gh_gpu_program.uniform1f(tess_prog_odd, "tessLevelInner", inner_tess_level)
+  gh_gpu_program.uniform4f(tess_prog_odd, "color", 1, 1, 0, 1)
+  gh_object.set_position(mesh_plane, 0, 0, 5)
+  gh_object.set_euler_angles(mesh_plane, 0, 30, 0)
+  gh_object.render(mesh_plane)
+  
+  gh_gpu_program.bind(tess_prog_even)
+  gh_gpu_program.uniform1f(tess_prog_even, "tessLevelOuter", outer_tess_level)
+  gh_gpu_program.uniform1f(tess_prog_even, "tessLevelInner", inner_tess_level)
+  gh_gpu_program.uniform4f(tess_prog_even, "color", 0, 1, 0, 1)
+  gh_object.set_position(mesh_plane, 15, 0, 5)
+  gh_object.set_euler_angles(mesh_plane, 0, 30, 0)
+  gh_object.render(mesh_plane)
+  
+
+else  
+gh_object.set_euler_angles(mesh_plane, 0, elapsed_time*5, 0)
+gh_object.render(mesh_plane)
+end
+
+
+
+gh_renderer.rasterizer_set_polygon_mode(RENDERER_POLYGON_FACE_BACK_FRONT, RENDERER_POLYGON_MODE_SOLID)
+gh_renderer.rasterizer_apply_states()
+
+
+gh_utils.font_render(font_a, 10, 20, 1.0, 1.0, 1.0, 1.0, "GLSL Hacker - OpenGL 4.0 tessellation spacing test")
+if (GL_ARB_tessellation_shader_ok == 1) then
+  gh_utils.font_render(font_a, 10,40, 0.7, 0.7, 0.7, 1.0, "Tessellation shaders supported.")
+  gh_utils.font_render(font_a, 10,60, 1.0, 1.0, 1.0, 1.0, "Tess level - outer: " .. outer_tess_level .. " - inner: " .. inner_tess_level)
+  gh_utils.font_render(font_a, 10,80, 1.0, 0.0, 0.0, 1.0, "Spacing:")
+  gh_utils.font_render(font_a, 10,100, 1.0, 0.0, 0.0, 1.0, "- equal_spacing")
+  gh_utils.font_render(font_a, 10,120, 1.0, 1.0, 0.0, 1.0, "- fractional_odd_spacing")
+  gh_utils.font_render(font_a, 10,140, 0.0, 1.0, 0.0, 1.0, "- fractional_even_spacing")
+else
+  gh_utils.font_render(font_a, 10,40, 0.9, 1.0, 0.0, 1.0, "Tessellation shaders are NOT supported by your system :(")
+end
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 30, aspect, 0.1, 500.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

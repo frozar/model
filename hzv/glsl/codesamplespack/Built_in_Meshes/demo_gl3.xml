@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="Built-in Meshes" 
+          width="800" height="400" 
+          gl_version_major="3" gl_version_minor="2" />
+  
+  
+  <gpu_program name="gpu_prog_01" >
+    <raw_data_vs><![CDATA[	 
+#version 140
+in vec4 gxl3d_Position;
+in vec4 gxl3d_TexCoord0;
+out vec4 Vertex_UV;
+uniform mat4 gxl3d_ModelViewProjectionMatrix;
+void main()
+{
+  gl_Position = gxl3d_ModelViewProjectionMatrix * gxl3d_Position;
+  Vertex_UV = gxl3d_TexCoord0;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+#version 140
+precision highp float;
+uniform sampler2D tex0;
+in vec4 Vertex_UV;
+out vec4 Out_Color;
+void main()
+{
+  vec2 uv = Vertex_UV.xy;
+  uv.y *= -1.0;
+  Out_Color.rgb = texture(tex0, uv).rgb;
+  Out_Color.a = 1.0;
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+ 
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+font_a = gh_utils.font_create("Tahoma", 14)
+
+-- A perspective camera for the 3D scene.
+-- The first three params are the position and the last three params are the lookat point.
+camera = gh_camera.create_perspective(0, 20, 80, 0, 0, 0)
+
+gpu_prog_01 = gh_node.getid("gpu_prog_01")
+
+mesh_plane = gh_mesh.create_plane(100, 100, 10, 10)
+gh_object.setpos(mesh_plane, 0, 0, 0)
+gh_object.set_euler_angles(mesh_plane, 0, 0, 0)
+
+mesh_sphere = gh_mesh.create_sphere(15, 20, 20)
+gh_object.setpos(mesh_sphere, -30, 20, 0)
+
+mesh_torus = gh_mesh.create_torus(20, 10, 20)
+gh_object.setpos(mesh_torus, 30, 20, 0)
+
+local abs_path = 0
+tex01 = gh_texture.create_from_file("../data/3322-diffuse.jpg", 0, abs_path)
+tex02 = gh_texture.create_from_file("../data/2293-diffuse.jpg", 0, abs_path)
+tex03 = gh_texture.create_from_file("../data/2114-diffuse.jpg", 0, abs_path)
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(1)
+
+		]]></raw_data>
+	</script> 
+
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time();
+
+gh_renderer.set_depth_test_state(1)
+
+gh_camera.bind(camera)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+gh_gpu_program.bind(gpu_prog_01)
+
+gh_texture.bind(tex01, 0)
+gh_object.render(mesh_plane)
+    
+gh_texture.bind(tex02, 0)
+gh_object.set_euler_angles(mesh_torus, elapsed_time*20, elapsed_time*50, elapsed_time*10)
+gh_object.render(mesh_torus)
+gh_object.display_tripod(mesh_torus, 10, 10 ,10)
+
+local RENDERER_POLYGON_FACE_BACK = 0
+local RENDERER_POLYGON_FACE_FRONT = 1
+local RENDERER_POLYGON_FACE_BACK_FRONT = 2
+
+local RENDERER_POLYGON_MODE_POINT = 0
+local RENDERER_POLYGON_MODE_LINE = 1
+local RENDERER_POLYGON_MODE_SOLID = 2
+
+gh_renderer.rasterizer_set_polygon_mode(RENDERER_POLYGON_FACE_BACK_FRONT, RENDERER_POLYGON_MODE_LINE)
+gh_renderer.rasterizer_apply_states()
+
+gh_texture.bind(tex03, 0)
+gh_object.set_euler_angles(mesh_sphere, elapsed_time*10, elapsed_time*20, elapsed_time*30)
+gh_object.render(mesh_sphere)
+gh_object.display_tripod(mesh_sphere, 10, 10 ,10)
+
+gh_renderer.rasterizer_set_polygon_mode(RENDERER_POLYGON_FACE_BACK_FRONT, RENDERER_POLYGON_MODE_SOLID)
+gh_renderer.rasterizer_apply_states()
+
+    
+gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker demo - Simple textured meshes (GL3+)")
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

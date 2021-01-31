@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="Shader Toy, julia demo (OpenGL 2.1)" 
+          width="800" height="600" 
+          gl_version_major="2" gl_version_minor="1"
+          build_opengl_extensions_list="0" />
+
+
+<gpu_program name="gpu_program" >
+	<raw_data_vs><![CDATA[	 
+void main()
+{	
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;		
+}
+  ]]></raw_data_vs>
+  
+	<raw_data_ps><![CDATA[	 
+
+// https://www.shadertoy.com/view/4sf3Dr
+  
+uniform vec3      iResolution;     // viewport resolution (in pixels)
+uniform float     iGlobalTime;     // shader playback time (in seconds)
+uniform vec4      iMouse;          // mouse pixel coords. xy: current (if MLB down), zw: click
+uniform sampler2D iChannel0;
+
+vec3 scanline(vec2 coord, vec3 screen)
+{
+	screen.rgb -= sin((coord.y + (iGlobalTime * 29.0))) * 0.02;
+	return screen;
+}
+
+vec2 crt(vec2 coord, float bend)
+{
+	// put in symmetrical coords
+	coord = (coord - 0.5) * 2.0;
+
+	coord *= 1.1;	
+
+	// deform coords
+	coord.x *= 1.0 + pow((abs(coord.y) / bend), 2.0);
+	coord.y *= 1.0 + pow((abs(coord.x) / bend), 2.0);
+
+	// transform back to 0.0 - 1.0 space
+	coord  = (coord / 2.0) + 0.5;
+
+	return coord;
+}
+
+vec3 sampleSplit(sampler2D tex, vec2 coord)
+{
+	vec3 frag;
+	frag.r = texture2D(tex, vec2(coord.x - 0.01 * sin(iGlobalTime), coord.y)).r;
+	frag.g = texture2D(tex, vec2(coord.x                          , coord.y)).g;
+	frag.b = texture2D(tex, vec2(coord.x + 0.01 * sin(iGlobalTime), coord.y)).b;
+	return frag;
+}
+
+void main(void)
+{
+	vec2 uv = gl_FragCoord.xy / iResolution.xy;
+	uv.y = 1.0 - uv.y; // flip tex
+	vec2 crtCoords = crt(uv, 3.2);
+
+	// shadertoy has tiling textures. wouldn't be needed
+	// if you set up your tex params properly
+	if (crtCoords.x < 0.0 || crtCoords.x > 1.0 || crtCoords.y < 0.0 || crtCoords.y > 1.0)
+		discard;
+
+	// Split the color channels
+	gl_FragColor.rgb = sampleSplit(iChannel0, crtCoords);
+
+	// HACK: this bend produces a shitty moire pattern.
+	// Up the bend for the scanline
+	vec2 screenSpace = crtCoords * iResolution.xy;
+	gl_FragColor.rgb = scanline(screenSpace, gl_FragColor.rgb);
+}]]></raw_data_ps>
+
+</gpu_program>
+
+
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+    
+winW, winH = gh_window.getsize()
+   
+font_a = gh_utils.font_create("Tahoma", 14)
+
+
+camera_ortho = gh_camera.create_ortho(-winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+gh_camera.set_position(camera_ortho, 0, 0, 1)
+
+
+gpu_prog_01 = gh_node.getid("gpu_program")
+
+local abs_path=0
+tex01 = gh_texture.create_from_file("../data/jegx_hulk_001.jpg", 3, abs_path)
+
+mesh_quad = gh_mesh.create_quad(winW, winH)
+gh_object.use_gl2_vertex_array(mesh_quad, 1) -- *** Old OpenGL... ***
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(0)
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time()
+
+gh_renderer.set_depth_test_state(1)
+
+gh_camera.bind(camera_ortho)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+gh_gpu_program.bind(gpu_prog_01)
+gh_gpu_program.uniform1f(gpu_prog_01, "iGlobalTime", elapsed_time)
+gh_gpu_program.uniform3f(gpu_prog_01, "iResolution", winW, winH, 0)
+mouse_x, mouse_y = gh_input.mouse_getpos() 
+gh_gpu_program.uniform4f(gpu_prog_01, "iMouse", mouse_x, winH-mouse_y, 0, 0)
+gh_gpu_program.uniform1i(gpu_prog_01, "iChannel0", 0);
+
+gh_texture.bind(tex01, 0)
+gh_object.render(mesh_quad)
+
+gh_utils.font_render(font_a, 10, 20, 0.9, 0.1, 0.0, 1.0, "GLSL Hacker demo - Shader Toy Demo (www.shadertoy.com)")
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_ortho(camera_ortho, -winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+gh_mesh.update_quad_size(mesh_quad, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

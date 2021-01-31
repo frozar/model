@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="Texture 1D" 
+          width="800" height="600" 
+          gl_version_major="2" gl_version_minor="1"
+          build_opengl_extensions_list="0" />
+
+
+<gpu_program name="gpu_program" >
+	<raw_data_vs><![CDATA[	 
+void main()
+{	
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;		
+}
+  ]]></raw_data_vs>
+  
+	<raw_data_ps><![CDATA[	 
+uniform float time;
+uniform sampler1D tex0;
+void main(void)
+{
+  vec2 uv = gl_TexCoord[0].xy;
+  gl_FragColor = texture1D(tex0, uv.x);
+}  ]]></raw_data_ps>
+
+</gpu_program>
+
+
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+    
+winW, winH = gh_window.getsize()
+   
+font_a = gh_utils.font_create("Tahoma", 14)
+
+camera_ortho = gh_camera.create_ortho(-winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+gh_camera.set_position(camera_ortho, 0, 0, 1)
+
+gpu_prog_01 = gh_node.getid("gpu_program")
+gh_gpu_program.bind(gpu_prog_01)
+gh_gpu_program.uniform1i(gpu_prog_01, "tex0", 0)
+gh_gpu_program.bind(0)
+
+
+local PF_U8_RGBA = 3
+tex1d = gh_texture.create_1d(16, PF_U8_RGBA)
+
+local i=0
+for i=0, 15 do
+  local r = 0
+  local g = 0
+  if (i < 4) then
+    r = 1
+    g = 1
+  elseif (i < 8) then
+    r = 1
+    g = 0.7
+  elseif (i < 12) then
+    r = 1.0
+    g = 0.2
+  elseif (i < 16) then
+    r = 0.0
+    g = 0.0
+  end
+  gh_texture.set_texel_1d(tex1d, i, r, g, 0, 1)
+end
+
+local SAMPLER_FILTERING_NEAREST = 1
+local SAMPLER_FILTERING_LINEAR = 2
+local SAMPLER_ADDRESSING_WRAP = 1
+local SAMPLER_ADDRESSING_CLAMP_TO_EDGE = 2
+local SAMPLER_ADDRESSING_MIRROR = 3
+gh_texture.bind(tex1d, 0)
+gh_texture.set_sampler_params(tex1d, SAMPLER_FILTERING_NEAREST, SAMPLER_ADDRESSING_CLAMP_TO_EDGE, 1.0)
+gh_texture.bind(0, 0)
+
+
+mesh_quad = gh_mesh.create_quad(winW, winH)
+gh_object.use_gl2_vertex_array(mesh_quad, 1) -- *** Old OpenGL... ***
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(0)
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time()
+
+gh_renderer.set_depth_test_state(1)
+
+gh_camera.bind(camera_ortho)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+gh_texture.bind(tex1d, 0)
+gh_gpu_program.bind(gpu_prog_01)
+gh_object.render(mesh_quad)
+
+
+gh_utils.font_render(font_a, 10, 20, 0.2, 0.4, 0.3, 1.0, "GLSL Hacker demo - TEXTURE_1D")
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_ortho(camera_ortho, -winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+gh_mesh.update_quad_size(mesh_quad, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

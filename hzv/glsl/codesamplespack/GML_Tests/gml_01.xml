@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="GML (GPU Monitoring Lib) Test" width="500" height="500"
+          gl_version_major="2" gl_version_minor="1" />
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+    
+    
+function GetGpuMemoryTotal()
+  local gpu_mem_total = gh_renderer.get_gpu_memory_total_available_kb_nv()
+  if (gpu_mem_total <= 0) then
+    gpu_mem_total = gh_renderer.get_gpu_memory_total_available_kb_amd()
+  end
+  return gpu_mem_total
+end
+
+function GetGpuMemoryUsage()
+  local _gpu_mem_usage = gh_renderer.get_gpu_memory_usage_kb_nv()
+  if (_gpu_mem_usage <= 0) then
+    _gpu_mem_usage = gh_renderer.get_gpu_memory_usage_kb_amd()
+  end
+  return _gpu_mem_usage
+end  
+
+    
+    
+winW, winH = gh_window.getsize(0)
+font = gh_utils.font_create("Tahoma", 14)
+
+elapsed_time = gh_utils.get_elapsed_time()
+last_time = elapsed_time
+
+gh_renderer.set_vsync(1)
+
+
+--[[
+local _gpu_mem_total = gh_renderer.get_gpu_memory_total_available_kb_nv()
+gh_utils.trace("NV gpu_mem_total = " .. _gpu_mem_total .. "MB")
+local _gpu_mem_usage = gh_renderer.get_gpu_memory_usage_kb_nv()
+gh_utils.trace("NV gpu_mem_usage = " .. _gpu_mem_usage .. "MB")
+--]]
+
+       
+gpus = {}       
+
+
+
+num_gpus = gh_gml.get_num_gpus()
+if (num_gpus > 0) then
+	local i
+	for i=0, num_gpus-1 do
+
+	local gpu = {name="", 
+		   codename="", 
+		   cores=0, 
+		   vddc=0, 
+		   gpu_clock=0, mem_clock=0, 
+		   gpu_usage=0, mem_usage=0, vid_usage=0, bus_usage=0,
+		   fan_percent=0, fan_rpm=0,
+		   gpu_temp=0, mem_temp=0, pcb_temp=0, vrm_temp=0,
+		   gpu_power_percent=0, gpu_power_mw=0, 
+		   gpu_power_target_percent=0, gpu_power_target_mw=0 }
+		
+		gpu.name = gh_gml.get_gpu_fullname(i)
+		gpu.codename = gh_gml.get_gpu_codename(i)
+		gpu.cores = gh_gml.get_gpu_cores(i)
+		
+		gpu.vddc = gh_gml.get_gpu_voltage(i)
+		gpu.gpu_clock, gpu.mem_clock = gh_gml.get_clocks(i)
+		gpu.gpu_usage, gpu.mem_usage, gpu.vid_usage, gpu.bus_usage = gh_gml.get_usages(i)
+		gpu.fan_percent, gpu.fan_rpm = gh_gml.get_fan_speed(i)
+		gpu.gpu_temp, gpu.mem_temp, gpu.pcb_temp, gpu.vrm_temp = gh_gml.get_temperatures(i)
+		
+		gpu.gpu_power_percent, gpu.gpu_power_mw = gh_gml.gpu_power_get_current_value(i)
+		gpu.gpu_power_target_percent, gpu.gpu_power_target_mw = gh_gml.gpu_power_get_power_limit(i)
+		
+		gpus[i+1] = gpu 
+	end
+end
+
+gpu_mem_total  = GetGpuMemoryTotal()
+gpu_mem_usage = GetGpuMemoryUsage()
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+		
+
+elapsed_time = gh_utils.get_elapsed_time()
+gh_renderer.clear_color_buffer(0.2, 0.2, 0.2, 1.0)
+
+gh_utils.font_render(font, 10, 20, 1.0, 1.0, 1.0, 1.0, "GML (GPU Monitoring Lib) Test")
+gh_utils.font_render(font, 10, 40, 0.6, 0.6, 0.0, 1.0, string.format("Elapsed time: %.3f sec.", elapsed_time))
+
+if (gpu_mem_total > 0) then
+	if (gpu_mem_usage > 0) then
+		gh_utils.font_render(font, 10, 60, 0.6, 0.6, 0.0, 1.0, string.format("GPU mem total: %dMB - usage: %dMB", gpu_mem_total/1024, gpu_mem_usage/1024))
+	else
+		gh_utils.font_render(font, 10, 60, 0.6, 0.6, 0.0, 1.0, string.format("GPU mem total: %dMB", gpu_mem_total/1024))
+	end
+end
+
+if (num_gpus > 0) then
+	if ((elapsed_time - last_time) > 1.0) then
+		last_time = elapsed_time
+    
+		if (gpu_mem_usage > 0) then
+			gpu_mem_usage = GetGpuMemoryUsage()
+		end
+    
+		local i
+		for i=0, num_gpus-1 do
+			gpu = gpus[i+1]
+			
+			gpu.vddc = gh_gml.get_gpu_voltage(i)
+			gpu.gpu_clock, gpu.mem_clock = gh_gml.get_clocks(i)
+			gpu.gpu_usage, gpu.mem_usage, gpu.vid_usage, gpu.bus_usage = gh_gml.get_usages(i)
+			gpu.fan_percent, gpu.fan_rpm = gh_gml.get_fan_speed(i)
+			gpu.gpu_temp, gpu.mem_temp, gpu.pcb_temp, gpu.vrm_temp = gh_gml.get_temperatures(i)
+			
+			gpu.gpu_power_percent, gpu.gpu_power_mw = gh_gml.gpu_power_get_current_value(i)
+			gpu.gpu_power_target_percent, gpu.gpu_power_target_mw = gh_gml.gpu_power_get_power_limit(i)
+
+		end
+	end
+
+	local y = 80
+	local i
+	for i=0, num_gpus-1 do
+		gpu = gpus[i+1]
+		gh_utils.font_render(font, 10, y, 0.9, 0.9, 0.2, 1.0, string.format("> GPU %d: %s (%s / %d cores)", i, gpu.name, gpu.codename, gpu.cores))
+		y = y+20
+		gh_utils.font_render(font, 40, y, 0.2, 0.9, 0.2, 1.0, string.format("- Clocks - core:%dMHz, mem:%dMHz", gpu.gpu_clock, gpu.mem_clock))
+		y = y+20
+		gh_utils.font_render(font, 40, y, 0.2, 0.9, 0.2, 1.0, string.format("- Usages - core:%d%%, mem:%d%%, video:%d%%, bus:%d%%", gpu.gpu_usage, gpu.mem_usage, gpu.vid_usage, gpu.bus_usage))
+		y = y+20
+		gh_utils.font_render(font, 40, y, 0.2, 0.9, 0.2, 1.0, string.format("- Temperatures - core:%d°C, mem:%d°C, pcb:%d°C, vrm:%d°C", gpu.gpu_temp, gpu.mem_temp, gpu.pcb_temp, gpu.vrm_temp))
+		y = y+20
+		gh_utils.font_render(font, 40, y, 0.2, 0.9, 0.2, 1.0, string.format("- Fan speed - percent:%d%%, rpm:%d", gpu.fan_percent, gpu.fan_rpm))
+		y = y+20
+		if (gpu.gpu_power_percent > 0) then 
+			gh_utils.font_render(font, 40, y, 0.2, 0.9, 0.2, 1.0, string.format("- current GPU power - percent:%d%%", gpu.gpu_power_percent))
+			y = y+20
+			gh_utils.font_render(font, 40, y, 0.2, 0.9, 0.2, 1.0, string.format("- GPU power target - percent:%d%%", gpu.gpu_power_target_percent))
+			y = y+20
+		end
+	end
+else
+	gh_utils.font_render(font, 10, 60, 0.9, 0.9, 0.2, 1.0, string.format("> GML not supported on this host"))
+end
+
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+winW, winH = gh_window.getsize(0)
+gh_utils.font_set_viewport_info(font, 0, 0, winW, winH)
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

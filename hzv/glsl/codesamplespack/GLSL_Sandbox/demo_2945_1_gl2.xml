@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="GLSL Sandbox, demo 2945.1 (OpenGL 2.1)" 
+          width="800" height="600" 
+          gl_version_major="2" gl_version_minor="1"
+          build_opengl_extensions_list="0" />
+
+
+<gpu_program name="gpu_program" >
+	<raw_data_vs><![CDATA[	 
+void main()
+{	
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+	//gl_Position = ftransform();		
+    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;		
+}
+  ]]></raw_data_vs>
+  
+	<raw_data_ps><![CDATA[	 
+// http://glsl.heroku.com/e#2945.1
+
+// volume explosion shader
+// simon green / nvidia 2012
+// http://developer.download.nvidia.com/assets/gamedev/files/gdc12/GDC2012_Mastering_DirectX11_with_Unity.pdf
+
+// @mod* rotwang
+
+#ifdef GL_ES
+precision highp float;
+#endif
+
+uniform vec2 resolution;
+uniform float time;
+uniform vec2 mouse;
+
+// sorry, port from HLSL!
+#define float3 vec3
+#define float4 vec4
+
+// parameters
+// be nice if we had sliders for these!
+const int _MaxSteps = 32;
+const float _StepDistanceScale = 0.72;
+const float _MinStep = 0.01;
+const float _DistThreshold = 0.05;
+
+const int _VolumeSteps = 32;
+const float _StepSize = 0.01; 
+const float _Density = 0.1;
+
+const float _SphereRadius = 0.95;
+const float _NoiseFreq = 8.0;
+const float _NoiseAmp = -0.3;
+const float3 _NoiseAnim = float3(0.93, 0, 0);
+
+// iq's nice integer-less noise function
+
+// matrix to rotate the noise octaves
+mat3 m = mat3( 0.00,  0.80,  0.60,
+              -0.80,  0.36, -0.48,
+              -0.60, -0.48,  0.64 );
+
+float hash( float n )
+{
+    return fract(sin(n)*43758.5453);
+}
+
+
+float noise( in vec3 x )
+{
+    vec3 p = floor(x);
+    vec3 f = fract(x);
+
+    f = f*f*(3.0-2.0*f);
+
+    float n = p.x + p.y*57.0 + 113.0*p.z;
+
+    float res = mix(mix(mix( hash(n+  0.0), hash(n+  1.0),f.x),
+                        mix( hash(n+ 57.0), hash(n+ 58.0),f.x),f.y),
+                    mix(mix( hash(n+113.0), hash(n+114.0),f.x),
+                        mix( hash(n+170.0), hash(n+171.0),f.x),f.y),f.z);
+    return res;
+}
+
+float fbm( vec3 p )
+{
+	
+    float f;
+    f = 0.5000*noise( p );
+	p = m*p*2.02;
+    f += 0.2500*noise( p );
+	p = m*p*2.03;
+    f += 0.1250*noise( p );
+	p = m*p*2.01;
+    f += 0.0625*noise( p );
+    p = m*p*2.02;
+	
+	f += 0.03125*abs(noise( p ));	
+    return f/0.9375;
+}
+
+
+// distance field stuff
+float sphereDist(float3 p, float4 sphere)
+{
+    return length(p - sphere.xyz) - sphere.w;
+}
+
+// returns signed distance to nearest surface
+// displace is displacement from original surface (0, 1)
+float distanceFunc(float3 p, out float displace)
+{	
+	float d = length(p) - _SphereRadius;	// distance to sphere
+	//float d = length(p) - (sin(time*0.25)+0.8);	// animated radius
+	
+	// offset distance with pyroclastic noise
+	//p = normalize(p) * _SphereRadius;	// project noise point to sphere surface
+	displace = fbm(p*_NoiseFreq + _NoiseAnim*time);
+	d += displace * _NoiseAmp;
+	
+	return d;
+}
+
+// calculate normal from distance field
+float3 dfNormal(float3 pos)
+{
+    float eps = 0.001;
+    float3 n;
+    float s;
+#if 0
+    // central difference
+    n.x = distanceFunc( float3(pos.x+eps, pos.y, pos.z), s ) - distanceFunc( float3(pos.x-eps, pos.y, pos.z), s );
+    n.y = distanceFunc( float3(pos.x, pos.y+eps, pos.z), s ) - distanceFunc( float3(pos.x, pos.y-eps, pos.z), s );
+    n.z = distanceFunc( float3(pos.x, pos.y, pos.z+eps), s ) - distanceFunc( float3(pos.x, pos.y, pos.z-eps), s );
+#else
+    // forward difference (faster)
+    float d = distanceFunc(pos, s);
+    n.x = distanceFunc( float3(pos.x+eps, pos.y, pos.z), s ) - d;
+    n.y = distanceFunc( float3(pos.x, pos.y+eps, pos.z), s ) - d;
+    n.z = distanceFunc( float3(pos.x, pos.y, pos.z+eps), s ) - d;
+#endif
+
+    return normalize(n);
+}
+
+// color gradient 
+// this should be in a 1D texture really
+float4 gradient(float x)
+{
+	const float4 c0 = float4(3, 3, 1, 1);	// hot white
+	const float4 c1 = float4(1, 0.5, 0, 1);	// yellow
+	const float4 c2 = float4(1, 0, 0, 1);	// red
+	const float4 c3 = float4(0.2, 0.2, 0.2, 1);	// grey
+	
+	float t = fract(x*3.0);
+	float4 c;
+	if (x < 0.333333) {
+		c =  mix(c0, c1, t);
+	} else if (x < 0.666666) {
+		c = mix(c1, c2, t);
+	} else {
+		c = mix(c2, c3, t);
+	}
+
+	return c;
+}
+
+// shade a point based on position and displacement from surface
+float4 shade(float3 p, float displace)
+{	
+	// lookup in color gradient
+	displace = displace*2.7 - 0.5;
+	displace = clamp(displace, 0.0, 0.99);
+	float4 c = gradient(displace);
+	
+	
+	// lighting
+	float3 n = dfNormal(p);
+	float diffuse = n.z*0.35+0.85;
+	//float diffuse = max(0.0, n.z);
+	c.rgb = mix(c.rgb, c.rgb*diffuse, clamp((displace-0.5)*2.0, 0.0, 1.0));
+	
+	//return float4(float3(displace), 1);
+	//return float4(dfNormal(p)*float3(0.5)+float3(0.5), 1);
+	//return float4(diffuse);
+	//return gradient(displace);
+	return c;
+}
+
+// procedural volume
+// maps position to color
+float4 volumeFunc(float3 p)
+{
+	float displace;
+	float d = distanceFunc(p, displace);
+	float4 c = shade(p, displace);
+	return c;
+}
+
+// sphere trace
+// returns hit position
+float3 sphereTrace(float3 rayOrigin, float3 rayDir, out bool hit, out float displace)
+{
+	float3 pos = rayOrigin;
+	hit = false;
+	displace = 0.0;	
+	float d;
+	//float3 hitPos;
+	float disp;
+	for(int i=0; i<_MaxSteps; i++) {
+		d = distanceFunc(pos, disp);
+        	if (d < _DistThreshold) {
+			hit = true;
+			displace = disp;
+			//hitPos = pos;
+        		//break;	// early exit from loop doesn't work in ES?
+        	}
+		//d = max(d, _MinStep);
+		pos += rayDir*d*_StepDistanceScale;
+	}
+	
+	return pos;
+	//return hitPos;
+}
+
+
+// ray march volume from front to back
+// returns color
+float4 rayMarch(float3 rayOrigin, float3 rayStep, out float3 pos)
+{
+	float4 sum = float4(0, 0, 0, 0);
+	pos = rayOrigin;
+	for(int i=0; i<_VolumeSteps; i++) {
+		float4 col = volumeFunc(pos);
+		col.a *= _Density;
+		col.a = min(col.a, 1.0);
+		
+		// pre-multiply alpha
+		col.rgb *= col.a;
+		sum = sum + col*(1.0 - sum.a);	
+#if 0
+		// exit early if opaque
+        	if (sum.a > _OpacityThreshold)
+            		break;
+#endif		
+		pos += rayStep;
+	}
+	return sum;
+}
+
+void main(void)
+{
+	//float t = time*0.125;
+	float t = 0.0; // JeGX-ed
+	float ust = sin(t)*0.5+0.5;
+	
+    vec2 q = gl_FragCoord.xy / resolution.xy;
+    vec2 p = -1.0 + 2.0 * q;
+    p.x *= resolution.x/resolution.y;
+	
+    float rotx = 0.0; // mouse.y*4.0;
+    float roty = 0.0; // mouse.x*4.0;
+	
+    // camera
+    vec3 ro = ust*4.0*normalize(vec3(cos(roty), cos(rotx), sin(roty)));
+    vec3 ww = normalize(vec3(0.0,0.0,0.0) - ro);
+    vec3 uu = normalize(cross( vec3(0.0,1.0,0.0), ww ));
+    vec3 vv = normalize(cross(ww,uu));
+    vec3 rd = normalize( p.x*uu + p.y*vv + 1.5*ww );
+
+    // sphere trace distance field
+    bool hit;
+    float displace;
+    vec3 hitPos = sphereTrace(ro, rd, hit, displace);
+
+    vec4 col = vec4(0, 0, 0, 1);
+    if (hit) {
+	// shade
+   	col = shade(hitPos, displace);	// opaque version
+	//col = rayMarch(hitPos, rd*_StepSize, hitPos);	// volume render
+	    
+    }
+
+    gl_FragColor = col;	
+}  ]]></raw_data_ps>
+
+</gpu_program>
+
+
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+    
+winW, winH = gh_window.getsize()
+   
+font_a = gh_utils.font_create("Tahoma", 14)
+
+camera = gh_camera.create_persp(60, 1.333, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+gh_camera.setpos(camera, 0, 0, 20)
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.setupvec(camera, 0, 1, 0, 0)
+
+gpu_prog_01 = gh_node.getid("gpu_program")
+
+mesh_quad = gh_mesh.create_quad(winW, winH)
+gh_object.use_gl2_vertex_array(mesh_quad, 1) -- *** Old OpenGL... ***
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(0)
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time()
+
+gh_renderer.set_depth_test_state(1)
+
+gh_camera.bind(camera)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+gh_gpu_program.bind(gpu_prog_01)
+gh_gpu_program.uniform1f(gpu_prog_01, "time", elapsed_time)
+gh_gpu_program.uniform2f(gpu_prog_01, "resolution", winW, winH)
+mouse_x, mouse_y = gh_input.mouse_getpos() 
+gh_gpu_program.uniform2f(gpu_prog_01, "mouse", mouse_x, winH-mouse_y)
+
+gh_object.render(mesh_quad)
+
+gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker demo - GLSL Sandbox demo")
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+gh_mesh.update_quad_size(mesh_quad, winW, winH)
+
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

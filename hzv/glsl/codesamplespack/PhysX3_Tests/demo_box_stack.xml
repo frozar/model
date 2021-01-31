@@ -1,0 +1,487 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="GLSL Hacker - PhysX 3 test" 
+          width="800" height="600" 
+          gl_version_major="3" gl_version_minor="2" gl_core_profile="1" />
+  
+  
+  <gpu_program name="gpu_prog_01" >
+    <raw_data_vs><![CDATA[	 
+#version 140
+in vec4 gxl3d_Position;
+in vec4 gxl3d_Normal;
+in vec4 gxl3d_TexCoord0;
+out vec4 Vertex_UV;
+out vec4 Vertex_Normal;
+out vec4 Vertex_LightDir;
+out vec4 Vertex_EyeVec;
+uniform mat4 gxl3d_ModelViewProjectionMatrix; // Automatically passed by GLSL Hacker
+uniform mat4 gxl3d_ModelViewMatrix; // Automatically passed by GLSL Hacker
+uniform vec4 light_position;
+uniform vec4 uv_tiling;
+void main()
+{
+  gl_Position = gxl3d_ModelViewProjectionMatrix * gxl3d_Position;
+  Vertex_UV = gxl3d_TexCoord0 * uv_tiling;
+  Vertex_Normal = gxl3d_ModelViewMatrix  * gxl3d_Normal;
+  vec4 view_vertex = gxl3d_ModelViewMatrix * gxl3d_Position;
+  Vertex_LightDir = light_position - view_vertex;
+  Vertex_EyeVec = -view_vertex;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+#version 140
+precision highp float;
+uniform sampler2D tex0;
+uniform vec4 light_diffuse;
+uniform vec4 material_diffuse;
+uniform vec4 light_specular;
+uniform vec4 material_specular;
+uniform float material_shininess;
+in vec4 Vertex_UV;
+in vec4 Vertex_Normal;
+in vec4 Vertex_LightDir;
+in vec4 Vertex_EyeVec;
+out vec4 Out_Color;
+void main()
+{
+  vec2 uv = Vertex_UV.xy;
+  uv.y *= -1.0;
+  vec4 tex01_color = texture(tex0, uv).rgba;
+  
+  vec4 final_color = vec4(0.2, 0.15, 0.15, 1.0) * tex01_color; 
+  vec4 N = normalize(Vertex_Normal);
+  vec4 L = normalize(Vertex_LightDir);
+  float lambertTerm = dot(N,L);
+  if (lambertTerm > 0.0)
+  {
+    final_color += light_diffuse * material_diffuse * lambertTerm * tex01_color;	
+    
+    vec4 E = normalize(Vertex_EyeVec);
+    vec4 R = reflect(-L, N);
+    float specular = pow( max(dot(R, E), 0.0), material_shininess);
+    final_color += light_specular * material_specular * specular;	
+  }
+
+  Out_Color.rgb = final_color.rgb;
+  Out_Color.a = 1.0;
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+  
+	<script name="init_scene" run_mode="INIT" language="LUA" >
+		<raw_data><![CDATA[	
+    
+function CalcNumBlocks_Stack(stackSize)
+  local numCubes = 0
+  local size = stackSize
+  while size > 0 do
+    i = 0
+    while i < size do
+      i = i + 1
+      numCubes = numCubes + 1
+    end
+    size = size - 1
+  end
+  return numCubes
+end
+    
+function CreateBlocks(numBlocks, blockSize, box_material)
+  local density = 1.0
+  local i=0
+  for i=0, numBlocks-1 do
+    local box = { px_actor_id=0, pos_x=0, pos_y=0, pos_z=0 }
+    box.px_actor_id = gh_physx3.create_actor_box(px_scene, blockSize*2, blockSize*2, blockSize*2, 0, 0, 0, density, box_material)
+    gh_physx3.actor_set_position(box.px_actor_id, 0, 0, 0)
+    gh_physx3.actor_set_linear_damping(box.px_actor_id, 0.2)
+    gh_physx3.actor_set_angular_damping(box.px_actor_id, 0.8)
+    gh_physx3.actor_set_sleep_threshold(box.px_actor_id, 0.8)
+    gh_physx3.actor_put_to_sleep(box.px_actor_id)
+    all_px_boxes[i+1] = box
+  end
+end
+    
+function InitBlocksPosition_Stack(xPos, zPos, blockSize, stackSize)
+  local xSpacing = 1.5  
+  local ySpacing = 0.1
+  local pos_x = xPos
+  local pos_y = blockSize+0.1
+  local pos_z = zPos
+  local Offset = -stackSize * (blockSize * 2.0 + xSpacing) * 0.5
+  local size = stackSize
+  local yaw = 0.0
+  local instanceIndex = 0
+  local i = 0
+  while size > 0 do
+    i = 0
+    while i < size do
+      local box = all_px_boxes[instanceIndex+1]
+      pos_x = xPos + Offset + (i * (blockSize * 2.0 + xSpacing))
+      local rx = GH_random(-blockSize/4, blockSize/4)
+      local rz = GH_random(-blockSize/4, blockSize/4)
+      gh_physx3.actor_set_position(box.px_actor_id, pos_x + rx, pos_y, pos_z + rz)
+      instanceIndex = instanceIndex+1
+      i = i + 1
+    end
+    Offset = Offset + blockSize
+    pos_y = pos_y + (blockSize * 2.0 + ySpacing)
+    size = size - 1
+   end
+end
+
+
+function InitBullets(numBullets, bulletRadius, bulletDensity, bulletMass)
+   
+  px_material_bullet = gh_physx3.create_material(0.8, 0.8, 0.2)
+
+  for i=1, numBullets do
+    local bullet = { px_actor_id=0 }
+    bullet.px_actor_id = gh_physx3.create_actor_sphere(physx_scene, bulletRadius, 0, 1000, 0, bulletDensity, px_material_bullet)
+    gh_physx3.actor_set_position(bullet.px_actor_id, 0, 1000 + numBullets*10, 0)
+    gh_physx3.actor_set_linear_damping(bullet.px_actor_id, 0.2)
+    gh_physx3.actor_set_angular_damping(bullet.px_actor_id, 0.8)
+    gh_physx3.actor_set_sleep_threshold(bullet.px_actor_id, 0.8)
+    gh_physx3.actor_put_to_sleep(bullet.px_actor_id)
+    gBulletsList[i] = bullet
+  end
+end
+ 
+
+
+function ThrowBullet(bulletSpeed)
+  local dir_x, dir_y, dir_z = gh_camera.get_view_vector(camera)
+  local vel_x = dir_x * bulletSpeed
+  local vel_y = dir_y * bulletSpeed
+  local vel_z = dir_z * bulletSpeed
+  
+  -- gh_utils.trace(string.format("dir_x=%.3f, dir_y=%.3f, dir_z=%.3f", dir_x, dir_y, dir_z))
+
+  local pos_x, pos_y, pos_z = gh_camera.get_position(camera)
+  -- gh_utils.trace(string.format("pos_x=%.3f, pos_y=%.3f, pos_z=%.3f", pos_x, pos_y, pos_z))
+
+  pos_x = pos_x + dir_x * 2.0
+  pos_y = pos_y + dir_y * 2.0
+  pos_z = pos_z + dir_z * 2.0
+
+
+  if (gBulletCounter >= gNumBullets) then
+    gBulletCounter = 1
+   end
+  
+  local bullet = gBulletsList[gBulletCounter]
+  gBulletCounter = gBulletCounter + 1
+  
+  gh_physx3.actor_set_position(bullet.px_actor_id, pos_x, pos_y, pos_z)
+  gh_physx3.actor_set_linear_velocity(bullet.px_actor_id, vel_x, vel_y, vel_z)
+  gh_physx3.actor_set_linear_damping(bullet.px_actor_id, 0.1)
+  gh_physx3.actor_set_angular_damping(bullet.px_actor_id, 0.2)
+  gh_physx3.actor_set_sleep_threshold(bullet.px_actor_id, 0.5)
+  
+end
+    
+  
+
+demo_dir = gh_utils.get_scenegraph_dir() 		
+gh_utils.trace(demo_dir)
+dofile(demo_dir .. "gh_aux_lib_v1.lua")
+
+winW, winH = gh_window.getsize(0)
+
+font_a = gh_utils.font_create("Tahoma", 14)
+
+g_cam_lookat = vec3()
+g_cam_lookat:set(0, 2, 0)
+
+camera = gh_camera.create_persp(60, 1.333, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+gh_camera.setpos(camera, 0, 0, 60)
+gh_camera.setlookat(camera, g_cam_lookat.x, g_cam_lookat.y, g_cam_lookat.z)
+gh_camera.setupvec(camera, 0, 1, 0, 0)
+
+GH_InitCameraRotation(camera, g_cam_lookat, 10, 80)
+
+
+gpu_prog_01 = gh_node.getid("gpu_prog_01")
+
+
+mesh_plane = gh_mesh.create_plane(400, 400, 10, 10)
+gh_object.setpos(mesh_plane, 0, 0, 0)
+gh_object.set_euler_angles(mesh_plane, 0, 0, 0)
+
+
+gizmo = gh_object.create()
+gh_object.set_display_tripod_state(gizmo, 1)
+gh_object.set_display_grid_state(gizmo, 1)
+gh_object.set_grid_params(gizmo, 50.0, 50.0, 10, 10, 1, 1)
+
+
+local abs_path = 0
+tex01 = gh_texture.create_from_file("../data/cement_scumblyorange_df_.jpg", 0, abs_path)
+tex02 = gh_texture.create_from_file("../data/brick001.jpg", 0, abs_path)
+bullet_tex = gh_texture.create_from_file("../data/marble20.jpg", 0, abs_path)
+
+
+
+gBulletsList = {}
+gNumBullets = 5
+gBulletCounter = 1
+bulletRadius = 2
+bulletDensity = 10.0
+bulletMass = 0.0
+gBulletSpeed = 500.0
+px_material_bullet = 0
+
+mesh_bullet = gh_mesh.create_sphere(bulletRadius, 20, 20)
+gh_object.setpos(mesh_bullet, 0, 1000, 0)
+
+
+all_px_boxes = {}
+num_boxes = 0
+blockSize = 2
+stackSize = 20
+  
+mesh_box = gh_mesh.create_box(blockSize*2, blockSize*2, blockSize*2, 2, 2, 2)
+gh_object.setpos(mesh_box, 0, 0, 0)
+
+px_scene = 0
+local gpu_physx = 0
+physx_ok = gh_physx3.start(gpu_physx)
+if (physx_ok == 1) then
+  gh_utils.trace("PhysX 3 started up ok.")
+  
+  --[[
+  local pvd_ok = gh_physx3.pvd_connect("127.0.0.1", 5425)
+  if (pvd_ok == 1) then
+    gh_utils.trace("PhysX 3 - connected to PVD ok.")
+  else
+    gh_utils.trace("PhysX 3 - connected to PVD FAILED!")
+  end
+  --]]
+  
+  local bounce_threshold_velocity = 0.5
+  px_scene = gh_physx3.create_scene(gpu_physx, bounce_threshold_velocity)
+  gh_physx3.set_scene_gravity(px_scene, 0, -4.2, 0)
+
+  px_material_plane = gh_physx3.create_material(0.8, 0.8, 0.8)
+  px_actor_plane = gh_physx3.create_actor_plane(px_scene, 0, 1, 0, 0, px_material_plane)
+  
+  px_material_box = gh_physx3.create_material(0.5, 0.5, 0.5)
+  
+  num_boxes = CalcNumBlocks_Stack(stackSize)
+  CreateBlocks(num_boxes, blockSize, px_material_box)
+  InitBlocksPosition_Stack(0.0, 0.0, blockSize, stackSize)
+  
+  if (gNumBullets > 0)  then
+    InitBullets(gNumBullets, bulletRadius, bulletDensity, bulletMass)
+  end
+    
+  -- gh_physx3.run_simulation(px_scene, 0.005, 0.01)
+    
+  gh_utils.trace("PhysX 3 scene/materials/actors init ok.")
+else  
+  gh_utils.trace("PhysX 3 starting up failed.")
+end  
+
+
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(1)
+
+last_time = gh_window.timer_get_seconds(0)
+
+throw_bullet = 0
+throw_bullet_last_time = 0
+
+_old_mouse_x = 0
+_old_mouse_y = 0
+_do_rotate = 0
+
+
+		]]></raw_data>
+	</script> 
+  
+  
+  
+  
+  <script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+    
+gh_window.keyboard_update_buffer(0)
+    
+
+local elapsed_time = gh_window.timer_get_seconds(0)
+local dt = elapsed_time - last_time
+last_time = elapsed_time
+
+gh_renderer.set_depth_test_state(1)
+
+-- GH_DoCameraOrbit_v2(camera, g_cam_lookat)
+
+
+
+local KC_W = 17
+local KC_S = 31
+local KC_A = 30
+local KC_D = 32
+
+local KC_LEFT = 75
+local KC_RIGHT = 77
+local KC_UP = 72
+local KC_DOWN = 80
+local KC_SPACE = 57
+
+local cam_speed = 20.0 * dt
+if (gh_input.keyboard_is_key_down(KC_W) == 1) then
+  --gh_utils.trace("key KC_UP pressed.")
+  GH_CameraMoveAlongView(camera, cam_speed, cam_speed, cam_speed)
+end
+if (gh_input.keyboard_is_key_down(KC_S) == 1) then
+  GH_CameraMoveAlongView(camera, -cam_speed, -cam_speed, -cam_speed)
+end
+if (gh_input.keyboard_is_key_down(KC_A) == 1) then
+  GH_CameraStrafe(camera, cam_speed)
+end
+if (gh_input.keyboard_is_key_down(KC_D) == 1) then
+  GH_CameraStrafe(camera, -cam_speed)
+end
+
+
+local LEFT_BUTTON = 1
+local is_down = gh_input.mouse_get_button_state(LEFT_BUTTON) 
+if ((is_down == 1) and (_do_rotate == 0)) then
+  _old_mouse_x, _old_mouse_y = gh_input.mouse_getpos()
+  _do_rotate = 1
+end
+
+if (is_down == 0) then
+  _do_rotate = 0
+end
+
+
+if (_do_rotate == 1) then
+  local mx
+  local my
+  mx, my = gh_input.mouse_getpos()
+  
+  local mouse_dx = (mx-_old_mouse_x) * 3.14159/180.0
+  local mouse_dy =(my-_old_mouse_y) * 3.14159/180.0
+
+  _old_mouse_x = mx
+  _old_mouse_y = my
+  
+  local mouse_speed = 10.0
+  GH_CameraRotateView(camera, -mouse_dy * mouse_speed, -mouse_dx * mouse_speed)
+end
+
+gh_camera.bind(camera)
+
+if ((physx_ok == 1) and (gNumBullets > 0)) then
+  local throw_bullet_dt = elapsed_time - throw_bullet_last_time
+  if ((throw_bullet_dt > 1.0) and (gh_input.keyboard_is_key_down(KC_SPACE) == 1)) then
+    throw_bullet_last_time = elapsed_time
+    ThrowBullet(35)
+  end
+end
+
+
+if (physx_ok == 1) then
+  -- gh_physx3.run_simulation(px_scene, dt, 0.01)
+  gh_physx3.run_simulation(px_scene, 0.002, 0.006)
+end
+
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+
+gh_gpu_program.bind(gpu_prog_01)
+gh_gpu_program.uniform4f(gpu_prog_01, "light_position", 0.0, 50.0, 50.0, 1.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "light_diffuse", 0.9, 0.7, 0.7, 1.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "light_specular", 0.9, 0.9, 0.9, 1.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "material_diffuse", 0.7, 0.7, 0.7, 1.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "material_specular", 0.6, 0.6, 0.6, 1.0)
+gh_gpu_program.uniform1f(gpu_prog_01, "material_shininess", 60.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "uv_tiling", 4.0, 4.0, 1.0, 1.0)
+
+gh_texture.bind(tex01, 0)
+gh_object.render(mesh_plane)
+
+if (physx_ok == 1) then
+  
+  gh_gpu_program.uniform4f(gpu_prog_01, "uv_tiling", 1.0, 1.0, 1.0, 1.0)
+  
+  if (gNumBullets > 0)  then
+    gh_texture.bind(bullet_tex, 0)
+    for i=1, gNumBullets do
+      local bullet = gBulletsList[i]
+      gh_physx3.apply_actor_transform(bullet.px_actor_id, mesh_bullet)
+      -- local px, py, pz = gh_physx3.get_actor_position(bullet.px_actor_id)
+      -- gh_object.set_position(mesh_bullet, px, py, pz)
+      gh_object.render(mesh_bullet)
+    end
+  end
+  
+  if (num_boxes > 0) then
+    gh_texture.bind(tex02, 0)
+    for i=0, num_boxes do
+      local box = all_px_boxes[i+1]
+      gh_physx3.apply_actor_transform(box.px_actor_id, mesh_box)
+      --local px, py, pz = gh_physx3.get_actor_position(box.px_actor_id)
+      --gh_object.set_position(mesh_box, px, py, pz)
+      gh_object.render(mesh_box)
+    end
+  end
+  
+else
+
+  gh_object.set_position(mesh_box, 0, blockSize, 0)
+  gh_object.render(mesh_box)
+
+end
+
+gh_gpu_program.bind(0) -- Disabling any gpu program for font rendering.
+
+
+gh_object.setpos(gizmo, 0, 20, 0)
+gh_object.render(gizmo)
+
+gh_utils.tripod_visualizer_render(camera, winW-100, 20, 100, 100)
+    
+gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker demo - PhysX 3 Rigid Body Test")
+gh_utils.font_render(font_a, 10, 40, 0.2, 1.0, 0.0, 1.0, "- Usage: mouse left button + mouse move")
+
+		]]></raw_data>
+	</script> 
+	
+	<script name="terminate_scene" run_mode="TERMINATE" >
+		<raw_data><![CDATA[	
+
+gh_physx3.stop()
+gh_utils.trace("PhysX 3 stopped ok.")
+   
+
+		]]></raw_data>
+	</script> 
+
+  
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

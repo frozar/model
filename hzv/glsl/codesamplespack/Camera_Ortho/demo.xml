@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="Quad texture" width="660" height="660"
+          gl_version_major="3" gl_version_minor="2" />
+
+
+<gpu_program name="gpu_prog_01" >
+    <raw_data_vs><![CDATA[	 
+#version 150
+in vec4 gxl3d_Position;
+in vec4 gxl3d_TexCoord0;
+in vec4 gxl3d_Color;
+uniform mat4 gxl3d_ModelViewProjectionMatrix;
+uniform mat4 gxl3d_ViewProjectionMatrix;
+uniform mat4 gxl3d_ViewMatrix;
+uniform mat4 gxl3d_ProjectionMatrix;
+uniform mat4 gxl3d_ModelMatrix;
+uniform ivec4 gxl3d_Viewport;
+out vec4 Vertex_UV;
+out vec4 Vertex_Color;
+void main()
+{
+  vec4 P = gxl3d_Position;
+  vec4 Pw = gxl3d_ModelMatrix * P;
+  //gl_Position = gxl3d_ViewProjectionMatrix * Pw;		
+  //gl_Position = gxl3d_ModelViewProjectionMatrix * gxl3d_Position;		
+  mat4 VP = gxl3d_ProjectionMatrix * gxl3d_ViewMatrix;
+  gl_Position = VP * Pw;    
+  Vertex_UV = gxl3d_TexCoord0;
+  Vertex_Color = gxl3d_Color;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+#version 150
+uniform sampler2D tex0;
+in vec4 Vertex_UV;
+in vec4 Vertex_Color;
+out vec4 Out_Color;
+void main (void)
+{
+  vec2 uv = Vertex_UV.xy;
+  uv.y *= -1.0;
+  vec3 t = texture(tex0,uv).rgb;
+  Out_Color = vec4(t * Vertex_Color.rgb, 1.0); 
+  //Out_Color = vec4(1.0, 0.0, 0.0, 1.0); 
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+ 
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+    
+winW, winH = gh_window.getsize(0)
+
+
+camera_ortho = gh_camera.create_ortho(-winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+gh_camera.set_position(camera_ortho, 0, 0, 1)
+
+
+local abs_path = 0
+texture = gh_texture.create_from_file("red_green_hulk.jpg", 0, abs_path)
+
+glsl_prog = gh_node.getid("gpu_prog_01")
+
+quad = gh_mesh.create_quad(winW*0.8, winH*0.8)
+
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time()
+
+gh_renderer.set_depth_test_state(1)
+
+gh_camera.bind(camera_ortho)
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+gh_gpu_program.bind(glsl_prog)
+gh_texture.bind(texture, 0)
+
+gh_object.render(quad)
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+winW, winH = gh_window.getsize(0)
+
+gh_camera.update_ortho(camera_ortho, -winW/2, winW/2, -winH/2, winH/2, 1.0, -1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, winW, winH)
+
+gh_mesh.update_quad_size(quad, winW*0.8, winH*0.8)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

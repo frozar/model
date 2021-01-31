@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+    <window name="win3d01" title="3DS loading" 
+          width="800" height="600" 
+          gl_version_major="3" gl_version_minor="2" />
+
+  <gpu_program name="gpu_prog_02" >
+    <raw_data_vs><![CDATA[	 
+#version 150
+
+in vec4 gxl3d_Position;
+in vec4 gxl3d_Normal;
+in vec4 gxl3d_TexCoord0;
+uniform mat4 gxl3d_ModelViewProjectionMatrix; // GXL3D built-in uniform.
+uniform mat4 gxl3d_ModelViewMatrix; // GXL3D built-in uniform.
+uniform vec4 light_position;
+out vec4 Vertex_N;
+out vec4 Vertex_L;
+out vec4 Vertex_E;
+out vec4 Vertex_UV;
+
+void main()
+{
+  gl_Position = gxl3d_ModelViewProjectionMatrix * gxl3d_Position;
+  Vertex_UV = gxl3d_TexCoord0;
+  Vertex_N = gxl3d_ModelViewMatrix * gxl3d_Normal;
+  //Vertex_N = gxl3d_Normal;
+  vec4 view_vertex = gxl3d_ModelViewMatrix * gxl3d_Position;
+  Vertex_L = light_position - view_vertex;
+  Vertex_E = -view_vertex;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+#version 150
+uniform sampler2D tex0;
+in vec4 Vertex_N;
+in vec4 Vertex_L;
+in vec4 Vertex_E;
+in vec4 Vertex_UV;
+
+out vec4 Out_Color;
+void main()
+{
+  vec2 uv = Vertex_UV.xy;
+  vec3 tex_color = texture(tex0, uv).rgb;
+
+  vec3 final_color = vec3(0.2, 0.15, 0.15) * tex_color; 
+  vec3 N = normalize(Vertex_N.xyz);
+  vec3 L = normalize(Vertex_L.xyz);
+  float lambertTerm = dot(N,L);
+  if (lambertTerm > 0.0)
+  {
+    final_color += vec3(0.9, 0.9, 0.8) * lambertTerm * tex_color;	
+    
+    vec3 E = normalize(Vertex_E.xyz);
+    vec3 R = reflect(-L, N);
+    float specular = pow( max(dot(R, E), 0.0), 60.0);
+    final_color += vec3(0.9, 0.9, 0.8) * specular;	
+  }
+  Out_Color.rgb = final_color;
+  Out_Color.a = 1.0;
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+
+
+winW, winH = gh_window.getsize(0)
+
+font = gh_utils.font_create("Tahoma", 14)
+gh_utils.font_set_viewport_info(font, 0, 0, winW, winH)
+
+local aspect = winW / winH
+camera = gh_camera.create_persp(60, aspect, 1.0, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+gh_camera.set_position(camera, 0, 50, 150)
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.setupvec(camera, 0, 1, 0, 0)
+
+
+gpu_prog_02 = gh_node.getid("gpu_prog_02")
+
+local demo_dir = gh_utils.get_scenegraph_dir() 		
+local model_directory = demo_dir .. "/data/" 
+local resource_directory = demo_dir .. "/data/" 
+
+model = 0
+model = gh_model.create_from_file_loader_3ds("Woman_001.3ds", model_directory, resource_directory)
+if (model > 0) then
+
+  -- With some algorithms (shadow mapping for example), it can be useful 
+  -- to specify the texture unit starting offset (default is 0: the first texture unit
+  -- will be 0).
+  gh_object.set_materials_texture_unit_offset(model, 0)
+
+  gh_object.set_position(model, 0, 0, 0)
+  gh_object.set_euler_angles(model, 0, 0, 0)
+  -- gh_object.use_gl2_vertex_array(model, 0)
+  
+  gh_object.compute_faces_normal(model)
+  gh_object.compute_vertices_normal(model)
+end  
+
+
+local abs_path = 0
+tex01 = 0
+tex01 = gh_texture.create_from_file("data/marble_airportmarble-01_df_.jpg", 0, abs_path)
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(1)
+
+		]]></raw_data>
+	</script> 
+
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time()
+
+gh_renderer.set_depth_test_state(1)
+
+local posx = 200 * math.cos(elapsed_time * 1.0)
+local posz = 200 * math.sin(elapsed_time * 1.0)
+gh_camera.set_position(camera, posx, 130, posz) 
+gh_camera.set_lookat(camera, 0, 130, 0) 
+gh_camera.bind(camera)
+
+-- gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+-- gh_renderer.clear_color_depth_buffers(178/255, 153/255,127/255, 1.0, 1.0)
+gh_renderer.clear_color_depth_buffers(138/255, 113/255,87/255, 1.0, 1.0)
+
+
+local GH_RENDERER_POLYGON_FACE_BACK = 0
+local GH_RENDERER_POLYGON_FACE_FRONT = 1
+local GH_RENDERER_POLYGON_FACE_BACK_FRONT = 2
+
+local GH_RENDERER_POLYGON_MODE_POINT = 0
+local GH_RENDERER_POLYGON_MODE_LINE = 1
+local GH_RENDERER_POLYGON_MODE_SOLID = 2
+
+-- gh_renderer.rasterizer_set_polygon_mode(GH_RENDERER_POLYGON_FACE_BACK_FRONT, GH_RENDERER_POLYGON_MODE_LINE)
+-- gh_renderer.rasterizer_apply_states()
+
+gh_gpu_program.bind(gpu_prog_02)
+gh_gpu_program.uniform1i(gpu_prog_02, "tex0", 0)
+gh_gpu_program.uniform4f(gpu_prog_02, "light_position", 0, 200, 200)
+
+if (tex01 > 0) then
+  gh_texture.bind(tex01, 0)
+end  
+
+if (model > 0) then
+  --gh_object.set_euler_angles(model, elapsed_time*3, elapsed_time*5, elapsed_time*7)
+  gh_object.set_euler_angles(model, 0, 0, 0)
+  gh_object.set_scale(model, 0.2, 0.2, 0.2)
+  gh_object.render(model)
+end
+
+-- gh_renderer.rasterizer_set_polygon_mode(GH_RENDERER_POLYGON_FACE_BACK_FRONT, GH_RENDERER_POLYGON_MODE_SOLID)
+-- gh_renderer.rasterizer_apply_states()
+
+gh_utils.font_render(font, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker - 3DS object loading")
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 60, aspect, 1.0, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

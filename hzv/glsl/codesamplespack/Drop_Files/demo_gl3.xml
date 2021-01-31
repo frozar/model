@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="GLSL Hacker - Drop files / Lua" 
+          width="800" height="600" 
+          gl_version_major="3" gl_version_minor="2" />
+  
+  
+  <gpu_program name="gpu_prog_01" >
+    <raw_data_vs><![CDATA[	 
+#version 140
+in vec4 gxl3d_Position;
+in vec4 gxl3d_TexCoord0;
+out vec4 Vertex_UV;
+uniform mat4 gxl3d_ModelViewProjectionMatrix;
+void main()
+{
+  gl_Position = gxl3d_ModelViewProjectionMatrix * gxl3d_Position;
+  Vertex_UV = gxl3d_TexCoord0;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+#version 140
+precision highp float;
+uniform sampler2D tex0;
+in vec4 Vertex_UV;
+out vec4 Out_Color;
+void main()
+{
+  vec2 uv = Vertex_UV.xy;
+  uv.y *= -1.0;
+  Out_Color.rgb = texture(tex0, uv).rgb;
+  Out_Color.a = 1.0;
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+ 
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+font_a = gh_utils.font_create("Tahoma", 14)
+
+-- A perspective camera for the 3D scene (torus + background quad)
+-- The first three params are the position and the last three params are the lookat point.
+camera = gh_camera.create_perspective(0, 10, 20, 0, 0, 0)
+
+gpu_prog_01 = gh_node.getid("gpu_prog_01")
+
+mesh_quad = gh_mesh.create_quad(30, 15)
+
+tex01 = 0
+texture_filename = ""
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(1)
+
+		]]></raw_data>
+	</script> 
+
+  
+  
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time();
+
+gh_renderer.set_depth_test_state(1)
+
+gh_renderer.set_viewport_scissor(0, 0, winW, winH)
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+if (tex01 > 0) then
+	gh_texture.bind(tex01, 0)
+	gh_gpu_program.bind(gpu_prog_01)
+	gh_object.set_euler_angles(mesh_quad, 0, elapsed_time*50, 0)
+	gh_gpu_program.update_mvp_matrix(gpu_prog_01, "gxl3d_ModelViewProjectionMatrix", camera, mesh_quad)
+	gh_object.render_geometry(mesh_quad)
+end
+    
+gh_gpu_program.bind(0) -- Disabling any gpu program for font rendering.
+gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker demo - Drop file demo")
+if (tex01 == 0) then
+	gh_utils.font_render(font_a, 10, 40, 0.2, 1.0, 0.0, 1.0, "Drag n drop an image file in GLSL Hacker...")
+else
+	gh_utils.font_render(font_a, 10, 40, 0.2, 1.0, 0.0, 1.0, string.format("Image filename: %s", texture_filename))
+end
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="drop_files" run_mode="DRAG_N_DROP" >
+		<raw_data><![CDATA[	
+		
+local num_files = gh_utils.drop_files_get_num_files()
+if (num_files > 0) then
+
+	local filename = gh_utils.drop_files_get_file_by_index(0)
+	
+	local abs_path = 1
+	local texture = gh_texture.create_from_file(filename, 0, abs_path)
+	if (texture > 0) then
+	
+		if (tex01 > 0) then
+			gh_node.kill(tex01)
+		end
+	
+		tex01 = texture
+		texture_filename = filename
+	
+		width, height, depth = gh_texture.get_size(texture)
+		gh_mesh.update_quad_size(mesh_quad, width/30, height/30)
+	end
+end
+
+		]]></raw_data>
+	</script> 
+  
+</glsl_hacker>

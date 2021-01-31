@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<!--
+
+More information on this geometry shader demo:
+- http://www.geeks3d.com/20111117/simple-introduction-to-geometry-shader-in-glsl-part-2/
+
+-->
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="GLSL Hacker - Geometry shaders (OpenGL 3.2)" 
+          width="800" height="600" 
+          gl_version_major="3" gl_version_minor="2" />
+  
+  
+  <gpu_program name="gs_doubler_prog" >
+    <raw_data_vs><![CDATA[	 
+#version 150
+in vec4 gxl3d_Position;
+in vec4 gxl3d_Normal;
+
+out Vertex
+{
+  vec4 normal;
+  vec4 color;
+} vertex;
+
+void main()
+{
+  gl_Position = gxl3d_Position;
+  vertex.normal = gxl3d_Normal;
+  vertex.color =  vec4(0.0, 0.0, 1.0, 1.0);
+}
+  ]]></raw_data_vs>
+  
+    <raw_data_gs><![CDATA[	 
+#version 150
+layout(triangles) in;
+layout(triangle_strip, max_vertices=6) out;
+
+uniform mat4 gxl3d_ViewMatrix;
+uniform mat4 gxl3d_ProjectionMatrix;
+uniform mat4 gxl3d_ModelMatrix;
+
+in Vertex
+{
+  vec4 normal;
+  vec4 color;
+} vertex[];
+
+out vec4 vertex_color;
+
+void main()
+{
+  mat4 modelViewMatrix = gxl3d_ViewMatrix * gxl3d_ModelMatrix;
+  mat4 viewProjectionMatrix = gxl3d_ProjectionMatrix * gxl3d_ViewMatrix;
+  int i;
+  
+  //====== First triangle - identical to the input one.
+  //
+  for(i=0; i<3; i++)
+  {
+    vec4 view_pos = modelViewMatrix * gl_in[i].gl_Position;
+    gl_Position = gxl3d_ProjectionMatrix * view_pos;
+    vertex_color = vec4(0.0, 1.0, 0.0, 1.0);
+    EmitVertex();
+  }
+  EndPrimitive();
+  
+  //====== Second triangle - translated version of the 
+  // input triangle.
+  //
+  for(i=0; i<3; i++)
+  {
+    vec4 N =  vertex[i].normal;
+    vec4 world_pos = gxl3d_ModelMatrix * (gl_in[i].gl_Position + normalize(N) * 10.0);
+    gl_Position = viewProjectionMatrix * world_pos;
+    vertex_color = vec4(1.0, 1.0, 0.0, 1.0);
+    EmitVertex();
+  }
+  EndPrimitive();
+}
+  ]]></raw_data_gs>
+
+  <raw_data_ps><![CDATA[	 
+#version 150
+precision highp float;
+in vec4 vertex_color;
+out vec4 Out_Color;
+void main()
+{
+  Out_Color = vertex_color;
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+ 
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+font_a = gh_utils.font_create("Tahoma", 14)
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+camera = gh_camera.create_perspective(0, 10, 20, 0, 0, 0)
+
+gs_prog = gh_node.getid("gs_doubler_prog")
+
+mesh_quad = gh_mesh.create_quad(30, 15)
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(1)
+gh_renderer.set_depth_test_state(1)
+
+
+RENDERER_POLYGON_FACE_BACK = 0
+RENDERER_POLYGON_FACE_FRONT = 1
+RENDERER_POLYGON_FACE_BACK_FRONT = 2
+
+RENDERER_POLYGON_MODE_POINT = 0
+RENDERER_POLYGON_MODE_LINE = 1
+RENDERER_POLYGON_MODE_SOLID = 2
+
+
+		]]></raw_data>
+	</script> 
+
+ 
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time()
+
+gh_camera.bind(camera)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+
+gh_renderer.rasterizer_set_polygon_mode(RENDERER_POLYGON_FACE_BACK_FRONT, RENDERER_POLYGON_MODE_LINE)
+gh_renderer.rasterizer_apply_states()
+
+
+gh_gpu_program.bind(gs_prog)
+
+gh_object.set_euler_angles(mesh_quad, 0, elapsed_time*50, 0)
+gh_object.render(mesh_quad)
+
+
+gh_renderer.rasterizer_set_polygon_mode(RENDERER_POLYGON_FACE_BACK_FRONT, RENDERER_POLYGON_MODE_SOLID)
+gh_renderer.rasterizer_apply_states()
+
+
+gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker demo - OpenGL 3.2 Geometry shader")
+
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

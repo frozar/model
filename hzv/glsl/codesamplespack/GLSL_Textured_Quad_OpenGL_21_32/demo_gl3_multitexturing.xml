@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="Multi-Textured Quad GLSL demo (GL3.2)" width="800" height="400"
+          gl_version_major="3" gl_version_minor="2" />
+  
+  
+  <gpu_program name="gpu_prog_01" >
+    <raw_data_vs><![CDATA[	 
+#version 150
+in vec4 gxl3d_Position;
+in vec4 gxl3d_TexCoord0;
+uniform mat4 gxl3d_ModelViewProjectionMatrix;
+out vec4 Vertex_UV;
+void main()
+{
+  gl_Position = gxl3d_ModelViewProjectionMatrix * gxl3d_Position;		
+  Vertex_UV = gxl3d_TexCoord0;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+#version 150
+uniform sampler2D tex0;
+uniform sampler2D tex1;
+in vec4 Vertex_UV;
+out vec4 Out_Color;
+void main (void)
+{
+  vec2 uv = Vertex_UV.xy;
+  uv.y *= -1.0;
+  vec4 t0 = texture(tex0, uv);
+  vec4 t1 = texture(tex1, uv);
+  Out_Color = mix(t0, t1, uv.x);
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+    
+winW, winH = gh_window.getsize(0)
+
+font_a = gh_utils.font_create("Tahoma", 14)
+
+
+-- A perspective camera for the 3D scene (torus + background quad)
+-- The first three params are the position and the last three params are the lookat point.
+camera = gh_camera.create_perspective(0, 10, 20, 0, 0, 0)
+
+-- The previous line is equivalent to these ones:
+--[[
+local aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+camera = gh_camera.create_persp(60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+gh_camera.setpos(camera, 0, 10, 20)
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.setupvec(camera, 0, 1, 0, 0)
+--]]
+
+
+
+glsl_prog = gh_node.getid("gpu_prog_01")
+
+mesh_quad = gh_mesh.create_quad(30, 15)
+
+local abs_path = 0
+tex01 = gh_texture.create_from_file("./8586.jpg", 0, abs_path)
+tex02 = gh_texture.create_from_file("./5790.jpg", 0, abs_path)
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_depth_test_state(1)
+
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time()
+
+gh_camera.bind(camera)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+gh_texture.bind(tex01, 0)
+gh_texture.bind(tex02, 1)
+
+gh_gpu_program.bind(glsl_prog)
+gh_gpu_program.uniform1i(glsl_prog, "tex0", 0)
+gh_gpu_program.uniform1i(glsl_prog, "tex1", 1)
+
+gh_object.set_euler_angles(mesh_quad, 0, elapsed_time*50, 0)
+gh_object.render(mesh_quad)
+
+
+gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker demo - Simple textured quad (GL3.2) - Press [ESC] to quit.")
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+local aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="OpenCL Test in Python" width="600" height="300"
+          gl_version_major="2" gl_version_minor="1" />
+  
+	<script name="init_scene" run_mode="INIT" language="PYTHON" >
+		<raw_data><![CDATA[	
+		
+import gh_utils
+import gh_renderer
+import gh_window
+import gh_opencl
+import sys
+import platform
+
+
+
+"""
+http://stackoverflow.com/questions/1986712/data-structures-in-python
+
+the __slots__ class attribute is optional -- mostly a memory optimization, to avoid each instance 
+carrying its own __dict__, which would be substantially larger than the three 
+needed attributes/references.
+"""
+
+
+class CL_Device:
+
+  __slots__ =  'vendor', 'name', 'version', 'type', 'max_compute_units', 'clock_frequency', 'flops'
+
+  def __init__(self):
+    self.vendor = ""
+    self.name = ""
+    self.version = ""
+    self.type = 0
+    self.max_compute_units = 0
+    self.clock_frequency = 0
+    self.flops = 0
+
+
+class CL_Platform:
+
+  __slots__ =  'vendor', 'name', 'version', 'num_devices', 'devices'
+
+  def __init__(self):
+    self.vendor = ""
+    self.name = ""
+    self.version = ""
+    self.num_devices = 0
+    self.devices = []
+
+
+
+		
+    
+winW, winH = gh_window.getsize(0)
+font = gh_utils.font_create("Tahoma", 14)
+
+elapsed_time = gh_utils.get_elapsed_time()
+last_time = elapsed_time
+
+gh_renderer.set_vsync(1)
+
+cl_platforms = []
+
+num_opencl_platforms = gh_opencl.get_num_platforms()
+
+if (num_opencl_platforms > 0):
+  for i in range(0, num_opencl_platforms):
+    P = CL_Platform()
+    P.vendor, P.name, P.version = gh_opencl.get_platform_info(i)
+    P.num_devices = gh_opencl.get_num_devices(i)
+    if (P.num_devices > 0):
+      for j in range(0, P.num_devices):
+        D = CL_Device()
+        D.vendor, D.name, D.version = gh_opencl.get_device_info(i, j)
+        _type = gh_opencl.get_device_type(i, j)
+        if (_type == 1):
+          D.type = "GPU"
+        elif (_type == 2):
+          D.type = "CPU"
+        else:
+          D.type = "UNKNOWN"
+        D.max_compute_units, D.clock_frequency, D.flops = gh_opencl.get_device_compute_units_info(i, j)
+        P.devices.append(D)
+    
+    cl_platforms.append(P)
+
+
+		]]></raw_data>
+	</script> 
+  
+  
+    <script name="update_scene" run_mode="FRAME" language="PYTHON" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time()
+gh_renderer.clear_color_buffer(0.2, 0.2, 0.2, 1.0)
+
+gh_utils.font_render(font, 10, 20, 1.0, 1.0, 1.0, 1.0, "OpenCL Test (from Python 2.7)")
+gh_utils.font_render(font, 10, 40, 0.6, 0.6, 0.0, 1.0, "Elapsed time: %.3f sec." % (elapsed_time))
+gh_utils.font_render(font, 10, 60, 1.0, 1.0, 0.0, 1.0, "# OpenCL platforms: %d." % (num_opencl_platforms))
+
+y = 80
+i = 0
+for P in cl_platforms:
+  gh_utils.font_render(font, 10, y, 1.0, 1.0, 0.2, 1.0, "> Platform %d: %s / %s / %s" % (i, P.vendor, P.name, P.version))
+  i = i+1
+  y = y+20
+  j = 0
+  for D in P.devices:
+    gh_utils.font_render(font, 20, y, 0.7, 1.0, 0.2, 1.0, "+ Device %d (%s): %s / %s / %s" % (j, D.type, D.vendor, D.name, D.version))
+    j = j+1
+    y = y+20
+    gh_utils.font_render(font, 40, y, 0.3, 0.8, 0.2, 1.0, "- %d CU / %d MHz / %d FLOPS" % (D.max_compute_units, D.clock_frequency, D.flops ))
+    y = y+20
+    
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" language="PYTHON" >
+		<raw_data><![CDATA[	
+winW, winH = gh_window.getsize(0)
+gh_utils.font_set_viewport_info(font, 0, 0, winW, winH)
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

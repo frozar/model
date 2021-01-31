@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="Normal Mapping Demo" 
+          width="1280" height="720" 
+          gl_version_major="3" gl_version_minor="2" />
+  
+  <gpu_program name="gpu_prog_01" >
+    <raw_data_vs><![CDATA[	 
+#version 150
+in vec4 gxl3d_Position;
+in vec4 gxl3d_Normal;
+in vec4 gxl3d_TexCoord0;
+out vec4 Vertex_UV;
+out vec4 Vertex_Normal;
+out vec4 Vertex_LightDir;
+out vec4 Vertex_EyeVec;
+uniform mat4 gxl3d_ModelViewProjectionMatrix; // Automatically passed by GLSL Hacker
+uniform mat4 gxl3d_ModelViewMatrix; // Automatically passed by GLSL Hacker
+uniform vec4 light_position;
+uniform vec4 uv_tiling;
+
+void main()
+{
+  gl_Position = gxl3d_ModelViewProjectionMatrix * gxl3d_Position;
+  Vertex_UV = gxl3d_TexCoord0 * uv_tiling;
+  Vertex_Normal = gxl3d_ModelViewMatrix  * gxl3d_Normal;
+  vec4 view_vertex = gxl3d_ModelViewMatrix * gxl3d_Position;
+  Vertex_LightDir = light_position - view_vertex;
+  Vertex_EyeVec = -view_vertex;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+#version 150
+precision highp float;
+uniform sampler2D tex0;
+uniform sampler2D tex1;
+uniform vec4 light_diffuse;
+uniform vec4 material_diffuse;
+uniform vec4 light_specular;
+uniform vec4 material_specular;
+uniform float material_shininess;
+in vec4 Vertex_UV;
+in vec4 Vertex_Normal;
+in vec4 Vertex_LightDir;
+in vec4 Vertex_EyeVec;
+out vec4 Out_Color;
+
+// http://www.thetenthplanet.de/archives/1180
+mat3 cotangent_frame(vec3 N, vec3 p, vec2 uv)
+{
+    // get edge vectors of the pixel triangle
+    vec3 dp1 = dFdx( p );
+    vec3 dp2 = dFdy( p );
+    vec2 duv1 = dFdx( uv );
+    vec2 duv2 = dFdy( uv );
+ 
+    // solve the linear system
+    vec3 dp2perp = cross( dp2, N );
+    vec3 dp1perp = cross( N, dp1 );
+    vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
+    vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
+ 
+    // construct a scale-invariant frame 
+    float invmax = inversesqrt( max( dot(T,T), dot(B,B) ) );
+    return mat3( T * invmax, B * invmax, N );
+}
+
+vec3 perturb_normal( vec3 N, vec3 V, vec2 texcoord )
+{
+    // assume N, the interpolated vertex normal and 
+    // V, the view vector (vertex to eye)
+   vec3 map = texture(tex1, texcoord ).xyz;
+   map = map * 255./127. - 128./127.;
+    mat3 TBN = cotangent_frame(N, -V, texcoord);
+    return normalize(TBN * map);
+}
+
+void main()
+{
+  vec2 uv = Vertex_UV.xy;
+  
+  vec3 N = normalize(Vertex_Normal.xyz);
+  vec3 L = normalize(Vertex_LightDir.xyz);
+  vec3 V = normalize(Vertex_EyeVec.xyz);
+  vec3 PN = perturb_normal(N, V, uv);
+  
+  vec4 tex01_color = texture(tex0, uv).rgba;
+  vec4 final_color = vec4(0.2, 0.15, 0.15, 1.0) * tex01_color; 
+  
+  float lambertTerm = dot(PN, L);
+  if (lambertTerm > 0.0)
+  {
+    final_color += light_diffuse * material_diffuse * lambertTerm * tex01_color;  
+    vec3 R = reflect(-L, PN);
+    float specular = pow( max(dot(R, V), 0.0), material_shininess);
+    final_color += light_specular * material_specular * specular;  
+  }
+  Out_Color.rgb = final_color.rgb;
+  //Out_Color.rgb = normal.rgb;
+  //Out_Color.rgb = N.rgb;
+  Out_Color.a = 1.0;
+}    ]]></raw_data_ps>
+  </gpu_program>
+  
+ 
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+font_a = gh_utils.font_create("Tahoma", 14)
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+local aspect = winW / winH
+camera = gh_camera.create_persp(60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+gh_camera.setpos(camera, 0, 20, 30)
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.setupvec(camera, 0, 1, 0, 0)
+
+gpu_prog_01 = gh_node.getid("gpu_prog_01")
+
+gh_gpu_program.bind(gpu_prog_01)
+gh_gpu_program.uniform4f(gpu_prog_01, "light_position", 0.0, 50.0, 50.0, 1.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "light_diffuse", 0.9, 0.7, 0.7, 1.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "light_specular", 0.9, 0.9, 0.9, 1.0)
+
+gh_gpu_program.uniform4f(gpu_prog_01, "material_diffuse", 0.7, 0.7, 0.7, 1.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "material_specular", 0.6, 0.6, 0.6, 1.0)
+gh_gpu_program.uniform1f(gpu_prog_01, "material_shininess", 60.0)
+gh_gpu_program.bind(0)
+
+
+mesh_torus = gh_mesh.create_torus(20, 10, 20)
+gh_object.setpos(mesh_torus, 0, 0, 0)
+
+gizmo = gh_object.create()
+gh_object.set_display_tripod_state(gizmo, 1)
+gh_object.set_display_grid_state(gizmo, 1)
+gh_object.set_grid_params(gizmo, 50.0, 50.0, 20, 20, 1, 1)
+
+local abs_path = 0
+tex01 = gh_texture.create_from_file("3912-diffuse.jpg", 0, abs_path)
+tex02 = gh_texture.create_from_file("3912-normal.jpg", 0, abs_path)
+
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(1)
+
+		]]></raw_data>
+	</script> 
+
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time();
+
+gh_renderer.set_depth_test_state(1)
+
+gh_camera.set_position(camera, 10, 20, 30)
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.bind(camera)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.25, 0.3, 1.0, 1.0)
+
+gh_gpu_program.bind(gpu_prog_01)
+
+gh_gpu_program.uniform4f(gpu_prog_01, "light_position", 0.0, 50.0, 50.0, 1.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "light_diffuse", 0.9, 0.7, 0.7, 1.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "light_specular", 0.9, 0.9, 0.9, 1.0)
+
+gh_gpu_program.uniform4f(gpu_prog_01, "material_diffuse", 0.7, 0.7, 0.7, 1.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "material_specular", 0.6, 0.6, 0.6, 1.0)
+gh_gpu_program.uniform1f(gpu_prog_01, "material_shininess", 60.0)
+
+gh_gpu_program.uniform1i(gpu_prog_01, "tex0", 0)
+gh_gpu_program.uniform1i(gpu_prog_01, "tex1", 1)
+
+gh_texture.bind(tex01, 0)
+gh_texture.bind(tex02, 1)
+gh_object.render(mesh_plane_ptr)
+    
+gh_gpu_program.uniform4f(gpu_prog_01, "uv_tiling", 2.0, 2.0, 1.0, 1.0)
+gh_texture.bind(tex01, 0)
+gh_texture.bind(tex02, 1)
+gh_object.setpos(mesh_torus, 0, 0, 0)
+gh_object.set_euler_angles(mesh_torus, elapsed_time*20, elapsed_time*50, elapsed_time*10)
+gh_object.render(mesh_torus)
+
+gh_object.setpos(gizmo, 0, 0, 0)
+-- gh_object.set_euler_angles(gizmo, elapsed_time*20, elapsed_time*50, elapsed_time*10)
+gh_object.render(gizmo)
+    
+gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker demo - Normal mapping demo")
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

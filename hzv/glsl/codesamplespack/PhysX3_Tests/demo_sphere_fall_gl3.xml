@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="GLSL Hacker - PhysX 3 test" 
+          width="800" height="600" 
+          gl_version_major="3" gl_version_minor="2" gl_core_profile="1" />
+  
+  
+  <gpu_program name="gpu_prog_01" >
+    <raw_data_vs><![CDATA[	 
+#version 140
+in vec4 gxl3d_Position;
+in vec4 gxl3d_Normal;
+in vec4 gxl3d_TexCoord0;
+out vec4 Vertex_UV;
+out vec4 Vertex_Normal;
+out vec4 Vertex_LightDir;
+out vec4 Vertex_EyeVec;
+uniform mat4 gxl3d_ModelViewProjectionMatrix; // Automatically passed by GLSL Hacker
+uniform mat4 gxl3d_ModelViewMatrix; // Automatically passed by GLSL Hacker
+uniform vec4 light_position;
+uniform vec4 uv_tiling;
+void main()
+{
+  gl_Position = gxl3d_ModelViewProjectionMatrix * gxl3d_Position;
+  Vertex_UV = gxl3d_TexCoord0 * uv_tiling;
+  Vertex_Normal = gxl3d_ModelViewMatrix  * gxl3d_Normal;
+  vec4 view_vertex = gxl3d_ModelViewMatrix * gxl3d_Position;
+  Vertex_LightDir = light_position - view_vertex;
+  Vertex_EyeVec = -view_vertex;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+#version 140
+precision highp float;
+uniform sampler2D tex0;
+uniform vec4 light_diffuse;
+uniform vec4 material_diffuse;
+uniform vec4 light_specular;
+uniform vec4 material_specular;
+uniform float material_shininess;
+in vec4 Vertex_UV;
+in vec4 Vertex_Normal;
+in vec4 Vertex_LightDir;
+in vec4 Vertex_EyeVec;
+out vec4 Out_Color;
+void main()
+{
+  vec2 uv = Vertex_UV.xy;
+  uv.y *= -1.0;
+  vec4 tex01_color = texture(tex0, uv).rgba;
+  
+  vec4 final_color = vec4(0.2, 0.15, 0.15, 1.0) * tex01_color; 
+  vec4 N = normalize(Vertex_Normal);
+  vec4 L = normalize(Vertex_LightDir);
+  float lambertTerm = dot(N,L);
+  if (lambertTerm > 0.0)
+  {
+    final_color += light_diffuse * material_diffuse * lambertTerm * tex01_color;	
+    
+    vec4 E = normalize(Vertex_EyeVec);
+    vec4 R = reflect(-L, N);
+    float specular = pow( max(dot(R, E), 0.0), material_shininess);
+    final_color += light_specular * material_specular * specular;	
+  }
+
+  Out_Color.rgb = final_color.rgb;
+  Out_Color.a = 1.0;
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+ 
+  
+  
+	<script name="init_scene" run_mode="INIT" language="LUA" >
+		<raw_data><![CDATA[	
+    
+
+demo_dir = gh_utils.get_scenegraph_dir() 		
+gh_utils.trace(demo_dir)
+dofile(demo_dir .. "gh_aux_lib_v1.lua")
+
+winW, winH = gh_window.getsize(0)
+
+font_a = gh_utils.font_create("Tahoma", 14)
+
+g_cam_lookat = vec3()
+g_cam_lookat:set(0, 20, 0)
+
+camera = gh_camera.create_persp(60, 1.333, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+gh_camera.setpos(camera, 0, 0, 50)
+gh_camera.setlookat(camera, g_cam_lookat.x, g_cam_lookat.y, g_cam_lookat.z)
+gh_camera.setupvec(camera, 0, 1, 0, 0)
+
+GH_InitCameraRotation(camera, g_cam_lookat, 20, 0)
+
+
+gpu_prog_01 = gh_node.getid("gpu_prog_01")
+
+
+mesh_plane = gh_mesh.create_plane(100, 100, 10, 10)
+gh_object.setpos(mesh_plane, 0, 0, 0)
+gh_object.set_euler_angles(mesh_plane, 0, 0, 0)
+
+mesh_sphere = gh_mesh.create_sphere(5, 10, 10)
+gh_object.setpos(mesh_sphere, 0, 20, 0)
+
+
+gizmo = gh_object.create()
+gh_object.set_display_tripod_state(gizmo, 1)
+gh_object.set_display_grid_state(gizmo, 1)
+gh_object.set_grid_params(gizmo, 50.0, 50.0, 10, 10, 1, 1)
+
+
+local abs_path = 0
+tex01 = gh_texture.create_from_file("../data/8586.jpg", 0, abs_path)
+tex02 = gh_texture.create_from_file("../data/2293-diffuse.jpg", 0, abs_path)
+
+px_scene = 0
+local gpu_physx = 0
+physx_ok = gh_physx3.start(gpu_physx)
+if (physx_ok == 1) then
+  gh_utils.trace("PhysX 3 started up ok.")
+  
+  local bounce_threshold_velocity = 0.2
+  px_scene = gh_physx3.create_scene(gpu_physx, bounce_threshold_velocity)
+  gh_physx3.set_scene_gravity(px_scene, 0, -0.2, 0)
+
+  px_material_plane = gh_physx3.create_material(0.5, 0.5, 0.4)
+  px_actor_plane = gh_physx3.create_actor_plane(px_scene, 0, 1, 0, 0, px_material_plane)
+
+  px_material_sphere = gh_physx3.create_material(0.5, 0.5, 0.8)
+  local density = 0.01
+  px_actor_sphere = gh_physx3.create_actor_sphere(px_scene, 5, 0, 40, 0, density, px_material_sphere)
+  
+  local sleep_thres = gh_physx3.actor_get_sleep_threshold(px_actor_sphere)
+  -- default value: 0.0049999998882413
+  gh_utils.trace("PhysX 3 - sphere sleep_thres = " .. sleep_thres)
+  
+  gh_physx3.actor_set_sleep_threshold(px_actor_sphere, 0.001)
+  gh_physx3.actor_set_linear_damping(px_actor_sphere, 0.002)
+  gh_physx3.actor_set_linear_velocity(px_actor_sphere, 0, -2, 0)
+  
+  gh_utils.trace("PhysX 3 scene/materials/actors init ok.")
+else  
+  gh_utils.trace("PhysX 3 starting up failed.")
+end  
+
+
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(1)
+
+last_time = gh_window.timer_get_seconds(0)
+
+		]]></raw_data>
+	</script> 
+
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+local elapsed_time = gh_window.timer_get_seconds(0)
+local dt = elapsed_time - last_time
+last_time = elapsed_time
+
+-- gh_physx3.run_simulation(px_scene, dt, 0.01)
+gh_physx3.run_simulation(px_scene, 0.002, 0.01)
+
+gh_renderer.set_depth_test_state(1)
+
+GH_DoCameraOrbit_v2(camera, g_cam_lookat)
+gh_camera.bind(camera)
+
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+
+gh_gpu_program.bind(gpu_prog_01)
+gh_gpu_program.uniform4f(gpu_prog_01, "light_position", 0.0, 50.0, 50.0, 1.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "light_diffuse", 0.9, 0.7, 0.7, 1.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "light_specular", 0.9, 0.9, 0.9, 1.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "material_diffuse", 0.7, 0.7, 0.7, 1.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "material_specular", 0.6, 0.6, 0.6, 1.0)
+gh_gpu_program.uniform1f(gpu_prog_01, "material_shininess", 60.0)
+gh_gpu_program.uniform4f(gpu_prog_01, "uv_tiling", 2.0, 2.0, 1.0, 1.0)
+
+gh_texture.bind(tex01, 0)
+gh_object.render(mesh_plane)
+
+    
+gh_gpu_program.uniform4f(gpu_prog_01, "uv_tiling", 3.0, 3.0, 1.0, 1.0)
+gh_texture.bind(tex02, 0)
+
+local px, py, pz = gh_physx3.get_actor_position(px_actor_sphere)
+gh_object.set_position(mesh_sphere, px, py, pz)
+gh_object.render(mesh_sphere)
+
+gh_gpu_program.bind(0) -- Disabling any gpu program for font rendering.
+
+
+gh_object.setpos(gizmo, 0, 20, 0)
+gh_object.render(gizmo)
+
+gh_utils.tripod_visualizer_render(camera, winW-100, 20, 100, 100)
+    
+gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker demo - Camera orbit mode / Lua Aux lib")
+gh_utils.font_render(font_a, 10, 40, 0.2, 1.0, 0.0, 1.0, "- Usage: mouse left button + mouse move")
+
+		]]></raw_data>
+	</script> 
+	
+	<script name="terminate_scene" run_mode="TERMINATE" >
+		<raw_data><![CDATA[	
+
+gh_physx3.stop()
+gh_utils.trace("PhysX 3 stopped ok.")
+   
+
+		]]></raw_data>
+	</script> 
+
+  
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

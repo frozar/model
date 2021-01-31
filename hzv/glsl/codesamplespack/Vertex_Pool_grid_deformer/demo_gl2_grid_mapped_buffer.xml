@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="GLSL Hacker - Vertex pool / Lua" 
+          width="800" height="600" 
+          gl_version_major="2" gl_version_minor="1" />
+  
+  <gpu_program name="gpu_prog_01" >
+    <raw_data_vs><![CDATA[	 
+#version 120
+void main()
+{
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+  vec4 eye = gl_ModelViewMatrix * gl_Vertex; 
+  float d = length(eye);
+  gl_PointSize = 30.0 * 1.0/(0.0 + 0.04*d + 0.0001*d*d); 			
+  gl_FrontColor = gl_Color;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+#version 120
+uniform sampler2D tex0;
+void main (void)
+{
+  vec2 uv = gl_PointCoord.xy;
+  vec3 t = texture2D(tex0,uv).rgb * gl_Color.xyz;
+  gl_FragColor = vec4(t, 1.0);
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+ 
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+
+gpu = {name="", 
+       codename="", 
+       cores=0, 
+       vddc=0, 
+       gpu_clock=0, mem_clock=0, 
+       gpu_usage=0, mem_usage=0, vid_usage=0, bus_usage=0,
+       fan_percent=0, fan_rpm=0,
+       gpu_temp=0, mem_temp=0, pcb_temp=0, vrm_temp=0,
+       gpu_power_percent=0, gpu_power_mw=0, 
+       gpu_power_target_percent=0, gpu_power_target_mw=0 }
+    
+num_gpus = gh_gml.get_num_gpus()
+if (num_gpus > 0) then
+  gpu.name = gh_gml.get_gpu_fullname(0)
+  gpu.cores = gh_gml.get_gpu_cores(0)
+  gpu.gpu_usage, gpu.mem_usage, gpu.vid_usage, gpu.bus_usage = gh_gml.get_usages(0)
+  gpu.gpu_temp, gpu.mem_temp, gpu.pcb_temp, gpu.vrm_temp = gh_gml.get_temperatures(0)
+  gpu.gpu_power_percent, gpu.gpu_power_mw = gh_gml.gpu_power_get_current_value(0)
+end
+
+    
+
+winW, winH = gh_window.getsize(0)
+    
+font_a = gh_utils.font_create("Tahoma", 14)
+   
+
+-- A perspective camera for the 3D scene.
+-- The first three params are the position and the last three params are the lookat point.
+camera = gh_camera.create_perspective(0, 15, 30, 0, 0, 0)
+
+  
+
+gpu_prog_01 = gh_node.getid("gpu_prog_01")
+
+x_parts = 100
+z_parts = 100
+num_particles = x_parts*z_parts
+vp = gh_vertex_pool.create(num_particles)
+gh_object.use_old_opengl(vp, 1) -- OpenGL with old built-in vertex attibutes (gl_Vertex), uniforms (gl_ModelViewProjectionMatrix) ...
+
+
+-- Init particles position and color
+--
+start_x = -50
+start_z = -50
+y = 0
+for i=0, z_parts-1 do
+  -- z = start_z + i*0.2
+  z = start_z + i*1
+  for j=0, x_parts-1 do
+    -- x = start_x + j*0.2
+    x = start_x + j*1
+    offset = i*z_parts + j
+    gh_vertex_pool.vertex_setpos(vp, offset, x, y, z, 1)
+    -- local alpha = 1
+    -- r = math.random()
+    -- g = math.random()
+    -- b = math.random()
+    -- gh_vertex_pool.vertex_set_color(vp, offset, r, g, b, 1.0)
+    gh_vertex_pool.vertex_set_color(vp, offset, 1, 1, 1, 1)
+  end
+end
+
+
+local abs_path = 0
+tex01 = gh_texture.create_from_file("flare19.jpg", 0, abs_path)
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(1)
+
+
+GXL3D_RENDERER_BLEND_FACTOR_ZERO = 0
+GXL3D_RENDERER_BLEND_FACTOR_ONE = 1
+GXL3D_RENDERER_BLEND_FACTOR_SRC_ALPHA = 2
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_DST_ALPHA = 3
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_DST_COLOR = 4
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA = 5
+GXL3D_RENDERER_BLEND_FACTOR_DST_COLOR = 6
+GXL3D_RENDERER_BLEND_FACTOR_DST_ALPHA = 7
+GXL3D_RENDERER_BLEND_FACTOR_SRC_COLOR = 8
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_SRC_COLOR = 9
+
+
+elapsed_time = gh_utils.get_elapsed_time()
+last_time = elapsed_time
+
+
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time();
+
+if (num_gpus > 0) then
+  if ((elapsed_time - last_time) > 1.0) then
+    last_time = elapsed_time
+    gpu.gpu_usage, gpu.mem_usage, gpu.vid_usage, gpu.bus_usage = gh_gml.get_usages(0)
+    gpu.gpu_temp, gpu.mem_temp, gpu.pcb_temp, gpu.vrm_temp = gh_gml.get_temperatures(0)
+    gpu.gpu_power_percent, gpu.gpu_power_mw = gh_gml.gpu_power_get_current_value(0)
+  end
+end
+
+--[[
+local cam_x = 80.0 * math.cos(elapsed_time*0.5)
+local cam_y = 60.0 + 10.0 * math.cos(elapsed_time*0.8)
+local cam_z = 80.0 * math.sin(elapsed_time*0.5)
+gh_camera.setpos(camera, cam_x, cam_y, cam_z)
+--]]
+gh_camera.set_position(camera, 0, 50, 80) 
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.bind(camera) 
+
+
+gh_renderer.set_depth_test_state(1)
+
+gh_renderer.set_viewport_scissor(0, 0, winW, winH)
+gh_renderer.clear_color_depth_buffers(0.1, 0.1, 0.2, 1.0, 1.0)
+   
+
+gh_renderer.set_depth_test_state(0)
+
+gh_renderer.set_blending_state(1)
+gh_renderer.set_blending_factors(GXL3D_RENDERER_BLEND_FACTOR_SRC_ALPHA, GXL3D_RENDERER_BLEND_FACTOR_ONE)
+
+gh_texture.bind(tex01, 0)
+
+gh_gpu_program.bind(gpu_prog_01)
+gh_gpu_program.uniform1i(gpu_prog_01, "tex0", 0)
+
+gh_vertex_pool.vb_map(vp)
+for i=0, z_parts-1 do
+  for j=0, x_parts-1 do
+    offset = i*z_parts + j
+    x, y, z, w = gh_vertex_pool.vb_get_vertex_position(vp, offset)
+    y1 = 2.0 * math.cos(elapsed_time + x * 0.1) + math.sin(elapsed_time + z * 0.1);
+    y2 = 2.0 * math.sin(elapsed_time + x * 0.1) + math.cos(elapsed_time + z * 0.1);
+    gh_vertex_pool.vb_set_vertex_position(vp, offset, x, y1+y2, z, w)
+  end
+end
+gh_vertex_pool.vb_unmap(vp)
+
+gh_vertex_pool.render(vp, 0)
+
+gh_renderer.set_depth_test_state(1)
+gh_renderer.set_blending_state(0)
+
+-- gh_gpu_program.bind(0) -- Disabling gpu programs for font rendering.
+gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker demo - Vertex Pool (particles) demo (" .. num_particles .. " particles)")
+
+
+if (num_gpus > 0) then
+  local y = 40
+  gh_utils.font_render(font_a, 10, y, 0.9, 0.9, 0.2, 1.0, string.format("> GPU %s (%d cores)", gpu.name, gpu.cores))
+  y = y+20
+  gh_utils.font_render(font_a, 40, y, 0.2, 0.9, 0.2, 1.0, string.format("- Usages - core:%d%%, mem:%d%%, bus:%d%%", gpu.gpu_usage, gpu.mem_usage, gpu.bus_usage))
+  y = y+20
+  gh_utils.font_render(font_a, 40, y, 0.2, 0.9, 0.2, 1.0, string.format("- Temperatures - core:%d°C", gpu.gpu_temp))
+  y = y+20
+  if (gpu.gpu_power_percent > 0) then 
+    gh_utils.font_render(font_a, 40, y, 0.2, 0.9, 0.2, 1.0, string.format("- current GPU power - %d%% TDP", gpu.gpu_power_percent))
+    y = y+20
+  end
+end
+
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

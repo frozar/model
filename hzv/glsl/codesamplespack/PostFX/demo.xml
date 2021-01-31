@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="Post processing demo" 
+          width="800" height="600" 
+          gl_version_major="3" gl_version_minor="2" />
+
+          
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+
+gh_renderer.set_vsync(1)
+
+winW, winH = gh_window.getsize(0)
+    
+-- A font to display some information later.
+--
+font_a = gh_utils.font_create("Tahoma", 14)
+
+
+
+-- Render targets must be created in the main render thread, not in a worker thread.
+--
+rt_w = 1024
+rt_h = 1024
+rt01 = gh_render_target.create(rt_w, rt_h)
+
+
+-- A perspective camera for the 3D scene (torus + background quad)
+-- The first three params are the position and the last three params are the lookat point.
+local aspect = rt_w / rt_h
+camera = gh_camera.create_persp(60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, rt_w, rt_h)
+gh_camera.setpos(camera, 0, 0, 10)
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.setupvec(camera, 0, 1, 0, 0)
+
+
+-- An ortho camera for the 3D scene background image.
+--
+camera_ortho = gh_camera.create_ortho(-rt_w/2, rt_w/2, -rt_h/2, rt_h/2, -1.0, 1.0)
+gh_camera.set_viewport(camera_ortho, 0, 0, rt_w, rt_h)
+gh_camera.set_position(camera_ortho, 0, 0, 1)
+
+
+-- An ortho camera for the postfx fullscreen quad (as well as for the background quad of the 3D scene).
+-- This camera is created with default settings (it uses the current window's size).
+--
+camera_ortho_postfx = gh_camera.create_orthographic()
+
+
+
+-- GLSL shaders loading
+--
+local abs_path = 0
+
+gpu_prog_01 = gh_gpu_program.create_from_file("gpu_prog_01.glsl", abs_path)
+gh_node.set_name(gpu_prog_01, "gpu_prog_01") -- useful for the live coding manager. 
+
+gpu_prog_02 = gh_gpu_program.create_from_file("gpu_prog_02.glsl", abs_path)
+gh_node.set_name(gpu_prog_02, "gpu_prog_02") -- useful for the live coding manager. 
+
+gpu_prog_postfx_01 = gh_gpu_program.create_from_file("gpu_prog_postfx_01.glsl", abs_path)
+gh_node.set_name(gpu_prog_postfx_01, "gpu_prog_postfx_01") -- useful for the live coding manager. 
+
+if (gpu_prog_postfx_01 > 0) then
+  gh_utils.trace("Post FX program OK.")
+else   
+  gh_utils.trace("Post FX program ERROR.")
+end
+
+
+-- Fullscreen quad for the postFX.
+--
+fullscreen_quad = gh_mesh.create_quad(winW, winH)
+
+
+
+
+-- Quad for the background image of the 3D scene.
+--
+mesh_quad = gh_mesh.create_quad(rt_w*0.6, rt_h*0.6)
+
+-- Main object of the 3D scene.
+--
+mesh = gh_mesh.create_torus(5.0, 2.0, 20)
+
+
+
+-- Textures loading.
+--
+bkg_tex = gh_texture.create_from_file("../data/bkg01.jpg", 0, abs_path)
+tex02 = gh_texture.create_from_file("../data/452-diffuse.jpg", 0, abs_path)
+postfx_tex = gh_texture.create_from_file("../data/geeky-sketch-20120702-02.jpg", 0, abs_path)
+
+
+is_postfx_ok = 0
+if ((gpu_prog_postfx_01 > 0) and (rt01 > 0)) then
+  is_postfx_ok = 1
+end
+
+
+
+g_init_data_ok = 1
+g_do_screenshot = 1
+
+		]]></raw_data>
+	</script> 
+
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time();
+    
+gh_renderer.set_depth_test_state(0)
+gh_renderer.set_scissor_state(0) 
+    
+
+
+-- Bind the render target. Now the 3D rendering goes to the render 
+-- target and no longer in regular framebuffer.
+--
+if (is_postfx_ok == 1) then
+  gh_render_target.bind(rt01)
+end  
+  
+-- Rendering of the 3D scene: first the bkg quad, and after, the torus.
+--
+
+gh_renderer.set_viewport(0, 0, rt_w, rt_h)
+gh_renderer.clear_color_depth_buffers(0.0, 0.0, 0.0, 1.0, 1.0)
+
+
+-- The bkg quad.
+--  
+gh_camera.bind(camera_ortho)
+
+gh_renderer.set_depth_test_state(0)
+gh_texture.bind(bkg_tex, 0)
+gh_gpu_program.bind(gpu_prog_02)
+gh_object.render(mesh_quad)
+
+
+    
+-- The torus.
+--
+gh_camera.bind(camera)
+
+gh_renderer.set_depth_test_state(1)
+gh_texture.bind(tex02, 0)
+gh_gpu_program.bind(gpu_prog_01)
+gh_object.set_euler_angles(mesh, elapsed_time*10, 12, 30)
+gh_object.render(mesh)
+gh_gpu_program.bind(0)
+  
+
+if (is_postfx_ok == 1) then
+  
+  -- Back to regular framebuffer.
+  --  
+  gh_render_target.bind(0)
+
+  gh_renderer.set_viewport(0, 0, winW, winH)
+
+  gh_renderer.clear_color_buffer(1.0, 0.0, 0.0, 1.0, 1.0)
+
+  gh_renderer.set_depth_test_state(0)
+  
+  -- Binds the render target texture...
+  -- 
+  gh_texture.rt_color_bind(rt01, 0)
+
+  -- ...and a second one just for fun
+  --
+  gh_texture.bind(postfx_tex, 1)
+
+  -- Binding of PostFX GPU program.
+  --
+  gh_gpu_program.bind(gpu_prog_postfx_01)
+  gh_gpu_program.uniform1f(gpu_prog_postfx_01, "elapsed_time", elapsed_time)
+
+
+  -- Rendering of the postfx fullscreen quad.
+  --
+  gh_camera.bind(camera_ortho_postfx)
+  gh_object.render(fullscreen_quad)
+  
+end
+
+  
+  
+-- The useful info (under OSX with GL 3.2 core profile, the text is not displayed 
+-- because it relies on some GL2 code).
+--  
+gh_utils.font_render(font_a, 10, 20, 1.0, 1.0, 0.0, 1.0, "GLSL Hacker - Post processing (PostFX) demo")
+-- gh_utils.font_render(font_a, 10, 35, 0.8, 0.8, 0.8, 1.0, "Top view: PostFX ON - Bottom view: PostFX OFF")
+
+
+--[[
+if ((g_do_screenshot == 1) and (elapsed_time > 2.0)) then
+  gh_utils.do_screenshot("screenshot_001.jpg", 0)
+  g_do_screenshot = 0
+end  
+--]]
+
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+gh_camera.update_ortho(camera_ortho_postfx, -winW/2, winW/2, -winH/2, winH/2, -1.0, 1.0)
+gh_camera.set_viewport(camera_ortho_postfx, 0, 0, winW, winH)
+
+gh_mesh.update_quad_size(fullscreen_quad, winW, winH)
+
+if (is_postfx_ok == 0) then
+  rt_w = winW
+  rt_h = winH
+end
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="GLSL Hacker - Vertex pool / Lua" 
+          width="800" height="600" 
+          gl_version_major="2" gl_version_minor="1" />
+  
+  <gpu_program name="gpu_prog_01" >
+    <raw_data_vs><![CDATA[	 
+#version 120
+void main()
+{
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+  vec4 eye = gl_ModelViewMatrix * gl_Vertex; 
+  float d = length(eye);
+  gl_PointSize = 30.0 * 1.0/(0.0 + 0.05*d + 0.0001*d*d); 			
+  gl_FrontColor = gl_Color;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+#version 120
+uniform sampler2D tex0;
+void main (void)
+{
+  vec2 uv = gl_PointCoord.xy;
+  vec3 t = texture2D(tex0,uv).rgb * gl_Color.xyz;
+  gl_FragColor = vec4(t, 1.0);
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+ 
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+    
+font_a = gh_utils.font_create("Tahoma", 14)
+   
+
+-- A perspective camera for the 3D scene.
+-- The first three params are the position and the last three params are the lookat point.
+camera = gh_camera.create_perspective(0, 0, 100, 0, 0, 0)
+
+  
+
+gpu_prog_01 = gh_node.getid("gpu_prog_01")
+
+
+num_particles = 100000
+vp = gh_vertex_pool.create(num_particles)
+
+-- Init particles position and color
+--
+for i=0, num_particles-1 do
+  x = math.random(-80.0, 80.0)
+  y = math.random(-50.0, 50.0)
+  -- z = math.random(-20.0, 20.0)
+  z = 0
+  gh_vertex_pool.vertex_setpos(vp, i, x, y, z, 1)
+  
+  -- local alpha = ((x*x + z*z) / 40000)
+  local alpha = 1
+  r = math.random()
+  g = math.random()
+  b = math.random()
+  gh_vertex_pool.vertex_set_color(vp, i, r, g, b, 1.0)
+end
+
+
+
+local abs_path = 0
+tex01 = gh_texture.create_from_file("flare19.jpg", 0, abs_path)
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(1)
+
+
+GXL3D_RENDERER_BLEND_FACTOR_ZERO = 0
+GXL3D_RENDERER_BLEND_FACTOR_ONE = 1
+GXL3D_RENDERER_BLEND_FACTOR_SRC_ALPHA = 2
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_DST_ALPHA = 3
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_DST_COLOR = 4
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA = 5
+GXL3D_RENDERER_BLEND_FACTOR_DST_COLOR = 6
+GXL3D_RENDERER_BLEND_FACTOR_DST_ALPHA = 7
+GXL3D_RENDERER_BLEND_FACTOR_SRC_COLOR = 8
+GXL3D_RENDERER_BLEND_FACTOR_ONE_MINUS_SRC_COLOR = 9
+
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time();
+
+gh_camera.bind(camera)
+
+gh_renderer.set_depth_test_state(1)
+
+gh_renderer.set_viewport_scissor(0, 0, winW, winH)
+gh_renderer.clear_color_depth_buffers(0.1, 0.1, 0.2, 1.0, 1.0)
+   
+
+gh_renderer.set_depth_test_state(0)
+
+gh_renderer.set_blending_state(1)
+gh_renderer.set_blending_factors(GXL3D_RENDERER_BLEND_FACTOR_SRC_ALPHA, GXL3D_RENDERER_BLEND_FACTOR_ONE)
+
+gh_texture.bind(tex01, 0)
+
+gh_gpu_program.bind(gpu_prog_01)
+gh_gpu_program.uniform1i(gpu_prog_01, "tex0", 0)
+
+gh_vertex_pool.render(vp, 0)
+
+gh_renderer.set_depth_test_state(1)
+gh_renderer.set_blending_state(0)
+
+-- gh_gpu_program.bind(0) -- Disabling gpu programs for font rendering.
+gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker demo - Vertex Pool (particles) demo")
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

@@ -1,0 +1,329 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+	
+  <window name="win3d01" title="Polyline Test" width="800" height="400"
+          gl_version_major="3" gl_version_minor="2" />
+  
+  
+<gpu_program name="gpu_prog_01" >
+    <raw_data_vs><![CDATA[	 
+#version 150
+in vec4 gxl3d_Position;
+uniform mat4 gxl3d_ModelViewProjectionMatrix;
+void main()
+{
+  gl_Position = gxl3d_ModelViewProjectionMatrix * gxl3d_Position;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+#version 150
+precision highp float;
+out vec4 Out_Color;
+void main()
+{
+  Out_Color.rgb = vec3(0.0, 1.0, 0.0);
+  Out_Color.a = 1.0;
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+ 
+<gpu_program name="gpu_prog_02" >
+    <raw_data_vs><![CDATA[	 
+#version 150
+in vec4 gxl3d_Position;
+in vec4 gxl3d_Color;
+out vec4 Vertex_Color;
+void main()
+{
+  gl_Position = gxl3d_Position;
+  Vertex_Color = gxl3d_Color;
+}
+  ]]></raw_data_vs>
+    <raw_data_gs><![CDATA[	 
+#version 150
+uniform mat4 gxl3d_ModelViewProjectionMatrix;
+uniform float line_width;
+ 
+out vec3 Geom_Normal;
+ 
+layout (lines) in;
+layout (triangle_strip,max_vertices=12) out;
+
+in vec4 Vertex_Color[];
+out vec4 vcolor;
+
+void main( void )
+{
+ 
+// get endpoint positions
+vec3 inPosition = gl_in[0].gl_Position.xyz;
+vec3 outPosition = gl_in[1].gl_Position.xyz;
+ 
+// establish line direction
+vec3 lineDir = normalize(outPosition -inPosition);
+ 
+// establish right perpindicular by crossing line direction with y axis.
+vec3 lineRight = normalize(cross(lineDir,vec3(0,1,0)));
+ 
+// if line direction is pointing straight up, instead perform cross product with x axis
+// to establish right perpindicular.
+if(abs(lineDir.y) > 0.999)
+    lineRight = normalize(cross(lineDir,vec3(1,0,0)));
+ 
+// establish left perpindicular by crossing line direction right perpindicular.
+vec3 lineUp = normalize(cross(lineDir,lineRight));
+
+// establish offsets for the right and up faces of the volumetric line 
+// left face == - right face  and down face == - up face
+vec3 rightFaceOffset = lineRight * (line_width / 2);
+vec3 upFaceOffset = lineUp * (line_width / 2);
+
+vec3 lineUpOffset = vec3(0.2, 0.2, 0.2);
+ 
+// using these offsets, establish volumetric line vertices in projection space
+vec4 inDownLeftPos = gxl3d_ModelViewProjectionMatrix* vec4( inPosition -rightFaceOffset-lineUpOffset , 1.0);
+vec4 inUpPos = gxl3d_ModelViewProjectionMatrix * vec4( inPosition +lineUpOffset , 1.0);
+vec4 inDownRightPos = gxl3d_ModelViewProjectionMatrix * vec4( inPosition +rightFaceOffset-lineUpOffset , 1.0);
+ 
+vec4 outDownLeftPos = gxl3d_ModelViewProjectionMatrix * vec4( outPosition -rightFaceOffset-lineUpOffset , 1.0);
+vec4 outUpPos = gxl3d_ModelViewProjectionMatrix * vec4( outPosition +lineUpOffset , 1.0);
+vec4 outDownRightPos = gxl3d_ModelViewProjectionMatrix * vec4( outPosition +rightFaceOffset-lineUpOffset , 1.0);
+
+//////////////////////////// Left-Up Face ////////////////////////////
+ 
+Geom_Normal = (lineUp-lineRight)/2.0;
+gl_Position = inUpPos;
+vcolor = Vertex_Color[0];
+EmitVertex();
+ 
+gl_Position = inDownLeftPos;
+vcolor = Vertex_Color[0];
+EmitVertex();
+ 
+gl_Position = outUpPos;
+vcolor = Vertex_Color[1];
+//vcolor = vec4(0,1,0,1);
+EmitVertex();
+ 
+gl_Position = outDownLeftPos;
+vcolor = Vertex_Color[1];
+//vcolor = vec4(1,0,0,0);
+EmitVertex();
+ 
+EndPrimitive();
+
+//////////////////////////// Right-Up Face ////////////////////////////
+ 
+Geom_Normal = (lineUp+lineRight)/2.0;
+gl_Position = outUpPos;
+vcolor = Vertex_Color[0];
+//vcolor = vec4(1,0,0,1);
+EmitVertex();
+ 
+gl_Position = outDownRightPos;
+vcolor = Vertex_Color[0];
+//vcolor = vec4(1,0,0,1);
+EmitVertex();
+ 
+gl_Position = inUpPos;
+vcolor = Vertex_Color[1];
+//vcolor = vec4(1,0,0,0);
+EmitVertex();
+ 
+gl_Position = inDownRightPos;
+vcolor = Vertex_Color[1];
+//vcolor = vec4(1,0,0,0);
+EmitVertex();
+ 
+EndPrimitive();
+
+//////////////////////////// Down Face ////////////////////////////
+ 
+Geom_Normal = - lineUp;
+gl_Position = inDownLeftPos;
+vcolor = Vertex_Color[0];
+//vcolor = vec4(1,0,0,0);
+EmitVertex();
+ 
+gl_Position = inDownRightPos;
+vcolor = Vertex_Color[0];
+//vcolor = vec4(1,0,0,0);
+EmitVertex();
+ 
+gl_Position = outDownLeftPos;
+vcolor = Vertex_Color[1];
+//vcolor = vec4(1,0,0,0);
+EmitVertex();
+ 
+gl_Position = outDownRightPos;
+vcolor = Vertex_Color[1];
+//vcolor = vec4(1,0,0,0);
+EmitVertex();
+ 
+EndPrimitive();
+}
+  ]]></raw_data_gs>
+    <raw_data_ps><![CDATA[	 
+#version 150
+precision highp float;
+in vec4 vcolor;
+out vec4 Out_Color;
+void main()
+{
+  //Out_Color.rgb = vec3(0.0, 1.0, 0.0);
+  //Out_Color.a = 1.0;
+  Out_Color = vcolor;
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+  
+	<script name="init_scene" run_mode="INIT" >
+		<raw_data><![CDATA[	
+
+function GH_InitRandom()
+	math.randomseed(os.time()) -- seed and pop
+end
+
+function GH_random(a, b)
+	if (a > b) then
+		local c = b
+		b = a
+		a = c
+	end
+	local delta = b-a
+	return (a + math.random()*delta)
+end
+
+    
+winW, winH = gh_window.getsize(0)
+
+font_a = gh_utils.font_create("Tahoma", 14)
+
+
+-- A perspective camera for the 3D scene (torus + background quad)
+-- The first three params are the position and the last three params are the lookat point.
+camera = gh_camera.create_perspective(0, 0, 30, 0, 0, 0)
+
+glsl_prog = gh_node.getid("gpu_prog_02")
+
+GH_InitRandom()
+
+pl = gh_polyline.create()
+num_lines = 1000
+local i
+for i=0, num_lines-1 do
+  x = GH_random(-10, 10)
+  y = GH_random(0, 10)
+  z = GH_random(-10, 10)
+  gh_polyline.add_line(pl, 0,0,0,  x,y,z)
+end
+gh_polyline.build(pl)
+
+num_vertices = num_lines*2
+for i=0, num_vertices-1 do
+  r = math.random()
+  g = math.random()
+  b = math.random()
+  a = math.random()
+  gh_polyline.set_vertex_color(pl, i, r,g,b,a)
+  --gh_polyline.set_vertex_color(pl, i, 1,0,0,0.5)
+end
+
+
+gizmo = gh_object.create()
+gh_object.set_display_tripod_state(gizmo, 1)
+gh_object.set_display_grid_state(gizmo, 1)
+gh_object.set_grid_params(gizmo, 50.0, 50.0, 10, 10, 1, 1)
+
+
+
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_depth_test_state(1)
+
+
+
+BLEND_FACTOR_ZERO = 0
+BLEND_FACTOR_ONE = 1
+BLEND_FACTOR_SRC_ALPHA = 2
+BLEND_FACTOR_ONE_MINUS_DST_ALPHA = 3
+BLEND_FACTOR_ONE_MINUS_DST_COLOR = 4
+BLEND_FACTOR_ONE_MINUS_SRC_ALPHA = 5
+BLEND_FACTOR_DST_COLOR = 6
+BLEND_FACTOR_DST_ALPHA = 7
+BLEND_FACTOR_SRC_COLOR = 8
+BLEND_FACTOR_ONE_MINUS_SRC_COLOR = 9
+
+
+
+		]]></raw_data>
+	</script> 
+  
+	<script name="update_scene" run_mode="FRAME" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time()
+
+local cam_pos_x = 20.0 * math.cos(elapsed_time * 0.4)
+local cam_pos_y = 20.0 * math.cos(elapsed_time * 0.2)
+local cam_pos_z = 20.0 * math.sin(elapsed_time * 0.4)
+gh_camera.setpos(camera, cam_pos_x, cam_pos_y, cam_pos_z)
+gh_camera.bind(camera)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+
+gh_renderer.set_depth_test_state(1)
+gh_renderer.set_blending_state(0)
+gh_renderer.set_blending_factors(BLEND_FACTOR_SRC_ALPHA, BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+
+gh_gpu_program.bind(glsl_prog)
+gh_gpu_program.uniform1f(glsl_prog, "line_width", 0.2)
+
+local start_offset = num_lines/2 + num_lines*math.cos(elapsed_time*5)*0.5
+local end_offset = -1
+
+-- start_offset = 0
+-- end_offset = num_lines/2
+
+gh_polyline.set_line_offsets(pl, start_offset, end_offset)
+
+gh_object.render(pl)
+
+
+gh_renderer.set_blending_state(0)
+gh_renderer.set_depth_test_state(1)
+
+gh_gpu_program.bind(0)
+
+--gh_object.setpos(gizmo, 0, 0, 0)
+--gh_object.render(gizmo)
+
+gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker - Polyline test")
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+</glsl_hacker>

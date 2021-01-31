@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+
+<glsl_hacker>
+  
+  <window name="win3d01" title="Multi-output demo (Window 1)" 
+          width="400" height="800" x_offset="20"
+          layer="1" 
+          gl_version_major="2" gl_version_minor="1" />
+  
+  <window name="win3d02" title="Multi-output demo (Window 2)" 
+          width="400" height="800" x_offset="450"
+          layer="2" 
+          shared_window="win3d01" 
+          gl_version_major="2" gl_version_minor="1" build_opengl_extensions_list="0"/>
+  
+ 
+ 
+<gpu_program name="gpu_prog_01" layer="1">
+    <raw_data_vs><![CDATA[	 
+void main()
+{
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;		
+  gl_TexCoord[0] = gl_MultiTexCoord0;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+uniform sampler2D tex0;
+void main (void)
+{
+  vec2 uv = gl_TexCoord[0].xy;
+  uv.y *= -1.0;
+  vec3 t = texture2D(tex0,uv).rgb;
+  gl_FragColor = vec4(t, 1.0);
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+  
+<gpu_program name="gpu_prog_02" layer="2" >
+    <raw_data_vs><![CDATA[	 
+void main()
+{
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;		
+  gl_TexCoord[0] = gl_MultiTexCoord0;
+}
+  ]]></raw_data_vs>
+    <raw_data_ps><![CDATA[	 
+uniform sampler2D tex0;
+void main (void)
+{
+  vec2 uv = gl_TexCoord[0].xy;
+  uv.y *= -1.0;
+  float r = texture2D(tex0,uv + vec2(0.02, 0)).r;
+  float g = texture2D(tex0,uv + vec2(0.04, 0)).g;
+  float b = texture2D(tex0,uv + vec2(0.06, 0)).b;
+  gl_FragColor = vec4(r, g, b, 1.0);
+}
+    ]]></raw_data_ps>
+  </gpu_program>
+
+  
+	<script name="init_scene" run_mode="INIT" layer="1" >
+		<raw_data><![CDATA[	
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(1)
+
+
+winW, winH = gh_window.getsize(0)
+
+font_a = gh_utils.font_create("Tahoma", 14)
+
+camera = gh_camera.create_persp(60, 1.333, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+gh_camera.setpos(camera, 0, 30, 70)
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.setupvec(camera, 0, 1, 0, 0)
+
+gpu_prog_01 = gh_node.getid("gpu_prog_01")
+
+
+mesh_plane = gh_mesh.create_plane(100, 100, 10, 10)
+gh_node.setname(mesh_plane, "mesh_plane")
+gh_object.setpos(mesh_plane, 0, 0, 0)
+gh_object.set_euler_angles(mesh_plane, 90, 0, 0)
+gh_object.use_gl2_vertex_array(mesh_plane, 1) -- *** Old OpenGL... ***
+
+
+local abs_path = 0
+tex01 = gh_texture.create_from_file("../data/jegx_hulk_001.jpg", 0, abs_path)
+gh_node.setname(tex01, "texture01")
+
+
+		]]></raw_data>
+	</script> 
+
+  
+	<script name="update_scene" run_mode="FRAME" layer="1" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time();
+
+gh_renderer.set_depth_test_state(1)
+
+local cam_x = 50.0 * math.cos(elapsed_time*0.5)
+local cam_y = 40.0 + 10.0 * math.cos(elapsed_time*0.8)
+local cam_z = 50.0 * math.sin(elapsed_time*0.5)
+gh_camera.setpos(camera, cam_x, cam_y, cam_z)
+gh_camera.setlookat(camera, 0, 20, 0)
+gh_camera.bind(camera)
+
+gh_renderer.clear_color_depth_buffers(0.2, 0.2, 0.2, 1.0, 1.0)
+
+gh_gpu_program.bind(gpu_prog_01)
+
+gh_texture.bind(tex01, 0)
+gh_object.render(mesh_plane)
+    
+
+gh_utils.font_render(font_a, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker demo - Multi-output demo, shared texture, win01")
+gh_utils.font_render(font_a, 10, 40, 0.2, 1.0, 0.0, 1.0, string.format("Time = %.3f - tex01=%d", elapsed_time, tex01))
+gh_utils.font_render(font_a, 10, 60, 0.2, 1.0, 0.0, 1.0, string.format("camera = %d", camera))
+
+
+		]]></raw_data>
+	</script> 
+	
+
+	<script name="resize_scene" run_mode="SIZE" layer="1" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize()
+gh_utils.font_set_viewport_info(font_a, 0, 0, winW, winH)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+  
+  
+  
+  
+  
+  
+  
+  
+  
+	<script name="init_scene02" run_mode="INIT" layer="2" active="1" >
+		<raw_data><![CDATA[	
+
+gh_renderer.set_vsync(0)
+gh_renderer.set_scissor_state(1)
+
+winW, winH = gh_window.getsize(0)
+
+font = gh_utils.font_create("Tahoma", 14)
+
+camera = gh_camera.create_persp(60, 1.333, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+gh_camera.setpos(camera, 0, 30, 70)
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.setupvec(camera, 0, 1, 0, 0)
+
+
+gpu_prog_01 = gh_node.getid("gpu_prog_02")
+
+
+mesh_plane = gh_mesh.create_plane(100, 100, 10, 10)
+gh_node.setname(mesh_plane, "mesh_plane02")
+gh_object.setpos(mesh_plane, 0, 0, 0)
+gh_object.set_euler_angles(mesh_plane, 0, 0, 0)
+gh_object.use_gl2_vertex_array(mesh_plane, 1) -- *** Old OpenGL... ***
+
+
+shared_texture = gh_node.getid("texture01")
+tex01 = gh_texture.create_2d(64, 64, 1)
+gh_node.setname(tex01, "texture02")
+gh_texture.share_texture_data(tex01, shared_texture)
+
+--[[
+local abs_path = 0
+tex01 = gh_texture.create_from_file("../data/jegx_hulk_001.jpg", 0, abs_path)
+--]]
+
+
+		]]></raw_data>
+	</script> 
+  
+  
+	<script name="update_scene02" run_mode="FRAME" layer="2" active="1" >
+		<raw_data><![CDATA[	
+
+elapsed_time = gh_utils.get_elapsed_time();
+
+gh_renderer.set_depth_test_state(1)
+
+gh_renderer.clear_color_depth_buffers(0.1, 0.1, 0.4, 1.0, 1.0)
+
+--[[
+local cam_x = 50.0 * math.cos(elapsed_time*0.5)
+local cam_y = 40.0 + 10.0 * math.cos(elapsed_time*0.8)
+local cam_z = 50.0 * math.sin(elapsed_time*0.5)
+--]]
+local cam_x = 0.0
+local cam_y = 0.0
+local cam_z = 100.0
+gh_camera.setpos(camera, cam_x, cam_y, cam_z)
+gh_camera.setlookat(camera, 0, 0, 0)
+gh_camera.bind(camera)
+
+
+gh_gpu_program.bind(gpu_prog_01)
+
+gh_texture.bind(tex01, 0)
+
+gh_object.set_euler_angles(mesh_plane, 90, 30.0 * math.cos(elapsed_time*2.0), 0) 
+
+gh_object.render(mesh_plane)
+    
+
+gh_utils.font_render(font, 10, 20, 0.2, 1.0, 0.0, 1.0, "GLSL Hacker demo - Multi-output demo, shared texture, win02")
+gh_utils.font_render(font, 10, 40, 0.2, 1.0, 0.0, 1.0, string.format("Time = %.3f - tex01=%d - shared texture: %d", elapsed_time, tex01, shared_texture))
+gh_utils.font_render(font, 10, 60, 0.2, 1.0, 0.0, 1.0, string.format("camera = %d", camera))
+
+		]]></raw_data>
+	</script> 
+  
+
+	<script name="resize_scene02" run_mode="SIZE" layer="2" active="1" >
+		<raw_data><![CDATA[	
+
+winW, winH = gh_window.getsize(0)
+gh_utils.font_set_viewport_info(font, 0, 0, winW, winH)
+
+aspect = 1.333
+if (winH > 0) then
+  aspect = winW / winH
+end  
+gh_camera.update_persp(camera, 60, aspect, 0.1, 1000.0)
+gh_camera.set_viewport(camera, 0, 0, winW, winH)
+
+		]]></raw_data>
+	</script> 
+
+  
+</glsl_hacker>
