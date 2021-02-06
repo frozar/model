@@ -17,36 +17,42 @@ function setDifference(a, b) {
 
 // const A = [0, 1, 1, 3, 3, 6, 7];
 // const B = [1, 2, 3, 4, 5, 3, 5];
+// const A = [0, 1, 2, 3, 4];
+// const B = [1, 2, 3, 4, 5];
 // const A = [0, 1];
 // const B = [1, 2];
-const A = [0, 1, 1, 3, 4, 5, 6, 7, 8, 8, 8];
-const B = [1, 2, 4, 4, 5, 6, 7, 8, 9, 10, 11];
+// const A = [0, 1, 1, 3, 4, 5, 6, 7, 8, 8, 8];
+// const B = [1, 2, 4, 4, 5, 6, 7, 8, 9, 10, 11];
 // const A = [0, 1, 2, 3, 4, 5, 6, 7, 7];
 // const B = [2, 2, 3, 4, 5, 6, 7, 8, 9];
+// const A = [0, 0, 0, 1, 1, 2, 3, 7, 7, 8, 8];
+// const B = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
-function highestDegree(A, B) {
-  const N = A.length;
-
-  const dict = {};
-  function addElt(dict, n0, n1) {
-    if (dict[n0]) {
-      dict[n0].add(n1);
+function computeAdjacentLists(A, B) {
+  const adjacentLists = {};
+  function addElt(adjacentLists, n0, n1) {
+    if (adjacentLists[n0]) {
+      adjacentLists[n0].add(n1);
     } else {
-      dict[n0] = new Set([n1]);
+      adjacentLists[n0] = new Set([n1]);
     }
   }
 
-  for (let i = 0; i < N; ++i) {
+  for (let i = 0; i < A.length; ++i) {
     const n0 = A[i];
     const n1 = B[i];
 
-    addElt(dict, n0, n1);
-    addElt(dict, n1, n0);
+    addElt(adjacentLists, n0, n1);
+    addElt(adjacentLists, n1, n0);
   }
 
+  return adjacentLists;
+}
+
+function highestDegree(adjacentLists) {
   let res = undefined;
   let maxDegree = 0;
-  for (const [node, set] of Object.entries(dict)) {
+  for (const [node, set] of Object.entries(adjacentLists)) {
     const currentDegree = set.size;
     if (maxDegree < currentDegree) {
       maxDegree = currentDegree;
@@ -54,242 +60,262 @@ function highestDegree(A, B) {
     }
   }
 
-  return [res, N, dict];
+  return res;
 }
 
-function graphFromNode(rootNode, dict) {
-  const graph = {};
-  // console.log("graph", graph);
+function walkDepthFirst(seedNode, adjacentLists, func, funcArg) {
+  // Depth first walkthrough the graph from a seedNode
+  const nodeToVisite = [seedNode];
+  const alreadyVisited = new Set();
+  while (nodeToVisite.length !== 0) {
+    const curNode = nodeToVisite.shift();
+    const nodeNeighbourghood = adjacentLists[curNode];
 
-  const rootNeighbourghood = dict[rootNode];
+    for (let neighbourgNode of nodeNeighbourghood) {
+      // console.log("node", node);
+      if (neighbourgNode !== curNode && !alreadyVisited.has(neighbourgNode)) {
+        func(curNode, neighbourgNode, funcArg);
+        nodeToVisite.push(neighbourgNode);
+      }
+    }
+    alreadyVisited.add(curNode);
+  }
+}
 
-  // Initialisation of the graph
-  for (let node of rootNeighbourghood) {
-    graph[node] = new Set([node]);
+function computeRootNode(adjacentLists) {
+  const leaves = new Set();
+  for (const [node, set] of Object.entries(adjacentLists)) {
+    if (set.size === 1) {
+      leaves.add(node);
+    }
+  }
+  // console.log("leaves", leaves);
+
+  const distToLeaves = {};
+  const nodes = Object.keys(adjacentLists);
+  // Init distToLeaves
+  for (node in nodes) {
+    // console.log("node", node);
+    distToLeaves[node] = nodes.length;
   }
 
-  for (const [kNode, curNeighbourghood] of Object.entries(graph)) {
-    // console.log("kNode", kNode);
+  for (leaf of leaves) {
+    distToLeaves[leaf] = 0;
 
-    // console.log("curNeighbourghood", curNeighbourghood);
-    const seedNode = parseInt(kNode);
-    // console.log("seedNode", seedNode);
+    // Depth first walkthrough the graph from a leaf
+    walkDepthFirst(leaf, adjacentLists, (curNode, neighbourgNode) => {
+      distToLeaves[neighbourgNode] = Math.min(
+        distToLeaves[neighbourgNode],
+        distToLeaves[curNode] + 1
+      );
+    });
+  }
 
-    const nodeToVisite = [seedNode];
-    const alreadyVisited = new Set();
-    while (nodeToVisite.length !== 0) {
-      const curNode = nodeToVisite.shift();
+  const treeHeight = Math.max(...Object.values(distToLeaves));
+  // console.log("maxDist", maxDist);
 
-      // console.log("curNode", curNode);
-      const accessibleNodes = dict[curNode];
-      // console.log("accessibleNodes", accessibleNodes);
-      // console.log("graph[seedNode]", graph[seedNode]);
+  nodes.sort((n0, n1) => {
+    if (distToLeaves[n0] < distToLeaves[n1]) {
+      return -1;
+    } else if (distToLeaves[n0] > distToLeaves[n1]) {
+      return 1;
+    } else {
+      if (adjacentLists[n0].size < adjacentLists[n1].size) {
+        return -1;
+      } else if (adjacentLists[n0].size > adjacentLists[n1].size) {
+        return 1;
+      } else {
+        return n1.localeCompare(n0);
+      }
+    }
+  });
 
-      for (let node of accessibleNodes) {
-        // console.log("node", node);
-        if (node !== rootNode && !alreadyVisited.has(node)) {
-          curNeighbourghood.add(node);
-          nodeToVisite.push(node);
-        }
+  const rootNode = parseInt(nodes[nodes.length - 1]);
+  return [rootNode, treeHeight];
+}
+
+function graphFromNodeAux(seedNode, seedParentNode, adjacentLists) {
+  // const subGraph = [seedNode];
+  const subGraph = [];
+
+  const nodeToVisite = [seedNode];
+  const parentNodes = [seedParentNode];
+  while (nodeToVisite.length !== 0) {
+    const curNode = nodeToVisite.shift();
+    const parentNode = parentNodes.shift();
+    const nodeNeighbourghood = adjacentLists[curNode];
+
+    const parentNodeSet = new Set([parentNode]);
+    const correctNeighbourhood = setDifference(
+      nodeNeighbourghood,
+      parentNodeSet
+    );
+    // console.log("curNode", curNode);
+    // console.log("correctNeighbourhood", correctNeighbourhood);
+
+    if (correctNeighbourhood.size === 0) {
+      subGraph.push(curNode);
+      return subGraph;
+    } else if (correctNeighbourhood.size === 1) {
+      subGraph.push(curNode);
+      for (let node of correctNeighbourhood) {
+        // subGraph.push(node);
+        nodeToVisite.push(node);
+        parentNodes.push(curNode);
+      }
+    } else {
+      const curGraph = [curNode];
+      for (let node of correctNeighbourhood) {
+        const subSubGraph = graphFromNodeAux(node, curNode, adjacentLists);
+        // console.log("subSubGraph", subSubGraph);
+        curGraph.push(subSubGraph);
       }
 
-      alreadyVisited.add(curNode);
+      subGraph.push(curGraph);
     }
-
-    // break;
+    // console.log("subGraph", subGraph);
+    // console.log("");
   }
 
-  // console.log("res", graph);
+  return subGraph;
+}
+
+function graphFromNode(rootNode, adjacentLists) {
+  const graph = [rootNode];
+  // console.log("graph", graph);
+
+  const rootNeighbourghood = adjacentLists[rootNode];
+  // console.log("rootNeighbourghood", rootNeighbourghood);
+  // let parentNode = null;
+  // for (let node in adjacentLists[rootNode]) {
+  // }
+
+  if (rootNeighbourghood.size === 1) {
+    for (let node of rootNeighbourghood) {
+      // console.log("unique node", node);
+      graph.push(node);
+    }
+  } else {
+    for (let node of rootNeighbourghood) {
+      // console.log("NON UNIQUE node", node);
+      const subGraph = graphFromNodeAux(node, rootNode, adjacentLists);
+      graph.push(subGraph);
+      // break;
+    }
+  }
+
   return graph;
 }
 
-// function cut1Bridge(dict, seedNode) {
-//   let maxProd = 0;
-
-//   const rootNeighbourghood = Array.from(dict[seedNode]);
-//   const graph = graphFromNode(seedNode, dict);
-//   // console.log("rootNeighbourghood", rootNeighbourghood);
-//   for (let i = 0; i < rootNeighbourghood.length; ++i) {
-//     const n0 = rootNeighbourghood[i];
-//     let rootCompSize = 1;
-//     for (const [node, set] of Object.entries(graph)) {
-//       const iNode = parseInt(node);
-//       if (iNode !== n0) {
-//         // console.log("iNode", iNode);
-//         // console.log("set.size", set.size);
-//         rootCompSize += set.size;
-//       }
-//     }
-//     // console.log("rootCompSize", rootCompSize);
-
-//     const comp0Size = graph[n0].size;
-
-//     const prod = comp0Size * rootCompSize;
-//     // console.log("comp0Size", comp0Size);
-//     // console.log("rootCompSize", rootCompSize);
-//     // console.log("prod", prod);
-
-//     if (maxProd < prod) {
-//       maxProd = prod;
-//     }
-//   }
-
-//   return maxProd;
-// }
-
-function cut1Bridge(A, B, graphsFromNode) {
-  let maxProd = 0;
-  for (let i = 0; i < A.length; ++i) {
-    const nCut0 = A[i];
-    const nCut1 = B[i];
-    const curGraph = graphsFromNode[nCut0];
-    // console.log("nCut0", nCut0);
-    // console.log("nCut1", nCut1);
-    // console.log("curGraph", curGraph);
-
-    let comp0Size = 1;
-    for (let node of Object.keys(curGraph)) {
-      const iNode = parseInt(node);
-      if (iNode !== nCut1) {
-        comp0Size += curGraph[node].size;
-      }
-    }
-    const comp1Size = curGraph[nCut1].size;
-
-    const prod = comp0Size * comp1Size;
-    // console.log("prod", prod);
-    // console.log("");
-
-    if (maxProd < prod) {
-      maxProd = prod;
+function graphWeight(graph, key = [], res = {}) {
+  let acc = 0;
+  for (let i = 0; i < graph.length; ++i) {
+    // console.log("graph[i]", graph[i]);
+    // console.log("Array.isArray(graph[i])", Array.isArray(graph[i]));
+    // // "number"
+    if (Array.isArray(graph[i])) {
+      const subKey = [...key, i];
+      // acc += graphWeight(graph[i], subKey, res);
+      graphWeight(graph[i], subKey, res);
+      // subKey.push(0);
+      // console.log("res", res);
+      // console.log("subKey", subKey);
+      // console.log("res[subKey]", res[subKey]);
+      acc += res[subKey];
+    } else {
+      acc += 1;
     }
   }
+  // const newKey = [...key, 0];
+  const newKey = [...key];
+  res[newKey] = acc;
+  return res;
+}
+
+function cut1Bridge(weights, sortedKeys) {
+  const total = weights[""];
+  let maxProd = 0;
+  for (let i = 1; i < sortedKeys.length; ++i) {
+    const key = sortedKeys[i];
+    if (key.length < 2) {
+      const comp0 = weights[key];
+      const comp1 = total - comp0;
+      // console.log("comp0 * comp1", comp0 * comp1);
+      maxProd = Math.max(maxProd, comp0 * comp1);
+    }
+  }
+
   return maxProd;
 }
 
-function cut2Bridge(A, B, graphsFromNode) {
+function cut2Bridge(weights, sortedKeys, treeHeight) {
+  const heightThreshold = Math.ceil(treeHeight / 2) + 1;
+  // console.log("heightThreshold", heightThreshold);
+  const total = weights[""];
   let maxProd = 0;
+  for (let i = 1; i < sortedKeys.length - 1; ++i) {
+    for (let j = i + 1; j < sortedKeys.length; ++j) {
+      const key0 = sortedKeys[i];
+      const key1 = sortedKeys[j];
+      // console.log("key0", key0);
+      // console.log("key1", key1);
+      // if (key0.length <= heightThreshold && key1.length <= heightThreshold) {
+      // console.log("key0, key1", key0, key1);
+      let comp0 = weights[key0];
+      let comp1 = weights[key1];
 
-  for (let i = 0; i < A.length - 1; ++i) {
-    for (let j = i + 1; j < A.length; ++j) {
-      const nCut00 = A[i];
-      const nCut01 = B[i];
-      const nCut10 = A[j];
-      const nCut11 = B[j];
-
-      const curGraph0 = graphsFromNode[nCut00];
-      const curGraph1 = graphsFromNode[nCut10];
-
-      let setNCut00 = new Set([nCut00]);
-      for (let node of Object.keys(curGraph0)) {
-        const iNode = parseInt(node);
-        if (iNode !== nCut01) {
-          setNCut00 = setUnion(setNCut00, curGraph0[node]);
-        }
+      // console.log("'^' + key0", "^" + key0);
+      const regex = new RegExp("^" + key0);
+      // console.log("regex.test(key1)", regex.test(key1));
+      // If the key1 is a subKey of key0
+      if (regex.test(key1)) {
+        comp0 -= comp1;
       }
-      const setNCut01 = curGraph0[nCut01];
-
-      let setNCut10 = new Set([nCut10]);
-      for (let node of Object.keys(curGraph1)) {
-        const iNode = parseInt(node);
-        if (iNode !== nCut11) {
-          setNCut10 = setUnion(setNCut10, curGraph1[node]);
-        }
-      }
-      const setNCut11 = curGraph1[nCut11];
-
-      console.log("nCut00", nCut00);
-      console.log("nCut01", nCut01);
-      console.log("nCut10", nCut10);
-      console.log("nCut11", nCut11);
-      // console.log("setNCut00", setNCut00);
-      // console.log("setNCut01", setNCut01);
-      // console.log("setNCut10", setNCut10);
-      // console.log("setNCut11", setNCut11);
-
-      let electedSet0;
-      let electedSet1;
-      let comp0Size;
-      let comp1Size;
-      if (setNCut00.has(nCut10) && setNCut00.has(nCut11)) {
-        electedSet0 = setNCut00;
-        comp0Size = setNCut01.size;
-      } else {
-        electedSet0 = setNCut01;
-        comp0Size = setNCut00.size;
-      }
-
-      if (setNCut10.has(nCut00) && setNCut10.has(nCut01)) {
-        electedSet1 = setNCut10;
-        comp1Size = setNCut11.size;
-      } else {
-        electedSet1 = setNCut11;
-        comp1Size = setNCut10.size;
-      }
-
-      const intersectionSet = setIntersection(electedSet0, electedSet1);
-
-      // console.log("electedSet0", electedSet0);
-      // console.log("electedSet1", electedSet1);
-      // console.log("intersectionSet", intersectionSet);
-      const comp2Size = intersectionSet.size;
-
-      // console.log("comp0Size", comp0Size);
-      // console.log("comp1Size", comp1Size);
-      // console.log("comp2Size", comp2Size);
-
-      const prod = comp0Size * comp1Size * comp2Size;
-      console.log("prod", prod);
-      console.log("");
-
-      if (maxProd < prod) {
-        maxProd = prod;
-      }
+      const comp2 = total - comp0 - comp1;
+      // console.log("comp0 * comp1 * comp2", comp0 * comp1 * comp2);
+      maxProd = Math.max(maxProd, comp0 * comp1 * comp2);
+      // }
     }
   }
+
   return maxProd;
 }
 
 function solution(A, B) {
-  const [rootNode, N, dict] = highestDegree(A, B);
-  // console.log("rootNode", rootNode);
-  // console.log("N", N);
-  // console.log("dict", dict);
+  const N = A.length;
 
   if (N < 3) {
     const res = N + 1;
-    return res;
+    return res.toString();
   }
 
-  const graph = graphFromNode(rootNode, dict);
+  const adjacentLists = computeAdjacentLists(A, B);
+  // const rootNode = highestDegree(adjacentLists);
+
+  const [rootNode, treeHeight] = computeRootNode(adjacentLists);
+  // console.log("[rootNode, treeHeight]", [rootNode, treeHeight]);
+
+  const graph = graphFromNode(rootNode, adjacentLists);
+  const weights = graphWeight(graph);
+  const sortedKeys = Object.keys(weights).sort((k0, k1) => {
+    if (k0.length < k1.length) {
+      return -1;
+    } else if (k0.length > k1.length) {
+      return 1;
+    } else {
+      return k0.localeCompare(k1);
+    }
+  });
   // console.log("graph", graph);
+  // console.log("sortedKeys", sortedKeys);
+  // console.log("weights", weights);
 
-  // Don't cut bridge
-  let case0Prod = 0;
-  for (const [node, set] of Object.entries(graph)) {
-    case0Prod += set.size;
-  }
-  case0Prod += 1;
-  let maxProd = case0Prod;
+  const case0Prod = weights[""];
+  const case1Prod = cut1Bridge(weights, sortedKeys);
+  const case2Prod = cut2Bridge(weights, sortedKeys, treeHeight);
+  let maxProd = Math.max(case0Prod, case1Prod, case2Prod);
 
-  // Cut 1 bridge
-  let graphsFromNode = {};
-  for (let node = 0; node < N + 1; ++node) {
-    graphsFromNode[node] = graphFromNode(node, dict);
-  }
-  // console.log("graphsFromNode", graphsFromNode);
-
-  const prodCut1 = cut1Bridge(A, B, graphsFromNode);
-  if (maxProd < prodCut1) {
-    maxProd = prodCut1;
-  }
-
-  const prodCut2 = cut2Bridge(A, B, graphsFromNode);
-  if (maxProd < prodCut2) {
-    maxProd = prodCut2;
-  }
-
-  return maxProd;
+  return maxProd.toString();
 }
 
-console.log("solution(A, B)", solution(A, B).toString());
+// console.log("solution(A, B)", solution(A, B));
