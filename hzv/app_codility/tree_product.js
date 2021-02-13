@@ -27,6 +27,14 @@ function setDifference(a, b) {
 // const B = [2, 2, 3, 4, 5, 6, 7, 8, 9];
 // const A = [0, 0, 0, 1, 1, 2, 3, 7, 7, 8, 8];
 // const B = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+// const A = [0, 0, 2, 3, 3, 1, 6, 6, 6];
+// const B = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+// const A = [0, 0, 0, 0, 0, 1, 1, 1, 1];
+// const B = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+// const A = [0, 0, 0, 3, 3, 1, 1, 7, 7];
+// const B = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+// const A = [0, 0, 0, 3];
+// const B = [1, 2, 3, 4];
 
 function computeAdjacentLists(A, B) {
   const adjacentLists = {};
@@ -47,20 +55,6 @@ function computeAdjacentLists(A, B) {
   }
 
   return adjacentLists;
-}
-
-function highestDegree(adjacentLists) {
-  let res = undefined;
-  let maxDegree = 0;
-  for (const [node, set] of Object.entries(adjacentLists)) {
-    const currentDegree = set.size;
-    if (maxDegree < currentDegree) {
-      maxDegree = currentDegree;
-      res = parseInt(node);
-    }
-  }
-
-  return res;
 }
 
 function walkDepthFirst(seedNode, adjacentLists, func, funcArg) {
@@ -96,22 +90,34 @@ function computeRootNode(adjacentLists) {
   // Init distToLeaves
   for (node in nodes) {
     // console.log("node", node);
-    distToLeaves[node] = nodes.length;
+    // distToLeaves[node] = nodes.length;
+    distToLeaves[node] = undefined;
   }
 
+  let treeHeight = 0;
   for (leaf of leaves) {
     distToLeaves[leaf] = 0;
 
     // Depth first walkthrough the graph from a leaf
     walkDepthFirst(leaf, adjacentLists, (curNode, neighbourgNode) => {
-      distToLeaves[neighbourgNode] = Math.min(
-        distToLeaves[neighbourgNode],
-        distToLeaves[curNode] + 1
-      );
+      if (distToLeaves[neighbourgNode] === undefined) {
+        treeHeight = Math.max(treeHeight, distToLeaves[curNode] + 1);
+        distToLeaves[neighbourgNode] = distToLeaves[curNode] + 1;
+      } else {
+        treeHeight = Math.max(
+          treeHeight,
+          distToLeaves[curNode] + 1,
+          distToLeaves[neighbourgNode]
+        );
+        distToLeaves[neighbourgNode] = Math.min(
+          distToLeaves[neighbourgNode],
+          distToLeaves[curNode] + 1
+        );
+      }
     });
   }
 
-  const treeHeight = Math.max(...Object.values(distToLeaves));
+  // const treeHeight = Math.max(...Object.values(distToLeaves));
   // console.log("maxDist", maxDist);
 
   nodes.sort((n0, n1) => {
@@ -136,7 +142,7 @@ function computeRootNode(adjacentLists) {
 
 function graphFromNodeAux(seedNode, seedParentNode, adjacentLists) {
   // const subGraph = [seedNode];
-  const subGraph = [];
+  let subGraph = [];
 
   const nodeToVisite = [seedNode];
   const parentNodes = [seedParentNode];
@@ -171,7 +177,12 @@ function graphFromNodeAux(seedNode, seedParentNode, adjacentLists) {
         curGraph.push(subSubGraph);
       }
 
-      subGraph.push(curGraph);
+      // subGraph.push(curGraph);
+      if (subGraph.length === 0) {
+        subGraph = curGraph;
+      } else {
+        subGraph.push(curGraph);
+      }
     }
     // console.log("subGraph", subGraph);
     // console.log("");
@@ -232,12 +243,16 @@ function graphWeight(graph, key = [], res = {}) {
   return res;
 }
 
-function cut1Bridge(weights, sortedKeys) {
+function cut1Bridge(weights, sortedKeys, treeHeight) {
+  const heightThreshold = Math.ceil(treeHeight / 2) + 1;
+  // console.log("heightThreshold", heightThreshold);
   const total = weights[""];
   let maxProd = 0;
   for (let i = 1; i < sortedKeys.length; ++i) {
     const key = sortedKeys[i];
-    if (key.length < 2) {
+    // console.log("key.split(", ").length ", key.split(",").length);
+    if (key.split(",").length <= heightThreshold) {
+      // console.log("IN");
       const comp0 = weights[key];
       const comp1 = total - comp0;
       // console.log("comp0 * comp1", comp0 * comp1);
@@ -250,6 +265,7 @@ function cut1Bridge(weights, sortedKeys) {
 
 function cut2Bridge(weights, sortedKeys, treeHeight) {
   const heightThreshold = Math.ceil(treeHeight / 2) + 1;
+  // const heightThreshold = treeHeight + 1;
   // console.log("heightThreshold", heightThreshold);
   const total = weights[""];
   let maxProd = 0;
@@ -257,24 +273,30 @@ function cut2Bridge(weights, sortedKeys, treeHeight) {
     for (let j = i + 1; j < sortedKeys.length; ++j) {
       const key0 = sortedKeys[i];
       const key1 = sortedKeys[j];
-      // console.log("key0", key0);
+      // console.log("key0", key0.split(",").length);
       // console.log("key1", key1);
-      // if (key0.length <= heightThreshold && key1.length <= heightThreshold) {
-      // console.log("key0, key1", key0, key1);
-      let comp0 = weights[key0];
-      let comp1 = weights[key1];
+      if (
+        key0.split(",").length <= heightThreshold &&
+        key1.split(",").length <= heightThreshold
+      ) {
+        // console.log("key0, key1", key0, key1);
+        let comp0 = weights[key0];
+        let comp1 = weights[key1];
 
-      // console.log("'^' + key0", "^" + key0);
-      const regex = new RegExp("^" + key0);
-      // console.log("regex.test(key1)", regex.test(key1));
-      // If the key1 is a subKey of key0
-      if (regex.test(key1)) {
-        comp0 -= comp1;
+        // console.log("'^' + key0", "^" + key0);
+        const regex0 = new RegExp("^" + key0);
+        const regex1 = new RegExp("^" + key1);
+        // console.log("regex.test(key1)", regex.test(key1));
+        // If the key1 is a subKey of key0
+        if (regex0.test(key1)) {
+          comp0 -= comp1;
+        } else if (regex1.test(key0)) {
+          comp1 -= comp0;
+        }
+        const comp2 = total - comp0 - comp1;
+        // console.log("comp0 * comp1 * comp2", comp0 * comp1 * comp2);
+        maxProd = Math.max(maxProd, comp0 * comp1 * comp2);
       }
-      const comp2 = total - comp0 - comp1;
-      // console.log("comp0 * comp1 * comp2", comp0 * comp1 * comp2);
-      maxProd = Math.max(maxProd, comp0 * comp1 * comp2);
-      // }
     }
   }
 
@@ -290,7 +312,6 @@ function solution(A, B) {
   }
 
   const adjacentLists = computeAdjacentLists(A, B);
-  // const rootNode = highestDegree(adjacentLists);
 
   const [rootNode, treeHeight] = computeRootNode(adjacentLists);
   // console.log("[rootNode, treeHeight]", [rootNode, treeHeight]);
@@ -309,9 +330,10 @@ function solution(A, B) {
   // console.log("graph", graph);
   // console.log("sortedKeys", sortedKeys);
   // console.log("weights", weights);
+  // console.log("treeHeight", treeHeight);
 
   const case0Prod = weights[""];
-  const case1Prod = cut1Bridge(weights, sortedKeys);
+  const case1Prod = cut1Bridge(weights, sortedKeys, treeHeight);
   const case2Prod = cut2Bridge(weights, sortedKeys, treeHeight);
   let maxProd = Math.max(case0Prod, case1Prod, case2Prod);
 
