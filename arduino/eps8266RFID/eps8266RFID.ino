@@ -33,18 +33,17 @@
  * SPI SCK     SCK          D5                 13 / ICSP-3   52        D13        ICSP-3           15
  */
 
+#include <Arduino.h>
 #include <SPI.h>
 #include <MFRC522.h>
-#include <ESP8266WiFi.h>
 
+#define ESP8266 1
 #include <ESP8266HTTPClient.h>
+#include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 
-#ifndef STASSID
-#define STASSID "HUAWEI-B535-07AA"
-#define STAPSK "rozar97431"
-#endif
-
-#define SERVER_IP "192.168.8.100:3000"
+// #define SERVER_IP "192.168.8.100:3000"
+// #define SERVER_IP "192.168.30.136:3000"
+#define SERVER_IP "192.168.43.172:3000"
 
 // #define RST_PIN         9          // Configurable, see typical pin layout above
 // #define SS_PIN          10         // Configurable, see typical pin layout above
@@ -58,49 +57,61 @@
 
 MFRC522 mfrc522(SS_PIN, RST_PIN); // Create MFRC522 instance
 
-const char *ssid = STASSID;
-const char *password = STAPSK;
+// const char *ssid = STASSID;
+// const char *password = STAPSK;
 
 // byte newUid[4] = {0x71, 0x85, 0x13, 0x09};
+
+bool initialisation = true;
 
 void setup()
 {
 	Serial.begin(115200); // Initialize serial communications with the PC
 	while (!Serial)
 		; // Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
-	delay(5000);
+	delay(2000);
 	Serial.println("Begin setup");
-	// Serial.println("D3");
-	// Serial.println(D3);
-	// Serial.println("D4");
-	// Serial.println(D4);
 	SPI.begin();											 // Init SPI bus
 	mfrc522.PCD_Init();								 // Init MFRC522
 	delay(4);													 // Optional delay. Some board do need more time after init to be ready, see Readme
 	mfrc522.PCD_DumpVersionToSerial(); // Show details of PCD - MFRC522 Card Reader details
 	Serial.println(F("Scan PICC to see UID, SAK, type, and data blocks..."));
 
-	Serial.println();
-	Serial.println();
-	Serial.print("Connecting to ");
-	Serial.println(ssid);
-
 	/* Explicitly set the ESP8266 to be a WiFi-client, otherwise, it by default,
      would try to act as both a client and an access-point and could cause
      network-issues with your other WiFi-devices on your WiFi-network. */
 	WiFi.mode(WIFI_STA);
-	WiFi.begin(ssid, password);
 
-	while (WiFi.status() != WL_CONNECTED)
+	// WiFiManager, Local intialization. Once its business is done,
+	// there is no need to keep it around
+	WiFiManager wm;
+
+	// Configure a static IP address for the ESP card in Access Point mode
+	// wm.setAPStaticIPConfig(ip, gateway, subnet);
+	wm.setAPStaticIPConfig(IPAddress(192, 168, 5, 1),
+												 IPAddress(192, 168, 5, 1),
+												 IPAddress(255, 255, 255, 0));
+
+	//reset settings - wipe credentials for testing
+	wm.resetSettings();
+
+	// Automatically connect using saved credentials,
+	// if connection fails, it starts an access point with the specified name ( "AutoConnectAP"),
+	// if empty will auto generate SSID, if password is blank it will be anonymous AP (wm.autoConnect())
+	// then goes into a blocking loop awaiting configuration and will return success result
+
+	bool res = wm.autoConnect("AutoConnectAP"); // anonymous ap
+
+	if (!res)
 	{
-		delay(500);
-		Serial.print(".");
+		Serial.println("Failed to connect");
+		// ESP.restart();
 	}
-
-	Serial.println("");
-	Serial.println("WiFi connected");
-	Serial.println("IP address: ");
-	Serial.println(WiFi.localIP());
+	else
+	{
+		//if you get here you have connected to the WiFi
+		Serial.println("connected...yeey :)");
+	}
 
 	Serial.println("End setup");
 }
@@ -109,20 +120,8 @@ String getUID(MFRC522::Uid *uid)
 {
 	String res = "";
 
-	// Serial.print(F("Card UID:"));
 	for (byte i = 0; i < uid->size; i++)
 	{
-		// if (uid->uidByte[i] < 0x10)
-		// {
-		// 	// Serial.print(F(" 0"));
-		// 	res += F(" 0");
-		// }
-		// else
-		// {
-		// 	// Serial.print(F(" "));
-		// 	res += F(" ");
-		// }
-		// Serial.print(uid->uidByte[i], HEX);
 		res += String(uid->uidByte[i], HEX);
 	}
 	return res;
@@ -130,6 +129,12 @@ String getUID(MFRC522::Uid *uid)
 
 void loop()
 {
+	if (initialisation)
+	{
+		Serial.println("IP address: " + WiFi.localIP().toString());
+		initialisation = !initialisation;
+	}
+
 	// Serial.println("Begin loop");
 	// delay(1000);
 	// Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
@@ -145,7 +150,7 @@ void loop()
 	}
 
 	// wait for WiFi connection
-	if ((WiFi.status() == WL_CONNECTED))
+	if (WiFi.status() == WL_CONNECTED)
 	{
 
 		WiFiClient client;
@@ -153,12 +158,18 @@ void loop()
 
 		Serial.print("[HTTP] begin...\n");
 		// configure traged server and url
-		http.begin(client, "http://" SERVER_IP "/postplain/"); //HTTP
+		String serverEndPoint = "http://" SERVER_IP "/postplain/";
+		Serial.print("[HTTP] serverEndPoint: " + serverEndPoint + "\n");
+		http.setReuse(true);
+		http.begin(client, serverEndPoint);
 		http.addHeader("Content-Type", "application/json");
 
-		Serial.print("[HTTP] BEFORE POST\n");
 		// start connection and send HTTP header and body
-		int httpCode = http.POST("{\"uid\":" + getUID(&(mfrc522.uid)) + "}");
+		String message = "{\"uid\":" + getUID(&(mfrc522.uid)) + "}";
+		Serial.print("[HTTP] message: " + message + "\n");
+		int httpCode = http.POST(message);
+		String payload = http.getString();
+		Serial.print("[HTTP] payload: " + payload + "\n");
 
 		// httpCode will be negative on error
 		if (httpCode > 0)
@@ -168,7 +179,8 @@ void loop()
 		}
 		else
 		{
-			Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
+			Serial.printf("[POST FAILED] httpCode: %d\n", httpCode);
+			Serial.printf("[POST FAILED] error: %s\n", http.errorToString(httpCode).c_str());
 		}
 
 		http.end();
