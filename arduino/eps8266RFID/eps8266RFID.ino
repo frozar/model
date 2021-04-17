@@ -21,50 +21,157 @@
  * @license Released into the public domain.
  * 
  * Typical pin layout used:
- * -----------------------------------------------------------------------------------------
- *             MFRC522      Arduino       Arduino   Arduino    Arduino          Arduino
- *             Reader/PCD   Uno/101       Mega      Nano v3    Leonardo/Micro   Pro Micro
- * Signal      Pin          Pin           Pin       Pin        Pin              Pin
- * -----------------------------------------------------------------------------------------
- * RST/Reset   RST          9             5         D9         RESET/ICSP-5     RST
- * SPI SS      SDA(SS)      10            53        D10        10               10
- * SPI MOSI    MOSI         11 / ICSP-4   51        D11        ICSP-4           16
- * SPI MISO    MISO         12 / ICSP-1   50        D12        ICSP-1           14
- * SPI SCK     SCK          13 / ICSP-3   52        D13        ICSP-3           15
+ * ------------------------------------------------------------------------------------------------------------
+ *             MFRC522      NodeMCU Lolin      Arduino       Arduino   Arduino    Arduino          Arduino
+ *             Reader/PCD   V3 Module          Uno/101       Mega      Nano v3    Leonardo/Micro   Pro Micro
+ * Signal      Pin          ESP8266 (ESP-12F)  Pin           Pin       Pin        Pin              Pin
+ * ------------------------------------------------------------------------------------------------------------
+ * RST/Reset   RST          D3                 9             5         D9         RESET/ICSP-5     RST
+ * SPI SS      SDA(SS)      D4                 10            53        D10        10               10
+ * SPI MOSI    MOSI         D7                 11 / ICSP-4   51        D11        ICSP-4           16
+ * SPI MISO    MISO         D6                 12 / ICSP-1   50        D12        ICSP-1           14
+ * SPI SCK     SCK          D5                 13 / ICSP-3   52        D13        ICSP-3           15
  */
 
 #include <SPI.h>
 #include <MFRC522.h>
+#include <ESP8266WiFi.h>
+
+#include <ESP8266HTTPClient.h>
+
+#ifndef STASSID
+#define STASSID "HUAWEI-B535-07AA"
+#define STAPSK "rozar97431"
+#endif
+
+#define SERVER_IP "192.168.8.100:3000"
 
 // #define RST_PIN         9          // Configurable, see typical pin layout above
 // #define SS_PIN          10         // Configurable, see typical pin layout above
 
-#define RST_PIN  3 // D3
-#define SS_PIN   4 // D4
+// #define RST_PIN 18 // D3
+// #define SS_PIN 17  // D4
+// Documentation link
+// https://esp8266-shop.com/esp8266-guide/esp8266-nodemcu-pinout/
+#define RST_PIN D3 // 0
+#define SS_PIN D4	 // 2
 
-MFRC522 mfrc522(SS_PIN, RST_PIN);  // Create MFRC522 instance
+MFRC522 mfrc522(SS_PIN, RST_PIN); // Create MFRC522 instance
 
-void setup() {
-	Serial.begin(9600);		// Initialize serial communications with the PC
-	while (!Serial);		// Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
-	SPI.begin();			// Init SPI bus
-	mfrc522.PCD_Init();		// Init MFRC522
-	delay(4);				// Optional delay. Some board do need more time after init to be ready, see Readme
-	mfrc522.PCD_DumpVersionToSerial();	// Show details of PCD - MFRC522 Card Reader details
+const char *ssid = STASSID;
+const char *password = STAPSK;
+
+// byte newUid[4] = {0x71, 0x85, 0x13, 0x09};
+
+void setup()
+{
+	Serial.begin(115200); // Initialize serial communications with the PC
+	while (!Serial)
+		; // Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
+	delay(5000);
+	Serial.println("Begin setup");
+	// Serial.println("D3");
+	// Serial.println(D3);
+	// Serial.println("D4");
+	// Serial.println(D4);
+	SPI.begin();											 // Init SPI bus
+	mfrc522.PCD_Init();								 // Init MFRC522
+	delay(4);													 // Optional delay. Some board do need more time after init to be ready, see Readme
+	mfrc522.PCD_DumpVersionToSerial(); // Show details of PCD - MFRC522 Card Reader details
 	Serial.println(F("Scan PICC to see UID, SAK, type, and data blocks..."));
+
+	Serial.println();
+	Serial.println();
+	Serial.print("Connecting to ");
+	Serial.println(ssid);
+
+	/* Explicitly set the ESP8266 to be a WiFi-client, otherwise, it by default,
+     would try to act as both a client and an access-point and could cause
+     network-issues with your other WiFi-devices on your WiFi-network. */
+	WiFi.mode(WIFI_STA);
+	WiFi.begin(ssid, password);
+
+	while (WiFi.status() != WL_CONNECTED)
+	{
+		delay(500);
+		Serial.print(".");
+	}
+
+	Serial.println("");
+	Serial.println("WiFi connected");
+	Serial.println("IP address: ");
+	Serial.println(WiFi.localIP());
+
+	Serial.println("End setup");
 }
 
-void loop() {
+String getUID(MFRC522::Uid *uid)
+{
+	String res = "";
+
+	// Serial.print(F("Card UID:"));
+	for (byte i = 0; i < uid->size; i++)
+	{
+		// if (uid->uidByte[i] < 0x10)
+		// {
+		// 	// Serial.print(F(" 0"));
+		// 	res += F(" 0");
+		// }
+		// else
+		// {
+		// 	// Serial.print(F(" "));
+		// 	res += F(" ");
+		// }
+		// Serial.print(uid->uidByte[i], HEX);
+		res += String(uid->uidByte[i], HEX);
+	}
+	return res;
+}
+
+void loop()
+{
+	// Serial.println("Begin loop");
+	// delay(1000);
 	// Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
-	if ( ! mfrc522.PICC_IsNewCardPresent()) {
+	if (!mfrc522.PICC_IsNewCardPresent())
+	{
 		return;
 	}
 
 	// Select one of the cards
-	if ( ! mfrc522.PICC_ReadCardSerial()) {
+	if (!mfrc522.PICC_ReadCardSerial())
+	{
 		return;
 	}
 
-	// Dump debug info about the card; PICC_HaltA() is automatically called
-	mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
+	// wait for WiFi connection
+	if ((WiFi.status() == WL_CONNECTED))
+	{
+
+		WiFiClient client;
+		HTTPClient http;
+
+		Serial.print("[HTTP] begin...\n");
+		// configure traged server and url
+		http.begin(client, "http://" SERVER_IP "/postplain/"); //HTTP
+		http.addHeader("Content-Type", "application/json");
+
+		Serial.print("[HTTP] BEFORE POST\n");
+		// start connection and send HTTP header and body
+		int httpCode = http.POST("{\"uid\":" + getUID(&(mfrc522.uid)) + "}");
+
+		// httpCode will be negative on error
+		if (httpCode > 0)
+		{
+			// HTTP header has been send and Server response header has been handled
+			Serial.printf("[HTTP] POST succeeded\n");
+		}
+		else
+		{
+			Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
+		}
+
+		http.end();
+		delay(1000);
+	}
 }
