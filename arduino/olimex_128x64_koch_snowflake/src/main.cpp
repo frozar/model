@@ -37,12 +37,12 @@
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-void rotVec2(int16_t vec[2], double alpha, int16_t *vecRot)
+void rotVec2(float vec[2], float alpha, float *vecRot)
 {
-  int16_t x = vec[0];
-  int16_t y = vec[1];
-  int16_t xRot = x * cos(alpha) - y * sin(alpha);
-  int16_t yRot = x * sin(alpha) + y * cos(alpha);
+  float x = vec[0];
+  float y = vec[1];
+  float xRot = x * cos(alpha) - y * sin(alpha);
+  float yRot = x * sin(alpha) + y * cos(alpha);
   vecRot[0] = xRot;
   vecRot[1] = yRot;
 }
@@ -51,46 +51,38 @@ const int nbExtremyties = 5;
 const int dim = 2;
 const int16_t yMax = SCREEN_HEIGHT - 1;
 
-void nextKochSnoflake(int16_t x0Screen,
-                      int16_t y0Screen,
-                      int16_t x1Screen,
-                      int16_t y1Screen,
-                      int16_t ptPath[nbExtremyties][dim])
+void nextKochSnoflake(float x0Screen,
+                      float y0Screen,
+                      float x1Screen,
+                      float y1Screen,
+                      float ptPath[nbExtremyties][dim])
 {
-  int16_t x0Cart = x0Screen;
-  int16_t x1Cart = x1Screen;
-  int16_t y0Cart = -y0Screen + yMax;
-  int16_t y1Cart = -y1Screen + yMax;
+  float x0Cart = x0Screen;
+  float x1Cart = x1Screen;
+  float y0Cart = -y0Screen + yMax;
+  float y1Cart = -y1Screen + yMax;
 
-  double vect[2] = {((double)x1Cart - x0Cart), ((double)y1Cart - y0Cart)};
-  double alpha = atan2(vect[1], vect[0]);
-  double vectLen = sqrt(vect[0] * vect[0] + vect[1] * vect[1]);
-  int16_t xLen = vectLen;
-  int16_t xInc = xLen / 3;
-  int16_t yMid = sqrt(3) / 2 * xInc;
+  float vect[2] = {x1Cart - x0Cart, y1Cart - y0Cart};
+  float alpha = atan2(vect[1], vect[0]);
+  float vectLen = sqrt(vect[0] * vect[0] + vect[1] * vect[1]);
+  float xLen = vectLen;
+  float xInc = xLen / 3;
+  float yMid = sqrt(3) / 2 * xInc;
 
-  int16_t v[4][2] = {{xInc, 0},
-                     {((int16_t)(xInc / ((int16_t)2))), yMid},
-                     {((int16_t)(xInc / ((int16_t)2))), ((int16_t)-yMid)},
-                     {xInc, 0}};
-  // printf("v0x: %d , v0y: %d\n", v[0][0], v[0][1]);
-  // printf("v1x: %d , v1y: %d\n", v[1][0], v[1][1]);
-  // printf("v2x: %d , v2y: %d\n", v[2][0], v[2][1]);
-  // printf("v3x: %d , v3y: %d\n", v[3][0], v[3][1]);
+  float v[4][2] = {{xInc, 0},
+                   {xInc / 2, yMid},
+                   {xInc / 2, -yMid},
+                   {xInc, 0}};
 
-  int16_t vRot[4][2] = {{0, 0},
-                        {0, 0},
-                        {0, 0},
-                        {0, 0}};
+  float vRot[4][2] = {{0, 0},
+                      {0, 0},
+                      {0, 0},
+                      {0, 0}};
 
   for (int i = 0; i < 4; ++i)
   {
     rotVec2(v[i], alpha, vRot[i]);
   }
-  // printf("v0rotx: %d , v0roty: %d\n", vRot[0][0], vRot[0][1]);
-  // printf("v1rotx: %d , v1roty: %d\n", vRot[1][0], vRot[1][1]);
-  // printf("v2rotx: %d , v2roty: %d\n", vRot[2][0], vRot[2][1]);
-  // printf("v3rotx: %d , v3roty: %d\n", vRot[3][0], vRot[3][1]);
 
   // Flip y to adapt screen coordinate system
   for (int i = 0; i < 4; ++i)
@@ -132,14 +124,15 @@ void kochSnowflake(int16_t x0Screen,
 {
   display.clearDisplay();
 
+  printf("order %d\n", order);
   const int totalNbSegment = sumNbSegment(order);
-  printf("totalNbSegment %d\n", totalNbSegment);
+  // printf("totalNbSegment %d\n", totalNbSegment);
 
   int nbSegmentPerOrder[order];
   for (int i = 0; i < order; ++i)
   {
     nbSegmentPerOrder[i] = pow(4, i);
-    printf("nbSegmentPerOrder[%d]: %d\n", i, nbSegmentPerOrder[i]);
+    // printf("nbSegmentPerOrder[%d]: %d\n", i, nbSegmentPerOrder[i]);
   }
 
   int parentMapping[totalNbSegment][2];
@@ -164,22 +157,17 @@ void kochSnowflake(int16_t x0Screen,
       idxParentOffset += nbSegmentPerOrder[i];
     }
 
-    // printf("j %d\n", j);
-    // printf("toSub %d\n", toSub);
-    // printf("idxParentOffset %d\n", idxParentOffset);
-    // int parentIdx = ceil(log(j) / log(4)) - 1;
-    int quot = (j - toSub) / 4;
+    int jNormalised = (j - toSub);
+    int quot = jNormalised / 4;
     int parentIdx = quot + idxParentOffset;
-    int subIdx = (j - toSub) % 4;
-    // printf("parentIdx %d\n", parentIdx);
-    // printf("subIdx %d\n", subIdx);
+    int subIdx = jNormalised % 4;
     parentMapping[j][0] = parentIdx;
     parentMapping[j][1] = subIdx;
   }
-  printf("\n");
+  // printf("\n");
 
   // Initialisation of path points
-  int16_t ptPath[totalNbSegment][nbExtremyties][dim];
+  float ptPath[totalNbSegment][nbExtremyties][dim];
   nextKochSnoflake(x0Screen,
                    y0Screen,
                    x1Screen,
@@ -197,15 +185,6 @@ void kochSnowflake(int16_t x0Screen,
                      ptPath[j]);
   }
 
-  // for (int i = 0; i < 4; ++i)
-  // {
-  //   const int16_t i0 = i;
-  //   const int16_t i1 = i0 + 1;
-  //   display.drawLine(ptPath[0][i0][0], ptPath[0][i0][1],
-  //                    ptPath[0][i1][0], ptPath[0][i1][1], SSD1306_WHITE);
-  //   display.display();
-  //   delay(500);
-  // }
   int jStart = 0;
   int jEnd = 0;
   for (int i = 0; i < order; ++i)
@@ -217,7 +196,6 @@ void kochSnowflake(int16_t x0Screen,
     jEnd += nbSegmentPerOrder[i];
   }
 
-  // for (int j = 1; j < 5; ++j)
   for (int j = jStart; j < jEnd; ++j)
   {
     for (int i = 0; i < 4; ++i)
@@ -230,7 +208,7 @@ void kochSnowflake(int16_t x0Screen,
       delay(100);
     }
   }
-  printf("\n");
+  // printf("\n");
 }
 
 void setup()
@@ -258,17 +236,26 @@ void setup()
     x1Screen = x0Screen + 42 * 3;
     y0Screen = yMax - 14;
     y1Screen = y0Screen - 0;
-    kochSnowflake(x0Screen,
-                  y0Screen,
-                  x1Screen,
-                  y1Screen, 2);
-    delay(3000);
+    for (int i = 1; i < 8; ++i)
+    {
+      kochSnowflake(x0Screen,
+                    y0Screen,
+                    x1Screen,
+                    y1Screen, i);
+      delay(3000);
+    }
 
-    kochSnowflake(x0Screen,
-                  y0Screen,
-                  x1Screen,
-                  y1Screen, 3);
-    delay(3000);
+    // kochSnowflake(x0Screen,
+    //               y0Screen,
+    //               x1Screen,
+    //               y1Screen, 2);
+    // delay(3000);
+
+    // kochSnowflake(x0Screen,
+    //               y0Screen,
+    //               x1Screen,
+    //               y1Screen, 3);
+    // delay(3000);
 
     // x0Screen = 1;
     // x1Screen = x0Screen + 42;
