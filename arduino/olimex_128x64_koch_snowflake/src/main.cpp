@@ -208,7 +208,6 @@ void kochSnowflake(int16_t x0Screen,
       delay(100);
     }
   }
-  // printf("\n");
 }
 
 void setup()
@@ -236,36 +235,14 @@ void setup()
     x1Screen = x0Screen + 42 * 3;
     y0Screen = yMax - 14;
     y1Screen = y0Screen - 0;
-    for (int i = 1; i < 8; ++i)
+    for (int i = 1; i < 4; ++i)
     {
       kochSnowflake(x0Screen,
                     y0Screen,
                     x1Screen,
                     y1Screen, i);
-      delay(3000);
+      delay(1000);
     }
-
-    // kochSnowflake(x0Screen,
-    //               y0Screen,
-    //               x1Screen,
-    //               y1Screen, 2);
-    // delay(3000);
-
-    // kochSnowflake(x0Screen,
-    //               y0Screen,
-    //               x1Screen,
-    //               y1Screen, 3);
-    // delay(3000);
-
-    // x0Screen = 1;
-    // x1Screen = x0Screen + 42;
-    // y0Screen = yMax - 14;
-    // y1Screen = y0Screen - (10 / 3);
-    // kochSnowflake(x0Screen,
-    //               y0Screen,
-    //               x1Screen,
-    //               y1Screen, 1);
-    // delay(1000);
   }
 }
 
