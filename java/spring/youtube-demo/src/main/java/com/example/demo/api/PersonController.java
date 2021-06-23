@@ -1,6 +1,9 @@
 package com.example.demo.api;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,6 +29,9 @@ import com.example.demo.service.PersonService;
 // The @RequestMapping declare the route handle by the "PersonController" 
 // class: it create the spring boot end-point "api/v1/person"
 
+// The @GetMapping annotation tells spring to consider the "getAllPeople"
+// method to deal with GET requests.
+
 @RequestMapping("api/v1/person")
 @RestController
 public class PersonController {
@@ -40,6 +46,11 @@ public class PersonController {
   @PostMapping
   public void addPerson(@RequestBody Person person) {
     personService.addPerson(person);
+  }
+  
+  @GetMapping
+  public List<Person> getAllPeople() {
+    return personService.getAllPeople();
   }
 
 }
