@@ -60,7 +60,8 @@ public class PersonController {
   }
 
   @PostMapping
-  public void addPerson(@RequestBody Person person) {
+  public void addPerson(// @Valid @NonNull
+      @RequestBody Person person) {
     personService.addPerson(person);
   }
 
@@ -79,8 +80,10 @@ public class PersonController {
     personService.deletePerson(id);
   }
   
+  // TODO: why @Valid and @NonNull are unavailable? (API update)
   @PutMapping(path = "{id}")
-  public void updatePerson(@PathVariable("id") UUID id, @RequestBody Person personToUpdate) {
+  public void updatePerson(@PathVariable("id") UUID id, // @Valid @NonNull 
+      @RequestBody Person personToUpdate) {
     personService.updatePerson(id, personToUpdate);
   }
 
