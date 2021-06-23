@@ -1,0 +1,153 @@
+EESchema Schematic File Version 4
+EELAYER 30 0
+EELAYER END
+$Descr A4 11693 8268
+encoding utf-8
+Sheet 1 1
+Title ""
+Date ""
+Rev ""
+Comp ""
+Comment1 ""
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+$Comp
+L Device:LED D1
+U 1 1 60C56CC0
+P 3050 1600
+F 0 "D1" H 3043 1345 50  0000 C CNN
+F 1 "LED_Verte" H 3043 1436 50  0000 C CNN
+F 2 "LED_THT:LED_D5.0mm" H 3050 1600 50  0001 C CNN
+F 3 "~" H 3050 1600 50  0001 C CNN
+	1    3050 1600
+	-1   0    0    1   
+$EndComp
+$Comp
+L Device:R_US R1
+U 1 1 60C576A1
+P 2500 1600
+F 0 "R1" V 2295 1600 50  0000 C CNN
+F 1 "200" V 2386 1600 50  0000 C CNN
+F 2 "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" V 2540 1590 50  0001 C CNN
+F 3 "~" H 2500 1600 50  0001 C CNN
+	1    2500 1600
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	2650 1600 2900 1600
+$Comp
+L power:PWR_FLAG #FLG01
+U 1 1 60C5AE56
+P 2150 1400
+F 0 "#FLG01" H 2150 1475 50  0001 C CNN
+F 1 "PWR_FLAG" H 2150 1573 50  0000 C CNN
+F 2 "" H 2150 1400 50  0001 C CNN
+F 3 "~" H 2150 1400 50  0001 C CNN
+	1    2150 1400
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2050 1600 2150 1600
+Wire Wire Line
+	2150 1400 2150 1600
+Connection ~ 2150 1600
+Wire Wire Line
+	2150 1600 2350 1600
+Wire Wire Line
+	1450 1600 1350 1600
+Wire Wire Line
+	1350 1600 1350 1850
+Wire Wire Line
+	1350 1850 1200 1850
+Connection ~ 1350 1600
+Wire Wire Line
+	1350 1600 1200 1600
+Wire Wire Line
+	3200 1600 3400 1600
+Wire Wire Line
+	3400 1600 3400 1850
+Wire Wire Line
+	3400 1850 3550 1850
+Connection ~ 3400 1600
+Wire Wire Line
+	3400 1600 3550 1600
+$Comp
+L BS-7:BS-7 BT1
+U 1 1 60C6E302
+P 1750 1600
+F 0 "BT1" H 1750 1333 50  0000 C CNN
+F 1 "BS-7" H 1750 1424 50  0000 C CNN
+F 2 "battery_holder:BAT_BS-7" H 1750 1600 50  0001 L BNN
+F 3 "" H 1750 1600 50  0001 L BNN
+F 4 "MPD" H 1750 1600 50  0001 L BNN "MANUFACTURER"
+F 5 "Manufacturer recommendations" H 1750 1600 50  0001 L BNN "STANDARD"
+F 6 "H" H 1750 1600 50  0001 L BNN "PARTREV"
+F 7 "9.0mm" H 1750 1600 50  0001 L BNN "MAXIMUM_PACKAGE_HEIGHT"
+	1    1750 1600
+	-1   0    0    1   
+$EndComp
+$Comp
+L Connector:Conn_01x02_Male J1
+U 1 1 60C4A529
+P 1000 1500
+F 0 "J1" H 1108 1681 50  0000 C CNN
+F 1 "Conn_01x02_Male" H 1108 1590 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 1000 1500 50  0001 C CNN
+F 3 "~" H 1000 1500 50  0001 C CNN
+	1    1000 1500
+	1    0    0    -1  
+$EndComp
+$Comp
+L Connector:Conn_01x02_Female J2
+U 1 1 60C4AECB
+P 1000 1950
+F 0 "J2" H 1000 2050 50  0000 C CNN
+F 1 "Conn_01x02_Female" H 1000 2150 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 1000 1950 50  0001 C CNN
+F 3 "~" H 1000 1950 50  0001 C CNN
+	1    1000 1950
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	1350 1850 1350 1950
+Wire Wire Line
+	1350 1950 1200 1950
+Connection ~ 1350 1850
+Wire Wire Line
+	1350 1600 1350 1500
+Wire Wire Line
+	1350 1500 1200 1500
+$Comp
+L Connector:Conn_01x02_Male J3
+U 1 1 60C4F16D
+P 3750 1600
+F 0 "J3" H 3800 1300 50  0000 R CNN
+F 1 "Conn_01x02_Male" H 4100 1400 50  0000 R CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 3750 1600 50  0001 C CNN
+F 3 "~" H 3750 1600 50  0001 C CNN
+	1    3750 1600
+	-1   0    0    1   
+$EndComp
+$Comp
+L Connector:Conn_01x02_Female J4
+U 1 1 60C522A6
+P 3750 1850
+F 0 "J4" H 3750 1650 50  0000 C CNN
+F 1 "Conn_01x02_Female" H 3750 1550 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 3750 1850 50  0001 C CNN
+F 3 "~" H 3750 1850 50  0001 C CNN
+	1    3750 1850
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	3400 1600 3400 1500
+Wire Wire Line
+	3400 1500 3550 1500
+Wire Wire Line
+	3400 1850 3400 1950
+Wire Wire Line
+	3400 1950 3550 1950
+Connection ~ 3400 1850
+$EndSCHEMATC
