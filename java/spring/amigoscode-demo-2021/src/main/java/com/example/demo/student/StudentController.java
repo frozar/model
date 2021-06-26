@@ -47,4 +47,16 @@ public class StudentController {
       ) {
     studentService.updateStudent(studentId, name, email);    
   }
+    
+//  @PutMapping(path = "{studentId}")
+//  public void updateStudent(
+//      @PathVariable("studentId") Long studentId,
+//      @RequestBody(required = false) String body
+//      ) {
+//    System.out.println("body: "+ body);
+//    // TODO: parse JSON string to retrieve potentially "name" and
+//    // "email".
+//    // Then call "studentService".
+//    // studentService.updateStudent(studentId, name, email);    
+//  }
 }
