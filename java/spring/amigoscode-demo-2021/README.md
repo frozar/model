@@ -6,6 +6,14 @@ using Spring-boot and Postgres SQL database.
 This tutorial comes from the video:
 https://www.youtube.com/watch?v=9SGDpanrc8U&ab_channel=Amigoscode
 
+# Launch the application
+
+The DB should be created before launching the application.
+
+``` shell
+./mvnw spring-boot:run
+```
+
 # Configuration of the differents routes
 
 GET api/v1/student
@@ -46,6 +54,7 @@ To get the Postgres "describe" command "\d" or \"dt" to show the list of relatio
 of a DB, the setup of the project done and run at least once before.
 
 ``` shell
+docker run --name postgres-spring -e POSTGRES_PASSWORD=password -d -p 5432:5432 postgres:alpine
 docker exec -it postgres-spring bin/bash
 bash-5.1# psql -U postgres
 postgres=# \l
