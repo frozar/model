@@ -79,6 +79,13 @@ fn nearest_city(
     return (res, dist_min);
 }
 
+fn indexOf<T: PartialEq>(vector: &Vec<T>, item: &T) -> usize {
+    return vector
+        .iter()
+        .position(|current_item| *current_item == *item)
+        .unwrap();
+}
+
 fn compute_travelling(cities: &Vec<City>) -> i32 {
     let mut consumed_cities: Vec<i32> = vec![];
     let mut cities_to_visit: Vec<i32> = cities.iter().map(|city| city.id).collect::<Vec<_>>();
@@ -94,10 +101,7 @@ fn compute_travelling(cities: &Vec<City>) -> i32 {
         let (next_city, dist_increment) = nearest_city(current_city, &cities, &consumed_cities);
         // eprintln!("{:?} {:?}", next_city, dist_increment);
         total_dist += dist_increment;
-        let index_next_city = cities_to_visit
-            .iter()
-            .position(|&i| i == next_city.id)
-            .unwrap();
+        let index_next_city = indexOf(&cities_to_visit, &next_city.id);
         // eprintln!("index_next_city {}", index_next_city);
 
         current_city_id = pop(&mut cities_to_visit, index_next_city);
