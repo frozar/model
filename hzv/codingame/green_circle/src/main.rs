@@ -1,4 +1,5 @@
 use std::borrow::BorrowMut;
+use std::cmp::Ordering;
 use std::io;
 
 macro_rules! parse_input {
@@ -43,6 +44,20 @@ enum Card {
     refactoring,
     bonus,
     technical_debt,
+}
+
+#[derive(Debug, Eq, Hash, PartialEq)]
+enum Location {
+    initial,
+    training,
+    coding,
+    daily_routine,
+    task_prioritization,
+    architecture_study,
+    continuous_delivery,
+    code_review,
+    refactoring,
+    poste_administratif,
 }
 
 #[derive(Debug)]
@@ -114,7 +129,54 @@ impl Card {
             7 => Card::refactoring,
             8 => Card::bonus,
             9 => Card::technical_debt,
-            _ => panic!("No need for this position"),
+            _ => panic!("No card for this position"),
+        }
+    }
+}
+
+impl Location {
+    pub fn position(&self) -> isize {
+        match self {
+            Location::initial => -1,
+            Location::training => 0,
+            Location::coding => 1,
+            Location::daily_routine => 2,
+            Location::task_prioritization => 3,
+            Location::architecture_study => 4,
+            Location::continuous_delivery => 5,
+            Location::code_review => 6,
+            Location::refactoring => 7,
+            Location::poste_administratif => 8,
+        }
+    }
+
+    pub fn from_position(i: i32) -> Location {
+        match i {
+            -1 => Location::initial,
+            0 => Location::training,
+            1 => Location::coding,
+            2 => Location::daily_routine,
+            3 => Location::task_prioritization,
+            4 => Location::architecture_study,
+            5 => Location::continuous_delivery,
+            6 => Location::code_review,
+            7 => Location::refactoring,
+            8 => Location::poste_administratif,
+            _ => panic!("No location for this position"),
+        }
+    }
+}
+
+trait Distance<Rhs: ?Sized = Self> {
+    fn dist(&self, other: &Rhs) -> i32;
+}
+
+impl Distance for Location {
+    fn dist(&self, other: &Location) -> i32 {
+        if self.position() == -1 {
+            1
+        } else {
+            other.position() as i32 - self.position() as i32
         }
     }
 }
@@ -129,18 +191,53 @@ struct Player {
 
 use std::collections::HashMap;
 
+#[derive(Default)]
+struct Cards(HashMap<Card, i32>);
+
+impl std::fmt::Debug for Cards {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Cards")
+            .field("training", self.0.get(&Card::training).unwrap_or(&0))
+            .field("coding", &self.0.get(&Card::coding).unwrap_or(&0))
+            .field(
+                "daily_routine",
+                &self.0.get(&Card::daily_routine).unwrap_or(&0),
+            )
+            .field(
+                "task_prioritization",
+                &self.0.get(&Card::task_prioritization).unwrap_or(&0),
+            )
+            .field(
+                "architecture_study",
+                &self.0.get(&Card::architecture_study).unwrap_or(&0),
+            )
+            .field(
+                "continuous_delivery",
+                &self.0.get(&Card::continuous_delivery).unwrap_or(&0),
+            )
+            .field("code_review", &self.0.get(&Card::code_review).unwrap_or(&0))
+            .field("refactoring", &self.0.get(&Card::refactoring).unwrap_or(&0))
+            .field("bonus", &self.0.get(&Card::bonus).unwrap_or(&0))
+            .field(
+                "technical_debt",
+                &self.0.get(&Card::technical_debt).unwrap_or(&0),
+            )
+            .finish()
+    }
+}
+
 #[derive(Debug, Default)]
 struct Input {
     game_phase: String,
     applications: Vec<Application>,
     me: Player,
     opponent: Player,
-    hand: HashMap<Card, i32>,
-    draw: HashMap<Card, i32>,
-    discard: HashMap<Card, i32>,
-    opponent_cards: HashMap<Card, i32>,
-    automated: HashMap<Card, i32>,
-    opponent_automated: HashMap<Card, i32>,
+    hand: Cards,
+    draw: Cards,
+    discard: Cards,
+    opponent_cards: Cards,
+    automated: Cards,
+    opponent_automated: Cards,
     possible_moves: Vec<String>,
 }
 
@@ -166,19 +263,37 @@ fn most_popular_need(applications: &Vec<Application>) -> Need {
     Need::from_position(position_max_need)
 }
 
-fn closest_app(input: &Input) -> &Application {
-    let mut competences = HashMap::<Card, i32>::new();
+fn compute_competence(input: &Input) -> Cards {
+    // let mut competences = HashMap::<Card, i32>::new();
+    let mut competences = Cards::default();
 
     // 0 - Sum every competences from "hand" and "draw"
     for i in 0..NB_DIFFERENT_CARD {
-        competences.insert(
-            Card::from_position(i),
-            *input.hand.get(&Card::from_position(i)).unwrap()
-                + *input.draw.get(&Card::from_position(i)).unwrap(),
-        );
+        let competence_hand = match input.hand.0.get(&Card::from_position(i)) {
+            Some(score) => *score,
+            None => 0,
+        };
+        let competence_draw = match input.draw.0.get(&Card::from_position(i)) {
+            Some(score) => *score,
+            None => 0,
+        };
+
+        competences
+            .0
+            .insert(Card::from_position(i), competence_hand + competence_draw);
     }
 
+    competences
+}
+
+// input: &Input
+fn get_closest_app<'a>(input: &'a Input, competences: &'_ Cards) -> (&'a Application, i32) {
+    // 0 - Sum every competences from "hand" and "draw"
+    // let competences = compute_competence(&input);
+    // dbg!(&competences);
+
     // 1 - Find closest application of the competence I have
+    #[derive(Debug)]
     struct ApplicationScore<'a> {
         app: &'a Application,
         score: i32,
@@ -191,39 +306,56 @@ fn closest_app(input: &Input) -> &Application {
     }
 
     impl core::cmp::PartialOrd for ApplicationScore<'_> {
-        fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
             if self.score < other.score {
-                Some(std::cmp::Ordering::Less)
+                Some(Ordering::Less)
             } else if self.score > other.score {
-                Some(std::cmp::Ordering::Greater)
+                Some(Ordering::Greater)
             } else {
-                Some(std::cmp::Ordering::Equal)
+                Some(Ordering::Equal)
             }
         }
     }
 
-    let mut array = vec![];
+    let mut array_application_score = vec![];
 
     for app in input.applications.iter() {
         let mut score = 0;
         for i in 0..NB_DIFFERENT_CARD {
             if i < NB_DIFFERENT_NEED {
-                score += competences.get(&Card::from_position(i)).unwrap() * 2 - app.needs[i];
+                if 0 < app.needs[i] {
+                    score += competences.0.get(&Card::from_position(i)).unwrap() * 2 - app.needs[i];
+                }
             } else {
-                match Card::from_position(i) {
-                    Card::bonus => score += 1,
-                    Card::technical_debt => (),
+                score += match Card::from_position(i) {
+                    Card::bonus => competences.0.get(&Card::from_position(i)).unwrap(),
+                    Card::technical_debt => &0,
                     _ => panic!("Doesn't deal with this card"),
                 }
             }
+            // dbg!(i, score);
         }
-        array.push(ApplicationScore { app, score });
+        // dbg!(app);
+        // dbg!(score);
+        array_application_score.push(ApplicationScore { app, score });
     }
 
-    array.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+    array_application_score.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+    array_application_score.reverse();
+
+    // for elt in array_application_score.iter() {
+    //     dbg!(elt.app.id);
+    //     dbg!(elt.app.needs);
+    //     dbg!(elt.score);
+    // }
+
+    // dbg!(&array_application_score);
 
     // &input.applications[0]
-    array[0].app
+    (
+        array_application_score[0].app,
+        array_application_score[0].score,
+    )
 }
 
 fn parse_inputs() -> Input {
@@ -310,12 +442,12 @@ fn parse_inputs() -> Input {
         let cards_location = inputs[0].trim().to_string();
 
         let input_cards_location: &mut HashMap<Card, i32> = match cards_location.as_str() {
-            "HAND" => input.hand.borrow_mut(),
-            "DRAW" => input.draw.borrow_mut(),
-            "DISCARD" => input.discard.borrow_mut(),
-            "OPPONENT_CARDS" => input.opponent_cards.borrow_mut(),
-            "AUTOMATED" => input.automated.borrow_mut(),
-            "OPPONENT_AUTOMATED" => input.opponent_automated.borrow_mut(),
+            "HAND" => input.hand.0.borrow_mut(),
+            "DRAW" => input.draw.0.borrow_mut(),
+            "DISCARD" => input.discard.0.borrow_mut(),
+            "OPPONENT_CARDS" => input.opponent_cards.0.borrow_mut(),
+            "AUTOMATED" => input.automated.0.borrow_mut(),
+            "OPPONENT_AUTOMATED" => input.opponent_automated.0.borrow_mut(),
             &_ => panic!("Don't know this cards location"),
         };
 
@@ -344,40 +476,120 @@ fn parse_inputs() -> Input {
 // ##################################################### MAIN
 
 fn main() {
-    let mut i = 0;
-    let mut j = 0;
-
     // game loop
     loop {
         let input = parse_inputs();
 
         dbg!(&input.game_phase);
-        for app in input.applications.iter() {
-            dbg!(app);
-        }
 
-        for possible_move in input.possible_moves.iter() {
-            dbg!(possible_move);
-        }
-
-        // In the first league: RANDOM | MOVE <zoneId> | RELEASE <applicationId> | WAIT; In later leagues: | GIVE <cardType> | THROW <cardType> | TRAINING | CODING | DAILY_ROUTINE | TASK_PRIORITIZATION <cardTypeToThrow> <cardTypeToTake> | ARCHITECTURE_STUDY | CONTINUOUS_DELIVERY <cardTypeToAutomate> | CODE_REVIEW | REFACTORING;
-        // println!("RANDOM");
-        dbg!(i);
-
-        let most_popular_need = most_popular_need(&input.applications);
-        dbg!(most_popular_need.position());
+        // let competences = compute_competence(&input);
+        // let (closest_app, score_closest_app) = get_closest_app(&competences);
+        let (closest_app, score_closest_app) = get_closest_app(&input, &input.hand);
 
         if input.game_phase == "MOVE" {
-            println!("MOVE {}", most_popular_need.position());
-        } else {
-            if j % 2 == 1 {
+            // let competences = compute_competence(&input);
+            // dbg!(&competences);
+
+            dbg!(&input.hand);
+            dbg!(&closest_app);
+            dbg!(&score_closest_app);
+
+            // let most_popular_need = most_popular_need(&input.applications);
+            // dbg!(most_popular_need.position());
+
+            dbg!(input.me.location);
+
+            let sweet_locations = closest_app
+                .needs
+                .iter()
+                .enumerate()
+                .filter(|(idx, requierement)| {
+                    let card = Card::from_position(*idx);
+                    let competence_value = input.hand.0.get(&card).unwrap() * 2;
+
+                    let need = **requierement - competence_value;
+
+                    // **requierement != 0
+                    0 < need
+                })
+                .map(|(idx, _)| Location::from_position(idx as i32))
+                .collect::<Vec<Location>>();
+
+            dbg!(&sweet_locations);
+            let mut map_dist = sweet_locations
+                .iter()
+                .map(|loc| (Location::from_position(input.me.location).dist(loc), loc))
+                .collect::<Vec<_>>();
+
+            map_dist.sort_by(|c0, c1| {
+                let c0_dist = c0.0;
+                let c1_dist = c1.0;
+                if c0_dist == c1_dist {
+                    if c0.1.position() < c1.1.position() {
+                        Ordering::Less
+                    } else if c0.1.position() > c1.1.position() {
+                        Ordering::Greater
+                    } else {
+                        Ordering::Equal
+                    }
+                } else if 0 <= c0_dist && 0 <= c1_dist {
+                    if c0_dist < c1_dist {
+                        Ordering::Less
+                    } else {
+                        Ordering::Greater
+                    }
+                } else if c0_dist < 0 && 0 <= c1_dist {
+                    Ordering::Greater
+                } else if c1_dist < 0 && 0 <= c0_dist {
+                    Ordering::Less
+                } else {
+                    if c0_dist < c1_dist {
+                        Ordering::Less
+                    } else {
+                        Ordering::Greater
+                    }
+                }
+            });
+
+            dbg!(&map_dist);
+
+            if 0 < map_dist.len() {
+                let mut has_print = false;
+                for (dist, location) in map_dist.iter() {
+                    if *dist != 0 {
+                        println!("MOVE {}", location.position());
+                        has_print = true;
+                        break;
+                    }
+                }
+
+                if !has_print {
+                    println!("{}", input.possible_moves[0]);
+                }
+            } else {
                 println!("RANDOM");
+            }
+        } else if input.game_phase == "RELEASE" {
+            // let competences = compute_competence(&input);
+            // dbg!(&competences);
+            dbg!(&input.hand);
+            dbg!(&closest_app);
+            dbg!(&score_closest_app);
+            dbg!(&input.possible_moves);
+
+            if 0 <= score_closest_app {
+                println!("RELEASE {}", closest_app.id);
+                // println!("{}", input.possible_moves[0]);
             } else {
                 println!("WAIT");
             }
-            j += 1;
+        } else {
+            println!("RANDOM");
         }
-
-        i = (i + 1) % 8;
     }
 }
+
+// In the first league: RANDOM | MOVE <zoneId> | RELEASE <applicationId> | WAIT; In later leagues:
+// | GIVE <cardType> | THROW <cardType> | TRAINING | CODING | DAILY_ROUTINE
+// | TASK_PRIORITIZATION <cardTypeToThrow> <cardTypeToTake> | ARCHITECTURE_STUDY
+// | CONTINUOUS_DELIVERY <cardTypeToAutomate> | CODE_REVIEW | REFACTORING;
