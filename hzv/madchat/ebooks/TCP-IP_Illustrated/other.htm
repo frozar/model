@@ -1,0 +1,573 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 30. Other TCP/IP Applications</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="30_0"><H1><I>Other TCP/IP Applications</I></H1></a>
+<a name="30_1"><H3>30.1 Introduction</H3></a>
+<P>
+In this chapter we describe additional TCP/IP applications
+that many implementations support. Some are simple and easy to
+cover completely (Finger and Whois), while another is complex
+(the X Window System). We provide only a brief overview of this
+complex application, focusing on its use of the TCP/IP protocols.
+<P>
+Additionally we provide an overview of some Internet
+resource discovery tools. These are tools to help us navigate
+our way around the Internet, searching for items whose location
+and exact name we don't know.
+<a name="30_2"><H3>30.2 Finger Protocol</H3></a>
+<P>
+The Finger protocol returns information on one or
+more users on a specified host. It's commonly used to see if someone
+is currently logged on, or to figure out someone's login name,
+to send them mail. RFC 1288 [Zimmerman 1991] specifies the protocol.
+<P>
+Many sites do not run a Finger server for two reasons.
+First, a programming error in an earlier version of the server
+was one of the entry points used by the infamous Internet worm
+of 1988. (RFC 1135 [Reynolds 1989] and [Curry 1992] describe the
+worm in more detail.) Second, the Finger protocol can reveal detailed
+information on users (login names, phone numbers, when they last
+logged in, etc.) that many administrators consider private. Section
+3 of RFC 1288 details the security aspects of this service.
+<P>
+From a protocol perspective, the Finger server has
+a well-known port of 79. The client does an active open to this
+port and sends a one-line query The server processes the query,
+sends back the output, and closes the connection. The query and
+response are NVT ASCII, similar to what we saw with FTP and SMTP.
+<P>
+While most Unix users access the Finger server using
+the finger(l) client, we'll start by using the Telnet client to
+connect directly to the server and see the one-line commands issued
+by the client. If the client query is an empty line (which in
+NVT ASCII is transmitted as a CR followed by an LF), it is a request
+for information on all online users.
+<P>
+<TABLE>
+<TR><TD COLSPAN=2 WIDTH=274><TT>sun % <B>telnet slip finger</B></TT>
+</TD><TD COLSPAN=5 WIDTH=453></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=274><TT>Trying 140.252.13.65 ...</TT>
+</TD><TD COLSPAN=5 WIDTH=453><I>first three lines are output by Telnet client</I>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=274><TT>Connected to slip.</TT></TD><TD COLSPAN=5 WIDTH=453>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=274><TT>Escape character is '^]' .</TT>
+</TD><TD COLSPAN=5 WIDTH=453></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=274></TD><TD COLSPAN=5 WIDTH=453><I>here we type RETURN as the Finger client command</I>
+</TD></TR>
+<TR><TD WIDTH=104><TT>Login</TT></TD><TD WIDTH=170><tt>Name</tt>
+</TD><TD WIDTH=61><tt>Tty</tt></TD>
+<TD WIDTH=40><tt>Idle</tt></TD>
+<TD WIDTH=106><tt>Login Time</tt>
+</TD><TD WIDTH=60><tt>Office</tt>
+</TD><TD WIDTH=136><tt>Office Phone</tt>
+</TD></TR>
+<TR><TD WIDTH=104><TT>rstevens</TT></TD><TD WIDTH=170><tt>Richard Stevens</tt>
+</TD><TD WIDTH=61><tt>*co</tt></TD>
+<TD WIDTH=40><tt>45</tt></TD><TD WIDTH=156><tt>Jul 31 09:13</tt>
+</TD><TD WIDTH=60></TD><TD WIDTH=136></TD></TR>
+<TR><TD WIDTH=104><TT>rstevens</TT></TD><TD WIDTH=170><tt>Richard Stevens</tt>
+</TD><TD WIDTH=61><tt>*c2</tt></TD>
+<TD WIDTH=40><tt>45</tt></TD><TD WIDTH=156><tt>Aug 5 09:41</tt>
+</TD><TD WIDTH=60></TD><TD WIDTH=136></TD></TR>
+<TR><TD COLSPAN=4 WIDTH=425><TT>Connection closed by foreign host.</TT>
+</TD><TD COLSPAN=3 WIDTH=302><I>output by Telnet client</I></TD>
+</TR>
+</TABLE>
+<P>
+The blank output fields for the office and office
+phone are taken from optional fields in the user's password file
+entry (which aren't present in this example).
+<P>
+The server must be the end that does the active close,
+since a variable amount of information is returned by the server,
+and the reception of the end-of-file by the client is how the
+client knows when the output is complete.
+<P>
+When the client request consists of a usemame, the
+server responds with information only about that user. Here's
+another example, with the Telnet client output removed:
+<TABLE>
+<TR><TD COLSPAN=2 WIDTH=590><TT>sun % <B>telnet vangogh.cs.berkeley.edu finger</B></TT>
+</TD></TR>
+<TR><TD WIDTH=272><TT><B>rstevens</B></TT>
+</TD><TD WIDTH=319><I>this is the client request we type</I>
+</TD></TR>
+<TR><TD WIDTH=272><TT>Login: rstevens</TT></TD><TD WIDTH=319><tt>Name: Richard Stevens</tt>
+</TD></TR>
+<TR><TD WIDTH=272><TT>Directory: /a/guest/rstevens</TT></TD><TD WIDTH=319><tt>Shell: /bin/csh</tt>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=590><TT>Last login Thu Aug 5 09:55 (PDT) on ttyq2 from sun.tuc.noao.edu</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=590><TT>Mail forwarded to: rstevens@noao.edu</TT>
+</TD></TR>
+<TR><TD WIDTH=272><TT>No Plan.</TT></TD><TD WIDTH=319></TD></TR>
+</TABLE>
+<P>
+When a system has the Finger service completely disabled,
+the client's active open will receive an RST from the server,
+since no process has a passive open on port 79:
+<P>
+<TT>sun % finger @svr4<BR>
+[svr4.tuc.noao.edu] connect: Connection
+refused</TT>
+<P>
+Some sites provide a server on port 79, but it just
+outputs information to the client, and doesn't honor any client
+requests:
+<TABLE>
+<TR><TD WIDTH=295><TT>sun % <B>finger @att.com</B></TT>
+</TD><TD WIDTH=383></TD></TR>
+<TR><TD WIDTH=295><TT>[att.com]</TT></TD><TD WIDTH=383><I>this line output by Finger client; remainder from server</I>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=678><TT>----------------------------------------------------------------------------------</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=678><TT>There are no user accounts on the AT&amp;T Internet gateway, To send email to an AT&amp;T employee, send email to their name separated by periods at att.com. If the employee has an email address registered in the employee database, they will receive email - otherwise, you'll receive a non-delivery notice. For example: John.Q.Public@att.com</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=678><TT>sun % <B>finger clinton@whitehouse.gov</B></TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=678><TT>[whitehouse.gov]</TT></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=678><TT>Finger service for arbitrary addresses on whitehouse.gov is not supported. If you wish to send electronic mail, valid addresses are &quot;PRESIDENT@WHITEHOUSE.GOV&quot;, and &quot;VICE-PRESIDENT@WHITEHOUSE.GOV&quot;</TT>
+</TD></TR>
+</TABLE>
+<P>
+Another possibility is for an organization to implement
+a <I>firewall gateway:</I> a router between the organization and
+the Internet that filters out (i.e., discards) certain IP datagrams.
+([Cheswick and Bellovin 1994] discuss firewall gateways in detail.)
+The firewall gateway can be configured to discard incoming datagrams
+that are TCP segments for port 79. In this case the Finger client
+times out after about 75 seconds.
+<P>
+There are additional options for the Finger server,
+and for the Unix finger client. Refer to RFC 1288 and the <TT>finger</TT>(l)
+manual page for the details.
+<P>
+<FONT SIZE=-1>RFC 1288 states that vending machines with TCP/IP
+connections that provide a Finger server should reply to a client
+request consisting of a blank line with a list of all items currently
+available. They should reply to a client request consisting of
+a name with a count or list of available items for that product.</FONT>
+<a name="30_3"><H3>30.3 Whois Protocol</H3></a>
+<P>
+The Whois protocol is another information service.
+Although any site can provide a Whois server, the one at the InterNIC,
+<TT>rs.internic.net</TT>, is most commonly
+used. This server maintains information about all registered DNS
+domains and many system administrators responsible for systems
+connected to the Internet. (Another server is provided at <TT>nic.ddn.mil</TT>,
+but contains information only about the MILNET.) Unfortunately
+the information can be out of data or incomplete. RFC 954 [Harrenstien,
+Stahl, and Feinler 1985] documents the Whois service.
+<P>
+From a protocol perspective, the Whois server has
+a well-known TCP port of 43. It accepts connection requests from
+clients, and the client sends a one-line query to the server.
+The server responds with whatever information is available and
+then closes the connection. The requests and replies are transmitted
+using NVT ASCII. This is almost identical to the Finger server,
+although the requests and replies contain different information.
+<P>
+The common Unix client is the <TT>whois</TT>(1)
+program, although we can use Telnet and type in the commands ourself.
+The starting place is to send a request consisting of just a question
+mark, which returns more detailed information on the supported
+client requests.
+<P>
+<FONT SIZE=-1>When the NIC moved to the InterNIC in 1993, the site
+for the Whois server moved from <TT>nic.ddn.mil</TT>
+to <TT>rs.internic.net</TT>. Many vendors
+still ship versions of the <TT>whois</TT>
+client with the name <TT>nic.ddn.mil</TT>
+built in. You may need to specify the command-line argument <TT>-h
+rs.internic.net</TT> to contact the correct server.
+<P>
+Alternately, we can Telnet to <TT>rs.internic.net</TT>
+and login as <TT>whois</TT>.</FONT>
+<P>
+We'll use the Whois server to track down the author.
+(We've removed the extraneous Telnet client output.) Our first
+request is for all names that match &quot;stevens.&quot;
+<TABLE>
+<TR><TD COLSPAN=2 WIDTH=590><TT>sun % <B>telnet rs.internic.net whois</B></TT>
+</TD></TR>
+<TR><TD WIDTH=230><TT>stevens</TT></TD><TD WIDTH=295><I>this is the client command we type</I>
+</TD></TR>
+<TR><TD WIDTH=360></TD><TD WIDTH=295><I>information on 25 other &quot;stevens&quot; that we omit</I>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=590><TT>Stevens, W. Richard (WRS28) stevens@kohala.com +1 602 297 9416</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=590><TT>The InterNIC Registration Services Host ONLY contains Internet Information (Networks, ASN's, Domains, and POC's). Please use the whois server at nic.ddn.mil for MILNET Information.</TT>
+</TD></TR>
+</TABLE>
+<P>
+The three uppercase letters followed by a number
+in parentheses after the name, (WRS28), are the person's NIC handle.
+The next query contains an exclamation point and a NIC handle,
+to fetch more information about this person.
+<TABLE>
+<TR><TD COLSPAN=2 WIDTH=590><TT>sun % <B>telnet rs.internic.net whois</B></TT>
+</TD></TR>
+<TR><TD WIDTH=295><TT><B>!wrs28</B></TT>
+</TD><TD WIDTH=295><I>client request that we type</I>
+</TD></TR>
+<TR><TD WIDTH=295><TT>Stevens, W. Richard (WRS28)</TT></TD><TD WIDTH=295>stevens@kohala.com
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=590><TT>Kohala Software 1202 E. Paseo del Zorro
+<BR>
+Tucson, AZ 85718 +1 602 297 9416</TT>
+</TD></TR>
+<TR><TD WIDTH=295><TT>Record last updated on 11-Jan-91.</TT></TD>
+<TD WIDTH=295></TD></TR>
+</TABLE>
+<P>
+Lots of additional information about Internet variables
+can also be queried. For example, the request <TT>net 140.252</TT>
+returns information about the class B address 140.252.
+<H4>White Pages</H4>
+<P>
+Using the VRFY command of SMTP, along with the Finger
+protocol and the Whois protocol to locate users on the Internet
+is similar to using the white pages of a telephone book to find
+someone's phone number. At the present time ad hoc tools such
+as these are all that's widely available, but research is under
+way to improve this type of service.
+<P>
+[Schwartz and Tsirigotis 1991] contains additional
+information on various white pages services being tried on the
+Internet. The particular tool, called Netfind, can be accessed
+by using Telnet to either <TT>bruno.cs.colorado.edu</TT>
+or <TT>ds.internic.net</TT> and logging in
+as <TT>netfind</TT>.
+<P>
+RFC 1309 [Weider, Reynolds, and Heker 1992] provides
+an overview of the OSI directory service, called X.500, and compares
+and contrasts it with current Internet techniques (Finger and
+Whois).
+<a name="30_4"><H3>30.4 Archie, WAIS, Gopher, Veronica, and WWW</H3></a>
+<P>
+The tools that we described in the previous two sections-Finger,
+Whois, and a white pages service-are for locating information
+on people. Other tools exist to locate files and documents, and
+this section gives an overview of these tools. We only provide
+an overview, because examining the details of each tool is beyond
+the scope of this book. Methods are given for accessing these
+tools across the Internet, and you are encouraged to do so, to
+find which tool can help you. Additional tools are continually
+being developed. [Obraczka, Danzig, and Li 1993] provide an overview
+of resource discovery services on the Internet.
+<H4>Archie</H4>
+<P>
+Many of the resources used in this text were obtained
+using anonymous FTP. The problem is finding which FTP site has
+the program we want. Sometimes we don't even know the exact filename,
+but we know some keywords that probably appear in the filename.
+<P>
+Archie provides a directory of thousands of FTP servers
+across the Internet. We can access this directory by logging into
+an Archie server and searching for files whose name contains a
+specified regular expression. The output is a list of servers
+with matching filenames. We then use anonymous FTP to that site
+to fetch the file.
+<P>
+There are many Archie servers across the world. One
+starting point is to use Telnet to <TT>ds.internic.net</TT>,
+login as <TT>archie</TT>, and execute the
+command <TT>servers</TT>. This provides a
+list of all the Archie servers, and their location.
+<H4>WAIS: Wide Area Information Servers</H4>
+<P>
+Archie helps us locate filenames that contain keywords,
+but sometimes we're looking for a file or database that contains
+a keyword. That is, we want to search for a file that contains
+a keyword, not a filename containing a keyword.
+<P>
+WAIS knows about hundreds of databases that contain
+information on both computer-related topics and other general
+topics. To use WAIS we select the databases to search and specify
+the keywords. To try WAIS Telnet to <TT>quake.think.com</TT>
+and login as <TT>wais</TT>.
+<H4>Gopher</H4>
+<P>
+Gopher is a menu-driven front end to other Internet
+resource services, such as Archie, WAIS, and anonymous FTP Gopher
+is one of the easiest to use, since its user interface is the
+same, regardless of which resource service it's using.
+<P>
+To use Gopher, Telnet into <TT>is.internic.net</TT>
+and login as <TT>gopher</TT>.
+<H4>Veronica: Very Easy Rodent-Oriented Netwide Index to Computerized
+Archives</H4>
+<P>
+Just as Archie is an index of anonymous FTP servers.
+Veronica is an index of titles of Gopher items. A Veronica search
+typically searches hundreds of Gopher servers.
+<P>
+To access Veronica we must go through a Gopher client.
+Select the Gopher menu item &quot;Beyond InterNIC: Virtual Treasures
+of the Internet&quot; and then select Veronica from the next menu.
+<H4>WWW: World Wide Web</H4>
+<P>
+World Wide Web lets us browse a large, worldwide
+set of services and documents using a tool called <I>hypertext.</I>
+As information is displayed, certain keywords are highlighted,
+and we can select more information on those keywords. To access
+WWW, Telnet to <TT>info.cern.ch</TT>.
+<a name="30_5"><H3>30.5 X Window System</H3></a>
+<P>
+The <I>X Window System,</I> or just X, is a client-server
+application that lets multiple clients (applications) use the
+bit-mapped display managed by a server. &quot;The server is the
+software that manages a display, keyboard, and mouse. The client
+is an application program that runs on either the same host as
+the server or on a different host. In the latter case the common
+form of communication between the client and server is TCP, although
+other protocols such as DECNET can be used. In some instances
+the server is a dedicated piece of hardware (an X terminal) that
+communicates with clients on other hosts. In another instance,
+a stand-alone workstation, the client and server are on the same
+host and communicate using interprocess communication on that
+host, without any network involvement at all. Between these two
+extremes is a workstation that supports clients on the same host
+and clients on other hosts.
+<P>
+X requires a reliable, bidirectional stream protocol,
+such as TCP. (X was not designed for an unreliable protocol such
+as UDP.) The communication between the client and server consists
+of 8-bit bytes exchanged across this connection. [Nye 1992] gives
+the format of the more than 150 messages exchanged between the
+client and server across their TCP connection.
+<P>
+On a Unix system, when the X client and X server
+are on the same host, the Unix domain protocols are normally used
+instead of TCP, because there is less protocol processing than
+if TCP were used. The Unix domain protocols are a form of interprocess
+communication that can be used between clients and servers on
+the same host. Recall in <a href="link_lay.htm#fig_2_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#fig_2_4">Figure 2.4</a> that when TCP is used
+for communication between two processes on the same host, the
+loopback of this data takes place below the IP layer, implying
+that all the TCP and IP processing takes place.
+<P>
+Figure 30.1 shows one possible scenario with three
+clients using one display. One client is on the same host as the
+server, using the Unix domain protocols. The other two clients
+are on different hosts, using TCP. One client is normally a <I>window
+manager</I> that has authority for the layout of windows on the
+display. The window manager allows us to move windows around the
+screen, or change their size, for example.
+<P>
+<CENTER><a name="fig_30_1"><img src="f_30_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_30_1.gif"></a><br>
+<B>Figure 30.1</B> Three
+X clients using one display.</CENTER>
+<P>
+On first glance the terms <I>client</I> and <I>server</I>
+appear backward. With applications such as Telnet and FTP we think
+of the client as the interactive user at the keyboard and display.
+But with X, the keyboard and display belong to the server. Think
+of the server as the end providing the service. The service provided
+by X is access to a window, keyboard, and mouse. With Telnet the
+service is logging in to the remote host. With FTP the service
+is the filesystem on the server.
+<P>
+The X server is normally started when the X terminal
+or workstation is bootstrapped. The server creates a TCP end point
+and does a passive open on port 6000 + <I>n, </I>where <I>n</I>
+is the display number (normally 0). Most Unix servers also create
+a Unix domain socket with the name <TT>/tmp/.X11-unix/X</TT><I>n</I>,
+where <I>n</I> is again the display number.
+<P>
+When a client is started on another host, it creates
+a TCP end point and performs an active open to port 6000 + <I>n</I>
+on the server. Each client gets its own TCP connection to the
+server. It is the server's responsibility to multiplex all the
+clients. From this point on the client sends requests to the server
+across the TCP connection (e.g., create a window), the server
+sends back replies, and the server also sends events to the client
+(mouse button pushed, keyboard key pressed, window exposed, window
+resized, etc.).
+<P>
+Figure 30.2 is a redo of Figure 30.1, emphasizing
+that the clients communicate with the X server process, which
+in turn manages the windows on the display. Not shown here is
+that the X server also manages the keyboard and mouse.
+<P>
+<CENTER><a name="fig_30_2"><img src="f_30_2.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_30_2.gif"></a><br>
+<B>Figure 30.2</B> Three
+clients using one display.</CENTER>
+<P>
+This design, where a single server handles multiple
+clients, differs from the normal TCP concurrent server design
+that we described in <a href="tcp_conn.htm#18_11" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#18_11">Section 18.11</a>. The FTP and Telnet servers,
+for example, spawn a new process each time a new TCP connection
+request arrives, so each client communicates with a different
+server process. With X, however, all clients, running on the same
+host or on a different host, communicate with a single server.
+<P>
+Lots of data can be exchanged across the TCP connection
+between an X client and its server. The amount depends on the
+specific application design. For example, if we run the Xclock
+client, which displays the current time and date on the client
+in a window on the server, specifying an update of once a second,
+an X message is sent across the TCP connection from the client
+to the server once a second. If we run the X terminal emulator,
+Xterm, each keystroke we type becomes a 32-byte X message (72
+bytes with the standard IP and TCP headers), with a larger X message
+in the reverse direction with the character echo. [Droms and Dyksen
+1990] measure the TCP traffic between various X clients and one
+particular server.
+<H4>Xscope Program</H4>
+<P>
+A handy program for examining what's exchanged between
+an X client and its server is Xscope. It's provided with most
+X window implementations. It sits between a client and server,
+passing everything in both directions, and also deciphering all
+the client requests and server replies. Figure 30.3 shows the
+setup.
+<P>
+<CENTER><a name="fig_30_3"><img src="f_30_3.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_30_3.gif"></a><br>
+<B>Figure 30.3</B> Using
+xscope to monitor an X connection.</CENTER>
+<P>
+We first start the <TT>xscope</TT>
+process on the same host as the server, but <TT>xscope</TT>
+listens for TCP connection requests on port 6001, not 6000. We
+then start a client on another host and specify display number
+1, not 0, so the client connects to <TT>xscope</TT>,
+not directly to the server. When the connection request from the
+client arrives, <TT>xscope</TT> creates a
+TCP connection to the real server at port 6000, and copies everything
+between the client and server, and produces a readable description
+of the requests and replies.
+<P>
+We'll start <TT>xscope</TT> on
+our host <TT>sun</TT> and then run the <TT>xclock</TT>
+client on the host <TT>svr4</TT>.
+<P>
+<TT>svr4 % <B>DISPLAY=sun:l xclock
+-digital -update 5</B></TT>
+<P>
+This displays the time and date in the digital format
+<P>
+<TT>Thu Sep 9 10:32:55 1993</TT>
+<P>
+in a window on the host <TT>sun</TT>.
+We specify an update time of once every 5 seconds.
+<P>
+We specify the <TT>-q</TT> option
+for <TT>xscope</TT> to produce minimal output.
+Various levels of verbosity are available, to see all the fields
+in each message. The following output shows the first three requests
+and replies.
+<TABLE>
+<TR><TD WIDTH=295><TT>sun % xscope -q</TT></TD><TD WIDTH=295>
+</TD></TR>
+<TR><TD WIDTH=295><TT>0.00: Client -&gt; 12 bytes</TT></TD><TD WIDTH=295>
+</TD></TR>
+<TR><TD WIDTH=295><TT>0.02:</TT></TD><TD WIDTH=295>152 bytes &lt;-- X11 Server
+</TD></TR>
+<TR><TD WIDTH=295><TT>0.03: Client -&gt; 48 bytes</TT></TD><TD WIDTH=295>
+</TD></TR>
+<TR><TD WIDTH=295><TT> ............REQUEST: CreateGC</TT></TD>
+<TD WIDTH=295></TD></TR>
+<TR><TD WIDTH=295><TT> ............REQUEST: GetProperty</TT></TD>
+<TD WIDTH=295></TD></TR>
+<TR><TD WIDTH=295><TT>0.20:</TT></TD><TD WIDTH=295>396 bytes &lt;-- X11 Server
+</TD></TR>
+<TR><TD WIDTH=295></TD><TD WIDTH=295><TT>..............REPLY: GetProperty</TT>
+</TD></TR>
+<TR><TD WIDTH=295><TT>0.30: Client -&gt; 8 bytes</TT></TD><TD WIDTH=295>
+</TD></TR>
+<TR><TD WIDTH=295><TT>0.38: Client -&gt; 20 bytes</TT></TD><TD WIDTH=295>
+</TD></TR>
+<TR><TD WIDTH=295><TT> ............REQUEST: InternAtom</TT></TD>
+<TD WIDTH=295></TD></TR>
+<TR><TD WIDTH=295><TT>0.43:</TT></TD><TD WIDTH=295>32 bytes &lt;-- XII Server
+</TD></TR>
+<TR><TD WIDTH=295></TD><TD WIDTH=295><TT>..............REPLY: InternAtom</TT>
+</TD></TR>
+</TABLE>
+<P>
+The first client message at time 0.00 and the server's
+response at time 0.02 are the standard connection setup between
+the client and server. The client identifies its byte ordering
+and the version of the server that it expects. The server responds
+with various information about itself.
+<P>
+The next message at time 0.03 contains two client
+requests. The first request creates a graphics context in the
+server in which the client will draw. The second gets a property
+from the server (the RESOURCEJVIANAGER property). Properties provide
+for communication between clients, often between an application
+and the window manager. The server's 396-byte reply at time 0.20
+contains this property.
+<P>
+The next two messages from the client at times 0.30
+and 0.38 form a single request to return an atom. (Each property
+has a unique integer ID called an atom.) The server replies at
+time 0.43 with the atom.
+<P>
+It is impossible to delve farther into this example
+without providing lots of details about the X window system, which
+isn't the purpose of this section. In this example a total of
+12 segments comprising 1668 bytes is sent by the client and a
+total of 10 segments comprising 1120 bytes is sent by the server,
+before the window is displayed. The elapsed time was 3.17 seconds.
+From this point the client sent a small request every 5 seconds,
+averaging 44 bytes, with an update to the window. This continued
+until the client was terminated.
+<H4>LBX: Low Bandwidth X</H4>
+<P>
+The encoding used by the X protocol is optimized
+for LANs, where the time spent encoding and decoding the data
+is more important than minimizing the amount of data transmitted.
+While this is OK for an Ethernet, it becomes a problem for slow
+serial lines, such as SLIP and PPP links (<a href="link_lay.htm#2_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_4">Sections 2.4</a> and <a href="link_lay.htm#2_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_6">2.6</a>).
+<P>
+Work is progressing to define a standard called <I>Low
+Bandwidth X</I> (LBX) that uses the following techniques to reduce
+the amount of network traffic: caching, sending differences from
+previous packets, and compression. Specifications should appear
+early in 1994 with a sample implementation in the X window system
+Release 6.
+<a name="30_6"><H3>30.6 Summary</H3></a>
+<P>
+The first two applications that we covered. Finger
+and Whois, are for obtaining information on users. Finger clients
+query a server, often to find someone's login name (for sending
+them mail) or to see if someone is currently logged in. The Whois
+client normally contacts the server run by the InterNIC, looking
+for information on a person, institution, domain, or network number.
+<P>
+The other Internet resource discovery services that
+we briefly described, Archie, WAIS, Gopher, Veronica, and WWW,
+help us locate files and documents across the Internet. Other
+resource discovery tools are currently being developed.
+<P>
+This chapter finished with a brief look at the X
+Window System, another heavy user of TCP/IP. We saw that the X
+server manages multiple windows on a display, and handles the
+communication between a client and its window. Each client has
+its own TCP connection to the server and a single server manages
+all the clients for a given display. With the Xscope program we
+saw how it's possible to place another program between a client
+and server to output information about the messages exchanged
+between the two.
+<H4>Exercises</H4>
+<P>
+<B>30.1</B> Use Whois to find
+the owner of the class A network ID 88.
+<P>
+<B>30.2</B> Use Whois to find
+the DNS servers for the <TT>whitehouse.gov</TT>
+domain. Does the reply match the answer given by the DNS?
+<P>
+<B>30.3</B> In <a href="#fig_30_3">Figure 30.3</a>, do
+you think the <TT>xscope</TT> process must
+be run on the same host as the X server?
+</BODY>
+</HTML>

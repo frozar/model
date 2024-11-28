@@ -1,0 +1,510 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 99.2beta8 (1.46)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>28. Network File System, NFS</TITLE>
+<META NAME="description" CONTENT="28. Network File System, NFS">
+<META NAME="keywords" CONTENT="rute">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v99.2beta8">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="rute.css">
+
+<LINK REL="next" HREF="node32.html">
+<LINK REL="previous" HREF="node30.html">
+<LINK REL="up" HREF="rute.html">
+<LINK REL="next" HREF="node32.html">
+</HEAD>
+
+<BODY BGCOLOR=#FFFFFF >
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD align=left bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-purchase.html"><FONT COLOR=white>Purchase</FONT></A>&nbsp;
+</FONT>
+</TD><TD align=center bgcolor="#000000">
+<FONT COLOR=white>
+Copyright&nbsp;&#169;&nbsp;2002&nbsp;Paul Sheer. <A HREF="copying.html"><FONT COLOR=white>Click here for copying permissions.</FONT></A>
+</FONT>
+</TD><TD align=right bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-home.html"><FONT COLOR=white>Home</FONT></A>&nbsp;
+</FONT>
+</TD></TR>
+<TR><TD colspan=2 align=left bgcolor="#ECEBF4">
+<IMG SRC="va-btn-small-light-60.png">
+</TD><TD align=right bgcolor="#ECEBF4">
+<IMG SRC="sflogo2-steel-60.png">
+</TD></TR>
+</TABLE><BR>
+
+<!--Navigation Panel-->
+<A NAME="tex2html2335"
+  HREF="node32.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2331"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2325"
+  HREF="node30.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2333"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2336"
+  HREF="node32.html">29. Services Running Under</A>
+<B> Up:</B> <A NAME="tex2html2332"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2326"
+  HREF="node30.html">27. DNS and Name</A>
+ &nbsp <B>  <A NAME="tex2html2334"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html2337"
+  HREF="#SECTION003110000000000000000">28.1 Software</A>
+<LI><A NAME="tex2html2338"
+  HREF="#SECTION003120000000000000000">28.2 Configuration Example</A>
+<LI><A NAME="tex2html2339"
+  HREF="#SECTION003130000000000000000">28.3 Access Permissions</A>
+<LI><A NAME="tex2html2340"
+  HREF="#SECTION003140000000000000000">28.4 Security</A>
+<LI><A NAME="tex2html2341"
+  HREF="#SECTION003150000000000000000">28.5 Kernel NFS</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION003100000000000000000">
+28. Network File System, NFS</A>
+</H1>
+
+<P>
+<A NAME="chap:nfs"></A>
+<P>
+This chapter covers NFS, the file-sharing capabilities of U<SMALL>NIX</SMALL>,
+and describes how to set up directories shareable to other U<SMALL>NIX</SMALL>
+machines.
+
+<P>
+As soon as one thinks of high-speed
+Ethernet, the logical possibility of <I>sharing</I> a file system
+across a network comes to mind. MS-DOS, OS/2, Apple Macintosh,
+and Windows have their own file-sharing schemes
+(IPX, SMB etc.), and NFS is the U<SMALL>NIX</SMALL> equivalent.
+
+<P>
+Consider your hard drive with its 10,000 or so files. Ethernet is fast
+enough that you should be able to entirely use the hard drive of another
+machine, transferring needed data as network packets as required; or
+you should be able to make a directory tree visible to several computers. Doing this
+efficiently is a complex task. NFS is a standard, a protocol, and (on
+L<SMALL>INUX</SMALL>) a software suite that accomplishes this task in an efficient
+manner. It is really easy to configure as well. Unlike some other sharing
+protocols, NFS merely shares files and does not facilitate printing or
+messaging.
+
+<P>
+
+<H1><A NAME="SECTION003110000000000000000">
+28.1 Software</A>
+</H1>
+
+<P>
+Depending on your distribution, the following programs may be located in any
+of the <TT>
+<FONT COLOR="#0000ff">bin</FONT></TT> or <TT>
+<FONT COLOR="#0000ff">sbin</FONT></TT> directories. These are all daemon
+processes. To get NFS working, they should be started in the order given here.
+
+<P>
+<DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">portmap</FONT></TT></STRONG></DT>
+<DD>(also sometimes called <TT>
+<FONT COLOR="#0000ff">rpc.portmap</FONT></TT>) This
+maps service names to ports. Client and server processes may request a
+TCP port number based on a service name, and <TT>
+<FONT COLOR="#0000ff">portmap</FONT></TT> handles
+these requests. It is basically a network version of your <TT>
+<FONT COLOR="#0000ff">/etc/services</FONT></TT>
+file.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">rpc.mountd</FONT></TT></STRONG></DT>
+<DD>(also sometimes called <TT>
+<FONT COLOR="#0000ff">mountd</FONT></TT>) This handles
+the initial incoming request from a client to <TT>
+<FONT COLOR="#0000ff">mount</FONT></TT> a file system
+and check that the request is allowable.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">rpc.nfsd</FONT></TT></STRONG></DT>
+<DD>(also sometimes called <TT>
+<FONT COLOR="#0000ff">nfsd</FONT></TT>) This is the
+core--the file-server program itself.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">rpc.lockd</FONT></TT></STRONG></DT>
+<DD>(also sometimes called <TT>
+<FONT COLOR="#0000ff">lockd</FONT></TT>) This handles
+shared locks between different machines on the same file over the network.
+</DD>
+</DL>
+
+<P>
+The acronym RPC stands for <I>Remote Procedure Call</I>. RPC was
+developed along with NFS by Sun Microsystems. It is an efficient way for
+a program to call a function on another machine and can be used by any
+service that needs to have efficient distributed processing. These days,
+its not really used for much except NFS, having been superseded by
+technologies like CORBA. <FONT COLOR="#ffa500">[The ``Object-Oriented'' version of
+RPC]</FONT> You can however, still write distributed applications with L<SMALL>INUX</SMALL>'s
+RPC implementation.
+
+<P>
+
+<H1><A NAME="SECTION003120000000000000000">
+28.2 Configuration Example</A>
+</H1>
+
+<P>
+Sharing a directory with a remote machine requires that forward and
+reverse
+DNS lookups be working for the server machine as well as all
+client machines. DNS is covered in Chapter <A HREF="node30.html#chap:dnsclient">27</A> and
+Chapter <A HREF="node43.html#chap:name">40</A>. If you are just testing NFS and you are
+sharing directories to your local machine (which we do now), you
+<I>may</I> find NFS to still work without a proper DNS setup. You
+should at least have proper entries in your <TT>
+<FONT COLOR="#0000ff">/etc/hosts</FONT></TT> file
+for your local machine (see page <A HREF="node30.html#page:etchostsexample"><IMG  ALIGN="BOTTOM" BORDER="1" ALT="[*]" SRC="crossref.png"></A>).
+
+<P>
+The first step is deciding on the directory you would like to share. A
+useful trick is to share your CD-ROM to your whole LAN. This is perfectly
+safe considering that CDs are read-only. Create an <TT>
+<FONT COLOR="#0000ff">/etc/exports</FONT></TT>
+file with the following in it:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/mnt/cdrom&nbsp;&nbsp;&nbsp;192.168.1.0/24(ro)&nbsp;&nbsp;localhost(ro)</code><br>
+</FONT></TD></TR></TABLE><P>
+You can immediately see that the format of the <TT>
+<FONT COLOR="#0000ff">/etc/exports</FONT></TT>
+file is simply a line for each shareable directory. Next to each directory
+name goes a list of hosts that are allowed to connect. In this case, those
+allowed access are all IP addresses having the upper 24 bits matching
+<TT>
+<FONT COLOR="#0000ff">192.168.1</FONT></TT>, as well as the <TT>
+<FONT COLOR="#0000ff">localhost</FONT></TT>.
+
+<P>
+Next, mount your CD-ROM as usual with
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>mkdir&nbsp;-p&nbsp;/mnt/cdrom</code><br>
+<code>mount&nbsp;-t&nbsp;iso9660&nbsp;-o&nbsp;ro&nbsp;/dev/cdrom&nbsp;/mnt/cdrom</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Now start each of the NFS processes in sequence:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>portmap</code><br>
+<code>rpc.mountd</code><br>
+<code>rpc.nfsd</code><br>
+<code>rpc.lockd</code><br>
+</FONT></TD></TR></TABLE><P>
+Whenever you make changes to your <TT>
+<FONT COLOR="#0000ff">/etc/exports</FONT></TT>
+file you should also follow by running
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>exportfs&nbsp;-r</code><br>
+</FONT></TD></TR></TABLE><P>
+which causes a rereading of the <TT>
+<FONT COLOR="#0000ff">/etc/exports</FONT></TT> file.
+Entering the <TT>
+<FONT COLOR="#0000ff">exportfs</FONT></TT> command with no options should then
+show
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/mnt/cdrom&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;192.168.1.0/24</code><br>
+<code>/mnt/cdrom&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;localhost.localdomain</code><br>
+</FONT></TD></TR></TABLE><P>
+which lists directories and hosts allowed to access them.
+
+<P>
+It is useful to test mounts from your local machine before
+testing from a remote machine. Here we perform the NFS mounting 
+operation proper:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>mkdir&nbsp;/mnt/nfs</code><br>
+<code>mount&nbsp;-t&nbsp;nfs&nbsp;localhost:/mnt/cdrom&nbsp;/mnt/nfs</code><br>
+</FONT></TD></TR></TABLE><P>
+You can see that the <TT>
+<FONT COLOR="#0000ff">mount</FONT></TT> command sees the remote
+machine's directory as a ``device'' of sorts, although the <TT>
+<FONT COLOR="#0000ff">t</FONT></TT>ype
+is <TT>
+<FONT COLOR="#0000ff">nfs</FONT></TT> instead of <TT>
+<FONT COLOR="#0000ff">ext2</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">vfat</FONT></TT>, or <TT>
+<FONT COLOR="#0000ff">iso9660</FONT></TT>. The
+remote host name is followed by a colon followed by the directory on that
+remote machine <I>relative to the root directory</I>. This syntax is unlike
+that for other kinds of services that name all files relative to some
+``top level'' directory (eg., FTP and web servers). The acid test now
+is to run <TT>
+<FONT COLOR="#0000ff">ls</FONT></TT> on the <TT>
+<FONT COLOR="#0000ff">/mnt/nfs</FONT></TT> directory to verify that its
+contents are indeed the same as <TT>
+<FONT COLOR="#0000ff">/mnt/cdrom</FONT></TT>. Supposing our server is
+called <TT>
+<FONT COLOR="#0000ff">cdromserver</FONT></TT>, we can run the same command on all client
+machines:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>mkdir&nbsp;/mnt/nfs</code><br>
+<code>mount&nbsp;-t&nbsp;nfs&nbsp;cdromserver:/mnt/cdrom&nbsp;/mnt/nfs</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+If anything went wrong, you might like to search your process
+list for all processes with an <TT>
+<FONT COLOR="#0000ff">rpc</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">mount</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">nfs</FONT></TT>, or
+<TT>
+<FONT COLOR="#0000ff">portmap</FONT></TT> in them. Completely stopping NFS means clearing all of
+these processes (if you really want to start from scratch). It is useful
+to also keep
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>tail&nbsp;-f&nbsp;/var/log/messages</code><br>
+<code>tail&nbsp;-f&nbsp;/var/log/syslog</code><br>
+</FONT></TD></TR></TABLE><P>
+running in a
+separate console to watch for any error (or success)
+messages (actually true of any configuration you are doing). Note that
+it is not always obvious that NFS is failing because of a forward or
+reverse DNS lookup, so double-check beforehand that these are
+working--<TT>
+<FONT COLOR="#0000ff">mount</FONT></TT> will not usually be more eloquent than the classic NFS
+error message: ``<TT>
+<FONT COLOR="#0000ff">mount: &lt;xyz&gt; failed, reason given by server: Permission denied</FONT></TT>.''
+A faulty DNS is also indicated by whole-minute pauses in operation.
+
+<P>
+Most distributions will not require you to manually start
+and stop the daemon processes above. Like most services, RedHat's NFS
+implementation can be invoked simply with:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/etc/init.d/nfs&nbsp;start</code><br>
+<code>/etc/init.d/nfslock&nbsp;start</code><br>
+</FONT></TD></TR></TABLE><P>
+(or <TT>
+<FONT COLOR="#0000ff">/etc/rc.d/init.d/</FONT></TT>). On Debian, similarly,
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/etc/init.d/nfs-common&nbsp;start</code><br>
+<code>/etc/init.d/nfs-kernel-server&nbsp;start</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H1><A NAME="SECTION003130000000000000000">
+28.3 Access Permissions</A>
+</H1>
+
+<P>
+Above, we used <TT>
+<FONT COLOR="#0000ff">192.168.1.0/24(ro)</FONT></TT> to specify that we want to
+give <TT>
+<FONT COLOR="#0000ff">r</FONT></TT>ead-<TT>
+<FONT COLOR="#0000ff">o</FONT></TT>nly access to a range of IP addresses. You can
+actually put host names with wildcards also; for example:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/mnt/cdrom&nbsp;&nbsp;&nbsp;*.mynet.mydomain.co.za(ro)</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Then also allow <TT>
+<FONT COLOR="#0000ff">r</FONT></TT>ead-<TT>
+<FONT COLOR="#0000ff">w</FONT></TT>rite access with, say:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/home&nbsp;&nbsp;&nbsp;*.mynet.mydomain.co.za(rw)</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+One further option, <TT>
+<FONT COLOR="#0000ff">no_root_squash</FONT></TT>, disables NFS's
+special treatment of <TT>
+<FONT COLOR="#0000ff">root</FONT></TT>-owned files. This option is useful if you are
+finding certain files strangely inaccessible. <TT>
+<FONT COLOR="#0000ff">no_root_squash</FONT></TT> is really only for
+systems (like diskless workstations) that need full <TT>
+<FONT COLOR="#0000ff">root</FONT></TT> access
+to a file system. An example is:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/&nbsp;&nbsp;&nbsp;*.very.trusted.net(rw,no_root_squash)</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+The man page for <TT>
+<FONT COLOR="#0000ff">/etc/exports</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">exports</FONT></TT>(5), contains an
+exhaustive list of options.
+
+<P>
+
+<H1><A NAME="SECTION003140000000000000000">
+28.4 Security</A>
+</H1>
+
+<P>
+NFS requires that a number of services be running that have no use anywhere else.
+Many naive administrators create directory exports with
+impunity, thus exposing those machines to opportunistic hackers. An NFS
+server should be well hidden behind a firewall, and any Internet server
+exposed to the Internet should <I>never</I> run the <TT>
+<FONT COLOR="#0000ff">portmap</FONT></TT> or RPC
+services. Preferably uninstall all of these services if you are not
+actually running an NFS server.
+
+<P>
+
+<H1><A NAME="SECTION003150000000000000000">
+28.5 Kernel NFS</A>
+</H1>
+
+<P>
+There are actually two versions of the NFS implementation for L<SMALL>INUX</SMALL>.
+Although this is a technical caveat, it is worth understanding that the
+NFS server was originally implemented by an ordinary daemon process
+before the L<SMALL>INUX</SMALL> kernel itself supported NFS. Debian supports both
+implementations in two packages, <TT>
+<FONT COLOR="#0000ff">nfs-server</FONT></TT> and
+<TT>
+<FONT COLOR="#0000ff">nfs-kernel-server</FONT></TT>, although the configuration should be
+identical. Depending on the versions of these implementations and the
+performance you require, one or the other may be better. You are advised
+to at least check the status of the kernel NFS implementation on the
+kernel web pages. Of course, NFS as a <I>client</I> must necessarily be
+supported by the kernel as a regular file system type in order to be
+able to mount anything.
+
+<P>
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html2335"
+  HREF="node32.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2331"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2325"
+  HREF="node30.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2333"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2336"
+  HREF="node32.html">29. Services Running Under</A>
+<B> Up:</B> <A NAME="tex2html2332"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2326"
+  HREF="node30.html">27. DNS and Name</A>
+ &nbsp <B>  <A NAME="tex2html2334"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+
+</BODY>
+</HTML>

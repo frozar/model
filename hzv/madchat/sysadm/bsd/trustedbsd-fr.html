@@ -1,0 +1,228 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+
+<head>
+<title>Introduction to TrustedBSD</title>
+</head>
+
+<body>
+
+<p align="CENTER"><b><font size="2" face="Verdana">Introduction
+à TrustedBSD</font></b></p>
+<p align="CENTER"><font size="2" face="Verdana">Robert N. M. Watson</font></p>
+<p align="CENTER"><a href="mailto:rwatson@trustedbsd.org"><font size="2" face="Verdana">rwatson@trustedbsd.org</font></a></p>
+<p align="left"><font size="2" face="Verdana">Source
+: <a href="http://www.trustedbsd.org/documentation/whitepapers/introduction.html">http://www.trustedbsd.org/documentation/whitepapers/introduction.html</a><br>
+Translation
+by <a href="mailto:eberkut@nexen.net">eberkut</a>
+- <a href="http://www.chez.com/keep">http://www.chez.com/keep</a></font></p>
+<h1><font size="2" face="Verdana">I Introduction</font></h1>
+<p><font size="2" face="Verdana">TrustedBSD fournit un ensemble d'extensions de confiance au système
+d'exploitation
+FreeBSD, visant les critères de l'évaluation B1.
+Ceci
+inclus l'introduction
+d'un certain nombre de
+dispositifs,
+comprenant
+la gestion de confiance, capacités
+fine-grained
+du système,
+les access
+control
+list,
+l'audit
+des
+évènements
+de
+sécurité, et le
+mandatory
+access
+control.  Une partie de la
+fonctionnalité de TrustedBSD sera intégrée dans
+l'arborescence
+source de base
+de FreeBSD pendant qu'elle est développée
+;  d'autres
+composants incluent de larges modifications et exigeront une
+intégration plus progressive.  Ce document décrit certains des
+composants architecturaux principaux aux extensions de TrustedBSD
+1.0, aussi bien que des références aux technologies en cours de
+développement pour de futures versions.</font></p>
+<h2><font size="2" face="Verdana">I.a
+Dispositifs
+de système d'exploitation
+de
+confiance</font></h2>
+<p><font size="2" face="Verdana">Les systèmes d'exploitation de confiance fournissent un certain
+nombre de dispositifs qui les distinguent des systèmes d'exploitation
+traditionnels, même ceux qui ont une sécurité élevée comme cible.  La capacité d'imposer des politiques obligatoires de contrôle
+d'accès, aussi bien que l'audit fine-grained
+d'évènements, exigeant
+une intégration serrée avec le système d'exploitation de base,
+aussi bien qu'une conception intentionnelle pour la sécurité.  Les
+systèmes d'exploitation de confiance permettent habituellement à
+l'administrateur système et aux utilisateurs de définir des
+politiques fine-grained pour la protection d'objet.&nbsp;</font></p>
+<p><font size="2" face="Verdana">TrustedBSD essaye d'adresser ces conditions par un ensemble
+d'extensions au système d'exploitation FreeBSD, tout en maintenant une programmation et des interfaces binaires les plus proches possibles.</font></p>
+<h2><font size="2" face="Verdana">I.b
+Standards
+de
+système
+d'exploitation
+de
+confiance</font></h2>
+<p><font size="2" face="Verdana">Peu de standards pour les systèmes d'exploitation de confiance
+existent;  cependant, la IEEE Computer Society a essayé de
+définir une Application Program Interface (API) standard pour un
+certain nombre de dispositifs de de système d'exploitation de confiance.
+De même, les organismes de sécurité nationale dans un certain
+nombre de pays ont défini des normes pour les environnements de
+calcul de confiance.</font></p>
+<p><font size="2" face="Verdana">TrustedBSD essaie de se servir de l'interface POSIX.1e lorsque c'est possible, et se sert autrement des extensions normales et bien
+documentées de l'interface.  Le positionnement du dispositif TrustedBSD est ciblé sur les critères d'évaluation de système d'exploitation de confiance B1, et répondra aux exigences d'un certain
+nombre d'autres critères d'évaluation.  Actuellement, des essais
+formels d'évaluation et de conformité ne sont pas projetés.</font></p>
+<h2><font size="2" face="Verdana">I.c
+Audiences
+des
+systèmes
+d'exploitation
+de
+confiance</font></h2>
+<p><font size="2" face="Verdana">Les systèmes d'exploitation de confiance fournissent une
+configuration
+de
+dispositif
+qui les rendent appropriés pour l'usage dans des
+environnements d'haute-assurance.  Le mandatory access control et l'audit
+fine-grained sont des services exigés dans une grande partie
+du secteur militaire et financier, protégeant l'intimité des
+données extrêmement sensibles, aussi bien que faciliter la traçabilité des flux
+d'information et des fuites potentielles.</font></p>
+<p><font size="2" face="Verdana">Cependant,
+ces
+mécanismes
+sont
+également
+appropriés
+dans les
+environnements
+commerciaux
+et
+éducationnels
+traditionnels,
+fournissant
+un niveau
+supérieur
+de
+garanties
+concernant
+la
+protection
+de
+l'intégrité
+et une plus grande personnalisation du contrôle d'accès
+discrétionnaire, améliorant la flexibilité dans des environnements
+de groupe de travail et d'entreprise.</font></p>
+<p><font size="2" face="Verdana">TrustedBSD vise les 2 audiences traditionnelles pour
+les systèmes d'exploitation de confiance, mais également aux
+consommateurs des autres systèmes d'exploitation qui
+pourraient tirer bénéfice de la plus grande fonctionnalité et du
+niveau plus élevé de sécurité.  L'utilisation des systèmes
+d'exploitation de confiance dans les environnements de l'e-commerce et du web hosting améliorerait sensiblement la sécurité et la qualité
+du service.</font></p>
+<h1><font size="2" face="Verdana">II
+Configuration
+du dispositif
+TrustedBSD</font></h1>
+<p><font size="2" face="Verdana">TrustedBSD 1.0 implémente les extensions suivantes au système d'exploitation FreeBSD.</font></p>
+<h2><font size="2" face="Verdana">II.a
+Management
+de
+confiance</font></h2>
+<p><font size="2" face="Verdana">Les systèmes Unix se sont traditionnellement transportés avec une
+politique de sécurité et une espérance fixes des conditions.  Dans
+beaucoup de cas, les administrateurs système poursuivent immédiatement par un achat  "durcissant" l'environnement du système d'exploitation, en retirant ou en invalidant les dispositifs qui
+présentent un risque inutile de sécurité.  Les outils de gestion de
+confiance permettent la manipulation pertinente des politiques système, automatisant quelques tâches
+durcissantes, aussi bien que
+fournir une structure centralisée et logique pour la gestion de
+politique.</font></p>
+<h2><font size="2" face="Verdana">II.b
+Capacités
+systèmes
+fine-grained</font></h2>
+<p><font size="2" face="Verdana">Les environnements Unix traditionnels définissent un utilisateur
+simple pour avoir tous les privilèges système, présentant une
+source significative de risque. Des capacités fine-grained
+permettent à des privilèges spécifiques du système d'être
+séparés du compte root, et d'être assignés à l'environnement<br>
+d'exécution des
+exécutables
+spécifiques, réduisant l'exposition du
+code et du risque de
+compromission.</font></p>
+<h2><font size="2" face="Verdana">II.c Access Control Lists</font></h2>
+<p><font size="2" face="Verdana">Les environnements Unix traditionnels ont fourni des expressions extrêmement limité dans des permissions de système de fichiers, limitées à un utilisateur simple (propriétaire), un groupe défini par l'administrateur système, et un ensemble de
+droits définis pour le reste des utilisateurs sur le système. Les listes de contrôle d'accès tiennent compte de l'expression fine-grained des droits discrétionnaires associées aux fichiers et à d'autres objets système.</font></p>
+<h2><font size="2" face="Verdana">II.d
+Audits
+d'évènements
+de
+sécurité</font></h2>
+<p><font size="2" face="Verdana">Les environnements Unix traditionnels fournissent seulement un degré limité de logging des événements système, habituellement limité aux événements d'authentification et aux cas d'erreur. Les
+environnements de confiance exigent l'audit des événements de sécurité pas nécessairement associés à un état anormal, mais à la place utile pour déterminer la responsabilité et pour l'usage dans la détection d'intrusion.</font></p>
+<h2><font size="2" face="Verdana">II.e Mandatory Access Control</font></h2>
+<p><font size="2" face="Verdana">Les environnements Unix traditionnels tiennent compte de l'accès ouvert -- largement uniquement des limitations discrétionnaires sur
+l'interaction utilisateur sont autorisées, sans le modèle pour des limites imposées par le système sur l'intimité et l'intégrité des données. Les politiques obligatoires d'accès permettent à l'administrateur de définir des politiques pour protéger l'intimité et l'intégrité, ignorant des politiques discrétionnaires pour des objets dans le système.</font></p>
+<h1><font size="2" face="Verdana">III
+Statut de
+l'implémentation
+TrustedBSD</font></h1>
+<p><font size="2" face="Verdana">Au moment de l'écriture de ce document, des progrès substantiels ont été accompli dans
+l'implémentation des extensions TrustedBSD sur le système d'exploitation FreeBSD.&nbsp;<br>
+<br>
+Le code significatif du support a été développé pour fournir un framework pour la configuration du dispositif TrustedBSD, y compris le développement du support des attributs de noms étendus FFS, permettant au code kernel et user de mettre à jour des attributs étendus associés aux fichiers et aux répertoires. Une telle mémoire d'attribut peut être utilisée pour un certain nombre d'applications, mais dans le contexte de TrustedBSD, est utilisée pour enregistrer des labels
+de sécurité associées à divers mécanismes de politique, y compris ACLs, capacités, et mandatory access control.</font></p>
+<p><font size="2" face="Verdana">La capacité et les composants ACL du projet approchent d'être terminer, et les API initiales pour le code ACL ont été incluses avec FreeBSD 4.0-RELEASE. Le code supportant FFS suivra peu de temps après la version du code étendu d'attribut supportant la mémoire persistante ACL. Les capacités sont dans une situation
+semblable, avec la sémantique implémentée, mais dans la mémoire disque dur en attendant la version prochaine du code étendu d'attribut.</font></p>
+<p><font size="2" face="Verdana">Le contrôle d'accès obligatoire et l'audit fine-grained d'événement exigent les changements répandus au mécanisme de contrôle d'accès. Dans la version initiale de TrustedBSD, ces changements seront présentés comme exigés, et en quelque sorte spécifiques à leur mise en place. Cependant, le travail est en cours pour concevoir un mécanisme plus systématique et
+structurellement
+plus viable de contrôle d'accès pour le kernel, permettant des politiques kernel modulaires, y compris ceux associés au projet TrustedBSD. Dans les mois à venir, la documentation de ce projet
+sera mise en ligne.</font></p>
+<h1><font size="2" face="Verdana">IV
+Disponibilité</font></h1>
+<p><font size="2" face="Verdana">Les extensions TrustedBSD seront rendues disponibles sous une licence 2-clause BSD-style, qui dans l'essense exige la conservation de copyright, et démentent la responsabilité. La licence n'interdit pas<br>
+l'inclusion dans les produits commerciaux, mais exige que les crédits soient donnés. On peut espérer que les consommateurs du code verront l'ajustement pour apporter toutes les améliorations au code du projet FreeBSD, et aide à l'avenir au développement du
+logiciel.</font></p>
+<p><font size="2" face="Verdana">Deux canaux existeront pour la distribution du code de TrustedBSD -- certains
+seront disponibles par le CVS repository de FreeBSD, et seront inclus dans les versions formelles de FreeBSD. D'autres composants exigeant des changements intrusifs ou incompatibles seront rendus disponibles comme modules sur le site Web de TrustedBSD. Des accès aux versions de développement seront également distribuées par l'intermédiaire du site Web.</font></p>
+<h1><font size="2" face="Verdana">V
+Directions
+futures</font></h1>
+<p><font size="2" face="Verdana">Cette version des dispositifs TrustedBSD adressent un certain nombre de limitations actuelles dans l'architecture de sécurité de FreeBSD, y compris le besoin de contrôle d'accès obligatoire, un contrôle d'accès discrétionnaire finer grained, un modèle
+amélioré de capacité système, l'audit, et la capacité de<br>
+permettre à des administrateurs d'évaluer et configurer les facteurs de risque et de confiance du
+système.  Cependant, un certain nombre de futures directions sont déjà suggérées, basé sur une
+expérience mettant en application quelques composants, et des conditions pour un certain nombre
+d'environnements.</font></p>
+<p><font size="2" face="Verdana">Les futures directions pourront inclure une infrastructure plus cohérente et plus généralisée d'autorisation kernel. Un tel système est en cours de conception, mais l'implémentation attendra jusqu'à ce que la configuration actuelle du dispositif soit implémenté afin de tirer profit d'une expérience supplémentaire qui sera
+acquise.</font></p>
+<p><font size="2" face="Verdana">L'audit fine-grained sur un hôte permet une variété de
+fonctions qui tirent profit des données étendues d'événement. Ceci inclut des IDS simple-host;  cependant, FreeBSD est généralement utilisé dans les environnements de serveurs groupés, où la capacité de coordonner et de tracer les événements à travers des machines multiples seraient également extrêmement utiles. Une direction pour davantage de travail devrait
+permettre à des hôtes FreeBSD de participer à la détection d'intrusion et à la surveillance distribuées d'événement.</font></p>
+<p><font size="2" face="Verdana">Le management de politique distribuée est une autre chose dans laquelle le travail serait utile -- beaucoup de système d'exploitation de confiance commerciaux étendent leur implémentation Network File System, aussi bien que d'autres services network-based, pour
+rendre obligatoire les politiques de contrôle d'accès dans les systèmes d'exploitation des hôtes individuels.  Actuellement, les conceptions pour la limite de
+configuration
+initiale du dispositif TrustedBSD a exposé des labels de sécurité aux mécanismes discrétionnaires ; les travaux futurs peuvent essayer d'adresser la politique et l'application coordonnées au-dessus des
+nœuds multiples dans un réseau.</font></p>
+<h1><font size="2" face="Verdana">VI Conclusion</font></h1>
+<p><font size="2" face="Verdana">TrustedBSD fournit un ensemble d'extensions de confiance au système d'exploitation FreeBSD. Cette fonctionnalité améliore l'utilité de FreeBSD dans les environnements où des degrés plus élevés de sécurité sont exigés, tout en fournissant également à bas prix un
+environnement de système d'exploitation de confiance aux consommateurs finaux qui traditionnellement n'auraient pas pu se permettre les labels de prix élevé d'un système d'exploitation supportant ces dispositifs.  Le code de TrustedBSD sera rendu librement disponible sous une licence BSD-style pendant qu'il est
+développé.</font></p>
+
+</body>
+
+</html>

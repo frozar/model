@@ -1,0 +1,71 @@
+<?php die(); /* XSS SHIELD, REMOVE THIS LINE */ ?>
+<?php
+##############################################################################################################################################
+##          information                                                                                                                     ##
+##############################################################################################################################################
+##                                                                                                                                          ##
+##  description:        class Morse is for encoding or decoding Morse sign                                                                  ##
+##  version:            1.0.0                                                                                                               ##
+##  filename:           morse.class.php                                                                                                     ##
+##  author:             jürgen kaucher                                                                                                      ##
+##  author Email:       juergen@kaucher.org                                                                                                 ##
+##  created:            2002-09-25                                                                                                          ##
+##  last modified:      2002-09-25                                                                                                          ##
+##                                                                                                                                          ##
+##############################################################################################################################################
+##          class combobox                                                                                                                  ##
+##############################################################################################################################################
+##
+class Morse {
+    var $letters=array('a'=>'·-','b'=>'-···','c'=>'-·-·','d'=>'-··','e'=>'·','f'=>'··-·','g'=>'--·','h'=>'····','i'=>'··','j'=>'·---','k'=>'-·-','l'=>'·-··','m'=>'--','n'=>'-·','o'=>'---','p'=>'·--·','q'=>'--·-','r'=>'·-·','s'=>'···','t'=>'-','u'=>'··-','v'=>'···-','w'=>'·--','x'=>'-··-','y'=>'-·--','z'=>'--··');
+    var $numbers=array(1=>'·----',2=>'··---',3=>'···--',4=>'····-',5=>'·····',6=>'-····',7=>'--···',8=>'---··',9=>'----·',0=>'-----');
+    function ToMorse($text) {
+        $text=strtolower($text);
+        trim($text);
+        $k=strlen($text);
+        for ($i=0;$i<$k;$i++) {
+            $t=substr($text,$i,1);
+            if ($t==" ") {
+                $out.="<br>";
+            } elseif (array_key_exists($t, $this->letters)) {
+                $out.=" ".$this->letters[$t]." ";
+            } elseif (array_key_exists($t, $this->numbers)) {
+                $out.=" ".$this->numbers[$t]." ";
+            }
+        }
+        DEFINE("MORSE", $out);
+    }
+    function ToText($morse) {
+        $letters = array_flip ($this->letters);
+        $numbers = array_flip ($this->numbers);
+        trim($morse);
+        $arr=explode("<br>",$morse);
+        $k=count($arr);
+        for ($i=0;$i<$k;$i++) {
+            $obj[$i]=explode(" ",$arr[$i]);
+            for ($j=0;$j<count($obj[$i]);$j++) {
+                if ($obj[$i][$j]==" ") {
+                    $out.="";
+                } elseif (array_key_exists($obj[$i][$j],$letters)) {
+                    $out.=$letters[$obj[$i][$j]];
+                } elseif (array_key_exists($obj[$i][$j],$numbers)) {
+                    $out.=$numbers[$obj[$i][$j]];
+                }
+            }
+            $out.=" ";
+        }
+        DEFINE("TEXT", $out);
+    }
+}
+
+
+
+
+$new= new Morse();
+$text = "a b c d e f g h i j k l m n o p q r s t u v w x y z";
+
+$new->ToMorse($text);
+$new->ToText(MORSE);
+echo TEXT." en morse ca s'ecrit : <br>".MORSE."<br>";
+
+?>

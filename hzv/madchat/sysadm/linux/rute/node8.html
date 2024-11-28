@@ -1,0 +1,541 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 99.2beta8 (1.46)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>5. Regular Expressions</TITLE>
+<META NAME="description" CONTENT="5. Regular Expressions">
+<META NAME="keywords" CONTENT="rute">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v99.2beta8">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="rute.css">
+
+<LINK REL="next" HREF="node9.html">
+<LINK REL="previous" HREF="node7.html">
+<LINK REL="up" HREF="rute.html">
+<LINK REL="next" HREF="node9.html">
+</HEAD>
+
+<BODY BGCOLOR=#FFFFFF >
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD align=left bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-purchase.html"><FONT COLOR=white>Purchase</FONT></A>&nbsp;
+</FONT>
+</TD><TD align=center bgcolor="#000000">
+<FONT COLOR=white>
+Copyright&nbsp;&#169;&nbsp;2002&nbsp;Paul Sheer. <A HREF="copying.html"><FONT COLOR=white>Click here for copying permissions.</FONT></A>
+</FONT>
+</TD><TD align=right bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-home.html"><FONT COLOR=white>Home</FONT></A>&nbsp;
+</FONT>
+</TD></TR>
+<TR><TD colspan=2 align=left bgcolor="#ECEBF4">
+<IMG SRC="va-btn-small-light-60.png">
+</TD><TD align=right bgcolor="#ECEBF4">
+<IMG SRC="sflogo2-steel-60.png">
+</TD></TR>
+</TABLE><BR>
+
+<!--Navigation Panel-->
+<A NAME="tex2html1815"
+  HREF="node9.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html1811"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html1805"
+  HREF="node7.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html1813"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html1816"
+  HREF="node9.html">6. Editing Text Files</A>
+<B> Up:</B> <A NAME="tex2html1812"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html1806"
+  HREF="node7.html">4. Basic Commands</A>
+ &nbsp <B>  <A NAME="tex2html1814"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html1817"
+  HREF="#SECTION00810000000000000000">5.1 Overview</A>
+<LI><A NAME="tex2html1818"
+  HREF="#SECTION00820000000000000000">5.2 The <TT>
+<FONT COLOR="#0000ff">fgrep</FONT></TT> Command</A>
+<LI><A NAME="tex2html1819"
+  HREF="#SECTION00830000000000000000">5.3 Regular Expression <TT>
+<FONT COLOR="#0000ff">&#92;&#123;</FONT></TT> <TT>
+<FONT COLOR="#0000ff">&#92;&#125;</FONT></TT> Notation</A>
+<LI><A NAME="tex2html1820"
+  HREF="#SECTION00840000000000000000">5.4 <TT>
+<FONT COLOR="#0000ff">+</FONT></TT> <TT>
+<FONT COLOR="#0000ff">?</FONT></TT> <TT>
+<FONT COLOR="#0000ff">&#92;&#60;</FONT></TT>
+<TT>
+<FONT COLOR="#0000ff">&#92;&#62;</FONT></TT> <TT>
+<FONT COLOR="#0000ff">(</FONT></TT> <TT>
+<FONT COLOR="#0000ff">)</FONT></TT> <TT>
+<FONT COLOR="#0000ff">&#124;</FONT></TT> Notation</A>
+<LI><A NAME="tex2html1821"
+  HREF="#SECTION00850000000000000000">5.5 Regular Expression Subexpressions</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION00800000000000000000">
+5. Regular Expressions</A>
+</H1>
+
+<P>
+<A NAME="chap:regexp"></A>A regular expression is a sequence of characters that forms a template used
+to search for <I>strings</I> <FONT COLOR="#ffa500">[Words, phrases, or just about any sequence of characters.
+]</FONT> within text. In other words, it is a search pattern.
+To get an idea of when you would need to do this, consider the
+example of having a list of names and telephone numbers. If you want
+to find a telephone number that contains a 3 in the second place and ends with
+an 8, regular expressions provide a way of doing that kind of search.
+Or consider the case where you would like to send an email to fifty people, replacing
+the word after the ``Dear'' with their own name to make the letter more personal.
+Regular expressions allow for this type of searching and replacing.
+
+<P>
+
+<H1><A NAME="SECTION00810000000000000000">
+5.1 Overview</A>
+</H1>
+
+<P>
+Many utilities use the regular expression to give them greater power when manipulating text.
+The <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> command is an example. Previously you used the <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT>
+command to locate only simple letter sequences in text. Now we will use it to
+search for regular expressions.
+
+<P>
+In the previous chapter you learned that the <TT>
+<FONT COLOR="#0000ff">?</FONT></TT> character can be used to signify
+that any character can take its place. This is said to be a <I>wildcard</I>
+and works with file names. With regular expressions, the wildcard to use is the
+<TT>
+<FONT COLOR="#0000ff">.</FONT></TT> character. So, you can use the command <TT>
+<FONT COLOR="#0000ff">grep&nbsp;.3....8&nbsp;&#60;filename&#62;</FONT></TT>
+to find the seven-character telephone number that you are looking for in the
+above example.
+
+<P>
+Regular expressions are used for line-by-line searches. For instance, if the
+seven characters were spread over two lines (i.e., they had a line break in the
+middle), then <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> wouldn't find them. In general, a program that uses
+regular expressions will consider searches one line at a time.
+
+<P>
+Here are some regular expression examples that will teach you the regular expression basics. We
+use the <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> command to show the use of regular expressions (remember
+that the <TT>
+<FONT COLOR="#0000ff">-w</FONT></TT> option matches whole words only). Here the expression itself
+is enclosed in <TT>
+<FONT COLOR="#0000ff">'</FONT></TT> quotes for reasons that are explained later.
+
+<P>
+<DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">grep&nbsp;-w&nbsp;'t[a-i]e'</FONT></TT></STRONG></DT>
+<DD>Matches the words <TT>
+<FONT COLOR="#0000ff">tee</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">the</FONT></TT>,
+and <TT>
+<FONT COLOR="#0000ff">tie</FONT></TT>. The brackets have a special significance. They mean to match
+one character that can be anything from <TT>
+<FONT COLOR="#0000ff">a</FONT></TT> to <TT>
+<FONT COLOR="#0000ff">i</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">grep&nbsp;-w&nbsp;'t[i-z]e'</FONT></TT></STRONG></DT>
+<DD>Matches the words <TT>
+<FONT COLOR="#0000ff">tie</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">toe</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">grep&nbsp;-w&nbsp;'cr[a-m]*t'</FONT></TT></STRONG></DT>
+<DD>Matches the words <TT>
+<FONT COLOR="#0000ff">craft</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">credit</FONT></TT>, and <TT>
+<FONT COLOR="#0000ff">cricket</FONT></TT>. The <TT>
+<FONT COLOR="#0000ff">*</FONT></TT> means to match any number
+of the previous character, which in this case is any character from <TT>
+<FONT COLOR="#0000ff">a</FONT></TT>
+through <TT>
+<FONT COLOR="#0000ff">m</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">grep&nbsp;-w&nbsp;'kr.*n'</FONT></TT></STRONG></DT>
+<DD>Matches the words <TT>
+<FONT COLOR="#0000ff">kremlin</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">krypton</FONT></TT>,
+because the <TT>
+<FONT COLOR="#0000ff">.</FONT></TT> matches any character and the <TT>
+<FONT COLOR="#0000ff">*</FONT></TT> means to match
+the dot any number of times.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">egrep&nbsp;-w&nbsp;'(th&#124;sh).*rt'</FONT></TT></STRONG></DT>
+<DD>Matches the words <TT>
+<FONT COLOR="#0000ff">shirt</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">short</FONT></TT>,
+and <TT>
+<FONT COLOR="#0000ff">thwart</FONT></TT>. The <TT>
+<FONT COLOR="#0000ff">&#124;</FONT></TT> means to match either the <TT>
+<FONT COLOR="#0000ff">th</FONT></TT> or
+the <TT>
+<FONT COLOR="#0000ff">sh</FONT></TT>. <TT>
+<FONT COLOR="#0000ff">egrep</FONT></TT> is just like <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> but supports <I>extended
+regular expressions</I> that allow for the <TT>
+<FONT COLOR="#0000ff">&#124;</FONT></TT> feature. <FONT COLOR="#ffa500">[
+The <TT>
+<FONT COLOR="#0000ff">&#124;</FONT></TT> character often denotes a logical <TT>
+<FONT COLOR="#0000ff">OR</FONT></TT>, meaning that either
+the thing on the left or the right of the <TT>
+<FONT COLOR="#0000ff">&#124;</FONT></TT> is applicable. This is
+true of many programming languages.
+]</FONT> Note how the square brackets mean one-of-several-characters and the
+round brackets with <TT>
+<FONT COLOR="#0000ff">&#124;</FONT></TT>'s mean one-of-several-words.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">grep&nbsp;-w&nbsp;'thr[aeiou]*t'</FONT></TT></STRONG></DT>
+<DD>Matches the words <TT>
+<FONT COLOR="#0000ff">threat</FONT></TT> and
+<TT>
+<FONT COLOR="#0000ff">throat</FONT></TT>. As you can see, a list of possible characters can be placed
+inside the square brackets.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">grep&nbsp;-w&nbsp;'thr[^a-f]*t'</FONT></TT></STRONG></DT>
+<DD>Matches the words <TT>
+<FONT COLOR="#0000ff">throughput</FONT></TT>
+and <TT>
+<FONT COLOR="#0000ff">thrust</FONT></TT>. The ^ after the first bracket means to match <I>any</I>
+character <I>except</I> the characters listed. For example, the word
+<TT>
+<FONT COLOR="#0000ff">thrift</FONT></TT> is not matched because it contains an <TT>
+<FONT COLOR="#0000ff">f</FONT></TT>.
+</DD>
+</DL>
+
+<P>
+The above regular expressions all match whole words (because of the <TT>
+<FONT COLOR="#0000ff">-w</FONT></TT>
+option). If the <TT>
+<FONT COLOR="#0000ff">-w</FONT></TT> option was not present, they might match parts of
+words, resulting in a far greater number of matches. Also note that
+although the <TT>
+<FONT COLOR="#0000ff">*</FONT></TT> means to match any number of characters, it also will match
+<I>no</I> characters as well; for example: <TT>
+<FONT COLOR="#0000ff">t[a-i]*e</FONT></TT> could actually
+match the letter sequence <TT>
+<FONT COLOR="#0000ff">te</FONT></TT>, that is, a <TT>
+<FONT COLOR="#0000ff">t</FONT></TT> and an <TT>
+<FONT COLOR="#0000ff">e</FONT></TT> with
+zero characters between them.
+
+<P>
+Usually, you will use regular expressions to search for <I>whole lines</I> that
+match, and sometimes you would like to match a line that begins or ends with
+a certain string. The <TT>
+<FONT COLOR="#0000ff">^</FONT></TT> character specifies the beginning
+of a line, and the <TT>
+<FONT COLOR="#0000ff">$</FONT></TT> character the end of the line. For example,
+<TT>
+<FONT COLOR="#0000ff">^The</FONT></TT> matches all lines that start with a <TT>
+<FONT COLOR="#0000ff">The</FONT></TT>, and <TT>
+<FONT COLOR="#0000ff">hack$</FONT></TT>
+matches all lines that end with <TT>
+<FONT COLOR="#0000ff">hack</FONT></TT>, and <TT>
+<FONT COLOR="#0000ff">'^&nbsp;*The.*hack
+*$'</FONT></TT> matches all lines that begin with <TT>
+<FONT COLOR="#0000ff">The</FONT></TT> and end with <TT>
+<FONT COLOR="#0000ff">hack</FONT></TT>,
+even if there is whitespace at the beginning or end of the line.
+
+<P>
+Because regular expressions use certain characters in a special way (these are
+<TT>
+<FONT COLOR="#0000ff">.</FONT></TT> <TT>
+<FONT COLOR="#0000ff">&#92;</FONT></TT> <TT>
+<FONT COLOR="#0000ff">[</FONT></TT> <TT>
+<FONT COLOR="#0000ff">]</FONT></TT> <TT>
+<FONT COLOR="#0000ff">*</FONT></TT>
+<TT>
+<FONT COLOR="#0000ff">+</FONT></TT> <TT>
+<FONT COLOR="#0000ff">?</FONT></TT>), these characters cannot be used to match characters.
+This restriction severely limits you from trying to match, say, file names, which
+often use the <TT>
+<FONT COLOR="#0000ff">.</FONT></TT> character. To match a <TT>
+<FONT COLOR="#0000ff">.</FONT></TT> you can use the sequence
+<TT>
+<FONT COLOR="#0000ff">&#92;.</FONT></TT> which forces interpretation as an actual <TT>
+<FONT COLOR="#0000ff">.</FONT></TT>
+and not as a wildcard. Hence, the regular expression <TT>
+<FONT COLOR="#0000ff">myfile.txt</FONT></TT> might
+match the letter sequence <TT>
+<FONT COLOR="#0000ff">myfileqtxt</FONT></TT> or <TT>
+<FONT COLOR="#0000ff">myfile.txt</FONT></TT>, but the
+regular expression <TT>
+<FONT COLOR="#0000ff">myfile&#92;.txt</FONT></TT> will match only <TT>
+<FONT COLOR="#0000ff">myfile.txt</FONT></TT>.
+
+<P>
+You can specify most special characters by adding a <TT>
+<FONT COLOR="#0000ff">&#92;</FONT></TT> character
+before them, for example, use <TT>
+<FONT COLOR="#0000ff">&#92;[</FONT></TT> for an actual <TT>
+<FONT COLOR="#0000ff">[</FONT></TT>,
+a <TT>
+<FONT COLOR="#0000ff">&#92;$</FONT></TT> for an actual <TT>
+<FONT COLOR="#0000ff">$</FONT></TT>, a <TT>
+<FONT COLOR="#0000ff">&#92;&#92;</FONT></TT>
+for and actual <TT>
+<FONT COLOR="#0000ff">&#92;</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">&#92;+</FONT></TT> for an
+actual <TT>
+<FONT COLOR="#0000ff">+</FONT></TT>, and <TT>
+<FONT COLOR="#0000ff">&#92;?</FONT></TT> for an actual <TT>
+<FONT COLOR="#0000ff">?</FONT></TT>.
+(<TT>
+<FONT COLOR="#0000ff">?</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">+</FONT></TT> are explained below.)
+
+<P>
+
+<H1><A NAME="SECTION00820000000000000000">
+5.2 The <TT>
+<FONT COLOR="#0000ff">fgrep</FONT></TT> Command</A>
+</H1>
+
+<P>
+<TT>
+<FONT COLOR="#0000ff">fgrep</FONT></TT> is an alternative to <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT>. The difference is that while
+<TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> (the more commonly used command) matches regular expressions,
+<TT>
+<FONT COLOR="#0000ff">fgrep</FONT></TT> matches literal strings. In other words you can use <TT>
+<FONT COLOR="#0000ff">fgrep</FONT></TT>
+when you would like to search for an ordinary string that is not a regular
+expression, instead of preceding special characters with <TT>
+<FONT COLOR="#0000ff">&#92;</FONT></TT>.
+
+<P>
+
+<H1><A NAME="SECTION00830000000000000000">
+5.3 Regular Expression <TT>
+<FONT COLOR="#0000ff">&#92;&#123;</FONT></TT> <TT>
+<FONT COLOR="#0000ff">&#92;&#125;</FONT></TT> Notation</A>
+</H1>
+
+<P>
+<TT>
+<FONT COLOR="#0000ff">x*</FONT></TT> matches zero to infinite instances of a character <TT>
+<FONT COLOR="#0000ff">x</FONT></TT>.
+You can specify other ranges of numbers of characters to be matched with, for
+example, <TT>
+<FONT COLOR="#0000ff">x&#92;&#123;3,5&#92;&#125;</FONT></TT>, which will match
+at least three but not more than five <TT>
+<FONT COLOR="#0000ff">x</FONT></TT>'s, that is <TT>
+<FONT COLOR="#0000ff">xxx</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">xxxx</FONT></TT>,
+or <TT>
+<FONT COLOR="#0000ff">xxxxx</FONT></TT>. 
+
+<P>
+<TT>
+<FONT COLOR="#0000ff">x&#92;&#123;4&#92;&#125;</FONT></TT> can then be used to match 4
+<TT>
+<FONT COLOR="#0000ff">x</FONT></TT>'s exactly: no more and no less. <TT>
+<FONT COLOR="#0000ff">x&#92;&#123;7,&#92;&#125;</FONT></TT>
+will match seven or more <TT>
+<FONT COLOR="#0000ff">x</FONT></TT>'s--the upper limit is omitted to mean
+that there is no maximum number of <TT>
+<FONT COLOR="#0000ff">x</FONT></TT>'s.
+
+<P>
+As in all the examples above, the <TT>
+<FONT COLOR="#0000ff">x</FONT></TT> can be a range of characters (like <TT>
+<FONT COLOR="#0000ff">[a-k]</FONT></TT>)
+just as well as a single charcter.
+
+<P>
+<DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">grep&nbsp;-w&nbsp;'th[a-t]&#92;&#123;2,3&#92;&#125;t'</FONT></TT></STRONG></DT>
+<DD>Matches
+the words <TT>
+<FONT COLOR="#0000ff">theft</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">thirst</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">threat</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">thrift</FONT></TT>,
+and <TT>
+<FONT COLOR="#0000ff">throat</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">grep&nbsp;-w&nbsp;'th[a-t]&#92;&#123;4,5&#92;&#125;t'</FONT></TT></STRONG></DT>
+<DD>Matches
+the words <TT>
+<FONT COLOR="#0000ff">theorist</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">thicket</FONT></TT>, and <TT>
+<FONT COLOR="#0000ff">thinnest</FONT></TT>.
+</DD>
+</DL>
+
+<P>
+
+<H1><A NAME="SECTION00840000000000000000">
+5.4 Extended Regular Expression <TT>
+<FONT COLOR="#0000ff">+</FONT></TT> <TT>
+<FONT COLOR="#0000ff">?</FONT></TT> <TT>
+<FONT COLOR="#0000ff">&#92;&#60;</FONT></TT>
+<TT>
+<FONT COLOR="#0000ff">&#92;&#62;</FONT></TT> <TT>
+<FONT COLOR="#0000ff">(</FONT></TT> <TT>
+<FONT COLOR="#0000ff">)</FONT></TT> <TT>
+<FONT COLOR="#0000ff">&#124;</FONT></TT>
+<BR>
+Notation with <TT>
+<FONT COLOR="#0000ff">egrep</FONT></TT></A>
+</H1>
+
+<P>
+An enhanced version of regular expressions allows for a few more
+useful features. Where these conflict with existing notation, they are only
+available through the <TT>
+<FONT COLOR="#0000ff">egrep</FONT></TT> command.
+
+<P>
+<DL>
+<DT><STRONG>+</STRONG></DT>
+<DD>is analogous to <TT>
+<FONT COLOR="#0000ff">&#92;&#123;1,&#92;&#125;</FONT></TT>. It does
+the same as <TT>
+<FONT COLOR="#0000ff">*</FONT></TT> but matches <I>one</I> or more characters instead
+of <I>zero</I> or more characters.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">?</FONT></TT></STRONG></DT>
+<DD>is analogous to &#92;&#123;1&#92;&#125;. It matches
+<I>zero</I> or <I>one</I> character.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">&#92;&#60;&nbsp;&#92;&#62;</FONT></TT></STRONG></DT>
+<DD>can surround a string 
+to match only whole words.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">(</FONT></TT>&nbsp;<TT>
+<FONT COLOR="#0000ff">)</FONT></TT></STRONG></DT>
+<DD>can surround several strings, separated by <TT>
+<FONT COLOR="#0000ff">&#124;</FONT></TT>.
+This notation will match any of these strings. (<TT>
+<FONT COLOR="#0000ff">egrep</FONT></TT> only.)
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">&#92;(</FONT></TT>&nbsp;<TT>
+<FONT COLOR="#0000ff">&#92;)</FONT></TT></STRONG></DT>
+<DD>can surround several strings, separated by <TT>
+<FONT COLOR="#0000ff">&#92;&#124;</FONT></TT>.
+This notation will match any of these strings. (<TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> only.)
+</DD>
+</DL>
+
+<P>
+The following examples should make the last two notations clearer.
+<DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">grep&nbsp;'trot'</FONT></TT></STRONG></DT>
+<DD>Matches the words <TT>
+<FONT COLOR="#0000ff">electrotherapist</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">betroth</FONT></TT>,
+and so on, but
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">grep&nbsp;'&#92;&#60;trot&#92;&#62;'</FONT></TT></STRONG></DT>
+<DD>matches only the word
+<TT>
+<FONT COLOR="#0000ff">trot</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">egrep&nbsp;-w&nbsp;'(this&#124;that&#124;c[aeiou]*t)'</FONT></TT></STRONG></DT>
+<DD>Matches the words <TT>
+<FONT COLOR="#0000ff">this</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">that</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">cot</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">coat</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">cat</FONT></TT>, and <TT>
+<FONT COLOR="#0000ff">cut</FONT></TT>.
+</DD>
+</DL>
+
+<P>
+
+<H1><A NAME="SECTION00850000000000000000">
+5.5 Regular Expression Subexpressions</A>
+</H1>
+
+<P>
+Subexpressions are covered in Chapter <A HREF="node11.html#chap:streams">8</A>.
+
+<P>
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html1815"
+  HREF="node9.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html1811"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html1805"
+  HREF="node7.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html1813"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html1816"
+  HREF="node9.html">6. Editing Text Files</A>
+<B> Up:</B> <A NAME="tex2html1812"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html1806"
+  HREF="node7.html">4. Basic Commands</A>
+ &nbsp <B>  <A NAME="tex2html1814"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+
+</BODY>
+</HTML>

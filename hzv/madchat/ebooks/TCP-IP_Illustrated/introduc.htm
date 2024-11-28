@@ -1,0 +1,986 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 1. Introduction</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+
+<a name="1_0"><H1><I>Introduction</I></H1></a>
+
+<a name="1_1"><H3>1.1 Introduction</H3></a>
+
+The TCP/IP protocol suite allows computers of all sizes, from
+many different computer vendors, running totally different operating
+systems, to communicate with each other. It is quite amazing because
+its use has far exceeded its original estimates. What started
+in the late 1960s as a government-financed research project into
+packet switching networks has, in the 1990s, turned into the most
+widely used form of networking between computerrs. It is truly
+an <I>open system</I> in that the definition of the protocol suite
+and many of its implementations are publicly available at little
+or no charge. It forms the basis for what is called the <I>worldwide
+Internet,</I> or the <I>Internet,</I> a wide area network (WAN)
+of more than one million computers that literally spans the globe.
+<P>
+This chapter provides an overview of the TCP/IP protocol suite,
+to establish an adequate background for the remaining chapters.
+For a historical perspective on the early development of TCP/IP
+see [Lynch 1993].
+
+<a name="1_2"><H3>1.2 Layering</H3></a>
+
+Networking <I>protocols</I> are normally developed in <I>layers,</I>
+with each layer responsible for a different facet of the communications.
+A <I>protocol suite,</I> such as TCP/IP, is the combination of
+different protocols at various layers. TCP/IP is normally considered
+to be a 4-layer system, as shown in Figure 1.1.
+<P>
+<CENTER>
+<a name="fig_1_1"><TABLE BORDER=1></a>
+<TR><TD WIDTH=130><CENTER>Application</CENTER></TD><TD WIDTH=236>Telnet, FTP, e-mail, etc.
+</TD></TR>
+<TR><TD WIDTH=130><CENTER>Transport</CENTER></TD><TD WIDTH=236>TCP, UDP
+</TD></TR>
+<TR><TD WIDTH=130><CENTER>Network</CENTER></TD><TD WIDTH=236>IP, ICMP, IGMP
+</TD></TR>
+<TR><TD WIDTH=130><CENTER>Link</CENTER></TD><TD WIDTH=236>device driver and interface card
+</TD></TR>
+</TABLE>
+</CENTER>
+<CENTER><B>Figure 1.1</B> The
+four layers of the TCP/IP protocol suite.</CENTER>
+<P>
+Each layer has a different responsibility.
+<OL>
+<LI>The <I>link</I> layer, sometimes called the <I>data-link</I>
+layer or <I>network interface</I> layer, normally includes the
+device driver in the operating system and the corresponding network
+interface card in the computer. Together they handle all the hardware
+details of physically interfacing with the cable (or whatever
+type of media is being used).
+<LI>The <I>network</I> layer (sometimes called the <I>internet</I>
+layer) handles the movement of packets around the network. Routing
+of packets, for example, takes place here. IP (Internet
+Protocol), ICMP (Internet Control Message Protocol), and IGMP
+(Internet Group Management Protocol) provide the network layer
+in the TCP/IP protocol suite.
+<LI>The <I>transport</I> layer provides a flow of data between
+two hosts, for the application layer above. In the TCP/IP protocol
+suite there are two vastly different transport protocols: TCP
+(Transmission Control Protocol) and UDP (User Datagram Protocol).
+<P>
+TCP provides a reliable flow of data between two hosts. It is
+concerned with things such as dividing the data passed to it from
+the application into appropriately sized chunks for the network
+layer below, acknowledging received packets, setting timeouts
+to make certain the other end acknowledges packets that are sent,
+and so on. Because this reliable flow of data is provided by the
+transport layer, the application layer can ignore all these details.
+<P>
+UDP, on the other hand, provides a much simpler service to the
+application layer. It just sends packets of data called <I>datagrams</I>
+from one host to the other, but there is no guarantee that the
+datagrams reach the other end. Any desired reliability must be
+added by the application layer.
+<P>
+There is a use for each type of transport protocol, which we'll
+see when we look at the different applications that use TCP and
+UDP.
+<LI> The <I>application</I> layer handles the details of the particular
+application. There are many common TCP/IP applications that almost
+every implementation provides:
+<UL>
+<LI>Telnet for remote login,
+<LI>FTP, the File Transfer Protocol,
+<LI>SMTP, the Simple Mail Transfer protocol, for electronic mail,
+<LI>SNMP, the Simple Network Management Protocol,
+</UL>
+<P>
+and many more, some of which we cover in later chapters.
+</OL>
+<P>
+If we have two hosts on a local area network (LAN) such as an
+Ethernet, both running FTP, Figure 1.2 shows the protocols involved.
+<P>
+<CENTER><a name="fig_1_2"><img src="f_1_2.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_1_2.gif"></a></CENTER>
+<CENTER><B>Figure 1.2</B> Two
+hosts on a LAN running FTP.</CENTER>
+<P>
+We have labeled one application box the FTP <I>client</I> and
+the other the FTP <I>server. </I>Most network applications are
+designed so that one end is the client and the other side the
+server. The server provides some type of service to clients, in
+this case access to files on the server host. In the remote login
+application, Telnet, the service provided to the client is the
+ability to login to the server's host.
+<P>
+Each layer has one or more protocols for communicating with its
+<I>peer</I> at the same layer. One protocol, for example, allows
+the two TCP layers to communicate, and another protocol lets the
+two IP layers communicate.
+<P>
+On the right side of Figure 1.2 we have noted that normally the
+application layer is a user process while the lower three layers
+are usually implemented in the kernel (the operating system).
+Although this isn't a requirement, it's typical and this is the
+way it's done under Unix.
+<P>
+There is another critical difference between the top layer in
+Figure 1.2 and the lower three layers. The application layer is
+concerned with the details of the application and not with the
+movement of data across the network. The lower three layers know
+nothing about the application but handle all the communication
+details.
+<P>
+We show four protocols in Figure 1.2, each at a different layer.
+FTP is an application layer protocol, TCP is a transport layer
+protocol, IP is a network layer protocol, and the Ethernet protocols
+operate at the link layer. The <I>TCP/IP protocol suite</I> is
+a combination of many protocols. Although the commonly used name
+for the entire protocol suite is TCP/IP, TCP and IP are only two
+of the protocols. (An alternative name is the <I>Internet Protocol
+Suite.)</I>
+<P>
+The purpose of the network interface layer and the application
+layer are obvious-the former handles the details of the communication
+media (Ethernet, token ring, etc.) while the latter handles one
+specific user application (FTP, Telnet,
+etc.). But on first glance the difference between the network
+layer and the transport layer is somewhat hazy. Why is there a
+distinction between the two? To understand the reason, we have
+to expand our perspective from a single network to a collection
+of networks.
+<P>
+One of the reasons for the phenomenal growth in networking during
+the 1980s was the realization that an island consisting of a stand-alone
+computer made little sense. A few stand-alone systems were collected
+together into a <I>network.</I> While this was progress, during
+the 1990s we have come to realize that this new, bigger island
+consisting of a single network doesn't make sense either. People
+are combining multiple networks together into an internetwork,
+or an <I>internet.</I> An internet is a collection of networks
+that all use the same protocol suite.
+<P>
+The easiest way to build an internet is to connect two or more
+networks with a <I>router.</I> This is often a special-purpose
+hardware box for connecting networks. The nice thing about routers
+is that they provide connections to many different types of physical
+networks: Ethernet, token ring, point-to-point links, FDDI
+(Fiber Distributed Data Interface), and so on.
+<P>
+<FONT SIZE=2>These boxes are also called <I>IP routers,</I> but
+we'll use the term <I>router.</I>
+<P>
+Historically these boxes were called <I>gateways,</I>
+and this term is used throughout much of the TCP/IP literature.
+Today the term <I>gateway</I> is used for an application gateway:
+a process that connects two different protocol suites (say, TCP/IP
+and IBM's SNA) for one particular application (often electronic
+mail or file transfer).</FONT>
+<P>
+Figure 1.3 shows an internet consisting of two networks: an Ethernet
+and a token ring, connected with a router. Although we show only
+two hosts communicating, with the router connecting the two networks,
+<I>any</I> host on the Ethernet can communicate with <I>any</I>
+host on the token ring.
+<P>
+In Figure 1.3 we can differentiate between an <I>end system</I>
+(the two hosts on either side) and an <I>intermediate system</I>
+(the router in the middle). The application layer and the transport
+layer use <I>end-to-end</I> protocols. In our picture these two
+layers are needed only on the end systems. The network layer,
+however, provides a <I>hop-by-hop</I> protocol and is used on
+the two end systems and every intermediate system.
+<P>
+<CENTER><a name="fig_1_3"><img src="f_1_3.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_1_3.gif"></a></CENTER>
+<CENTER><B>Figure 1.3</B> Two
+networks connected with a router.</CENTER>
+<P>
+In the TCP/IP protocol suite the network layer, IP, provides an
+unreliable service. That is, it does its best job of moving a
+packet from its source to its final destination, but there are
+no guarantees. TCP, on the other hand, provides a reliable transport
+layer using the unreliable service of IP To provide this service,
+TCP performs timeout and retransmission, sends and receives end-to-end
+acknowledgments, and so on. The transport layer and the network
+layer have distinct responsibilities.
+<P>
+A router, by definition, has two or more network interface layers
+(since it connects two or more networks). Any system with multiple
+interfaces is called <I>multihomed.</I> A host can also be multihomed
+but unless it specifically forwards packets from one interface
+to another, it is not called a router. Also, routers need not
+be special hardware boxes that only move packets around an internet.
+Most TCP/IP implementations allow a multihomed host to act as
+a router also, but the host needs to be specifically configured
+for this to happen. In this case we can call the system either
+a host (when an application such as FTP or Telnet
+is being used) or a router (when it's
+forwarding packets from one network to another). We'll use whichever
+term makes sense given the context.
+<P>
+One of the goals of an internet is to hide all the details of
+the physical layout of the internet from the applications. Although
+this isn't obvious from our two-network internet in <a href="#fig_1_3">Figure 1.3</a>,
+the application layers can't care (and don't care) that one host
+is on an Ethernet, the other on a token ring, with a router between.
+There could be 20 routers between, with additional types of physical
+interconnections, and the applications would run the same. This
+hiding of the details is what makes the concept of an internet
+so powerful and useful.
+<P>
+Another way to connect networks is with a <I>bridge.</I> These
+connect networks at the link layer, while routers connect networks
+at the network layer. Bridges makes multiple LANs appear to the
+upper layers as a single LAN.
+<P>
+TCP/IP internets tend to be built using routers instead of bridges,
+so we'll focus on routers. Chapter 12 of [Perlman
+1992] compares routers and bridges.
+
+<a name="1_3"><H3>1.3 TCP/IP Layering</H3></a>
+
+There are more protocols in the TCP/IP protocol suite. Figure
+1.4 shows some of the additional protocols that we talk about
+in this text.
+<P>
+<CENTER><a name="fig_1_4"><img src="f_1_4.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_1_4.gif"></a></CENTER>
+<CENTER><B>Figure 1.4</B> Various
+protocols at the different layers in the TCP/IP
+protocol suite.</CENTER>
+<P>
+TCP and UDP are the two predominant
+transport layer protocols. Both use IP as the network layer.
+<P>
+TCP provides a reliable transport layer, even though the service
+it uses (IP) is unreliable. Chapters 17 through 22 provide a detailed
+look at the operation of TCP. We then look at some TCP applications:
+Telnet and Riogin
+in <a href="telnet.htm#26_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/telnet.htm#26_0">Chapter 26</a>,
+FTP in <a href="ftp_file.htm#27_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ftp_file.htm#27_0">Chapter 27</a>,
+and SMTP in <a href="smtp_sim.htm#28_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/smtp_sim.htm#28_0">Chapter 28</a>. The
+applications are normally user processes.
+<P>
+UDP sends and receives <I>datagrams</I>
+for applications. A datagram is a unit of information (i.e., a
+certain number of bytes of information that is specified by the
+sender) that travels from the sender to the receiver. Unlike TCP,
+however, UDP is unreliable. There is no guarantee that the datagram
+ever gets to its final destination. <a href="udp_user.htm#11_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_0">Chapter 11</a> looks at UDP, and
+then <a href="dns_the.htm#14_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dns_the.htm#14_0">Chapter 14</a> (the Domain Name System),
+<a href="tftp_tri.htm#15_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tftp_tri.htm#15_0">Chapter 15</a> (the Trivial
+File Transfer Protocol), and <a href="bootp.htm#16_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/bootp.htm#16_0">Chapter 16</a> (the Bootstrap Protocol)
+look at some applications that use UDP. SNMP
+(the Simple Network Management Protocol) also uses UDP, but since
+it deals with many of the other protocols, we save a discussion
+of it until <a href="snmp_sim.htm#25_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/snmp_sim.htm#25_0">Chapter 25</a>.
+<P>
+IP is the main protocol at the network layer. It is used by both
+TCP and UDP. Every piece of TCP and UDP data that gets transferred
+around an internet goes through the IP layer at both end systems
+and at every intermediate router. In <a href="#fig_1_4">Figure 1.4</a> we also show an
+application accessing IP directly. This is rare, but possible.
+(Some older routing protocols were implemented this way. Also,
+it is possible to experiment with new transport layer protocols
+using this feature.) <a href="ip_inter.htm#3_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_0">Chapter 3</a> looks at IP, but we save some of
+the details for later chapters where their discussion makes more
+sense. <a href="ip_rout.htm#9_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_0">Chapters 9</a> and <a href="dynamic.htm#10_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dynamic.htm#10_0">10</a> look at how IP performs routing.
+<P>
+ICMP is an adjunct to IP. It is
+used by the IP layer to exchange error messages and other vital
+information with the IP layer in another host or router. <a href="icmp_int.htm#6_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#6_0">Chapter 6</a>
+ looks at ICMP in more detail. Although ICMP is used primarily
+by IP, it is possible for an application to also access it. Indeed
+we'll see that two popular diagnostic tools,
+Ping and Traceroute (<a href="pingprog.htm#7_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm#7_0">Chapters 7</a> and
+<a href="tracerou.htm#8_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm#8_0">8</a>), both use ICMP.
+<P>
+IGMP is the Internet Group Management
+Protocol. It is used with multicasting: sending a UDP datagram
+to multiple hosts. We describe the general properties of broadcasting
+(sending a UDP datagram to every host on a specified network)
+and multicasting in <a href="broadcas.htm#12_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm#12_0">Chapter 12</a>, and then describe IGMP itself
+in <a href="igmp_int.htm#13_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/igmp_int.htm#13_0">Chapter 13</a>.
+<P>
+ARP (Address Resolution Protocol)
+and RARP (Reverse Address Resolution
+Protocol) are specialized protocols used only with certain types
+of network interfaces (such as Ethernet and token ring) to convert
+between the addresses used by the IP layer and the addresses used
+by the network interface. We examine these protocols in
+<a href="arp_addr.htm#4_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#4_0">Chapters 4</a> and <a href="rarp_rev.htm#5_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/rarp_rev.htm#5_0">5</a>, respectively.
+
+<a name="1_4"><H3>1.4 Internet Addresses</H3></a>
+
+Every interface on an internet must have a unique <I>Internet
+address</I> (also called an <I>IP address).</I> These addresses
+are 32-bit numbers. Instead of using a flat address space such
+as 1, 2, 3, and so on, there is a structure to Internet addresses.
+Figure 1.5 shows the five different classes of Internet addresses.
+<P>
+These 32-bit addresses are normally written as four decimal numbers,
+one for each byte of the address. This is called <I>dotted-decimal</I>
+notation. For example, the class B
+address of the author's primary system is 140.252.13.33.
+<P>
+The easiest way to differentiate between the different classes
+of addresses is to look at the first number of a dotted-decimal
+address. Figure 1.6 shows the different classes, with the first
+number in boldface.
+<P>
+<CENTER><a name="fig_1_5"><img src="f_1_5.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_1_5.gif"></a></CENTER>
+<CENTER><B>Figure 1.5</B> The five different classes of
+Internet addresses.</CENTER>
+<P>
+<CENTER>
+<a name="fig_1_6"><TABLE BORDER=1></a>
+<TR><TD WIDTH=97><CENTER>Class</CENTER></TD><TD WIDTH=227><CENTER>Range</CENTER>
+</TD></TR>
+<TR><TD WIDTH=97><CENTER>A</CENTER></TD><TD WIDTH=227><B>0</B>.0.0.0 to <B>127</B>.255.255.255
+</TD></TR>
+<TR><TD WIDTH=97><CENTER><A NAME="OCRUncertain026">B</A></CENTER>
+</TD><TD WIDTH=227><B>128</B>.0.0.0 to <B>191</B>.255.255.255
+</TD></TR>
+<TR><TD WIDTH=97><CENTER><A NAME="OCRUncertain027">C</A></CENTER>
+</TD><TD WIDTH=227><B>192</B>.0.0.0 to <B>223</B>.255.255.255
+</TD></TR>
+<TR><TD WIDTH=97><CENTER><A NAME="OCRUncertain028">D</A></CENTER>
+</TD><TD WIDTH=227><B>224</B>.0.0.0 to <B>239</B>.255.255.255
+</TD></TR>
+<TR><TD WIDTH=97><CENTER><A NAME="OCRUncertain029">E</A></CENTER>
+</TD><TD WIDTH=227><B>240</B>.0.0.0 to <B>247</B>.255.255.255
+</TD></TR>
+</TABLE>
+</CENTER>
+<CENTER><B>Figure 1.6</B> Ranges for different classes of
+<A NAME="OCRUncertain030">I</A>P
+addresses.</CENTER>
+<P>
+It is worth reiterating that a multihomed host will have multiple
+IP addresses: one per interface.
+<P>
+Since every interface on an internet must have a unique IP address,
+there must be one central authority for allocating these addresses
+for networks connected to the worldwide Internet. That authority
+is the <I>Internet Network Information Center,</I> called the
+InterNIC. The InterNIC
+assigns only network IDs. The assignment
+of host IDs is up to the system
+administrator.
+<P>
+
+<FONT SIZE=2>Registration services for the Internet (IP addresses and DNS
+domain names) used to be handled by the NIC,
+at <TT>nic.ddn.mil</TT>.
+On April 1, 1993, the InterNIC was created. Now the NIC
+handles these requests only for the <I>Defense Data Network</I>
+(DDN). All other Internet users now use the InterNIC registration
+services, at <TT>rs.internic.net</TT>.
+<P>
+There are actually three parts to the InterNIC:
+registration services (<TT>rs.internic.net</TT>),
+directory and database services (<TT>ds.internic.net</TT>),
+and information services (<TT>is.internic.net</TT>).
+See Exercise 1.8 for additional information on the InterNIC.</FONT>
+<P>
+There are three types of IP addresses: <I>unicast</I> (destined
+for a single host), <I>broadcast </I>(destined for all hosts on
+a given network), and <I>multicast</I> (destined for a set of
+hosts that belong to a multicast group).
+<a href="broadcas.htm#12_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm#12_0">Chapters 12</a> and <a href="igmp_int.htm#13_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/igmp_int.htm#13_0">13</a> look
+at broadcasting and multicasting in more detail.
+<P>
+In <a href="ip_inter.htm#3_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_4">Section 3.4</a> we'll extend our description of IP addresses to
+include subnetting, after describing IP routing. <a href="ip_inter.htm#fig_3_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_9">Figure 3.9</a> shows
+the special case IP addresses: host IDs
+and network IDs of all zero bits or all one bits.
+
+<a name="1_5"><H3>1.5 The Domain Name System</H3></a>
+
+Although the network interfaces on a host, and therefore the host
+itself, are known by IP addresses, humans work best using
+the <I>name</I> of a host. In the TCP/IP world the <I>Domain Name
+System</I> (DNS) is a distributed
+database that provides the mapping between IP addresses and hostnames.
+<a href="dns_the.htm#14_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dns_the.htm#14_0">Chapter 14</a> looks into the DNS in detail.
+<P>
+For now we must be aware that any application can call a standard
+library function to look up the IP address (or addresses) corresponding
+to a given hostname. Similarly a
+function is provided to do the reverse lookup-given an IP address,
+look up the corresponding hostname.
+<P>
+Most applications that take a hostname as an argument also take
+an IP address. When we use the Telnet
+client in <a href="arp_addr.htm#4_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#4_0">Chapter 4</a>, for example, one time we specify a host-name
+and another time we specify an IP address.
+
+<a name="1_6"><H3>1.6 Encapsulation</H3></a>
+
+When an application sends data using TCP, the data is sent down
+the protocol stack, through each layer, until it is sent as a
+stream of bits across the network. Each layer adds information
+to the data by prepending headers (and sometimes adding trailer
+information) to the data that it receives. <a href="#fig_1_7">Figure 1.7</a> shows this
+process. The unit of data that TCP sends to IP is called a <I>TCP
+segment.</I> The unit of data that IP sends to the network interface
+is called an <I>IP datagram.</I> The stream of bits that flows
+across the Ethernet is called a <I>frame.</I>
+<P>
+The numbers at the bottom of the headers and trailer of the Ethernet
+frame in <a href="#fig_1_7">Figure 1.7</a> are the typical sizes of the headers in bytes.
+We'll have more to say about each of these headers in later sections.
+<P>
+A physical property of an Ethernet frame is that the size of its
+data must be between 46 and 1500 bytes. We'll encounter this minimum
+in <a href="arp_addr.htm#4_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#4_5">Section 4.5</a> and we cover the maximum in
+<a href="link_lay.htm#2_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_8">Section 2.8</a>.
+<P>
+
+<FONT SIZE=-1>All the Internet standards
+and most books on TCP/IP use the term <I>octet</I> instead of
+byte. The use of this cute, but baroque term is historical, since
+much of the early work on TCP/IP was done on systems such as the
+DEC-10, which did not use 8-bit bytes. Since almost every current
+computer system uses 8-bit bytes, we'll use the term <I>byte</I>
+in this text.
+<P>
+To be completely accurate in Figure 1.7 we should
+say that the unit of data passed between IP and the network interface
+is a <I>packet.</I> This packet can be either an IP datagram or
+a fragment of an IP datagram. We discuss fragmentation in detail
+in <a href="udp_user.htm#11_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_5">Section 11.5</a>.</FONT>
+<P>
+We could draw a nearly identical picture for UDP
+data. The only changes are that the unit of information that UDP
+passes to IP is called a <I>UDP datagram,</I> and the size of
+the UDP header is 8 bytes.
+<P>
+<CENTER><a name="fig_1_7"><img src="f_1_7.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_1_7.gif"></a></CENTER>
+<CENTER><B>Figure 1.7</B>  Encapsulation
+of data as it goes down the protocol stack.</CENTER>
+<P>
+Recall from <a href="#fig_1_4">Figure 1.4</a> that TCP, UDP, ICMP, and IGMP
+all send data to IP. IP must add some type of identifier to the
+IP header that it generates, to indicate the layer to which the
+data belongs. IP handles this by storing an 8-bit value in its
+header called the <I>protocol</I> field. A value of 1 is for ICMP,
+2 is for IGMP, 6 indicates TCP, and 17 is for UDP.
+<P>
+Similarly, many different applications can be using TCP or UDP
+at any one time. The transport layer protocols store an identifier
+in the headers they generate to identify the application. Both
+TCP and UDP use 16-bit <I>port numbers</I> to identify applications.
+TCP and UDP store the source port number and the destination port
+number in their respective headers.
+<P>
+The network interface sends and receives frames on behalf of IP,
+ARP, and RARP.
+There must be some form of identification in the Ethernet
+header indicating which network layer protocol generated the data.
+To handle this there is a 16-bit frame type field in the Ethernet
+header.
+
+<a name="1_7"><H3>1.7 Demultiplexing</H3></a>
+
+When an Ethernet frame is received at the destination host it
+starts its way up the protocol stack and all the headers are removed
+by the appropriate protocol box. Each protocol box looks at certain
+identifiers in its header to determine which box in the next upper
+layer receives the data. This is called <I>demultiplexing.</I>
+Figure 1.8 shows how this takes place.
+<P>
+<CENTER><a name="fig_1_8"><img src="f_1_8.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_1_8.gif"></a></CENTER>
+<CENTER><B>Figure 1.8</B> The
+demultiplexing of a received Ethernet frame.</CENTER>
+<P>
+
+<FONT SIZE=2>Positioning the protocol boxes labeled &quot;ICMP&quot;
+and &quot;IGMP&quot; is always a
+challenge. In <a href="#fig_1_4">Figure 1.4</a> we showed them at the same layer as IP,
+because they really are adjuncts to IP. But here we show them
+above IP, to reiterate that ICMP messages and IGMP messages are
+encapsulated in IP datagrams.
+<P>
+We have a similar problem with the boxes &quot;ARP&quot;
+and &quot;RARP.&quot; Here we show
+them above the Ethernet device driver because they both have their
+own Ethernet frame types, like IP datagrams. But in <a href="link_lay.htm#fig_2_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#fig_2_4">Figure 2.4</a>
+we'll show ARP as part of the Ethernet device driver, beneath
+IP, because that's where it logically fits.
+<P>
+Realize that these pictures of layered protocol boxes are not
+perfect.</FONT>
+<P>
+When we describe TCP in detail we'll see that it really demultiplexes
+incoming segments using the destination port number, the source
+IP address, and the source port number.
+
+<a name="1_8"><H3>1.8 Client-Server Model</H3></a>
+
+Most networking applications are written assuming one side is
+the client and the other the server. The purpose of the application
+is for the server to provide some defined service for clients.
+<P>
+We can categorize servers into two classes: iterative or concurrent.
+An <I>iterative server</I> iterates through the following steps.
+<P>
+I1. Wait for a client request to arrive.
+<P>
+I2. Process the client request.
+<P>
+I3. Send the response back to the client that sent the request.
+<P>
+I4. Go back to step I1.
+<P>
+The problem with an iterative server is when step I2 takes a while.
+During this time no other clients
+are serviced. A <I>concurrent server,</I> on the other hand, performs
+the following steps.
+<P>
+Cl. Wait for a client request to arrive.
+<P>
+C2. Start a new server to handle this client's request. This may
+involve creating a new process, task, or thread, depending on
+what the underlying operating system supports. How this step is
+performed depends on the operating system.
+<P>
+This new server handles this client's entire request. When complete,
+this new server terminates.
+<P>
+C3. Go back to step Cl.
+<P>
+The advantage of a concurrent server is that the server just spawns
+other servers to handle the client requests. Each client has,
+in essence, its own server. Assuming the operating system allows
+multiprogramming, multiple clients are serviced concurrently.
+<P>
+The reason we categorize servers,
+and not clients, is because a client normally can't tell whether
+it's talking to an iterative server or a concurrent server.
+<P>
+As a general rule, TCP servers are concurrent, and UDP
+servers are iterative, but there are a few exceptions. We'll look
+in detail at the impact of UDP on its servers in <a href="udp_user.htm#11_12" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_12">Section 11.12</a>,
+and the impact of TCP on its servers in <a href="tcp_conn.htm#18_11" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#18_11">Section 18.11</a>.
+
+<a name="1_9"><H3>1.9 Port Numbers</H3></a>
+
+We said that TCP and UDP identify applications using 16-bit port
+numbers. How are these port numbers chosen?
+<P>
+Servers are normally known by their <I>well-known</I> port number.
+For example, every TCP/IP implementation that provides an FTP
+server provides that service on TCP port 21. Every Telnet
+server is on TCP port 23. Every implementation of TFTP
+(the Trivial File Transfer Protocol) is on UDP
+port 69. Those services that can be provided by any implementation
+of TCP/IP have well-known port numbers between 1 and 1023. The
+well-known ports are managed by the <I>Internet Assigned Numbers
+Authority</I> (IANA).
+<P>
+
+<FONT SIZE=2>Until 1992 the well-known ports were between I and
+255. Ports between 256 and 1023 were normally used by Unix systems
+for Unix-specific services-that is, services found on a Unix system,
+but probably not found on other operating systems. The IANA now
+manages the ports between 1 and 1023.
+<P>
+An example of the difference between an Internet-wide
+service and a Unix-specific service is the difference between
+Telnet and Riogin. Both allow us
+to login across a network to another host. Telnet is a TCP/IP
+standard with a well-known port number of 23 and can be implemented
+on almost any operating system. Rlogin,
+on the other hand, was originally designed for Unix systems (although
+many non-Unix systems now provide it also) so its well-known port
+was chosen in the early 1980s as 513.</FONT>
+<P>
+A client usually doesn't care what port number it uses on its
+end. All it needs to be certain of is that whatever port number
+it uses be unique on its host. Client port numbers are called
+<I>ephemeral ports</I> (i.e., short
+lived). This is because a client typically exists only as long
+as the user running the client needs its service, while servers
+typically run as long as the host is up.
+<P>
+Most TCP/IP implementations allocate ephemeral port numbers between
+1024 and 5000. The port numbers above 5000 are intended for other
+servers (those that aren't well known across the Internet). We'll
+see many examples of how ephemeral ports are allocated in the
+examples throughout the text.
+<P>
+
+<FONT SIZE=2>Solaris 2.2 is a notable exception. By default the
+ephemeral ports for TCP and UDP start at 32768. <a href="append_e.htm#E4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_e.htm#E4">Section E.4</a> details
+the configuration options that can be modified by the system administrator
+to change these defaults.</FONT>
+<P>
+The well-known port numbers are contained in the file <A NAME="OCRUncertain075"><TT>/</TT></A>etc/services
+on most Unix systems. To find the port numbers for the Telnet
+server and the Domain Name System, we can execute
+<TABLE>
+<TR><TD WIDTH=295><TT>sun % <B>grep telnet /etc/services</TT>
+<BR>
+<TT>telnet 23/tcp</TT>
+</TD><TD WIDTH=295><I>says it uses TCP port</I> 23<BR>
+</TD>
+</TR>
+<TR><TD WIDTH=295><TT>sun % <B>grep domain /etc/services</TT><BR>
+<TT>domain 53/udp<BR>
+domain 53/tcp</TT>
+</TD><TD WIDTH=295><I>says it uses UDP port 53
+<BR>
+</I> <I>and TCP port 53<BR>
+</I>
+</TD></TR>
+</TABLE>
+
+<H4>Reserved Ports</H4>
+
+Unix systems have the concept of <I>reserved ports.</I> Only a
+process with superuser privileges can assign itself a reserved
+port.
+<P>
+These port numbers are in the range of 1 to 1023, and are used
+by some applications (notably Rlogin,
+<a href="telnet.htm#26_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/telnet.htm#26_2">Section 26.2</a>), as part of the authentication between the client
+and server.
+
+<a name="1_10"><H3>1.10 Standardization Process</H3></a>
+
+Who controls the TCP/IP protocol suite, approves new standards,
+and the like? There are four groups responsible for Internet technology.
+<OL>
+<LI>The <I>Internet Society</I> (ISOC)
+is a professional society to facilitate, support, and promote
+the evolution and growth of the Internet as a global research
+communications infrastructure.
+<LI>The <I>Internet Architecture Board</I> (IAB) is the technical
+oversight and coordination body. It is composed of about 15 international
+volunteers from various disciplines and serves as the final editorial
+and technical review board for the quality of Internet
+standards. The IAB falls under the ISOC.
+<LI>The <I>Internet Engineering Task Force</I> (IETF) is the near-term,
+standards-oriented group, divided into nine areas (applications,
+routing and addressing, security, etc.). The IETF develops the
+specifications that become Internet standards. An additional <I>Internet
+Engineering Steering Group</I>
+(IESG) was formed to help the IETF chair.
+<LI>The <I>Internet Research Task Force</I> (IRTF)
+pursues long-term research projects.
+</OL>
+<P>
+Both the IRTF and the IETF fall under the IAB. [Crocker
+1993] provides additional details on the standardization process
+within the Internet, as well as
+some of its early history.
+
+<a name="1_11"><H3>1.11 RFCs</H3></a>
+
+All the official standards in the internet community are published
+as a <I>Request for Comment,</I> or <I>RFC.</I>
+Additionally there are lots of RFCs that are not official standards,
+but are published for informational purposes. The RFCs range in
+size from I page to almost 200 pages. Each is identified by a
+number, such as RFC 1122, with higher numbers for newer RFCs.
+<P>
+All the RFCs are available at no charge through electronic mail
+or using FTP across the Internet. Sending electronic mail as shown
+here:
+<P>
+<TABLE>
+<TR><TD WIDTH=590><TT>To: rfc-info@OISI.EDU
+<BR>
+Subject: getting rfcs</TT>
+<P>
+<TT>help: ways_to_get_rfcs</TT>
+</TD></TR>
+</TABLE>
+<P>
+returns a detailed listing of various ways to obtain the RFCs.
+<P>
+The latest RFC index is always a starting point when looking for
+something. This index specifies when a certain RFC has been replaced
+by a newer RFC, and if a newer RFC updates some of the information
+in that RFC. There are a few important RFCs.
+<P>
+<OL>
+<LI>The <I>Assigned Numbers RFC</I> specifies all the magic
+numbers and constants that are used in the Internet protocols.
+At the time of this writing the latest version of this RFC
+is 1340 [Reynolds and Postel
+1992]. All the Internet-wide
+well-known ports are listed here.
+<P>
+When this RFC is updated (it is normally updated at least yearly)
+the index listing for 1340 will indicate which RFC has replaced
+it.
+
+<LI>The <I>Internet Official Protocol Standards,</I> currently
+RFC 1600 [Postel 1994]. This RFC
+specifies the state of standardization of the various Internet
+protocols. Each protocol has one of the following states of standardization:
+standard, draft standard, proposed standard, experimental, informational,
+or historic. Additionally each protocol has a requirement level:
+required, recommended, elective, limited use, or not recommended.
+<P>
+Like the Assigned Numbers RFC, this RFC is also reissued regularly.
+Be sure you're reading the current copy.
+
+<LI> The Host <I>Requirements
+RFCs,</I> 1122 and 1123 [Braden
+1989a, 1989b]. RFC 1122 handles
+the link layer, network layer, and transport layer, while RFC
+1123 handles the application layer. These two RFCs make numerous
+corrections and interpretations of the important earlier RFCs,
+and are often the starting point when looking at any of the finer
+details of a given protocol. They list the features and implementation
+details of the protocols as either &quot;must,&quot; &quot;should,&quot;
+&quot;may,&quot; &quot;should not,&quot; or &quot;must not.&quot;
+<P>
+[Borman 1993b] provides a practical
+look at these two RFCs, and RFC 1127 [Braden 1989c] provides an
+informal summary of the discussions and conclusions of the working
+group that developed the Host Requirements RFCs.
+
+<LI>The <I>Router Requirements
+RFC.</I> The official version of this is RFC 1009 [Braden and
+Postel 1987], but a new version
+is nearing completion [Almquist
+1993]. This is similar to the host
+requirements RFCs, but specifies the unique requirements of routers.
+</OL>
+
+<a name="1_12"><H3>1.12 Standard, Simple Services</H3></a>
+
+There are a few standard, simple services that almost every implementation
+provides. We'll use some of these servers throughout the text,
+usually with the Telnet client.
+Figure 1.9 describes these services. We can see from this figure
+that when the same service is provided using both TCP and UDP,
+both port numbers are normally chosen to be the same.
+<P>
+<FONT SIZE=-1>If we examine the port numbers for these standard services and
+other standard TCP/IP services (Telnet, FTP, SMTP, etc.), most
+are odd numbers. This is historical as these port numbers are
+derived from the NCP port numbers.
+(NCP, the Network Control Protocol,
+preceded TCP as a transport layer protocol for the ARPANET.) NCP
+was simplex, not full-duplex, so each application required two
+connections, and an even-odd pair of port numbers was reserved
+for each application. When TCP and UDP became the standard transport
+layers, only a single port number was needed per application,
+so the odd port numbers from NCP were used.</FONT>
+<P>
+<CENTER>
+<a name="fig_1_9"><TABLE BORDER=1></a>
+<TR><TD WIDTH=76>Name</TD><TD WIDTH=57><CENTER>TCP port</CENTER>
+</TD><TD WIDTH=51><CENTER><A NAME="OCRUncertain112">UDP</A> port</CENTER>
+</TD><TD WIDTH=44><CENTER>R<A NAME="OCRUncertain113">F</A>C</CENTER>
+</TD><TD WIDTH=356>Description</TD></TR>
+<TR><TD WIDTH=76><TT>echo</TT></TD><TD WIDTH=57><CENTER>7</CENTER>
+</TD><TD WIDTH=51><CENTER>7</CENTER></TD><TD WIDTH=44><CENTER>862</CENTER>
+</TD><TD WIDTH=356>Server returns whatever the client sends.</TD>
+</TR>
+<TR><TD WIDTH=76><TT>discard</TT></TD><TD WIDTH=57><CENTER>9</CENTER>
+</TD><TD WIDTH=51><CENTER>9</CENTER></TD><TD WIDTH=44><CENTER>863</CENTER>
+</TD><TD WIDTH=356>Server discards whatever the client sends.
+</TD></TR>
+<TR><TD WIDTH=76><TT>daytime</TT></TD><TD WIDTH=57><CENTER>13</CENTER>
+</TD><TD WIDTH=51><CENTER>13</CENTER></TD><TD WIDTH=44><CENTER>867</CENTER>
+</TD><TD WIDTH=356>Server returns the time and date in a human-readable format.
+</TD></TR>
+<TR><TD WIDTH=76><A NAME="OCRUncertain114"><TT>chargen</TT></A>
+</TD><TD WIDTH=57><CENTER>19</CENTER></TD><TD WIDTH=51><CENTER>19</CENTER>
+</TD><TD WIDTH=44><CENTER>864</CENTER></TD><TD WIDTH=356>TCP server sends a continual stream of characters, until the connection is terminated by the client. UDP server sends a datagram containing a random number of characters each time the client sends
+a datagram.
+</TD></TR>
+<TR><TD WIDTH=76><TT>time</TT></TD><TD WIDTH=57><CENTER>37</CENTER>
+</TD><TD WIDTH=51><CENTER>37</CENTER></TD><TD WIDTH=44><CENTER>868</CENTER>
+</TD><TD WIDTH=356>Server returns the time as a 32-bit binary number. This number represents the number of seconds since midnight January 1, 1900, <A NAME="OCRUncertain115">UTC.</A>
+</TD></TR>
+</TABLE>
+</CENTER>
+<CENTER><B>Figure 1.9</B> Standard, simple services provided by
+most implementations.</CENTER>
+
+<a name="1_13"><H3>1.13 The Internet</H3></a>
+
+In <a href="#fig_1_3">Figure 1.3</a> we showed an <I>internet</I> composed of two networks
+- an Ethernet and a token ring. In <a href="#1_4">Sections 1.4</a> and <a href="#1_9">1.9</a> we talked
+about the worldwide <I>Internet</I> and the need to allocate IP
+addresses centrally (the InterNIC)
+and the well-known port numbers (the IANA). The word <I>internet</I>
+means different things depending on whether it's capitalized or
+not.
+<P>
+The lowercase <I>internet</I> means multiple networks connected
+together, using a common protocol suite. The uppercase <I>Internet</I>
+refers to the collection of hosts (over one million) around the
+world that can communicate with each other using TCP/IP. While
+the Internet is an internet, the reverse is not true.
+
+<a name="1_14"><H3>1.14 Implementations</H3></a>
+
+The de facto
+standard for TCP/IP implementations is the one from the Computer
+Systems Research Group at the University of California
+at Berkeley. Historically this has been distributed with the 4.x
+BSD system (Berkeley Software Distribution),
+and with the &quot;BSD Networking
+Releases.&quot; This source code has been the starting point for
+many other implementations.
+<P>
+Figure 1.10 shows a chronology of the various BSD releases, indicating
+the important TCP/IP features. The BSD Networking Releases shown
+on the left side are publicly available source code releases containing
+all of the networking code: both the protocols themselves and
+many of the applications and utilities (such as Telnet
+and FTP).
+<P>
+Throughout the text we'll use the term <I>Berkeley-derived implementation
+to</I> refer to vendor implementations such as SunOS
+4.x, SVR4, and AIX 3.2 that were
+originally developed from the Berkeley sources. These implementations
+have much in common, often including the same bugs!
+<P>
+<CENTER><a name="fig_1_10"><img src="f_1_10.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_1_10.gif"></a></CENTER>
+<CENTER><B>Figure 1.10</B> Various
+BSD releases with important TCP/IP
+features.</CENTER>
+<P>
+Much of the original research in the Internet
+is still being applied to the Berkeley system-new congestion control
+algorithms (<a href="tcp_time.htm#21_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_time.htm#21_7">Section 21.7</a>), multicasting
+(<a href="broadcas.htm#12_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm#12_4">Section 12.4</a>), &quot;long
+fat pipe&quot; modifications (<a href="tcp_fut.htm#24_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_fut.htm#24_3">Section 24.3</a>), and the like.
+
+<a name="1_15"><H3>1.15 Application Programming Interfaces</H3></a>
+
+Two popular <I>application programming
+interfaces</I> (APIs) for applications using the TCP/IP protocols
+are called <I>sockets</I> and <I>TLI</I>
+(Transport Layer Interface). The former is sometimes called &quot;Berkeley
+sockets,&quot; indicating where it was originally developed. The
+latter, originally developed by AT&amp;T, is sometimes called
+<I>XTI</I> (X/Open
+Transport Interface), recognizing the work done by X/Open, an
+international group of computer vendors that produce their own
+set of standards. XTI is effectively a superset of TLI.
+<P>
+This text is not a programming text, but occasional reference
+is made to features of TCP/IP that we look at, and whether that
+feature is provided by the most popular API (sockets) or not.
+All the programming details for both sockets and TLI
+are available in [Stevens 1990].
+
+<a name="1_16"><H3>1.16 Test Network</H3></a>
+
+Figure 1.11 shows the test network that is used for all the examples
+in the text. This figure is also duplicated on the inside front
+cover for easy reference while reading the book.
+<P>
+<CENTER><a name="fig_1_11"><img src="f_1_11.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_1_11.gif"></a></CENTER>
+<CENTER><B>Figure 1.11</B> Test
+network used for all the examples in the text. All IP addresses
+begin with 140.252.</CENTER>
+<P>
+Most of the examples are run on the lower four systems in this
+figure (the author's subnet). All the IP addresses in this figure
+belong to the class B network ID
+140.252. All the hostnames belong
+to the <TT>.tuc.noao.edu</TT>
+domain.(<TT>noao</TT>
+stands for &quot;National Optical Astronomy Observatories&quot;
+and <TT>tuc</TT> stands for Tucson.)
+For example, the lower right system has a complete hostname
+of <TT>svr4.tuc.noao.edu</TT>
+and an IP address of 140.252.13.34. The notation at the top of
+each box is the operating system running on that system. This
+collection of systems and networks provides hosts and routers
+running a variety of TCP/IP implementations.
+<P>
+It should be noted that there are many more networks and hosts
+in the <TT>noao.edu</TT>
+domain than we show in Figure 1.11. All we show here are the
+systems that we'll encounter throughout the text.
+<P>
+In <a href="ip_inter.htm#3_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_4">Section 3.4</a> we describe the form of subnetting used on this
+network, and in <a href="arp_addr.htm#4_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#4_6">Section 4.6</a> we'll provide more details on the
+dial-up SLIP connection between
+<TT>sun</TT> and <TT>netb</TT>.
+<a href="link_lay.htm#2_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_4">Section 2.4</a> describes SLIP in detail.
+
+<a name="1_17"><H3>1.17 Summary</H3></a>
+
+This chapter has been a whirlwind tour of the TCP/IP protocol
+suite, introducing many of the terms and protocols that we discuss
+in detail in later chapters.
+<P>
+The four layers in the TCP/IP protocol suite are the link layer,
+network layer, transport layer, and application layer, and we
+mentioned the different responsibilities of each. In TCP/IP the
+distinction between the network layer and the transport layer
+is critical: the network layer (IP) provides a hop-by-hop service
+while the transport layers (TCP and UDP)
+provide an end-to-end service.
+<P>
+An internet is a collection of networks. The common building block
+for an internet is a router that
+connects the networks at the IP layer. The capital-l
+Internet is an internet that spans
+the globe and consists of more than 10,000 networks and more than
+one million computers.
+<P>
+On an internet each interface is
+identified by a unique IP address, although users tend to use
+hostnames instead of IP addresses.
+The Domain Name System provides a dynamic mapping between hostnames
+and IP addresses. Port numbers are used to identify the applications
+communicating with each other and we said that servers use well-known
+ports while clients use ephemeral ports.
+
+<H4>Exercises</H4>
+
+<B>1.1</B> Calculate the maximum number of class A, B,
+and C network IDs.
+<P>
+<B>1.2</B> Fetch the file <TT>nsfnet/statistics/history.netcount</TT>
+using anonymous FTP (<a href="ftp_file.htm#27_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ftp_file.htm#27_3">Section 27.3</a>) from the host <TT>nic.merit.edu</TT>.
+This file contains the number of domestic and foreign networks
+announced to the NSFNET infrastructure.
+Plot these values with the year on the x-axis
+and a logarithmic y-axis with the
+total number of networks. The maximum value for the y-axis should
+be the value calculated in the previous exercise. If the data
+shows a visual trend, extrapolate the values to estimate when
+the current addressing scheme will run out of network IDs. (<a href="ip_inter.htm#3_10" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_10">Section 3.10</a>
+talks about proposals to correct this problem.)
+<P>
+<B>1.3</B> Obtain a copy of the Host Requirements RFC
+[Braden 1989a] and look up the <I>robustness
+principle</I> that applies to every layer of the TCP/IP protocol
+suite. What is the reference for this principle?
+<P>
+<B>1.4</B> Obtain a copy of the latest Assigned Numbers RFC. What
+is the well-known port for the &quot;quote of the day&quot; protocol?
+Which RFC defines the protocol?
+<P>
+<B>1.5</B> If you have an account on a host that is connected
+to a TCP/IP internet, what is its primary IP address? Is the host
+connected to the worldwide Internet? Is it multihomed?
+<P>
+<B>1.6</B> Obtain a copy of RFC
+1000 to learn where the term RFC
+originated.
+<P>
+<B>1.7</B> Contact the Internet Society, <TT>isoc@isoc.org</TT>
+or +1 703 648 9888, to find out about joining.
+<P>
+<B>1.8</B> Fetch the file<TT>about-internic/information-about-the-internic</TT>
+using anonymous FTP from the host  <TT>is.internic.net</TT>.
+</BODY>
+</HTML>

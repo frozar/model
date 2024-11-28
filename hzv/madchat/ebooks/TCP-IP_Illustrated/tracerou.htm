@@ -1,0 +1,956 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Traceroute Program</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="8_0"><H1><I>Traceroute Program</I></H1></a>
+<a name="8_1"><H3>8.1 Introduction</H3></a>
+<P>
+The Traceroute program, written by Van Jacobson,
+is a handy debugging tool that allows us to further explore the
+TCP/IP protocols. Although there are no guarantees that two consecutive
+IP datagrams from the same source to the same destination follow
+the same route, most of the time they do. Traceroute lets us see
+the route that IP datagrams follow from one host to another. Traceroute
+also lets us use the IP source route option.
+<P>
+The manual page states: &quot;Implemented by Van
+Jacobson from a suggestion by Steve Deering. Debugged by a cast
+of thousands with particularly cogent suggestions or fixes from
+C. Philip Wood, Tim Seaver, and Ken Adelman.&quot;
+<P>
+<a name="8_2"><H3>8.2 Traceroute Program Operation</H3></a>
+<P>
+In <A HREF="pingprog.htm#7_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm#7_3">Section 7.3</A> we
+described the IP record route option (RR). Why wasn't this used
+instead of developing a new application? There are three reasons.
+First, historically not all routers have supported the record
+route option, making it unusable on certain paths. (Traceroute
+doesn't require any special or optional features at any intermediate
+routers.)
+<P>
+Second, record route is normally a one-way option.
+The sender enables the option and the receiver has to fetch all
+the values from the received IP header and somehow return them
+to the sender. In <A HREF="pingprog.htm#7_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm#7_3">Section 7.3</A> we
+saw that most implementations of the Ping server (the ICMP echo
+reply function within the kernel) reflect an incoming RR list,
+but this doubles the number of IP addresses recorded (the outgoing
+path and the return path), which runs into the limit described
+in the next paragraph. (Traceroute requires only a working UDP
+module at the destination-no special server application is required.)
+<P>
+The third and major reason is that the room allocated
+for options in the IP header isn't large enough today to handle
+most routes. There is room for only nine IP addresses in the IP
+header options field. In the old days of the ARPANET this was
+adequate, but it is far too small nowadays.
+<P>
+Traceroute uses ICMP and the TTL field in the IP
+header. The TTL field (time-to-live) is an 8-bit field that the
+sender initializes to some value. The recommended initial value
+is specified in the Assigned Numbers RFC and is currently 64.
+Older systems would often initialize it to 15 or 32. We saw in
+some of the Ping examples in <A HREF="pingprog.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm">Chapter 7</A>
+that ICMP echo replies are often sent with the TTL set to its
+maximum value of 255.
+<P>
+Each router that handles the datagram is required
+to decrement the TTL by either one or the number of seconds that
+the router holds onto the datagram. Since most routers hold a
+datagram for less than a second, the TTL field has effectively
+become a hop counter, decremented by one by each router.
+<P>
+RFC 1009 [Braden and Postel 1987] required a router
+that held a datagram for more than 1 second to decrement the TTL
+by the number of seconds. Few routers implemented this requirement.
+The new Router Requirements RFC [Almquist 1993] makes this optional,
+allowing a router to treat the TTL as just a hop count.
+<P>
+The purpose of the TTL field is to prevent datagrams
+from ending up in infinite loops, which can occur during routing
+transients. For example, when a router crashes or when the connection
+between two routers is lost, it can take the routing protocols
+some time (from seconds to a few minutes) to detect the lost route
+and work around it. During this time period it is possible for
+the datagram to end up in routing loops. The TTL field puts an
+upper limit on these looping datagrams.
+<P>
+When a router gets an IP datagram whose TTL is either
+0 or 1 it must not forward the datagram. (A destination host that
+receives a datagram like this can deliver it to the application,
+since the datagram does not have to be routed. Normally, however,
+no system should receive a datagram with a TTL of 0.) Instead
+the router throws away the datagram <I>and</I> sends back to the
+originating host an ICMP &quot;time exceeded&quot; message. The
+key to Traceroute is that the IP datagram containing this ICMP
+message has the router's IP address as the source address.
+<P>
+We can now guess the operation of Traceroute. It
+sends an IP datagram with a TTL of 1 to the destination host.
+The first router to handle the datagram decrements the TTL, discards
+the datagram, and sends back the ICMP time exceeded. This identifies
+the first router in the path. Traceroute then sends a datagram
+with a TTL of 2, and we find the IP address of the second router.
+This continues until the datagram reaches the destination host.
+But even though the arriving IP datagram has a TTL of 1, the destination
+host won't throw it away and generate the ICMP time exceeded,
+since the datagram has reached its final destination. How can
+we determine when we've reached the destination?
+<P>
+Traceroute sends UDP datagrams to the destination
+host, but it chooses the destination UDP port number to be an
+unlikely value (larger than 30,000), making it improbable that
+an application at the destination is using that port. This causes
+the destination host's UDP module to generate an ICMP &quot;port
+unreachable&quot; error (Section 6.5) when the datagram arrives.
+All Traceroute needs to do is differentiate between the received
+ICMP messages-time exceeded versus port unreachable-to know when
+it's done.
+<P>
+The Traceroute program must be able to set the TTL
+field in the outgoing datagram. Not all programming interfaces
+to TCP/IP support this, and not all implementations support the
+capability, but most current systems do, and are able to run Traceroute.
+This programming interface normally requires the user to have
+superuser privilege, meaning it may take special privilege to
+run it on your host.
+<P>
+<a name="8_3"><H3>8.3 LAN Output</H3></a>
+<P>
+We're now ready to run traceroute and see the output.
+We'll use our simple internet (see the figure on the inside front
+cover) going from svr4 to slip, through the router bsdi. The hardwired
+SLIP link between bsdi and slip is 9600 bits/sec.
+<P>
+<TT>svr4 %<B> traceroute slip
+<BR>
+</B>traceroute to slip (140.252.13.65), 30 hops max. 40
+byte packets<BR>
+1 bsdi (140.252.13.35) 20 ms 10
+ms 10 ms <BR>
+2 slip (140.252.13.65) 120 ms 120 ms 120 ms</TT>
+<P>
+The first unnumbered line of output gives the name
+and IP address of the destination and indicates that traceroute
+won't increase the TTL beyond 30. The datagram size of 40 bytes
+allows for the 20-byte IP header, the 8-byte UDP header, and 12
+bytes of user data. (The 12 bytes of user data contain a sequence
+number that is incremented each time a datagram is sent, a copy
+of the outgoing TTL, and the time at which the datagram was sent.)
+<P>
+The next two lines in the output begin with the TTL,
+followed by the name of the host or router, and its IP address.
+For each TTL value three datagrams are sent. For each returned
+ICMP message the round-trip time is calculated and printed. If
+no response is received within 5 seconds for any of the three
+datagrams, an asterisk is printed instead and the next datagram
+is sent. In this output the first three datagrams had a TTL of
+1 and the ICMP messages were returned in 20, 10, and 10 ms. The
+next three datagrams were sent with a TTL of 2 and the ICMP messages
+were returned 120 ms later. Since the TTL of 2 reached the final
+destination, the program then stopped.
+<P>
+The round-trip times are calculated by the <TT>traceroute</TT>
+program on the sending host. They are the total RTTs from the
+<TT>traceroute</TT> program to that router.
+If we're interested in the per-hop time we have to subtract the
+value printed for TTL <I>N</I> from the value printed for TTL
+<I>N</I>+1.
+<P>
+<a href="#fig_8_1">Figure 8.1</a> shows the tcpdump output for this run.
+As we might have guessed, the reason that the first probe packet
+to bsdi had an RTT of 20 ms and the next two had an RTT of 10
+ms was because of an ARP exchange, tcpdump shows this is indeed
+the case.
+<P>
+The destination UDP port starts at 33435 and is incremented
+by one each time a datagram is sent. This starting port number
+can be changed with a command-line option. The UDP datagram contains
+12 bytes of user data, which we calculated earlier when <TT>traceroute</TT>
+output that it was sending 40-byte datagrams.
+<P>
+Next, <TT>tcpdump</TT> prints
+the comment [<TT>ttl 1</TT>] when the IP datagram
+has a TTL of 1. It prints a message like this when the TTL is
+0 or 1, to warn us that something looks funny in the datagram.
+Here we expect to see the TTL of 1, but with some other application
+it could be a warning that the datagram might not get to its final
+destination. We should never see a datagram passing by with a
+TTL of 0, unless the router that put it on the wire is broken.
+<CENTER>
+<a name="fig_8_1"><TABLE></a>
+<TR><TD WIDTH=38><TT>1</TT></TD><TD WIDTH=151><TT>0.0</TT></TD>
+<TD WIDTH=406><TT>arp who-has bsdi tell svr4</TT></TD></TR>
+<TR><TD WIDTH=38><TT>2</TT></TD><TD WIDTH=151><TT>0.000586 (0.0006) </TT>
+</TD><TD WIDTH=406><TT>arp reply bsdi is-at 0:0:c0:6f:2d:40</TT>
+</TD></TR>
+<TR><TD WIDTH=38><TT>3</TT></TD><TD WIDTH=151><TT>0.003067 (0.0025) </TT>
+</TD><TD WIDTH=406><TT>svr4.42804 &gt; slip.33435; udp 12 [ttl 1]</TT>
+</TD></TR>
+<TR><TD WIDTH=38><TT>4</TT></TD><TD WIDTH=151><TT>0.004325 (0.0013) </TT>
+</TD><TD WIDTH=406><TT>bsdi &gt; svr4: icmp: time exceeded in-transit</TT>
+</TD></TR>
+<TR><TD WIDTH=38><TT>5</TT></TD><TD WIDTH=151><TT>0.069810 (0.0655) </TT>
+</TD><TD WIDTH=406><TT>svr4.42804 &gt; slip.33436: udp 12 [ttl 1]</TT>
+</TD></TR>
+<TR><TD WIDTH=38><TT>6</TT></TD><TD WIDTH=151><TT>0.071149 (0.0013) </TT>
+</TD><TD WIDTH=406><TT>bsdi &gt; svr4: icmp: time exceeded in-transit</TT>
+</TD></TR>
+<TR><TD WIDTH=38><TT>7</TT></TD><TD WIDTH=151><TT>0.085162 (0.0140) </TT>
+</TD><TD WIDTH=406><TT>svr4.42804 &gt; slip.33437: udp 12 [ttl 1]</TT>
+</TD></TR>
+<TR><TD WIDTH=38><TT>8</TT></TD><TD WIDTH=151><TT>0.086375 (0.0012) </TT>
+</TD><TD WIDTH=406><TT>bsdi &gt; svr4: icmp: time exceeded in-transit</TT>
+</TD></TR>
+<TR><TD WIDTH=38><TT>9</TT></TD><TD WIDTH=151><TT>0.118608 (0.0322) </TT>
+</TD><TD WIDTH=406><TT>svr4.42804 &gt; slip.33438: udp 12</TT>
+</TD></TR>
+<TR><TD WIDTH=38><TT>10</TT></TD><TD WIDTH=151><TT>0.226464 (0.1079) </TT>
+</TD><TD WIDTH=406><TT>slip &gt; svr4: icmp: slip udp port 33438 unreachable</TT>
+</TD></TR>
+<TR><TD WIDTH=38><TT>11</TT></TD><TD WIDTH=151><TT>0.287296 (0.0608) </TT>
+</TD><TD WIDTH=406><TT>svr4.42804 &gt; slip.33439: udp 12</TT>
+</TD></TR>
+<TR><TD WIDTH=38><TT>12</TT></TD><TD WIDTH=151><TT>0.395230 (0.1079) </TT>
+</TD><TD WIDTH=406><TT>slip &gt; svr4: icmp: slip udp port 33439 unreachable</TT>
+</TD></TR>
+<TR><TD WIDTH=38><TT>13</TT></TD><TD WIDTH=151><TT>0.409504 (0.0143) </TT>
+</TD><TD WIDTH=406><TT>svr4.42804 &gt; slip.33440: udp 12</TT>
+</TD></TR>
+<TR><TD WIDTH=38><TT>14</TT></TD><TD WIDTH=151><TT>0.517430 (0.1079) </TT>
+</TD><TD WIDTH=406><TT>slip &gt; svr4: icmp: slip udp port 33440 unreachable</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<CENTER><B>Figure 8.1</B> <TT>tcpdump</TT> output for <TT>traceroute</TT>
+example from <TT>svr4</TT> to <TT>slip</TT>.</CENTER>
+<P>
+The ICMP message &quot;time exceeded in transit&quot; is what
+we expect to see from the router <TT>bsdi</TT>, since it will
+decrement the TTL to 0. The ICMP message comes from the router
+even though the IP datagram that was thrown away was going to
+<TT>slip</TT>.
+<P>
+There are two different ICMP &quot;time exceeded&quot; messages
+(<a href="icmp_int.htm#fig_6_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#fig_6_3">Figure 6.3</a>), each with a different <I>code</I> field in
+the ICMP message. Figure 8.2 shows the format of this ICMP error
+message.
+<P>
+<CENTER><a name="fig_8_2"><IMG SRC="f_8_2.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_8_2.gif"></a><BR>
+<B>Figure 8.2</B> ICMP time exceeded message.</CENTER>
+<P>
+The one we've been describing is generated when the TTL reaches
+0, and is specified by a <I>code</I> of 0.
+<P>
+It's also possible for a host to send an ICMP &quot;time exceeded
+during reassembly&quot; when it times out during the reassembly
+of a fragmented datagram. (We talk about fragmentation and reassembly
+in <A HREF="udp_user.htm#11.5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11.5" >Section 11.5</A>.) This error
+is specified by a <I>code</I> of 1.
+<P>
+Lines 9-14 in <a href="#fig_8_1">Figure 8.1</a> correspond to the three datagrams sent
+with a TTL of 2. These reach the final destination and generate
+an ICMP port unreachable message.
+<P>
+It is worthwhile to calculate what the round-trip times should
+be for the SLIP link, similar to what we did in Section 7.2 when
+we set the link to 1200 bits/sec for the Ping example. The outgoing
+UDP datagram contains 12 bytes of data, 8 bytes of UDP header,
+20 bytes of IP header, and 2 bytes (at least) of SLIP framing
+(Section 2.4) for a total of 42 bytes. Unlike Ping, however, the
+size of the return datagrams changes. Recall from <a href="icmp_int.htm#fig_6_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#fig_6_9">Figure 6.9</a>
+that the returned ICMP message contains the IP header of the
+datagram that caused the error and the first 8 bytes of data that
+followed that IP header (which is a UDP header in the case of
+traceroute). This gives us a total of 20+8+20+8+2, or 58 bytes.
+With a data rate of 960 bytes/sec the expected RTT is (42 + 58/960)
+or 104 ms. This corresponds to the IIO-ms value measured on svr4.
+<P>
+The source port number in <a href="#fig_8_1">Figure 8.1</a> (42804) seems high. <TT>traceroute</TT>
+sets the source port number of the UDP datagrams that it sends
+to the logical-OR of its Unix process ID with 32768. In case <TT>traceroute</TT>
+is being run multiple times on the same host, each process looks
+at the source port number in the UDP header that's returned by
+ICMP, and only handles those messages that are replies to probes
+that it sent.
+<P>
+There are several points to note with <TT>traceroute</TT>. First,
+there is no guarantee that the route today will be in use tomorrow,
+or even that two consecutive IP datagrams follow the same route.
+If a route changes while the program is running you'll see it
+occur because <TT>traceroute</TT> prints the new IP address for
+the given TTL if it changes.
+<P>
+Second, there is no guarantee that the path taken by the returned
+ICMP message retraces the path of the UDP datagram sent by <TT>traceroute</TT>.
+This implies that the round-trip times printed may not be a true
+indication of the outgoing and returning datagram times. (If it
+takes 1 second for the UDP datagram to travel from the source
+to a router, but 3 seconds for the ICMP message to travel a different
+path back to the source, the printed round-trip time is 4 seconds.)
+<P>
+Third, the source IP address in the returned ICMP message is the
+IP address of the interface on the router on which the UDP datagram
+<I>arrived.</I> This differs from the IP record route option (Section
+7.3), where the IP address recorded was the outgoing interface's
+address. Since every router by definition has two or more interfaces,
+running <TT>traceroute</TT> from host A to host B can generate
+different output than from host B to host A. Indeed, if we run
+<TT>traceroute</TT> from host <TT>slip</TT> to <TT>svr4</TT> the
+output becomes:
+<P>
+<TT>slip %<B> traceroute svr4
+<BR>
+</B>traceroute to svr4 (140.252.13.34), 30 hops max, 40
+byte packets<BR>
+1 bsdi (140.252.13.66) 110 ms
+110 ms 110 ms<BR>
+2 svr4 (140.252.13.34) 110 ms 120 ms 110 ms</TT>
+<P>
+This time the IP address printed for host bsdi is
+140.252.13.66, the SLIP interface, while previously it was 140.252.13.35,
+the Ethernet interface. Since <TT>traceroute</TT>
+also tries to print the name associated with an IP address, the
+names can change. (In our example both interfaces on <TT>bsdi</TT>
+have the same name.)
+<P>
+Consider Figure 8.3. It shows two local area networks
+with a router connected to each LAN. The two routers are connected
+with a point-to-point link. If we run <TT>traceroute</TT>
+from a host on the left LAN to a host on the right LAN, the IP
+addresses found for the routers will be <I>if1</I> and <I>if3.</I>
+But going the other way will print the IP addresses <I>if4</I>
+and <I>if2.</I> The two interfaces <I>if2</I> and <I>if3</I> share
+the same network ID, while the other two interfaces have different
+network IDs.
+<P>
+<CENTER><a name="fig_8_3"><IMG SRC="f_8_3.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_8_3.gif"></a><BR>
+<B>Figure 8.3</B> Identification
+of interfaces printed by traceroute.</CENTER>
+<P>
+Finally, across wide area networks the <TT>traceroute</TT>
+output is much easier to comprehend if the IP addresses are printed
+as readable domain names, instead of as IP addresses. But since
+the only piece of information <TT>traceroute</TT>
+has when it receives the ICMP message is an IP address, it does
+a &quot;reverse name lookup&quot; to find the name, given the
+IP address. This requires the administrator responsible for that
+router or host to configure their reverse name lookup function
+correctly (which isn't always the case). We describe how an IP
+address is converted to a name using the DNS in Section 14.5.
+<a name="8_4"><H3>8.4 WAN Output</H3></a>
+<P>
+The output shown earlier for our small internet is
+adequate for examining the protocols in action, but more a realistic
+use of traceroute involves larger internets such as the worldwide
+Internet. Figure 8.4 is from the host sun to the Network Information
+Center, the NIC.
+<P>
+<a name="fig_8_4"></a>
+<TT>sun %<B> traceroute nic.ddn.mil
+<BR>
+</B>traceroute to nic.ddn.mil (192.112.36.5), 30 hops max,
+40 byte packets</TT>
+<P>
+<TT>1</TT> netb.tuc.noao.edu (140.252.1.183) 218
+ms 227 ms 233 ms<BR>
+2 gateway.tuc.noao.edu (140.252.1.4) 233 ms 229 ms 204 ms
+<P>
+<TT>3 butch.telcom.arizona.edu (140.252.104.2) 204 ms 228 ms 234
+ms<BR>
+4 Gabby.Telcom.Arizona.EDU (128.196.128.1)
+234 ms 228 ms 204 ms<BR>
+5 NSIgate.Telcom.Arizona.EDU (192.80.43.3) 233 ms 228 ms 234 ms</TT>
+<P>
+<TT>6 JPLI.NSN.NASA.GOV (128.161.88.2) 234 ms 590 ms 262 ms<BR>
+7 JPL3.NSN.NASA.GOV (192.100.15.3)
+238 ms 223 ms 234 ms<BR>
+8 GSFC3.NSN.NASA.GOV (128.161.3.33) 293 ms 318 ms 324 ms<BR>
+9 GSFC8.NSN.NASA.GOV (192.100.13.8) 294 ms 318 ms 294 ms<BR>
+10 SURA2.NSN.NASA.GOV (128.161.166.2) 323 ms 319 ms 294 ms<BR>
+11 nsn-FIX-pe.sura.net (192.80.214.253) 294 ms 318 ms 294 ms<BR>
+12 GSI.NSN.NASA.GOV (128.161.252.2) 293 ms 318 ms 324 ms</TT>
+<P>
+<TT>13 NIC.DDN.MIL (192.112.36.5) 324 ms 321 ms 324 ms</TT>
+<P>
+<CENTER><B>Figure 8.4</B> <TT>traceroute</TT>
+from host sun to nic.ddn.mil.</CENTER>
+<P>
+Since running this example for inclusion in the text,
+the NIC for non-DDN sites (i.e., nonmilitary) has moved from <TT>nic.ddn.mil</TT>
+to <TT>rs.internic.net</TT>, the new &quot;InterNIC.&quot;
+<P>
+Once the datagrams leave the <TT>tuc.noao.edu</TT>
+network they enter the <TT>telcom.arizona.edu</TT>
+network. They then enter the NASA Science Internet, nsn.nasa.gov.
+The routers for TTLs 6 and 7 are at the Jet Propulsion Laboratory
+(JPL). The network sura. net in the output for TTL II is the Southeastern
+Universities Research Association Network. The name GSI at TTL
+12 is Government Systems, Inc., the operator of the NIC.
+<P>
+The second RTT for the TTL of 6 (590) is almost double
+the other two RTTs (234 and 262). This illustrates the dynamics
+of IP routing. Something happened somewhere between the sending
+host and this router that slowed down this datagram. Also, we
+can't tell if it was the outbound datagram that got held up or
+the return ICMP error.
+<P>
+The RTT for the first probe with a TTL of 3 (204)
+is less than the RTT for the first probe with a TTL of 2 (233).
+Since each printed RTT is the total time from the sending host
+to that router, this can (and does) happen. The example in Figure
+8.5 is from the host sun to the author's publisher.
+<P>
+<a name="fig_8_5"></a>
+<TT>sun %<B> traceroute aw.com
+<BR>
+traceroute to aw.com (192.207.117.2), 30 hops max, 40 byte packets</B></TT>
+<P>
+<TT>1 netb.tuc.noao.edu (140.252.1.183) 227 ms 227 ms 234 ms<BR>
+2 gateway.tuc.noao.edu (140.252.1.4)
+233 ms 229 ms 234 ms<BR>
+3 butch.telcom.arizona.edu (140.252.104.2) 233 ms 229 ms 234 ms
+<BR>
+4 Gabby.Telcom.Arizona. EDU (128.196.128.1) 264 ms 228 ms 234
+ms<BR>
+5 Westgate.Telcom.Arizona. EDO (192.80.43.2) 234 ms 228 ms 234
+ms<BR>
+6 uu-ua.AZ.westnet.net (192.31.39.233) 263 ms 258 ms 264 ms<BR>
+7 enssl42.UT.westnet.net (192.31.39.21) 263 ms 258 ms 264 ms<BR>
+8 t3-2.Denver-cnss97.t3.ans.net (140.222.97.3) 293 ms 288 ms 275
+ms<BR>
+9 t3-3.Denver-cnss96.t3.ans.net (140.222.96.4) 283 ms 263 ms 261
+ms<BR>
+10 t3-1.St-Louis-cnss80.t3.ans.net (140.222.80.2) 282 ms 288 ms
+294 ms<BR>
+11 t3-1.Chicago-cnss24.t3.ans.net (140.222.24.2) 293 ms 288 ms
+294 ms<BR>
+12 t3-2.Cleveland-cnss40.t3.ans.net (140.222.40.3) 294 ms 288
+ms 294 ms<BR>
+13 t3-1.New-York-cnss32.t3.ans.net (140.222.32.2) 323 ms 318 ms
+324 ms<BR>
+14 t3-1.Washington-DC-cnss56.t3.ans.net (140.222.56.2) 323 ms
+318 ms 324 ms<BR>
+15 t3-0.Washington-DC-cnss58.t3.ans.net (140.222.58.1) 324 ms
+318 ms 324 ms<BR>
+16 t3-0.enssl36.t3.ans.net (140.222.136.1) 323 ms 318 ms 324 ms
+<BR>
+17 Washington.DC.ALTER.NET (192.41.177.248) 323 ms 377 ms 324
+ms<BR>
+18 Boston.MA.ALTER.NET (137.39.12.2) 324 ms 347 ms 324 ms<BR>
+19 AW-gw.ALTER.NET (137.39.62.2) 353 ms 378 ms 354 ms<BR>
+20 aw.com (192.207.117.2) 354 ms 349 ms 354 ms</TT>
+<CENTER><B>Figure 8.5</B> <TT>traceroute</TT>
+from host <TT>sun.tuc.noao.edu</TT> to <TT>aw.com</TT>.</CENTER>
+<P>
+This time the datagrams enter the regional network
+<TT>westnet.net</TT> (TTLs 6 and 7) after
+leaving the <TT>telcom.arizona.edu</TT> network.
+They then enter the NSFNET backbone, <TT>t3.ans.net</TT>,
+which is run by Advanced Network &amp; Services. (T3 is the common
+abbreviation for the 45 Mbits/sec phone lines used by the backbone.)
+The final network is <TT>alter.net</TT>, the
+connection point to the Internet for <TT>aw.corn</TT>.
+<a name="8_5"><H3>8.5 IP Source Routing Option</H3></a>
+<P>
+Normally IP routing is dynamic with each router making
+a decision about which next-hop router to send the datagram to.
+Applications have no control of this, and are normally not concerned
+with it. It takes tools such as Traceroute to figure out what
+the route really is.
+<P>
+The idea behind source routing is that the sender
+specifies the route. Two forms are provided:
+<UL>
+<LI><I>Strict</I> source routing. The sender specifies the <I>exact</I>
+path that the IP datagram must follow. If a router encounters
+a next hop in the source route that isn't on a directly connected
+network, an ICMP &quot;source route failed&quot; error is returned.
+<LI><I>Loose</I> source routing. The sender specifies a list of
+IP address that the datagram must traverse, but the datagram can
+also pass through other routers between any two addresses in the
+list.
+</UL>
+<P>
+Traceroute provides a way to look at source routing,
+as we can specify an option allowing us to force a source route,
+and see what happens.
+<P>
+Some of the publicly available Traceroute source
+code packages contain patches to specify loose source routing.
+But the standard versions normally don't include this option.
+A comment in the patches is that &quot;Van Jacobson's original
+traceroute (spring 1988) supported this feature, but he removed
+it due to pressure from people with broken gateways.&quot; For
+the examples shown in this section, the author installed these
+patches and modified them to allow both loose and strict source
+routing.
+<P>
+Figure 8.6 shows the format of the source route option.
+<P>
+<CENTER><a name="fig_8_6"><IMG SRC="f_8_6.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_8_6.gif"></a><BR>
+<B>Figure 8.6</B> General format
+of the source route option in the IP header.</CENTER>
+<P>
+This format is nearly identical to the format of
+the record route option that we showed in <a href="pingprog.htm#fig_7_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm#fig_7_3">Figure 7.3</a>. But with
+source routing we have to fill in the list of IP addresses before
+sending the IP datagram, while with the record route option we
+allocate room and zero out the list of IP addresses, letting the
+routers fill in the next entry in the list. Also, with source
+routing we only allocate room for and initialize the number of
+IP addresses required, normally fewer than nine. With the record
+route option we allocated as much room as we could, for up to
+nine addresses.
+<P>
+The <I>code</I> is <TT>0x83</TT>
+for loose source routing, and <TT>0x89</TT>
+for strict source routing. The <I>len</I> and <I>ptr</I> fields
+are identical to what we described in <A HREF="pingprog.htm#7_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm#7_3" >Section 7.3</A>.
+<P>
+The source route options are actually called &quot;source
+and record route&quot; (LSRR and SSRR, for loose and strict) since
+the list of IP addresses is updated as the datagram passes along
+the path. What happens is as follows:
+<UL>
+<LI>The sending host takes the source route list
+from the application, removes the first entry (it becomes the
+destination address of the datagram), moves all the remaining
+entries left by one entry (where left is as in <a href="#fig_8_6">Figure 8.6</a>), and
+places the original destination address as the final entry in
+the list. The pointer still points to the first entry in the list
+(e.g., the value of the pointer is 4).
+<LI>Each router that handles the datagram checks
+whether it is the destination address of the datagram. If not,
+the datagram is forwarded as normal. (In this case loose source
+routing must have been specified, or we wouldn't have received
+the datagram.)
+<LI>If the router is the destination, and the pointer
+is not greater than the length, then (1) the next address in the
+list (where <I>ptr</I> points) becomes the destination address
+of the datagram, (2) the IP address corresponding to the outgoing
+interface replaces the source address just used, and (3) the pointer
+is incremented by 4.
+</UL>
+<P>
+This is best explained with an example. In Figure
+8.7 we assume that the sending application on host S sends a datagram
+to <I>D,</I> specifying a source route of <I>R1,</I> R2, and <I>R3.</I>
+<P>
+<CENTER><a name="fig_8_7"><IMG SRC="f_8_7.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_8_7.gif"></a><BR>
+<B>Figure 8.7</B> Example of
+IP source routing.</CENTER>
+<P>
+In this figure the pound sign (#) denotes the pointer
+field, which assumes the values of 4, 8, 12, and 16. The length
+field will always be 15 (three IP addresses plus 3 bytes of overhead).
+Notice how the destination address of the IP datagram changes
+on every hop.
+<P>
+When an application receives data that was source
+routed, it should fetch the value of the received route and supply
+a reversed route for sending replies.
+<P>
+The Host Requirements RFC specifies that a TCP client
+must be able to specify a source route, and that a TCP server
+must be able to receive a source route, and use the reverse route
+for all segments on that TCP connection. If the TCP server later
+receives a different source route, that newer source route overrides
+the earlier one.
+<H4><TT>traceroute</TT> Examples with Loose
+Source Routing</H4>
+<P>
+The <TT>-g</TT> option to <TT>traceroute</TT>
+lets us specify intermediate routers to be used with loose source
+routing. This option can be specified up to eight times. (The
+reason this is eight and not nine is that the programming interface
+being used requires that the final entry be the destination.)
+<P>
+Recall from <a href="#fig_8_4">Figure 8.4</a> that the route to the NIC,<TT>
+nic.ddn.mil</TT>, was through the NASA Science Internet.
+In Figure 8.8 we force the datagrams to pass through the NSFNET
+instead by specifying the router <TT>enssl42.UT.westnet.net</TT>
+(192.31.39.21) as an intermediate router:
+<P>
+<a name="fig_8_8"></a>
+<TT>sun % <B>traceroute -g 192.31.39.21
+nic.ddn.mil <BR>
+traceroute to nic.ddn.mil (192.112.36.5), 30 hops max, 40 byte
+packets</B></TT>
+<P>
+<TT>1 netb.tuc.noao.edu (140.252.1.183) 259 ms 256 ms 235 ms<BR>
+2 butch.telcom.arizona.edu (140.252.104.2)
+234 ms 228 ms 234 ms <BR>
+3 Gabby.Telcom.Arizona.EDU (128.196.128.1) 234 ms 257 ms 233 ms
+<BR>
+4 enssl42.UT.westnet.net (192.31.39.21) 294 ms 288 ms 295 ms<BR>
+5 t3-2.Denver-cnss97.t3.ans.net (140.222.97.3) 294 ms 286 ms 293
+ms<BR>
+6 t3-3.Denver-cnss96.t3.ans.net (140.222.96.4) 293 ms 288 ms 294
+ms<BR>
+7 t3-1.St-Louis-cnss80.t3.ans.net (140.222.80.2) 294 ms 318 ms
+294 ms<BR>
+8 * t3-1.Chicago-cnss24.t3.ans.net (140.222.24.2) 318 ms 295 ms
+<BR>
+9 t3-2.Cleveland-cnss40.t3.ans.net (140.222.40.3) 319 ms 318 ms
+324 ms<BR>
+10 t3-1.New-York-cnss32.t3.ans.net (140.222.32.2) 324 ms 318 ms
+324 ms<BR>
+11 t3-1.Washington-DC-cnss56.t3.ans.net (140.222.56.2) 353 ms
+348 ms 325 ms<BR>
+12 t3-0.Washington-DC-cnss58.t3.ans.net (140.222.58.1) 348 ms
+347 ms 325 ms<BR>
+13 13-0. enssl45.t3.ans. net (140.222.145.1) 353 ms 348 ms 325
+ms<BR>
+14 nsn-FIX-pe.sura.net (192.80.214.253) 353 ms 348 ms 325 ms<BR>
+15 GSI.NSN.NASA.GOV (128.161.252.2) 353 ms 348 ms 354 ms<BR>
+16 NIC.DDN.MIL (192.112.36.5) 354 ms 347 ms 354 ms</TT>
+
+<CENTER><B>Figure 8.8 </B><TT>traceroute</TT>
+to <TT>nic.ddn.mil</TT> with a loose source
+route through the NSFNET.</CENTER>
+<P>
+This time there appear to be 16 hops with an average
+RTT of around 350 ms, while the normal route shown in <a href="#fig_8_4">Figure 8.4</a>
+had only 13 hops and an average RTT of around 322 ms. The default
+route appears better. (There are also other decisions made when
+routes are established. Some are made on the basis of the organizational
+and political boundaries of the networks involved.)
+<P>
+But we said there <I>appear to be</I> 16 hops, because
+a comparison of this output with our previous example through
+the NSFNET (<a href="#fig_8_5">Figure 8.5</a>) shows three missing routers in this example
+using loose source routing. (These are probably caused by bugs
+in the router's generation of ICMP time exceeded errors in response
+to source routed datagrams.) The router <TT>gateway.tuc.noao.edu</TT>
+is missing between netb and <TT>butch</TT>,
+and the routers <TT>Westgate.Telcom.Arizona.edu</TT>
+and <TT>uu-ua.AZ.westnet.net</TT> are also
+missing between Gabby and enssl42.UT.westnet.net. There is probably
+a software problem in these missing routers related to incoming
+datagrams with the loose source routing option. There are really
+19 hops between the source and the NIC, when using the NSFNET.
+Exercise 8.5 continues the discussion of these missing routers.
+<P>
+This example also illustrates another problem. On
+the command line we have to specify the dotted-decimal IP address
+of the router <TT>enssl42.UT.westnet.net</TT>
+instead of its name. This is because the reverse name lookup (return
+the name, given the IP address. <A HREF="dns_the.htm#8_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dns_the.htm#8_5" >Section 14.5</A>),
+associates the name with the IP address, but the forward lookup
+(given the name, return the IP address) fails. The forward mapping
+and reverse mapping are two separate files in the DNS (Domain
+Name System) and not all administrators keep the two synchronized
+with each other. It's not uncommon to have one direction work
+and the other direction fail.
+<P>
+Something that we haven't seen before is the asterisk
+(*) printed for the first RTT for the TTL of 8. This indicates
+that a timeout occurred and no response was received within 5
+seconds for this probe.
+<P>
+Another point that we can infer from a comparison
+of this figure and <a href="#fig_8_4">Figure 8.4</a> is that the router <TT>nsn-FIX-pe.sura.net</TT>
+is connected to both the NSFNET and the NASA Science Internet.
+<H4>traceroute Examples with Strict Source Routing</H4>
+<P>
+The <TT>-G</TT> option in the
+author's version of <TT>traceroute</TT> is
+identical to the <TT>-g</TT> option described
+earlier, but the source route is strict instead of loose. We can
+use this to see what happens when an invalid strict source route
+is specified. Recall from <a href="#fig_8_5">Figure 8.5</a> that the normal sequence
+of routers for datagrams from the author's subnet to the NSFNET
+is through netb, gateway, butch, and gabby. (We've omitted the
+domain suffixes, .tuc.noao.edu and .telcom.arizona.edu, in all
+the output below to make it easier to read.) We specify a strict
+source route that omits butch, trying to go directly from gateway
+to gabby. We expect this to fail, as shown in Figure 8.9.
+<P>
+<a name="fig_8_9"></a>
+<TT>sun %<B> traceroute -G netb
+-G gateway -G gabby westgate <BR>
+</B>traceroute to westgate (192.80.43.2), 30 hops max.
+40 byte packets</TT>
+<P>
+<TT>1 netb (140.252.1.183) 272 ms 257 ms 261 ms<BR>
+2 gateway (140.252.1.4) 263 ms
+259 ms 234 ms<BR>
+3 gateway (140.252.1.4) 263 ms !S * 235 ms !S</TT>
+<P>
+<CENTER><B>Figure 8.9</B> <TT>traceroute</TT>
+with a strict source route that fails.</CENTER>
+<P>
+The key here is the notation ! s following the RTTs
+for the TTL of 3. This indicates that <TT>traceroute</TT>
+received an ICMP &quot;source route failed&quot; error message:
+a <I>type</I> of 3 and a <I>code</I> of 5 from <a href="icmp_int.htm#fig_6_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#fig_6_3">Figure 6.3</a>. The
+asterisk for the second RTT for the TTL of 3 indicates no response
+was received for that probe. This is what we expect, since it's
+impossible for <TT>gateway</TT> to send the
+datagram directly to <TT>gabby</TT>, because
+they're not directly connected.
+<P>
+The reason that both TTLs 2 and 3 are from <TT>gateway</TT>
+is that the values for the TTL of 2 are from <TT>gateway</TT>
+when it receives the datagram with an incoming TTL of 1. It discovers
+that the TTL has expired before it looks at the (invalid) strict
+source route, and sends back the ICMP time exceeded. The line
+with a TTL of 3 is received by <TT>gateway</TT>
+with an incoming TTL of 2, so it looks at the strict source route,
+discovers that it's invalid, and sends back the ICMP source route
+failed error.
+<P>
+Figure 8.10 shows the <TT>tcpdump</TT>
+output corresponding to this example. This output was collected
+on the SLIP link between <TT>sun</TT> and
+<TT>netb</TT>. We had to specify the <TT>-v</TT>
+option for <TT>tcpdump</TT> to display the
+source route information. This produces other output that we don't
+need, such as the datagram ID, which we've deleted. Also, the
+notation SSRR stands for &quot;strict source and record route.&quot;
+<P>
+<CENTER>
+<a name="fig_8_10"><TABLE></a>
+<TR><TD WIDTH=35><TT>1</TT></TD><TD WIDTH=151><TT>0.0</TT></TD>
+<TD WIDTH=397><TT>sun.33593 &gt; netb.33435: udp 12 [ttl 1]
+<BR>
+(optlen=16 SSRR{#gateway gabby westgate} EOL)</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>2</TT></TD><TD WIDTH=151><TT>0.270278 (0.2703) </TT>
+</TD><TD WIDTH=397><TT>netb &gt; sun: icmp: time exceeded in-transit</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>3</TT></TD><TD WIDTH=151><TT>0.284784 (0.0145) </TT>
+</TD><TD WIDTH=397><TT>sun.33593 &gt; netb.33436: udp 12 [ttl 1]
+<BR>
+(optlen=16 SSRR{#gateway gabby westgate} EOL)</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>4</TT></TD><TD WIDTH=151><TT>0.540338 (0.2556)</TT>
+</TD><TD WIDTH=397><TT>netb &gt; sun: icmp: time exceeded in-transit</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>5</TT></TD><TD WIDTH=151><TT>0.550062 (0.0097) </TT>
+</TD><TD WIDTH=397><TT>sun.33593 &gt; netb.33437: udp 12 [ttl 1]
+<BR>
+(optlen=16 SSRR(#gateway gabby westgate} EOL)</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>6</TT></TD><TD WIDTH=151><TT>0.810310 (0.2602) </TT>
+</TD><TD WIDTH=397><TT>netb &gt; sun: icmp: time exceeded in-transit</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>7</TT></TD><TD WIDTH=151><TT>0.818030 (0.0077) </TT>
+</TD><TD WIDTH=397><TT>sun.33593 &gt; netb.33438: udp 12 (ttl 2,
+<BR>
+optlen=16 SSRR(#gateway gabby westgate} EOL)</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>8</TT></TD><TD WIDTH=151><TT>1.080337 (0.2623) </TT>
+</TD><TD WIDTH=397><TT>gateway &gt; sun: icmp: time exceeded in-transit</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>9</TT></TD><TD WIDTH=151><TT>1.092564 (0.0122) </TT>
+</TD><TD WIDTH=397><TT>sun.33593 &gt; netb.33439: udp 12 (ttl 2,
+<BR>
+optlen=16 SSRR{#gateway gabby westgate} EOL)</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>10</TT></TD><TD WIDTH=151><TT>1.350322 (0.2578) </TT>
+</TD><TD WIDTH=397><TT>gateway &gt; sun: icmp: time exceeded in-transit</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>11</TT></TD><TD WIDTH=151><TT>1.357382 (0.0071)</TT>
+</TD><TD WIDTH=397><TT>sun.33593 &gt; netb.33440: udp 12 (ttl 2,
+<BR>
+optlen=16 SSRR(#gateway gabby westgate} EOL)</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>12</TT></TD><TD WIDTH=151><TT>1.590586 (0.2332) </TT>
+</TD><TD WIDTH=397><TT>gateway &gt; sun: icmp: time exceeded in-transit</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>13</TT></TD><TD WIDTH=151><TT>1.598926 (0.0083)</TT>
+</TD><TD WIDTH=397><TT>sun.33593 &gt; netb.33441: udp 12 (ttl 3,
+<BR>
+optlen=16 SSRR{#gateway gabby westgate} EOL)</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>14</TT></TD><TD WIDTH=151><TT>1.860341 (0.2614)</TT>
+</TD><TD WIDTH=397><TT>gateway &gt; sun:
+<BR>
+icmp: gateway unreachable - source route failed</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>15</TT></TD><TD WIDTH=151><TT>1.875230 (0.0149) </TT>
+</TD><TD WIDTH=397><TT>sun.33593 &gt; netb.33442: udp 12 (ttl 3,
+<BR>
+optlen=16 SSRR{#gateway gabby westgate} EOL)</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>16</TT></TD><TD WIDTH=151><TT>6.876579 (5.0013) </TT>
+</TD><TD WIDTH=397><TT>sun.33593 &gt; netb.33443: udp 12 (ttl 3,
+<BR>
+optlen=16 SSRR{#gateway gabby westgate} EOL)</TT>
+</TD></TR>
+<TR><TD WIDTH=35><TT>17</TT></TD><TD WIDTH=151><TT>7.110518 (0.2339) </TT>
+</TD><TD WIDTH=397><TT>gateway &gt; sun:
+<BR>
+icmp: gateway unreachable - source route failed</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 8.10</B> <TT>tcpdump</TT> output of <TT>traceroute</TT>
+with failed strict source route.</CENTER>
+<P>
+First note that each UDP datagram sent by <TT>sun</TT> has a destination
+of netb, not the destination host (<TT>westgate</TT>). We described
+this with the example shown in <a href="#fig_8_7">Figure 8.7</a>. Similarly, the other
+two routers specified with the <TT>-G</TT> option (<TT>gateway</TT>
+and <TT>gabby</TT>) and the final destination (<TT>westgate</TT>)
+become the SSRR option list on the first hop.
+<P>
+We can also see from this output that the timeout used by <TT>traceroute</TT>
+(the time difference between lines 15 and 16) is 5 seconds.
+<H4><TT>traceroute</TT> Round Trips with Loose
+Source Routing</H4>
+<P>
+Earlier we said that there is no guarantee that the
+route from A to Bis the same as the route from B to A. Other than
+having a login on both systems and running <TT>traceroute</TT>
+on each end, it's hard to find out if there is a difference in
+the two paths. Using loose source routing, however, we can determine
+the route in both directions.
+<P>
+The trick is to specify loose source routing with
+the destination as the loose route, and the sending host as the
+final destination. For example, on the host <TT>sun</TT>
+we can find the paths to and from the host <TT>bruno.cs.colorado.edu</TT>
+(Figure 8.11) .
+<P>
+<a name="fig_8_11"></a>
+<TT>sun % <B>traceroute -g bruno.cs.colorado.edu
+sun<BR>
+traceroute to sun (140.252.13.33), 30 hops max, 40 byte packets</B></TT>
+<P>
+<TT>1 netb.tuc.noao.edu (140.252.1.183) 230 ms 227 ms 233 ms<BR>
+2 gateway.tuc.noao.edu (140.252.1.4)
+233 ms 229 ms 234 ms<BR>
+3 butch.telcom.arizona.edu (140.252.104.2) 234 ms 229 ms 234 ms
+<BR>
+4 Gabby.Telcom.Arizona.EDU (128.196.128.1) 233 ms 231 ms 234 ms
+<BR>
+5 NSIgate.Telcom.Arizona.EDU (192.80.43.3) 294 ms 258 ms 234 ms
+<BR>
+6 JPLI.NSN.NASA.GOV (128.161.88.2) 264 ms 258 ms 264 ms<BR>
+7 JPL2.NSN.NASA.GOV (192.100.15.2) 264 ms 258 ms 264 ms<BR>
+8 NCAR.NSN.NASA.GOV (128.161.97.2) 324 ms * 295 ms<BR>
+9 cu-gw.ucar.edu (192.43.244.4) 294 ms 318 ms 294 ms<BR>
+10 engr-gw.Colorado.EDU (128.138.1.3) 294 ms 288 ms 294 ms<BR>
+11 bruno.cs.Colorado.edu (128.138.243.151) 293 ms 317 ms 294 ms
+<BR>
+12 engr-gw-ot.cs.Colorado.edu (128.138.204.1) 323 ms 317 ms 384
+ms<BR>
+13 cu-gw.Colorado.EDU (128.138.1.1) 294 ms 318 ms 294 ms<BR>
+14 enss.ucar.edu (192.43.244.10) 323 ms 318 ms 294 ms<BR>
+15 t3-1.Denver-cnss97.t3.ans.net (140.222.97.2) 294 ms 288 ms
+384 ms<BR>
+16 t3-0.enssl42.t3.ans.net (140.222.142.1) 293 ms 288 ms 294 ms
+<BR>
+17 Gabby.Telcom.Arizona.EDU (192.80.43.1) 294 ms 288 ms 294 ms
+<BR>
+18 Butch.Telcom.Arizona.EDU (128.196.128.88) 293 ms 317 ms 294
+ms<BR>
+19 gateway.tuc.noao.edu (140.252.104.1) 294 ms 289 ms 294 ms<BR>
+20 netb.tuc.noao.edu (140.252.1.183) 324 ms 321 ms 294 ms<BR>
+21 sun.tuc.noao.edu (140.252.13.33) 534 ms 529 ms 564 ms</TT>
+<P>
+<CENTER><B>Figure 8.11</B> <TT>traceroute</TT>
+example showing unsymmetrical routing path.</CENTER>
+<P>
+The outbound path (TTLs 1-11) differs from the return
+path (TTLs 11-21), a good illustration that Internet routing need
+not be symmetrical.
+<P>
+This output also illustrates the point we discussed
+with <a href="#fig_8_3">Figure 8.3</a>. Compare the output for TTLs 2 and 19: both are
+for the router <TT>gateway.tuc.noao.edu</TT>,
+but the two IP addresses are different. Since <TT>traceroute</TT>
+identifies the incoming interface, and since we're passing through
+the router in two different directions, once on the outbound path
+(TTL 2) and then on the return path (TTL 19), we expect this.
+We see the same effect comparing TTLs 3 and 18, and TTLs 4 and
+17.
+<a name="8_6"><H3>8.6 Summary</H3></a>
+<P>
+Traceroute is an indispensable tool when working
+with a TCP/IP network. Its operation is simple: send UDP datagrams
+starting with a TTL of 1, increasing the TTL by 1, to locate each
+router in the path. An ICMP time exceeded is returned by each
+router when it discards the UDP datagram, and an ICMP port unreachable
+is generated by the final destination.
+<P>
+We ran examples of <TT>traceroute</TT>
+on both LANs and WANs, and used it to examine IP source routing.
+We used loose source routing to see if the route to a destination
+is the same as the return route from that destination.
+<H4>Exercises</H4>
+<P>
+<B>8.1</B> What can happen if
+an IP implementation decrements the incoming TTL and then tests
+for equal to 0?
+<P>
+<B>8.2</B> How does <TT>traceroute</TT>
+calculate the RTT? Compare this to the RTT calculation done by
+ping.
+<P>
+<B>8.3</B> (This exercise and
+the next one are based on actual problems determined when <TT>traceroute</TT>
+was being developed, and are from comments in the <TT>traceroute</TT>
+source code.) Assume there are three routers (Rl, R2, and R3)
+between the source and destination and that the middle router
+(R2) decrements the TTL but incorrectly forwards the IP datagram
+when the incoming TTL was 1. Describe what happens. How can you
+see this occur when running <TT>traceroute</TT>?
+
+<P>
+<B>8.4</B> Again assume there
+are three routers between the source and destination. This time
+the destination host has a bug whereby it always uses the incoming
+TTL as the outgoing TTL of an ICMP message. Describe what happens
+and how you would see this.
+<P>
+<B>8.5</B> We can run <TT>tcpdump</TT>
+on the SLIP link between <TT>sun</TT> and
+<TT>netb</TT> when running the example from
+<a href="#fig_8_8">Figure 8.8</a>. If we specify the <TT>-v</TT>
+option we can see the TTL value of the returned ICMP messages.
+Doing this shows the incoming TTL from netb to be 255, from butch
+it's 253, from Gabby it's 252, and from <TT>enssl42.UT.westnet.net</TT>
+it's 249. Does this give any additional information about whether
+there really are some missing routers?
+<P>
+<B>8.6</B> Both SunOS and SVR4
+provide a version of ping with a <TT>-l</TT>
+option that provides a loose source route. The manual pages state
+that it's intended to be used with the <TT>-R</TT>
+option (which specifies the record route option). If you have
+access to either of these systems, try these two options together.
+What's happening? If you can watch the datagrams with tcpdump,
+describe what's going on.
+<P>
+<B>8.7</B> Compare the ways <TT>ping</TT>
+and <TT>traceroute</TT> handle multiple instances
+of the client on the same host.
+<P>
+<B>8.8</B> Compare the ways <TT>ping</TT>
+and <TT>traceroute</TT> measure the round-trip
+time.
+<P>
+<B>8.9</B> We said <TT>traceroute</TT>
+picks the starting UDP destination port number at 33435 and increments
+this by one for each packet sent. In <A HREF="introduc.htm#1_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#1_9" >Section 1.9</A>
+we said ephemeral port numbers are normally between 1024 and 5000,
+making it unlikely that Traceroute's destination port is in use
+on the destination host. Is this still true under Solaris 2.2?
+<I>(Hint:</I> Read <A HREF="append_e.htm#E_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_e.htm#E_4" >Section E.4</A>.)
+
+<P>
+<B>8.10</B> Read RFC 1393 [Malkin
+1993b] for a proposed alternative way of determining the path
+to a destination. What are its advantages and disadvantages?<BR>
+
+</BODY>
+</HTML>

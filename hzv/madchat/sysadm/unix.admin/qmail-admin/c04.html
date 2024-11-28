@@ -1,0 +1,833 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML
+><HEAD
+><TITLE
+>Configuration : la base</TITLE
+><META
+NAME="CREATOR"
+CONTENT="Modular DocBook HTML Stylesheet version 1.07"><META
+NAME="form"
+CONTENT="html"><META
+NAME="Description"
+CONTENT="Introduction to qmail in french"><META
+NAME="Keywords"
+CONTENT="qmail mta"><META
+NAME="Robot"
+CONTENT="index,follow"><META
+NAME="Author"
+CONTENT="Djalil Chafai"></HEAD
+><BODY
+BGCOLOR="#FFFFFF"
+TEXT="#000000"
+><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TH
+COLSPAN="3"
+ALIGN="center"
+>Introduction à qmail</TH
+></TR
+><TR
+><TD
+WIDTH="10%"
+ALIGN="left"
+VALIGN="bottom"
+><A
+HREF="c0306.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="80%"
+ALIGN="center"
+VALIGN="bottom"
+></TD
+><TD
+WIDTH="10%"
+ALIGN="right"
+VALIGN="bottom"
+><A
+HREF="c0402.html"
+>Suivant</A
+></TD
+></TR
+></TABLE
+><HR
+ALIGN="LEFT"
+WIDTH="515"><H1
+><A
+NAME="R,C(4,CHAPTER)"
+>Chapitre 4. Configuration : la base</A
+></H1
+><DL
+><DT
+><B
+>Table des matières</B
+></DT
+><DT
+><A
+HREF="c04.html#R,C(4,CHAPTER)(1,SECT1)"
+>Fichiers de contrôle</A
+></DT
+><DT
+><A
+HREF="c0402.html"
+>Livraison par qmail-local et utilisateur alias</A
+></DT
+><DT
+><A
+HREF="c0403.html"
+>Syntaxe des .qmail*</A
+></DT
+><DT
+><A
+HREF="c0404.html"
+>Gestion de la file d'attente (à compléter)</A
+></DT
+><DT
+><A
+HREF="c0405.html"
+>Listes de diffusion par qlist (à faire)</A
+></DT
+></DL
+><H1
+><A
+NAME="R,C(4,CHAPTER)(1,SECT1)"
+>Fichiers de contrôle</A
+></H1
+><P
+>La configuration de <I
+CLASS="PRODUCTNAME"
+>qmail</I
+> se fait presque
+entièrement via un ensemble de petits fichiers texte de «contrôle» tous situés
+dans le répertoire <TT
+CLASS="FILENAME"
+>/var/qmail/control/</TT
+> ou son équivalent
+le cas échéant. Les différents programmes composant
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+> lisent le contenu de ces fichiers et
+positionnent leurs variables en conséquence.</P
+><P
+>Des options par défaut sont prises pour chaque fichier inexistant.
+Par défaut, un seul de ces fichiers existe, il s'agit de
+<TT
+CLASS="FILENAME"
+>me</TT
+> qui contient le nom qualifié de la machine.</P
+><P
+>Un <B
+CLASS="COMMAND"
+>man qmail-control</B
+> donne une liste complète de tous ces
+fichiers, des programmes <I
+CLASS="PRODUCTNAME"
+>qmail</I
+> qui les utilisent
+ainsi que des options prises par défaut. C'est très pratique.</P
+><P
+>Vous pouvez utiliser la commande <B
+CLASS="COMMAND"
+>qmail-showctl</B
+> pour
+obtenir un rapport sur les différents fichiers de contrôle présents sur votre
+système <I
+CLASS="PRODUCTNAME"
+>qmail</I
+> ainsi que les valeurs par défaut
+utilisées.</P
+><P
+>Il ne faut surtout pas oublier de demander à <I
+CLASS="PRODUCTNAME"
+>qmail</I
+>
+de relire ses fichiers de contrôle après la modification de l'un d'entre eux.
+Pour ce faire, il suffit de faire un 
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>root:bash$ kill -HUP $(pidof qmail-send)</PRE
+></TD
+></TR
+></TABLE
+></P
+><H2
+><A
+NAME="ALIASEMPTY"
+>aliasempty</A
+></H2
+><P
+>Le premier fichier de contrôle que vous serez amené à
+modifier est sans doute <TT
+CLASS="FILENAME"
+>/var/qmail/control/aliasempty</TT
+>.
+Il contient le nom de la BAL dans laquelle le MDA
+<I
+CLASS="APPLICATION"
+>qmail-local</I
+> livre le courriel lorsqu'il n'y a pas
+de <TT
+CLASS="FILENAME"
+>.qmail</TT
+>. Sa valeur par défaut est
+<TT
+CLASS="LITERAL"
+>./Mailbox</TT
+>.</P
+><P
+>Cette règle de livraison par défaut peut néanmoins être spécifiée
+en ligne de commande à <I
+CLASS="APPLICATION"
+>qmail-start</I
+> lors du
+lancement de <I
+CLASS="PRODUCTNAME"
+>qmail</I
+>, voir la page de manuel.
+Elle sera transmise à <I
+CLASS="APPLICATION"
+>qmail-lspawn</I
+>.</P
+><P
+>Pour conserver la livraison par défaut dans
+<TT
+CLASS="FILENAME"
+>/var/spool/mail</TT
+>,
+vous pouvez imiter le paquetage <I
+CLASS="PRODUCTNAME"
+>qmail</I
+> de la
+<I
+CLASS="PRODUCTNAME"
+>Debian GNU/Linux</I
+> :
+se servir du MDA <I
+CLASS="APPLICATION"
+>procmail</I
+> et lancer
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+> par 
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+> qmail-start |/usr/local/sbin/qmail-procmail</PRE
+></TD
+></TR
+></TABLE
+>
+
+Le script exécutable
+<TT
+CLASS="FILENAME"
+>/usr/local/sbin/qmail-procmail</TT
+> contenant
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+> #!/bin/sh
+            
+ /var/qmail/bin/preline /usr/bin/procmail &#38;&#38; exit 0
+
+ # Erreur EX_TEMPFAIL ?
+ [ $? = 75 ] &#38;&#38; exit 111
+
+ # Sinon on renvoie une «Permanent Error»
+ exit 100</PRE
+></TD
+></TR
+></TABLE
+>&#13;</P
+><H2
+><A
+NAME="LOCALS"
+>locals</A
+></H2
+><P
+>       
+Un autre fichier très important pour vous sera sans doute 
+<TT
+CLASS="FILENAME"
+>/var/qmail/control/locals</TT
+>,
+utilisé par <I
+CLASS="APPLICATION"
+>qmail-send</I
+>.
+Il contient les noms des hôtes considérés comme locaux,
+c'est à dire ceux pour lesquels les courriels que vous recevez et qui
+leurs sont destinés seront livrés sur votre machine.      
+Par défaut, cette variable vaut
+la même valeur que le fichier de contrôle
+<TT
+CLASS="FILENAME"
+>me</TT
+> (votre nom de machine).
+Un petit exemple valant mieux qu'un long discours,
+voici un exemple de <TT
+CLASS="FILENAME"
+>locals</TT
+>
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>mondomaine.amoi            
+mamachine            
+mamachine.mondomaine.amoi
+ftp
+ftp.mondomaine.amoi
+www
+www.mondomaine.amoi</PRE
+></TD
+></TR
+></TABLE
+>
+
+<TT
+CLASS="LITERAL"
+>/var/qmail/control/me</TT
+> contenant
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>mamachine.mondomaine.amoi</PRE
+></TD
+></TR
+></TABLE
+>
+
+Bien sûr, il faudra de plus que les champs MX dans le DNS de
+<TT
+CLASS="LITERAL"
+>ftp.mondomaine.amoi</TT
+> et
+<TT
+CLASS="LITERAL"
+>www.mondomaine.amoi</TT
+>
+pointent sur <TT
+CLASS="LITERAL"
+>mamachine.mondomaine.amoi</TT
+>.</P
+><P
+>N'oubliez pas d'avertir <I
+CLASS="APPLICATION"
+>qmail-send</I
+>
+après toute modification du fichier <TT
+CLASS="FILENAME"
+>locals</TT
+> 
+en lui envoyant un signal HUP :
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>root:bash$ kill -HUP $(pidof qmail-send)</PRE
+></TD
+></TR
+></TABLE
+></P
+><H2
+><A
+NAME="DEFAULTHOST"
+>defaulthost et defaultdomain</A
+></H2
+><P
+>Les deux fichiers de contrôle
+<TT
+CLASS="FILENAME"
+>/var/qmail/control/defaulthost</TT
+>
+et
+<TT
+CLASS="FILENAME"
+>/var/qmail/control/defaultdomain</TT
+>
+s'avèrent très utiles.
+Il permettent de spécifier la façon dont
+<I
+CLASS="APPLICATION"
+>qmail-inject</I
+> complète les
+adresses destinataires incomplètes.
+Ainsi, une adresse ne contenant pas de partie
+domaine sera complétée par <TT
+CLASS="FILENAME"
+>defaulthost</TT
+>
+et une adresse dont la partie domaine ne contient pas de point sera
+complétée par <TT
+CLASS="FILENAME"
+>defaultdomain</TT
+>.
+La valeur par défaut est la même que celle de <TT
+CLASS="FILENAME"
+>me</TT
+>, ce qui
+ne correspond pas forcément à ce que vous souhaitez.</P
+><P
+>Les variables d'environnement
+<TT
+CLASS="LITERAL"
+>QMAILDEFAULTDOMAIN</TT
+> et
+<TT
+CLASS="LITERAL"
+>QMAILDEFAULTHOST</TT
+>
+ont priorité sur le contenu des fichiers de contrôles correspondants.</P
+><H2
+><A
+NAME="RCPTHOSTS"
+>rcpthosts</A
+></H2
+><P
+>Le fichier de contrôle <TT
+CLASS="FILENAME"
+>/var/qmail/control/rcpthosts</TT
+> est
+utilisé par <I
+CLASS="APPLICATION"
+>qmail-smtpd</I
+>.
+Il permet de contrôler le relayage de courriel par la machine via SMTP.</P
+><P
+>Lorsque le fichier <TT
+CLASS="FILENAME"
+>rcpthosts</TT
+> existe, 
+<I
+CLASS="APPLICATION"
+>qmail-smtpd</I
+> refusera tout courriel dont la partie
+domaine de l'adresse destinataire ne figure pas dans
+<TT
+CLASS="FILENAME"
+>rcpthosts</TT
+>.
+Par défaut, c'est à dire en l'abscence de <TT
+CLASS="FILENAME"
+>rcpthosts</TT
+>, 
+<I
+CLASS="APPLICATION"
+>qmail-smtpd</I
+> accepte tous les courriels.</P
+><P
+>Voici un exemple de <TT
+CLASS="FILENAME"
+>rcpthosts</TT
+>:
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>.mondomaine.amoi
+mondomaine.amoi                            </PRE
+></TD
+></TR
+></TABLE
+>
+
+<I
+CLASS="APPLICATION"
+>qmail-smtpd</I
+> refusera ici tout courriel à
+destination d'une adresse extérieure au domaine
+<TT
+CLASS="LITERAL"
+>mondomaine.amoi</TT
+>.</P
+><P
+>Il est bien entendu très important que
+<TT
+CLASS="FILENAME"
+>rcpthosts</TT
+> autorise au moins 
+les machines figurant dans le fichier de contrôle
+<TT
+CLASS="FILENAME"
+>locals</TT
+> pour que 
+vous puissiez recevoir les courriels qui leurs sont destinés par SMTP.</P
+><P
+>          
+<TT
+CLASS="FILENAME"
+>rcpthosts</TT
+> est ignoré si la variable d'environnement
+<TT
+CLASS="LITERAL"
+>RELAYCLIENT</TT
+> est positionnée. Auquel cas,
+<I
+CLASS="APPLICATION"
+>qmail-smtpd</I
+>
+ajoute son contenu à l'adresse de destination des courriels qui transitent
+par lui.   </P
+><P
+>Lisez la page de manuel de <I
+CLASS="APPLICATION"
+>qmail-smtpd</I
+>
+pour en savoir plus.</P
+><P
+>Le contrôle de relayage par <TT
+CLASS="FILENAME"
+>rcpthosts</TT
+> est souvent 
+associé à un contrôle au niveau TCP par un «wrapper» TCP. Voir  
+<A
+HREF="c0502.html"
+>la section <I
+>Contrôle de relayage</I
+> du Chapitre 5</A
+>. Pour effectuer un rejet des courriels entrants par 
+SMTP suivant l'expéditeur, reportez vous à
+<A
+HREF="c04.html#BADMAILFROM"
+>la section <I
+>badmailfrom</I
+></A
+>.</P
+><H2
+><A
+NAME="BADMAILFROM"
+>badmailfrom</A
+></H2
+><P
+><TT
+CLASS="FILENAME"
+>badmailfrom</TT
+> est très utile pour éviter le 
+courriel entrant non sollicité.
+Il permet de spécifier les adresses d'expéditeurs interdits.
+<I
+CLASS="APPLICATION"
+>qmail-smtpd</I
+> refusera tout courriel provenant d'eux.
+Voici un exemple :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>@polution.com
+polueur@poubelle.com</PRE
+></TD
+></TR
+></TABLE
+>
+
+<I
+CLASS="APPLICATION"
+>qmail-smtpd</I
+> refusera tout courriel provenant du
+domaine <TT
+CLASS="LITERAL"
+>polution.com</TT
+>
+ou de l'adresse <TT
+CLASS="LITERAL"
+>polueur@poubelle.com</TT
+>.</P
+><P
+>Pour faire du contrôle de relayage, se reportez à 
+<A
+HREF="c0502.html"
+>la section <I
+>Contrôle de relayage</I
+> du Chapitre 5</A
+>
+et
+<A
+HREF="c04.html#RCPTHOSTS"
+>la section <I
+>rcpthosts</I
+></A
+>.</P
+><H2
+><A
+NAME="SMTPROUTES"
+>smtproutes</A
+></H2
+><P
+>Le fichier de contrôle <TT
+CLASS="FILENAME"
+>/var/qmail/control/smtproutes</TT
+>
+permet de spécifier les relais SMTP que
+<I
+CLASS="APPLICATION"
+>qmail-remote</I
+> devra contacter
+pour router les courriels sortants. voir la page de manuel 
+pour plus de détails. Voici un exemple :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>premier.domaine:mail.premier.domaine
+second.domaine:mail.second.domaine:24
+:mail.autre.domaine              </PRE
+></TD
+></TR
+></TABLE
+>
+
+Les courriels à destination de
+<TT
+CLASS="LITERAL"
+>premier.domaine</TT
+> seront transmis par SMTP au
+port TCP 25 de
+<TT
+CLASS="LITERAL"
+>mail.premier.domaine</TT
+>, ceux à destination de
+<TT
+CLASS="LITERAL"
+>second.domaine</TT
+> seront transmis par SMTP au port TCP 24 de
+<TT
+CLASS="LITERAL"
+>mail.second.domaine</TT
+>. Quant aux autres courriels, ils seront
+transmis au port TCP 25 de <TT
+CLASS="LITERAL"
+>mail.autre.domaine</TT
+>.</P
+><P
+><I
+CLASS="APPLICATION"
+>qmail-remote</I
+> utilise aussi les fichiers de contrôle
+<TT
+CLASS="FILENAME"
+>helohost</TT
+>, <TT
+CLASS="FILENAME"
+>timeoutconnect</TT
+> et
+<TT
+CLASS="FILENAME"
+>timeoutremote</TT
+>,
+voir la page de manuel de <I
+CLASS="APPLICATION"
+>qmail-remote</I
+>.</P
+><H2
+><A
+NAME="VIRTUALDOMAINS"
+>virtualdomains</A
+></H2
+><P
+>        
+Le fichier de contrôle <TT
+CLASS="FILENAME"
+>/var/qmail/control/virtualdomains</TT
+> 
+contient une liste de
+domaines virtuels, un par ligne. Un domaine virtuel est un domaine
+pour lequel la livraison se fera vers une seule adresse. Les domaines
+virtuels sont pris en compte par <I
+CLASS="APPLICATION"
+>qmail-send</I
+>.
+Par défaut, aucun domaine virtuel n'est défini. Voici un exemple de
+fichier <TT
+CLASS="FILENAME"
+>virtualdomains</TT
+> :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>             
+mondomaine.amoi:
+.mondomaine.amoi:
+.uucp:alias-uucp
+:alias-ppp</PRE
+></TD
+></TR
+></TABLE
+>
+
+Dans cet exemple, les courriels à destination d'adresses dans le
+domaine <TT
+CLASS="LITERAL"
+>mondomaine.amoi</TT
+> sont livrés normalement,
+pour celles se terminant par <TT
+CLASS="LITERAL"
+>.uucp</TT
+>, la livraison a
+lieu à l'adresse <TT
+CLASS="LITERAL"
+>alias-uucp</TT
+>, quant aux
+autres, ils sont livrés à l'adresse <TT
+CLASS="LITERAL"
+>alias-ppp</TT
+>.</P
+><P
+>N'oubliez pas d'avertir <I
+CLASS="APPLICATION"
+>qmail-send</I
+>
+après toute modification du fichier <TT
+CLASS="LITERAL"
+>locals</TT
+> 
+en lui envoyant un signal HUP :
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>root$ kill -HUP pid_de_qmail-send</PRE
+></TD
+></TR
+></TABLE
+></P
+><P
+>Allez voir la page de manuel de <I
+CLASS="APPLICATION"
+>qmail-send</I
+> pour
+plus de détails.</P
+><H2
+><A
+NAME="R,C(4,CHAPTER)(1,SECT1)(8,SECT2)"
+>Et les autres ?</A
+></H2
+><P
+>Je n'ai parlé que des principaux fichiers de contrôle, il y en a
+beaucoup d'autres. Je vous conseille de faire un
+«<B
+CLASS="COMMAND"
+>man qmail-control</B
+>».
+Vous y trouverez une liste de tout les fichiers de configuration,
+les binaires qui les utilisent ainsi que les valeurs prises par défaut.</P
+><HR
+ALIGN="LEFT"
+WIDTH="515"><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+><A
+HREF="c0306.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+><A
+HREF="book01.html"
+>Page principale</A
+></TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+><A
+HREF="c0402.html"
+>Suivant</A
+></TD
+></TR
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+>QMTP, le petit dernier</TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+>&nbsp;</TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+>Livraison par qmail-local et utilisateur alias</TD
+></TR
+></TABLE
+></BODY
+></HTML
+>

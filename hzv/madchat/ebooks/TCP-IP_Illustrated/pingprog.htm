@@ -1,0 +1,739 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 7. Ping Program</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="7_0"><H1><i>Ping Program</i></H1></a>
+<a name="7_1"><H3>7.1 Introduction</H3></a>
+<P>
+The name &quot;ping&quot; is taken from the sonar
+operation to locate objects. The Ping program was written by Mike
+Muuss and it tests whether another host is reachable. The program
+sends an ICMP echo request message to a host, expecting an ICMP
+echo reply to be returned. (<a href="icmp_int.htm#fig_6_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#fig_6_3">Figure 6.3</a> lists all the ICMP message
+types.)
+<P>
+Normally if you can't Ping a host, you won't be able
+to Telnet or FTP to that host. Conversely, if you can't Telnet
+to a host. Ping is often the starting point to determine what
+the problem is. Ping also measures the round-trip time to the
+host, giving us some indication of how &quot;far away&quot; that
+host is.
+<P>
+In this chapter we'll use Ping as a diagnostic tool
+and to further explore ICMP. Ping also gives us an opportunity
+to examine the IP record route and timestamp options. Chapter
+II of [Stevens 1990] provides the source code for the Ping program.
+<P>
+<FONT SIZE=2>Years ago we could make the unqualified statement
+that if we can't Ping a host, we can't Telnet or FTP to that host.
+With the increased awareness of security on the Internet, routers
+that provide access control lists, and firewall gateways, unqualified
+statements like this are no longer true. Reachability <I>ol</I>
+a given host may depend not only on reachability at the IP layer,
+but also on what protocol is being used, and the port numbers
+involved. Ping may show a host as being unreachable, yet we might
+be able to Telnet to port 25 (the mail server).</FONT>
+<a name="7_2"><H3>7.2 Ping Program</H3></a>
+<P>
+We call the <TT>ping</TT> program
+that sends the echo requests the <I>client,</I> and the host being
+pinged the <I>server.</I> Most TCP/IP implementations support
+the Ping server directly in the kernel-the server is not a user
+process. (The two ICMP query services that we described in <A HREF="icmp_int.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm">Chapter 6</A>,
+the address mask and timestamp requests, are also handled directly
+by the kernel.)
+<P>
+<CENTER><a name="fig_7_1"><IMG SRC="f_7_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_7_1.gif"></a><BR>
+<B>Figure 7.1</B> Format of ICMP
+message for echo request and echo reply.</CENTER>
+<P>
+As with other ICMP query messages, the server must
+echo the <I>identifier</I> and <I>sequence number</I> fields.
+Also, any optional data sent by the client must be echoed. These
+are presumably of interest to the client.
+<P>
+Unix implementations of <TT>ping</TT>
+set the <I>identifier</I> field in the ICMP message to the process
+ID of the sending process. This allows ping to identify the returned
+responses if there are multiple instances of ping running at the
+same time on the same host.
+<P>
+The <I>sequence number</I> starts at 0 and is incremented
+every time a new echo request is sent. ping prints the sequence
+number of each returned packet, allowing us to see if packets
+are missing, reordered, or duplicated. IP is a best effort datagram
+delivery service, so any of these three conditions can occur.
+<P>
+Historically the ping program has operated in a mode
+where it sends an echo request once a second, printing each echo
+reply that is returned. Newer implementations, however, require
+the <TT>-s</TT> option to operate this way.
+By default, these newer implementations send only a single echo
+request and output <I>&quot;host</I> is alive&quot; if an echo
+reply is received, or &quot;no answer&quot; if no reply is received
+within 20 seconds.
+<H4>LAN Output</H4>
+<P>
+ping output on a LAN normally looks like the following:
+<P>
+<TT>bsdi %<B> ping svr4<BR>
+</B>PING svr4 (140.252.13.34): 56 data bytes<BR>
+64 bytes from 140.252.13.34: icmp_seq=0
+ttl=255 time=0 ms<BR>
+64 bytes from 140.252.13.34: icmp_seq=l ttl=255 time=0 ms<BR>
+64 bytes from 140.252.13.34: icmp_seq=2 ttl=255 time=0 ms<BR>
+64 bytes from 140.252.13.34: icmp_seq=3 ttl=255 time=0 ms<BR>
+64 bytes from 140.252.13.34: icmp_seq=4 ttl=255 time=0 ms<BR>
+64 bytes from 140.252.13.34: icmp_seq=5 ttl=255 time=0 ms<BR>
+64 bytes from 140.252.13.34: icmp_seq=6 ttl=255 time=0 ms<BR>
+64 bytes from 140.252.13.34: icmp_seq=7 ttl=255 time=0 ms<BR>
+^? <I>type interrupt key to stop <BR>
+</I>--- svr4 ping statistics ---<BR>
+8 packets transmitted, 8 packets received, 0% packet loss<BR>
+round-trip min/avg/max = 0/0/0 ms</TT>
+<P>
+When the ICMP echo reply is returned, the sequence
+number is printed, followed by the TTL, and the round-trip time
+is calculated. (TTL is the time-to-live field in the IP header.
+The current BSD ping program prints the received TTL each time
+an echo reply is received-some implementations don't do this.
+We examine the usage of the TTL in Chapter 8 with the <TT>traceroute</TT>
+program.)
+<P>
+As we can see from the output above, the echo replies
+were returned in the order sent (0, 1,2, and so on).
+<P>
+ping is able to calculate the round-trip time by
+storing the time at which it sends the echo request in the data
+portion of the ICMP message. When the reply is returned it subtracts
+this value from the current time. Notice that on the sending system,
+<TT>bsdi</TT>, the round-trip times are all
+calculated as 0 ms. This is because of the low-resolution timer
+available to the program. The BSD/386 Version 0.9.4 system only
+provides a IO-ms timer. (We talk more about this in Appendix B.)
+We'll see later that when looking at the tcpdump output from this
+ping example on a system with a finer resolution clock (the Sun)
+the time difference between the ICMP echo request and its echo
+reply is just under 4 ms.
+<P>
+The first line of output contains the IP address
+of the destination host, even though we specified its name (<TT>svr4</TT>).
+This implies that the name has been converted to the IP address
+by a resolver. We examine resolvers and the DNS in Chapter 14.
+For now realize that if we type a <TT>ping</TT>
+command, and a few seconds pass before the first line of output
+with the IP address is printed, this is the time required for
+the DNS to determine the IP address corresponding to the hostname.
+Figure 7.2 shows the tcpdump output for this example.
+<P>
+<CENTER><a name="fig_7_2"><TABLE ></a>
+<TR><TD WIDTH=45><TT>1 <BR>
+</TT>2</TD><TD WIDTH=149><TT>0.0<BR>
+0.003733 (0.0037)</TT>
+</TD><TD WIDTH=389><TT>bsdi &gt; svr4: icmp: echo request <BR>
+svr4 &gt; bsdi: icmp: echo reply</TT>
+</TD></TR>
+<TR><TD WIDTH=45>3<BR>
+4</TD><TD WIDTH=149><TT>0.998045 (0.9943)<BR>
+1.001747 (0.0037)</TT>
+</TD><TD WIDTH=389><TT>bsdi &gt; svr4: icmp: echo request <BR>
+svr4 &gt; bsdi: icmp: echo reply</TT>
+</TD></TR>
+<TR><TD WIDTH=45>5<BR>
+6</TD><TD WIDTH=149><TT>1.997818 (0.9961)<BR>
+2.001542 (0.0037)</TT>
+</TD><TD WIDTH=389><TT>bsdi &gt; svr4: icmp: echo request <BR>
+svr4 &gt; bsdi: icmp: echo reply</TT>
+</TD></TR>
+<TR><TD WIDTH=45>7<BR>
+8</TD><TD WIDTH=149><TT>2.997610 (0.9961)<BR>
+3.001311 (0.0037)</TT>
+</TD><TD WIDTH=389><TT>bsdi &gt; svr4: icmp: echo request <BR>
+svr4 &gt; bsdi: icmp: echo reply</TT>
+</TD></TR>
+<TR><TD WIDTH=45>9<BR>
+10</TD><TD WIDTH=149><TT>3.997390 (0.9961)<BR>
+4.001115 (0.0037)</TT>
+</TD><TD WIDTH=389><TT>bsdi &gt; svr4: icmp: echo request <BR>
+svr4 &gt; bsdi: icmp: echo reply</TT>
+</TD></TR>
+<TR><TD WIDTH=45>11<BR>
+12</TD><TD WIDTH=149><TT>4.997201 (0.9961)<BR>
+5.000904 (0.0037)</TT>
+</TD><TD WIDTH=389><TT>bsdi &gt; svr4: icmp: echo request <BR>
+svr4 &gt; bsdi: icmp: echo reply</TT>
+</TD></TR>
+<TR><TD WIDTH=45>13<BR>
+14</TD><TD WIDTH=149><TT>5.996977 (0.9961)<BR>
+6.000708 (0.0037)</TT>
+</TD><TD WIDTH=389><TT>bsdi &gt; svr4: icmp: echo request <BR>
+svr4 &gt; bsdi: icmp: echo reply</TT>
+</TD></TR>
+<TR><TD WIDTH=45>15<BR>
+16</TD><TD WIDTH=149><TT>6.996764 (0.9961)<BR>
+7.000479 (0.0037)</TT>
+</TD><TD WIDTH=389><TT>bsdi &gt; svr4: icmp: echo request <BR>
+svr4 &gt; bsdi: icmp: echo reply</TT>
+</TD></TR>
+</TABLE>
+<B>Figure 7.2</B> <TT>ping</TT>
+output across a LAN.</CENTER>
+<P>
+The time between sending the echo request and receiving
+the echo reply is always 3.7 ms. We can also see that echo requests
+are sent approximately 1 second apart.
+<P>
+Often the first round-trip time is larger than the
+rest. This occurs if the destination's hardware address isn't
+in the ARP cache of the sender. As we saw in <A HREF="arp_addr.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm">Chapter 4</A>,
+sending an ARP request and getting the ARP reply can take a few
+milliseconds before the first echo request can be sent. The following
+example shows this:
+<P>
+<TT>sun % <B>arp -a</B></TT>
+<I>make sun ARP cache is empty</I>
+<P>
+<TT>sun % <B>ping svr4<BR>
+</B>PING svr4: 56 data bytes<BR>
+64 bytes from svr4 (140.252.13,34):
+icmp_seq=0. time=7. ms<BR>
+64 bytes from svr4 (140.252.13.34): icmp_seq=1. time=4. ms<BR>
+64 bytes from svr4 (140.252.13.34): icmp_seq=2. time=4. ms<BR>
+64 bytes from svr4 (140.252.13.34): icmp_seq=3. time=4. ms<BR>
+^?</TT> <I>type interrupt key to stop<BR>
+</I><TT>---svr4 PING Statistics---<BR>
+4 packets transmitted, 4 packets
+received, 0% packet loss<BR>
+round-trip (ms) min/avg/max = 4/4/7</TT>
+<P>
+The additional 3 ms in the first RTT is probably
+for the ARP request and reply
+<P>
+This example was run on the host sun, which provides
+a timer with microsecond resolution, but the ping program prints
+the round-trip times with only millisecond resolution. The earlier
+example, run under BSD/386 Version 0.9.4, printed the round-trip
+times as 0 ms, since the available timer provided only IO-ms accuracy.
+The following output is from BSD/386 Version 1.0, which provides
+a timer with microsecond resolution and a version of ping that
+prints the higher resolution.
+<P>
+<TT>bsdi % <B>ping svr4<BR>
+</B>PING svr4 (140.252.13.34): 56 data bytes<BR>
+64 bytes from 140.252.13.34: icmp_seq=0
+ttl=255 time=9.304 ms<BR>
+64 bytes from 140.252.13.34: icmp_seq=1 ttl=255 time=6.089 ms
+<BR>
+64 bytes from 140.252.13.34: icmp_seq=2 ttl=255 time=6.079 ms
+<BR>
+64 bytes from 140.252.13.34: icmp_seq=3 ttl=255 time=6.096 ms
+<BR>
+^? <I>type interrupt key to stop <BR>
+</I>--- svr4 ping statistics ---<BR>
+4 packets transmitted, 4 packets received, 0% packet loss<BR>
+round-trip min/avg/max = 6.079/6.880/9.304 ms</TT>
+<H4>WAN Output</H4>
+<P>
+On a wide area network the results can be quite different.
+The following example was captured on a weekday afternoon, a time
+when the Internet is normally busy:
+<P>
+<TT>gemini % <B>ping vangogh.cs.berkeley.edu
+<BR>
+</B>PING vangogh.cs.berkeley.edu: 56 data bytes<BR>
+64 bytes from (128.32.130.2):
+icmp_seq=0. time=660. ms<BR>
+64 bytes from (128.32.130.2): icmp_seq=5. time=1780. ms<BR>
+64 bytes from (128.32.130.2): icmp_seq=7. time=380. ms<BR>
+64 bytes from (128.32.130.2): icmp_seq=8. time=420. ms<BR>
+64 bytes from (128.32.130.2): icmp_seq=9. time=390. ms<BR>
+64 bytes from (128.32.130.2): icmp_seq=14. time=110. ms<BR>
+64 bytes from (128.32.130.2): icmp_seq=15. time=170. ms<BR>
+64 bytes from (128.32.130.2): icmp_seq=16. time=100. ms<BR>
+^? <I>type interrupt key to stop <BR>
+</I>----vangogh.CS.Berkeley.EDU PING Statistics----<BR>
+17 packets transmitted, 8 packets received, 52% packet loss<BR>
+round-trip (ms) min/avg/max = 100/501/1780</TT>
+<P>
+Either the echo requests or the echo replies for
+sequence numbers 1, 2, 3, 4, 6, 10, II, 12, and 13 were lost somewhere.
+Note also the large variance in the round-trip times. (This high
+packet loss rate of 52% is an anomaly. This is not normal for
+the Internet, even on a weekday afternoon.)
+<P>
+It is also possible across WANs to see packets duplicated
+(the same sequence number printed two or more times), and to see
+packets reordered (sequence number <I>N +</I>1 printed before
+sequence number <I>N).</I>
+<H4>Hardwired SLIP Links</H4>
+<P>
+Let's look at the round-trip times encountered over
+SLIP links, since they often run at slow asynchronous speeds,
+such as 9600 bits/sec or less. Recall our serial line throughput
+calculations in Section 2.10. For this example we'll set the speed
+of the hardwired SLIP link between hosts <TT>bsdi</TT>
+and <TT>slip</TT> to 1200 bits/sec.
+<P>
+We can estimate the round-trip time as follows. First,
+notice from the example Ping output shown earlier that by default
+it sends 56 bytes of data in the ICMP message. With a 20-byte
+IP header and an 8-byte ICMP header this gives a total IP datagram
+size of 84 bytes. (We can verify this by running tcpdump -e and
+seeing the Ethernet frame sizes.) Also, from Section 2.4 we know
+that at least two additional bytes are added: the END byte at
+the beginning and end of the datagram. It's also possible for
+additional bytes to be added by the SLIP framing, but that depends
+on the value of each byte in the datagram. At 1200 bits/sec with
+8 bits per byte, I start bit, and I stop bit, the rate is 120
+bytes per second, or 8.33 ms per byte. Our estimate is then (86
+x 8.33 x 2), or 1433 ms. (The multiplier of 2 is because we are
+calculating the round-trip time.)
+<P>
+The following output verifies our calculation:
+<P>
+<TT>svr4 % <B>ping -a slip<BR>
+</B>PING slip: 56 data bytes<BR>
+64 bytes from slip (140.252.13.65):
+icmp_seq=0. time=1480. Ms<BR>
+64 bytes from slip (140.252.13.65): icmp_seq=1. time=1480. Ms
+<BR>
+64 bytes from slip (140.252.13.65): icmp_seq=2. time=1480. Ms
+<BR>
+64 bytes from slip (140.252.13.65): icmp_seq=3. time=1480. Ms
+<BR>
+<B>^?<BR>
+</B>----slip PING Statistics----<BR>
+5 packets transmitted, 4 packets received, 20% packet loss<BR>
+round-trip (ms) min/avg/max = 1480/1480/1480</TT>
+<P>
+(The <TT>-s</TT> option is required
+for SVR4 to send one request every second.) The round-trip time
+is almost 1.5 seconds but the program is still sending out each
+ICMP echo request at 1-second intervals. This means there are
+two outstanding echo requests (sent at time 0 and time 1) before
+the first reply comes back (at time 1.480). That's also why the
+summary line says one packet has been lost. It really hasn't been
+lost, it's probably still on its way back.
+<P>
+We'll return to this slow SLIP link in <A HREF="tracerou.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm">Chapter 8</A>
+when we examine the <TT>traceroute</TT> program.
+<H4>Dialup SLIP Links</H4>
+<P>
+The conditions change with a dialup SLIP link since
+we now have modems on each end of the link. The modems being used
+between the systems <TT>sun</TT> and <TT>netb</TT>
+provide what is called V.32 modulation (9600 bits/sec), V.42 error
+control (also called LAP-M), and V.42bis data compression. This
+means that our simple calculations, which were fairly accurate
+for a hardwired link where we knew all the parameters, become
+less accurate.
+<P>
+Numerous factors are at work. The modems introduce
+some latency. The size of the packets may decrease with the data
+compression, but the size may then increase to a multiple of the
+packet size used by the error control protocol. Also the receiving
+modem can't release received data bytes until the cyclic redundancy
+character (the checksum) has been verified. Finally, we're dealing
+with a computer's asynchronous serial interface on each end, and
+many operating systems read these interfaces only at fixed intervals,
+or when a certain number of characters have been received.
+<P>
+As an example, we ping the host <TT>gemini</TT>
+from the host <TT>sun</TT>:
+<P>
+<TT>sun % <B>ping gemini<BR>
+</B>PING gemini: 56 data bytes<BR>
+64 bytes from gemini (140.252.1.11):
+icmp_seq=0. time=373. ms<BR>
+64 bytes from gemini (140.252.1.11): icmp_seq=l. time=360. ms
+<BR>
+64 bytes from gemini (140.252.1.11): icmp_seq=2. time=340. ms
+<BR>
+64 bytes from gemini (140.252.1.11): icmp_seq=3. time-320. ms
+<BR>
+64 bytes from gemini (140.252.1.11): icmp_seq=4. time=330. ms
+<BR>
+64 bytes from gemini (140.252.1.11): icmp seq=5. time=310. ms
+<BR>
+64 bytes from gemini (140.252.1.11): icmp seq=6. time==290. ms
+<BR>
+64 bytes from gemini (140.252.1.11): icmp_seq-7. time=300. ms
+<BR>
+64 bytes from gemini (140.252.1.11): icmp_seq=8. time=280. ms
+<BR>
+64 bytes from gemini (140.252.1.11): icmp_seq=9. time=290. ms
+<BR>
+64 bytes from gemini (140.252.1.11): icmp_seq=10. time=300. ms
+<BR>
+64 bytes from gemini (140.252.1.11): icmp_seq=ll. time=280. ms
+<BR>
+--gemini PING Statistics--<BR>
+12 packets transmitted, 12 packets received, 0% packet loss<BR>
+round-trip (ms) min/avg/max = 280/314/373</TT>
+<P>
+Note that the first RTT is not a multiple of 10 ms,
+but every other line is. If we run this numerous times, we see
+this property every time. (This is not caused by the resolution
+of the clock on the host sun, because we know that its clock provides
+millisecond resolution from the tests we run in <A HREF="append_b.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_b.htm">Appendix B</A>.)
+<P>
+Also note that the first RTT is larger than the next,
+and they keep decreasing, and then they range between 280 and
+300 ms. If we let it run for a minute or two, the RTTs stay in
+this range, never going below 260 ms. If we calculate the expected
+RTT at 9600 bits/sec (Exercise 7.2) we get 180 ms, so our observed
+values are about 1.5 times the expected value.
+<P>
+If we run ping for 60 seconds and look at the average
+RTT it calculates, we find that with V.42 and V.42bis our average
+is 277 ms. (This is better than the average printed for our preceding
+example, because we ran it longer to amortize the longer RTTs
+at the beginning.) If we turn off just the V.42bis data compression
+our average is 330 ms. If we turn off the V.42 error control (which
+also turns off the V.42bis data compression) our average is 300
+ms. These modem parameters do affect the RTTs, and using the error
+control and data compression appears to be the best.
+<a name="7_3"><H3>7.3 IP Record Route Option</H3></a>
+<P>
+The <TT>ping</TT> program gives
+us an opportunity to look at the IP record route (RR) option.
+Most versions of ping provide the <TT>-R</TT>
+option that enables the record route feature. It causes ping to
+set the IP RR option in the outgoing IP datagram (which contains
+the ICMP echo request message). This causes every router that
+handles the datagram to add its IP address to a list in the options
+field. When the datagram reaches the final destination, the list
+of IP addresses should be copied into the outgoing ICMP echo reply,
+and all the routers on the return path also add their IP addresses
+to the list. When <TT>ping</TT> receives the
+echo reply it prints the list of IP addresses.
+<P>
+As simple as this sounds, there are pitfalls. Generation
+of the RR option by the source host, processing of the RR option
+by the intermediate routers, and reflection of the incoming RR
+list in an ICMP echo request into the outgoing ICMP echo reply
+are all optional features. Fortunately, most systems today do
+support these optional features, but some systems don't reflect
+the IP list.
+<P>
+The biggest problem, however, is the limited room
+in the IP header for the list of IP addresses. We saw in <A HREF="ip_inter.htm#fig3_1" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig3_1">Figure 3.1</A>
+that the <I>header length</I> in the IP header is a 4-bit field,
+limiting the entire IP header to 15 32-bit words (60 bytes). Since
+the fixed size of the IP header is 20 bytes, and the RR option
+uses 3 bytes for overhead (which we describe below), this leaves
+37 bytes (60-20-3) for the list, allowing up to nine IP addresses.
+In the early days of the ARPANET, nine IP addresses seemed like
+a lot, but since this is a round-trip list (in the case of the
+-R option for ping), it's of limited use today. (In <A HREF="tracerou.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm">Chapter 8</A>
+we'll look at the Traceroute tool for determining the route followed
+by a datagram.) Despite these shortcomings, the record route option
+works and provides an opportunity to look in detail at the handling
+of IP options. Figure 7.3 shows the general format of the RR option
+in the IP datagram.
+<P>
+<CENTER><a name="fig_7_3"><IMG SRC="f_7_3.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_7_3.gif"></a><BR>
+<B>Figure 7.3</B> General format
+of record route option in IP header.</CENTER>
+<P>
+<I>Code</I> is a I-byte field
+specifying the type of IP option. For the RR option its value
+is 7. <I>Len</I> is the total number of bytes of the RR option,
+which in this case is 39. (Although it's possible to specify an
+RR option with less than the maximum size, ping always provides
+a 39-byte option field, to record up to nine IP addresses. Given
+the limited room in the IP header for options, it doesn't make
+sense to specify a size less than the maximum.)
+<P>
+<I>Ptr</I> is called the pointer
+field. It is a 1-based index into the 39-byte option of where
+to store the next IP address. Its minimum value is 4, which is
+the pointer to the first IP address. As each IP address is recorded
+into the list, the value of <I>ptr</I> becomes 8, 12, 16, up to
+36. After the ninth address is recorded <I>ptr</I> becomes 40,
+indicating the list is full.
+<P>
+When a router (which <I>by</I> definition is multihomed)
+records its IP address in the list, which IP address is recorded?
+It could be the address of the incoming interface or the outgoing
+interface. RFC 791 [Postel 1981a] specifies that the router records
+the outgoing IP address. We'll see that when the originating host
+(the host running ping) receives the ICMP echo reply with the
+RR option enabled, it also records its incoming IP address in
+the list.
+<H4>Normal Example</H4>
+<P>
+Let's run an example of the RR option with the ping
+program. We'll run <TT>ping</TT> on the host
+<TT>svr4</TT> to the host <TT>slip</TT>.
+One intermediate router (<TT>bsdi</TT>) will
+handle the datagram. The following output is from <TT>svr4</TT>:
+<P>
+<TT>svr4 % <B>ping -R slip<BR>
+</B>PING slip (140.252.13.65): 56 data bytes<BR>
+64 bytes from 140.252.13.65: icmp_seq=0
+ttl=254 time=280 ms<BR>
+RR: bsdi (140.252.13.66)<BR>
+slip (140.252.13.65)<BR>
+bsdi (140.252.13.35)<BR>
+svr4 (140.252.13.34)<BR>
+64 bytes from 140.252.13.65: icmp_seq=1 ttl=254 time=280 ms (same
+route)<BR>
+64 bytes from 140.252.13.65: icmp_seq=2 ttl=254 time=270 ms (same
+route)<BR>
+^?<BR>
+--- slip ping statistics ---<BR>
+3 packets transmitted, 3 packets received, 0% packet loss<BR>
+round-trip min/avg/max = 270/276/280 ms</TT>
+<P>
+Figure 7.4 shows the four hops that the packets take
+(two in each direction), and which hop adds which IP address to
+the RR list.
+<P>
+<CENTER><a name="fig_7_4"><IMG SRC="f_7_4.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_7_4.gif"></a><BR>
+<B>Figure 7.4</B> ping with record
+route option.</CENTER>
+<P>
+The router <TT>bsdi</TT> adds
+a different IP address to the list in each direction. It always
+adds the IP address of the outgoing interface. We can also see
+that when the ICMP echo reply reaches the originating system (<TT>svr4</TT>)
+it adds the IP address of the incoming interface to the list.
+<P>
+We can also watch this exchange of packets from the
+host <TT>sun</TT>, running <TT>tcpdump</TT>
+with its <TT>-v</TT> option (to see the IP
+options). Figure 7.5 shows the output.
+<P>
+<CENTER><a name="fig_7_5"><TABLE ></a>
+<TR><TD WIDTH=33>1</TD><TD WIDTH=110><TT>0.0</TT>
+</TD><TD WIDTH=441><TT>svr4 &gt; slip: icmp: echo request (ttl 32, id 35835,<BR>
+optlen=40 RR{39}=RR(#0.0.0.0/0.0.0.0/0.0.0.0/<BR>
+0.0.0.0/0.0.0.0/0.0.0.0/0.0.0.0/0.0.0.0/0.0.0.0} EOL)</TT>
+</TD></TR>
+<TR><TD WIDTH=33>2</TD><TD WIDTH=110><TT>0.267746 (0.2677)</TT>
+</TD><TD WIDTH=441><TT>slip &gt; svr4: icmp: echo reply (ttl 254, id 1976,<BR>
+optlen=40 RR{39}= RR(140.252.13.66/140.252.13.65/<BR>
+140.252.13.35/#0.0.0.0/0.0.0.0/0.0.0.0/0.0.0.0/<BR>
+0.0.0.0/0.0.0.0} EOL)</TT>
+</TD></TR>
+</TABLE>
+
+<B>Figure 7.5 </B><TT>tcpdump</TT> output of record route
+option.</CENTER>
+<P>
+The output <TT>optlen=40</TT> indicates there are 40 bytes of
+option space in the IP header. (Recall that the length of the
+IP header must be a multiple of 4 bytes.) <TT>RR{39}</TT> means
+the record route option is present, and its length field is 39.
+The list of nine IP addresses is then shown, with a pound sign
+(#) indicating which IP address is pointed to by the <I>ptr </I>field
+in the RR option header. Since we are watching these packets on
+the host <TT>sun</TT> (see <a href="#fig_7_4">Figure 7.4</a>) we only see the ICMP echo
+request with the empty list, and the ICMP echo reply with three
+addresses in the list. We have deleted the remaining lines in
+the tcpdump output, since they are nearly identical to what we
+show in Figure 7.5.
+<P>
+The notation <TT>EOL</TT> at the end of the record route information
+indicates the IP option &quot;end of list&quot; value appeared.
+The EOL option has a value of 0. What's happening is that 39 bytes
+of RR data are in the 40 bytes of option space in the IP header.
+Since the option space is set to 0 before the datagram is sent,
+this final byte of 0 that follows the 39 bytes of RR data is interpreted
+as an EOL. That is what we want to have happen. If there are multiple
+options in the option field of the IP header, and pad bytes are
+needed before the next option starts, the other special character
+NOP (&quot;no operation&quot;), with a value of 1, can be used.
+<P>
+<FONT SIZE=-1>In <a href="#fig_7_5">Figure 7.5</a>, SVR4 sets the TTL field of the echo request to
+32, and BSD/386 sets it to 255. (It prints as 254 since the router
+bsdi has already decremented it by one.) Newer systems are setting
+the TTL of ICMP messages to the maximum (255).
+<P>
+It turns out that of the three TCP/IP implementations used by
+the author, both BSD/386 and SVR4 support the record route option.
+That is, they correctly update the RR list when forwarding a datagram,
+and they correctly reflect the RR list from an incoming ICMP echo
+request to the outgoing ICMP echo reply. SunOS 4.1.3, however,
+updates the RR list when forwarding a datagram, but does not reflect
+the RR list. Solaris 2.x corrects this problem.</FONT>
+<H4>Abnormal Output</H4>
+<P>
+The following example was seen by the author and
+provides a starting point for our description of the ICMP redirect
+message in <A HREF="ip_rout.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm">Chapter 9</A>. We ping the host
+<TT>aix</TT> on the 140.252.1 subnet (accessible
+through the dialup SLIP connection on the host <TT>sun</TT>)
+with the record route option. We get the following output, when
+run on the host <TT>slip</TT>:
+<P>
+<TT>slip % <B>ping -R aix<BR>
+</B>PING aix (140.252.1.92): 56 data bytes<BR>
+64 bytes from 140.252.1.92: icmp_seq-0
+ttl=-251 time-650 ms<BR>
+RR:  bsdi (140.252.13.35)<BR>
+  sun (140.252.1.29)<BR>
+  netb (140.252.1.183)<BR>
+  aix (140.252.1.92)<BR>
+  gateway (140.252.1.4)   <I>why
+is this router used?<BR>
+</I>  netb (140.252.1.183)<BR>
+  sun (140.252.13.33)<BR>
+  bsdi (140.252.13.66)<BR>
+  slip (140.252.13.65)<BR>
+64 bytes from aix: icmp_seq=l ttl=251 time=610 ms (same route)
+<BR>
+64 bytes from aix: icmp_seq=2 ttl=251 time&quot;600 ms (same route)
+<BR>
+^?<BR>
+-- aix ping statistics -<BR>
+4 packets transmitted, 3 packets received, 25% packet loss<BR>
+round-trip min/avg/max = 600/620/650 ms</TT>
+<P>
+We could have run this example from the host <TT>bsdi</TT>.
+We chose to run it from slip to see all nine IP addresses in the
+RR list used.
+<P>
+The puzzle in this output is why the outgoing datagram
+(the ICMP echo request) went directly from <TT>netb</TT>
+to <TT>aix</TT>, but the return (the ICMP
+echo reply) went from <TT>aix</TT>, through
+the router <TT>gateway</TT>, before going
+to <TT>netb</TT>. What we're seeing here is
+a feature of IP routing that we describe below. Figure 7.6 shows
+the path of the datagrams.
+<P>
+<CENTER><a name="fig_7_6"><IMG SRC="f_7_6.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_7_6.gif"></a><BR>
+<B>Figure 7.6</B> <TT>ping</TT>
+with record route, showing IP routing feature.</CENTER>
+<P>
+The problem is that <TT>aix</TT>
+does not know to send IP datagrams destined for the subnet 140.252.13
+to <TT>netb</TT>. Instead, <TT>aix</TT>
+has a default entry in its routing table that tells it to send
+all datagrams to the router <TT>gateway</TT>
+if it doesn't have a particular route for the destination. The
+router <TT>gateway</TT> has more routing knowledge
+than any of the hosts on the 140.252.1 subnet. (There are more
+than 150 hosts on this Ethernet and instead of running a routing
+daemon on every one, each has a &quot;default&quot; entry that
+points to the router <TT>gateway</TT>.)
+<P>
+An unanswered question here is why doesn't <TT>gateway</TT>
+send an ICMP redirect (<A HREF="ip_rout.htm#9_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_5" >Section 9.5</A>)
+to <TT>aix</TT> to update its routing table?
+For some reason (perhaps that the datagram generating the redirect
+is an ICMP echo request message) the redirect is not generated.
+But if we use Telnet and connect to the daytime server on <TT>aix</TT>,
+the ICMP redirect is generated, and the routing table on <TT>aix</TT>
+is updated. If we then execute <TT>ping</TT>
+with the record route option enabled, the route shows that the
+datagrams go from <TT>netb</TT> to <TT>aix</TT>
+and back to <TT>netb</TT>, without the extra
+hop to the router <TT>gateway</TT>. We'll
+look at these ICMP redirects in more detail in <A HREF="ip_rout.htm#9_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_5" >Section 9.5</A>.
+<a name="7_4"><H3>7.4 IP Timestamp Option</H3></a>
+<P>
+The IP timestamp option is similar to the record
+route option. Figure 7.7 shows the format of the IP timestamp
+option (compare with <A HREF="javascript:if(confirm('http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/fig_7_3  \n\nThis file was not retrieved by Teleport Pro, because the server reports that this file cannot be found.  \n\nDo you want to open it from the server?'))window.location='http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/fig_7_3'" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/fig_7_3" >Figure 7.3</A>).
+<P>
+<CENTER><a name="fig_7_7"><IMG SRC="f_7_7.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_7_7.gif"></a><BR>
+<B>Figure 7.7</B> General format
+of timestamp option in IP header.</CENTER>
+<P>
+The <I>code</I> field is <TT>0x44</TT>
+for the timestamp option. The two fields <I>len</I> and <I>ptr</I>
+are the same as for the record route option: the total length
+of the option (normally 36 or 40) and a pointer to the next available
+entry (5,9, 13, etc.).
+<P>
+The next two fields are 4-bit values: OF is the <I>overflow</I>
+field and FL is a <I>flags</I> field. The operation of the timestamp
+option is driven by the <I>flags</I> field, as shown in Figure
+7.8.
+<CENTER><a name="fig_7_8"><TABLE BORDER=1></a>
+<TR><TD WIDTH=47><CENTER>flags</CENTER></TD>
+<TD WIDTH=536><CENTER>Description</CENTER></TD></TR>
+<TR><TD WIDTH=47><CENTER>0</CENTER></TD><TD WIDTH=536>Record only timestamps. This is what we show in
+<a href="#fig_7_7">Figure 7.7</a>.
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>1</CENTER></TD><TD WIDTH=536>Each router records its IP address and its timestamp. There is room for only four of these pairs in the options list.
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>3</CENTER></TD><TD WIDTH=536>The sender initializes the options list with up to four pairs of IP addresses and a 0 timestamp. A router records its timestamp only if the next IP address in the list matches the router's.
+</TD></TR>
+</TABLE>
+<B>Figure 7.8</B> Meaning of <I>the flags</I> value for
+timestamp option.</CENTER>
+<P>
+If a router can't add a timestamp because there's no room left,
+it just increments the <I>overflow</I> field.
+<P>
+The preferred value for the timestamps is the number of milliseconds
+past midnight, UTC, similar to the ICMP timestamp request and
+reply (<A HREF="icmp_int.htm#6_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#6_4" >Section 6.4</A>). If this format
+is not available to a router, it can insert whatever time representation
+that it uses, but must then turn on the high-order bit of the
+timestamp to indicate the nonstandard value.
+<P>
+Given the limitations that we encountered with the record route
+option, things get worse with the timestamp option. If we record
+both IP addresses and timestamps (a <I>flags</I> of 1), we can
+store only four of these pairs. Recording only timestamps is next
+to useless because we have no indication regarding which timestamp
+corresponds to which router (unless we have a fixed topology that
+never changes). A <I>flags</I> of 3 is better, as we can then
+select which routers insert their timestamp. A more fundamental
+problem is that you probably have no control over how accurate
+the timestamp is at any given router. This makes it fruitless
+to try to measure hop times between routers using this IP option.
+We'll see that the traceroute program (<A HREF="tracerou.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm" >Chapter 8</A>)
+provides a better way of measuring hop times between routers.
+<a name="7_5"><H3>7.5 Summary</H3></a>
+<P>
+The <TT>ping</TT> program is
+the basic connectivity test between two systems running TCP/IP.
+It uses the ICMP echo request and echo reply messages and does
+not use a transport layer (TCP or UDP). The Ping server is normally
+part of the kernel's ICMP implementation.
+<P>
+We looked at the normal <TT>ping</TT>
+output for a LAN, WAN, and SLIP links (dialup and hardwired),
+and performed some serial line throughput calculations for a dedicated
+SLIP link. <TT>ping</TT> also let us examine
+and use the IP record route option. We used this IP option to
+see how default routes are often used, and will return to this
+topic in <A HREF="ip_rout.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm" >Chapter 9</A>. We also looked
+at the IP timestamp option, but it is of limited practical use.
+<H4>Exercises</H4>
+<P>
+<B>7.1</B> Draw a time line for
+the ping output for the SLIP link in <A HREF="#7_2" >Section 7.2</A>.
+<P>
+<B>7.2</B> Calculate the RTT
+if the SLIP link between <TT>bsdi</TT> and
+<TT>slip</TT> is set to 9600 bits/sec. Assume
+the default of 56 bytes of data.
+<P>
+<B>7.3</B> The current BSD <TT>ping</TT>
+program allows us to specify a pattern for the data portion of
+the ICMP message. (The first 8 bytes of the data portion are not
+filled with the pattern, since the time at which the packet is
+sent is stored here.) If we specify a pattern of <TT>0xc0</TT>,
+recalculate the answer to the previous exercise. <I>(Hint:</I>
+Reread <A HREF="link_lay.htm#2_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_4" >Section 2.4</A>.)
+<P>
+<B>7.4</B> Does the use of compressed
+SLIP (CSLIP, <A HREF="link_lay.htm#2_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_5" >Section 2.5</A>) affect
+the ping times that we observed in <A HREF="#7_2" >Section 7.2</A>?
+<P>
+<B>7.5</B> Examine <A HREF="link_lay.htm#fig_2_4.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#fig_2_4.gif" >Figure 2.4</A>.
+Do you expect any difference between a ping of the loopback address,
+versus a ping of the host's Ethernet address?
+</BODY>
+</HTML>

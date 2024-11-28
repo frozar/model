@@ -1,0 +1,158 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Appendix B: Computer Clocks</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="B_0"><H1><I>Computer Clocks</I></H1></a>
+<P>
+Since most of the examples in this text measure a
+time interval, we need to describe in more detail the type of
+timekeeping used by current Unix systems. The following description
+applies to the systems being used for the examples in this book,
+and for most Unix systems. Additional details are given in Sections
+3.4 and 3.5 of [Leffler et al. 1989].
+<P>
+The hardware generates a clock interrupt at some
+frequency. For Sun SPARCs and Intel 80386s the interrupts occur
+every 10 ms.
+<P>
+It should be noted that most computers use an uncompensated
+crystal oscillator to generate these interrupts. As noted in Table
+7 of RFC 1305 [Mills 1992], you don't want to ask what the drift
+per day of such an oscillator is. This means few computers keep
+accurate time (i.e., the interrupts don't occur exactly every
+10 ms). A 0.01% tolerance gives an error of 8.64 seconds per day.
+To keep better time requires (1) a better oscillator, (2) an external
+time source with greater precision (e.g., the time source supplied
+by the Global Positioning Satellites), or (3) access across the
+Internet to systems with more precise clocks. The latter is provided
+by the Network Time Protocol, as described in detail in RFC 1305,
+which is beyond the scope of this book.
+<P>
+Another common source of time errors in Unix systems
+is that the 10-ms clock interrupts only cause the kernel to increment
+a variable that keeps track of the time. If the kernel loses an
+interrupt (i.e., it's too busy for the 10 ms between two consecutive
+interrupts), the clock will lose 10 ms. Lost interrupts of this
+type often cause Unix systems to lose time.
+<P>
+Even though the clock interrupts arrive approximately
+every 10 ms, newer systems such as SPARCs provide a higher resolution
+timer to measure time differences. <TT>tcpdump</TT>,
+through the NIT driver (described in <a href="append_a.htm#A_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_a.htm#A_0">Appendix A</a>) has access to
+this higher resolution timer. On SPARCs this timer provides microsecond
+resolution. Access to this higher resolution timer is also provided
+for user processes through the <TT>gettimeofday</TT>(2)
+function.
+<P>
+The author ran the following experiment. A program
+was run that called the <TT>gettimeofday</TT>
+function 10,000 times in a loop, saving each return value in an
+array. At the end of the loop the 9,999 differences were printed
+out. For a SPARC ELC the distribution of the differences are shown
+in Figure B.1.
+<P><CENTER>
+<a name="fig_B_1"><TABLE BORDER=1></a>
+<TR><TD WIDTH=95><CENTER>Microseconds</CENTER>
+</TD><TD WIDTH=57><CENTER>Count</CENTER></TD>
+</TR>
+<TR><TD WIDTH=95><CENTER>36
+<BR>
+37<BR>
+38<BR>
+39<BR>
+other</CENTER>
+</TD><TD WIDTH=57><CENTER>4,914<BR>
+4,831<BR>
+167<BR>
+8<BR>
+79</CENTER>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER>Figure B.1 Distribution of time required
+to call <TT>gettimeofday</TT> 10,000 times
+on SPARC ELC.</CENTER>
+<P>
+The total clock time required to run the program
+was 0.38 seconds, on an otherwise idle system. From this we can
+say that the time for the process to call <TT>gettimeofday</TT>
+is about 37 microseconds. Since the ELC is rated around 21 MIPS
+(million instructions per second), 37 microseconds corresponds
+to about 800 instructions. This seems reasonable for the kernel
+to handle a system call from a user process, execute the system
+call, copy back 8 bytes of results, and return to the user process.
+(MIPS ratings are questionable, and it's hard to try to measure
+instruction times on current systems. All we're trying to do is
+get a rough idea and see if the values make sense.)
+<P>
+From this simple experiment we can say that the values
+returned by <TT>gettimeofday</TT> do contain
+microsecond resolution.
+<P>
+If we run similar tests under SVR4/386, however,
+the results are different. This is because many 386 Unix systems,
+such as SVR4, only count the 10-ms clock interrupts, and don't
+try to provide any higher resolution. Figure B.2 is the distribution
+of the 9,999 differences under SVR4 on an 25 Mhz 80386.
+<P>
+<CENTER>
+<a name="fig_B_2"><TABLE BORDER=1></a>
+<TR><TD WIDTH=95><CENTER>Microseconds</CENTER>
+</TD><TD WIDTH=57><CENTER>Count</CENTER></TD>
+</TR>
+<TR><TD WIDTH=95><CENTER>0
+<BR>
+10,000</CENTER>
+</TD><TD WIDTH=57><CENTER>9,871<BR>
+128</CENTER>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure B.2</B> Distribution
+of time required to call <TT>gettimeofday</TT>
+10,000 times under SVR4/386.</CENTER>
+<P>
+These values are worthless, since the differences
+are normally less than 10 ms, which is treated as 0. About all
+we can do on these systems is measure the clock time on an idle
+system, and divide by the number of loops. This provides an upper
+bound, since it includes the time required to call <TT>printf</TT>
+9,999 times, writing the results to a file. (In the SPARC case.
+<a href="#fig_B_1">Figure B.1</a>, the differences did not include the <TT>printf</TT>
+times since all 10,000 values were first obtained, and then the
+results were printed.) Under SVR4 the clock time was 3.15 seconds,
+yielding 315 microseconds per system call. This system call time,
+about 8.5 times slower than the SPARC, seems about right.
+<P>
+BSD/386 Version 1.0 provides microsecond resolution
+similar to the SPARC. It reads the 8253 clock register and calculates
+the number of microseconds since the last clock tick. This is
+made available to processes that call <TT>gettimeofday</TT>
+and to kernel modules such as the BSD Packet Filter.
+<P>
+In relation to <TT>tcpdump</TT>
+these numbers mean that we can believe the millisecond and submillisecond
+values that are printed on the SPARC and BSD/386 systems, but
+the values printed by <TT>tcpdump</TT> under
+SVR4/386 will always be a multiple of 10 ms. For other programs
+that print round-trip times, such as <TT>ping</TT>
+(<a href="pingprog.htm#7_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm#7_0">Chapter 7</a>) and <TT>traceroute</TT> (<a href="tracerou.htm#8_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm#8_0">Chapter
+8</a>), on the SPARC and BSD/386 systems we can believe the millisecond
+values that are output, but the values printed under SVR4/386
+will always be multiples of 10. To measure anything like the ping
+time on a LAN, which we show in <a href="pingprog.htm#7_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm#7_0">Chapter 7</a> to be around 3 ms, requires
+running <TT>ping</TT> on the SPARC or BSD/386.
+<P>
+<FONT SIZE=-1>Some of the examples in this text were run under
+BSD/386 Version 0.9.4, which was similar to SVR4 in that it provided
+only 10-ms clock resolution. When we show <TT>tcpdump</TT>
+output from this system, we show only two numbers to the right
+of the decimal point, since that's the resolution provided.</FONT>
+</BODY>
+</HTML>

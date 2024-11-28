@@ -1,0 +1,451 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 16. BOOTP: Bootstrap Protocol</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="16_0"><H1><I>BOOTP: Bootstrap Protocol</I></H1></a>
+<a name="16_1"><H3>16.1 Introduction</H3></a>
+<P>
+In <a href="rarp_rev.htm#5_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/rarp_rev.htm#5_0">Chapter 5</a> we described how a diskless system,
+with no knowledge of its IP address, can determine its IP address
+using RARP when it is bootstrapped. There are two problems with
+RARP: (1) the only thing returned is the IP address, and (2) since
+RARP uses a link-layer broadcast, RARP requests are not forwarded
+by routers (necessitating an RARP server on every physical network).
+This chapter describes an alternative method for a diskless system
+to bootstrap itself, called the Bootstrap Protocol, or BOOTP.
+<P>
+BOOTP uses UDP and normally works in conjunction
+with TFTP (<a href="tftp_tri.htm#15_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tftp_tri.htm#15_0">Chapter 15</a>). RFC 951 [Croft and Gilmore 1985] is the
+official specification for BOOTP with clarifications given in
+RFC 1542 [Wimer 1993].
+<a name="16_2"><H3>16.2 BOOTP Packet Format</H3></a>
+<P>
+BOOTP requests and replies are encapsulated in UDP
+datagrams, as shown in Figure 16.1.
+<P>
+<CENTER><a name="fig_16_1"><img src="f_16_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_16_1.gif"></a><br>
+<B>Figure 16.1</B> Encapsulation
+of BOOTP requests and replies within a UDP datagram.</CENTER>
+<P>
+Figure 16.2 shows the format of the 300-byte BOOTP
+request and reply.
+<P>
+<CENTER>
+<a name="fig_16_2"><img src="f_16_2.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_16_2.gif"></a><br>
+<B>Figure 16.2</B> Format
+of BOOTP request and reply.</CENTER>
+<P>
+<I>Opcode</I> is 1 for a request
+and 2 for a reply. The <I>hardware type</I> field is 1 for a 10
+Mbits/sec Ethernet, the same value that is in the field of the
+same name in an ARP request or reply (<a href="arp_addr.htm#fig_4_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#fig_4_3">Figure 4.3</a>). Similarly,
+the <I>hardware address length is 6</I> bytes for an Ethernet.
+<P>
+The <I>hop count</I> is set to 0 by the client, but
+can be used by a proxy server (described in <a href="#16_5">Section 16.5</a>).
+<P>
+The <I>transaction ID</I> is a 32-bit integer set
+by the client and returned by the server. This lets the client
+match a response with a request. The client should set this to
+a random number for each request.
+<P>
+<I>Number of seconds</I> can
+be set by the client to the time since it started trying to bootstrap.
+The servers can look at this value, and perhaps a secondary server
+for a client won't respond until the number of seconds has exceeded
+some value, implying that the client's primary server is down.
+<P>
+If the client already knows its IP address, it fills
+in the <I>client IP address.</I> Otherwise, the client sets this
+to 0. In the latter case the server fills in <I>your IP address</I>
+with the client's IP address. The <I>server IP address</I> is
+filled in by the server. If a proxy server is used (<a href="#16_5">Section 16.5</a>),
+that proxy server fills in its <I>gateway IP address.</I>
+<P>
+The client must set its <I>client hardware address.</I>
+Although this is the same value as in the Ethernet header, by
+placing the field in the UDP datagram also, it is easily available
+to any user process (e.g., a BOOTP server) that receives the datagram.
+It is normally much harder (or impossible) for a process reading
+UDP datagrams to determine the fields in the Ethernet header that
+carried the UDP datagram.
+<P>
+The <I>server hostname</I> is a null terminated string
+that is optionally filled in by the server. The server can also
+fill in the <I>boot filename</I> with the fully qualified, null
+terminated pathname of a file to bootstrap from.
+<P>
+The <I>vendor-specific area</I> is used for various
+extensions to BOOTP. <a href="#16_6">Section 16.6</a> describes some of these extensions.
+<P>
+When a client is bootstrapping using BOOTP (an opcode
+of 1) the request is normally a link-layer broadcast and the destination
+IP address in the IP header is normally 255.255.255.255 (the limited
+broadcast. <a href="broadcas.htm#12_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm#12_2">Section 12.2</a>). The source IP address is often 0.0.0.0
+since the client does not know its own IP address yet. Recall
+from <a href="ip_inter.htm#fig_3_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_9">Figure 3.9</a> that 0.0.0.0 is a valid source IP address when
+a system is bootstrapping itself.
+<H4>Port Numbers</H4>
+<P>
+There are two well-known ports for BOOTP: 67 for
+the server and 68 for the client. This means the client does not
+choose an unused ephemeral port, but uses 68 instead. The reason
+two port numbers were chosen, instead of just one for the server,
+is that a server's reply can be (but normally isn't) broadcast.
+<P>
+If the server's reply were broadcast, and if the
+client were to choose an ephemeral port number, these broadcasts
+would also be received by other applications on other hosts that
+happen to be using the same ephemeral port number. Hence, it is
+considered bad form to broadcast to a random (i.e., ephemeral)
+port number.
+<P>
+If the client also used the server's well-known port
+(67) as its port, then all servers on the network are awakened
+to look at each broadcast reply. (If all the servers were awakened,
+they would examine the opcode, see that it's a reply and not a
+request, and go back to sleep.) Therefore the choice was made
+to have all clients use a single well-known port that differs
+from the server's well-known port.
+<P>
+If multiple clients are bootstrapping at the same
+time, and if the server broadcasts the replies, each client sees
+the replies intended for the other clients. The clients can use
+the transaction ID field in the BOOTP header to match replies
+with requests, or the client can examine the returned client hardware
+address.
+<a name="16_3"><H3>16.3 An Example</H3></a>
+<P>
+Let's look at an example of BOOTP when an X terminal
+is bootstrapped. Figure 16.3 shows the <TT>tcpdump</TT>
+output. (The client's name is <TT>proteus</TT>
+and the server's name is mercury. This <TT>tcpdump</TT>
+output was obtained on a different network from the one we've
+been using for all the other examples in the text.)
+<CENTER>
+<a name="fig_16_3"><TABLE></a>
+<TR><TD WIDTH=34>1</TD><TD WIDTH=212><TT>0.0</TT>
+</TD><TD WIDTH=510><TT>0.0.0.0.68 &gt; 255.255.255.255.bootp:
+<BR>
+secs: 100 ether 0:0:a7:0:62:7c</TT>
+</TD></TR>
+<TR><TD WIDTH=34>2</TD><TD WIDTH=212><TT>0.355446 (0.3554)</TT>
+</TD><TD WIDTH=510><TT>mercury.bootp &gt; proteus.68: secs:100 Y:proteus
+<BR>
+S: mercury G: mercury ether 0:0:a7:0:62:7c<BR>
+file &quot;/local/var/bootfiles/Xncdl9r&quot;</TT>
+</TD></TR>
+<TR><TD WIDTH=34>3</TD><TD WIDTH=212><TT>0.355447 (0.0000)</TT>
+</TD><TD WIDTH=510><TT>arp who-has proteus tell 0.0.0.0</TT></TD>
+</TR>
+<TR><TD WIDTH=34>4</TD><TD WIDTH=212><TT>0.851508 (0.4961)</TT>
+</TD><TD WIDTH=510><TT>arp who-has proteus tell 0.0.0.0</TT></TD>
+</TR>
+<TR><TD WIDTH=34>5</TD><TD WIDTH=212><TT>1.371070 (0..5196)</TT>
+</TD><TD WIDTH=510><TT>arp who-has proteus tell proteus</TT></TD>
+</TR>
+<TR><TD WIDTH=34>6</TD><TD WIDTH=212><TT>1.863226 (0..4922)</TT>
+</TD><TD WIDTH=510><TT>proteus.68 &gt; 255.255.255.255.bootp:
+<BR>
+secs: 100 ether 0:0:a7:0:62:7c</TT>
+</TD></TR>
+<TR><TD WIDTH=34>7</TD><TD WIDTH=212><TT>1.71038 (0..0078)</TT>
+</TD><TD WIDTH=510><TT>mercury.bootp &gt; proteus.68: secsilOO Y:proteus
+<BR>
+S: mercury G: mercury ether 0:0:a7:0;62:7c<BR>
+file &quot;/local/var/bootfiles/Xncdl9r&quot;</TT>
+</TD></TR>
+<TR><TD WIDTH=34>8</TD><TD WIDTH=212><TT>3.871038 (2.0000)</TT>
+</TD><TD WIDTH=510><TT>proteus.68 &gt; 255.255.255.255.bootp:<BR>
+secs: 1OO ether 0:0:a7:0:62:7c</TT>
+</TD></TR>
+<TR><TD WIDTH=34>9</TD><TD WIDTH=212><TT>3.878850 (0.0078)</TT>
+</TD><TD WIDTH=510><TT>mercury.bootp &gt; proteus. 68: secs: 100 Y:proteus
+<BR>
+S: mercury G: mercury ether 0:0:a7:0:62:7c<BR>
+file &quot;/local/var/bootfiles/Xncdl9r&quot;</TT>
+</TD></TR>
+<TR><TD WIDTH=34>10</TD><TD WIDTH=212><TT>5.925786 (2.0469)</TT>
+</TD><TD WIDTH=510><TT>arp who-has mercury tell proteus</TT></TD>
+</TR>
+<TR><TD WIDTH=34>11</TD><TD WIDTH=212><TT>5.929692 (0.0039)</TT>
+</TD><TD WIDTH=510><TT>arp reply mercury is-at 8:0:2b:28:eb:1d</TT>
+</TD></TR>
+<TR><TD WIDTH=34>12</TD><TD WIDTH=212><TT>5.929694 (0.0000)</TT>
+</TD><TD WIDTH=510><TT>proteus. tftp &gt; mercury, tftp: 37 RRQ
+<BR>
+&quot;/local/var/bootfiles/Xncdl9r&quot;</TT>
+</TD></TR>
+<TR><TD WIDTH=34>13</TD><TD WIDTH=212><TT>5.996094 (0.0664)</TT>
+</TD><TD WIDTH=510><TT>mercury.2352 &gt; proteus.tftp: 516 DATA block 1</TT>
+</TD></TR>
+<TR><TD WIDTH=34>14</TD><TD WIDTH=212><TT>6.000000 (0.0039)</TT>
+</TD><TD WIDTH=510><TT>proteus. tftp &gt; mercury. 2352: 4 ACK</TT>
+</TD></TR>
+<TR><TD WIDTH=34></TD><TD WIDTH=212></TD><TD WIDTH=510><TT><I>many lines deleted here</I></TT>
+</TD></TR>
+<TR><TD WIDTH=34>15</TD><TD WIDTH=212><TT>14.980472 (8.9805)</TT>
+</TD><TD WIDTH=510><TT>mercury.2352 &gt; proteus.tftp: 516 DATA block 2510</TT>
+</TD></TR>
+<TR><TD WIDTH=34>16</TD><TD WIDTH=212><TT>14.984376 (0.0039)</TT>
+</TD><TD WIDTH=510><TT>proteus. tftp &gt; mercury. 2352: 4 ACK</TT>
+</TD></TR>
+<TR><TD WIDTH=34>17</TD><TD WIDTH=212><TT>14.984377 (0.0000)</TT>
+</TD><TD WIDTH=510><TT>mercury. 2352 &gt; proteus. tftp: 228 DATA block 2464</TT>
+</TD></TR>
+<TR><TD WIDTH=34>18</TD><TD WIDTH=212><TT>14.984378 (0.0000)</TT>
+</TD><TD WIDTH=510><TT>proteus.tftp &gt; mercury.2352: 4 ACK</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 16.3</B> Example
+of BOOTP being used to bootstrap an X terminal.</CENTER>
+<P>
+In line 1 we see the client's request from 0.0.0.0.68,
+destined for 255.255.255.255.67. The only fields the client has
+filled in are the number of seconds and its Ethernet address.
+We'll see that this client always sets the number of seconds to
+100. The hop count and transaction ID are both 0 since they are
+not output by <TT>tcpdump</TT>. (A transaction
+ID of 0 means the client ignores the field, since it would set
+this field to a random number if it was going to verify the returned
+value in the response.)
+<P>
+Line 2 is the reply from the server. The fields filled
+in by the server are the client's IP address (which <TT>tcpdump</TT>
+prints as the name <TT>proteus</TT>), the
+server's IP address (printed as the name <TT>mercury</TT>),
+the IP address of a gateway (printed as the name <TT>mercury</TT>),
+and the name of a boot file.
+<P>
+After receiving the BOOTP reply, the client immediately
+issues an ARP request to see if anyone else on the network has
+its IP address. The name <TT>proteus</TT>
+following who-has corresponds to the target IP address (<a href="arp_addr.htm#fig_4_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#fig_4_3">Figure 4.3</a>),
+and the sender's IP address is set to 0.0.0.0. It sends
+another identical ARP request 0.5 second later, and another one
+0.5 second after that. In the third ARP request (line 5) it changes
+the sender's IP address to be its own IP address. This is a gratuitous
+ARP request (<a href="arp_addr.htm#4_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#4_7">Section 4.7</a>).
+<P>
+Line 6 shows that the client waits another 0.5 second
+and broadcasts another BOOTP request. The only difference between
+this request and line 1 is that now the client puts its own IP
+address in the IP header. It receives the same reply from the
+same server (line 7). The client waits another 2 seconds and broadcasts
+yet another BOOTP request (line 8) and receives the same reply
+from the same server.
+<P>
+The client then waits another 2 seconds and sends
+an ARP request for its server mercury (line 10). The ARP reply
+is received and the client immediately issues a TFTP read request
+for its boot file (line 12). What follows are 2464 TFTP data packets
+and acknowledgments. The amount of data transferred is 512 x 2463+224
+= 1,261,280 bytes. This loads the operating system into the X
+terminal. We have deleted most of the TFTP lines from <a href="#fig_16_3">Figure 16.3</a>.
+<P>
+One thing to notice, when comparing this TFTP exchange
+with <a href="tftp_tri.htm#fig_15_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tftp_tri.htm#fig_15_2">Figure 15.2</a>, is that here the client uses the TFTP well-known
+port (69) for the entire transfer. Since one of the two partners
+is using port 69, <TT>tcpdump</TT> knows that
+the packets are TFTP messages, so it is able to interpret each
+packet using the TFTP protocol. This is why <a href="#fig_16_3">Figure 16.3</a> indicates
+which packets contain data, which contain acknowledgments, and
+what the block number is for each packet. We didn't get this additional
+information in <a href="tftp_tri.htm#fig_15_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tftp_tri.htm#fig_15_2">Figure 15.2</a> because neither end was using TFTP's
+well-known port for the data transfer. Normally the TFTP client
+cannot use TFTP's well-known port, since that port is used by
+the server on a multiuser system. But here the system is being
+bootstrapped, so a TFTP server is not provided, allowing the client
+to use the port for the duration of the transfer. This also implies
+that the TFTP server on mercury doesn't care what the client's
+port number is-it sends the data to the client's port, whatever
+that happens to be.
+<P>
+From <a href="#fig_16_3">Figure 16.3</a> we see that 1,261,280 bytes are
+transferred in 9 seconds. This is a rate of about 140,000 bytes
+per second. While this is slower than most FTP file transfers
+across an Ethernet, it is not that bad for a simple stop-and-wait
+protocol such as TFTP.
+<P>
+What follows as this X terminal is bootstrapped are
+additional TFTP transfers of the terminal's font files, some DNS
+name server queries, and then the initialization of the X protocol.
+The total time in <a href="#fig_16_3">Figure 16.3</a> was almost 15 seconds, and another
+6 seconds is taken for the remaining steps. This gives a total
+of 21 seconds to bootstrap the diskless X terminal.
+<a name="16_4"><H3>16.4 BOOTP Server Design</H3></a>
+<P>
+The BOOTP client is normally provided in read-only
+memory on the diskless system. It is interesting to see how the
+server is normally implemented.
+<P>
+First, the server reads UDP datagrams from its well-known
+port (67). Nothing special is required. This differs from an RARP
+server (<a href="rarp_rev.htm#5_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/rarp_rev.htm#5_4">Section 5.4</a>), which we said had to read Ethernet frames
+with a type field of &quot;RARP request.&quot; The BOOTP protocol
+also made it easy for the server to obtain the client's hardware
+address, by placing it into the BOOTP packet (<a href="#fig_16_2">Figure 16.2</a>).
+<P>
+An interesting problem arises: how can the server
+send a response directly back to the client? The response is a
+UDP datagram, and the server knows the client's IP address (probably
+read from a configuration file on the server). But if the client
+sends a UDP datagram to that IP address (the normal way UDP output
+is handled), the server's host will probably issue an ARP request
+for that IP address. But the client can't respond to the ARP request
+since it doesn't know its IP address yet! (This is called the
+&quot;chicken and egg&quot; issue in RFC 951.)
+<P>
+There are two solutions. The first, commonly used
+by Unix servers, is tor the server to issue an <TT>ioctl</TT>(2)
+request to the kernel, to place an entry into the ARP cache for
+this client. (This is what the <TT>arp -s</TT>
+command does. <a href="arp_addr.htm#4_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#4_8">Section 4.8</a>.) The server can do this since it knows
+the client's hardware address and IP address. This means that
+when the server sends the UDP datagram (the BOOTP reply), the
+server's ARP module will find the client's IP address in the ARP
+cache.
+<P>
+An alternative solution is tor the server to broadcast
+the BOOTP reply, instead of sending it directly to the client.
+Since reducing the number of broadcasts on a network is always
+desirable, this solution should be used only if the server cannot
+make an entry into its ARP cache. Normally it requires superuser
+permission to make an entry into the ARP cache, requiring a broadcast
+reply if the server is nonprivileged.
+<a name="16_5"><H3>16.5 BOOTP Through a Router</H3></a>
+<P>
+We said in <a href="rarp_rev.htm#5_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/rarp_rev.htm#5_4">Section 5.4</a> that one of the drawbacks
+of RARP is that it uses a link-layer broadcast, which is normally
+not forwarded by a router. This required an RARP server on each
+physical network. BOOTP can be used through a router, if supported
+by the router. (Most major router vendors do support this feature.)
+<P>
+This is mainly intended for diskless routers, because
+if a multiuser system with a disk is used as a router, it can
+probably run a BOOTP server itself. Alternatively, the common
+Unix BOOTP server (Appendix F) supports this relay mode, but again,
+if you can run a BOOTP server on the physical network, there's
+normally no need to forward the requests to yet another server
+on another network.
+<P>
+What happens is that the router (also called the
+&quot;BOOTP relay agent&quot;) listens tor BOOTP requests on the
+server's well-known port (67). When a request is received, the
+relay agent places its IP address into the <I>gateway IP address</I>
+field in the BOOTP request, and sends the request to the real
+BOOTP server. (The address placed by the relay agent into the
+gateway field is the IP address of the interface on which the
+request was received.) The relay agent also increments the hops
+field by one. (This is to prevent infinite loops in case the request
+is reforwarded. RFC 951 mentions that the request should probably
+be thrown away if the hop count reaches 3.) Since the outgoing
+request is a unicast datagram (as opposed to the original client
+request that was broadcast), it can follow any route to the real
+BOOTP server, passing through other routers. The real server gets
+the request, forms the BOOTP reply, and sends it back to the relay
+agent, not the client. The real server knows that the request
+has been forwarded, since the gateway field in the request is
+nonzero. The relay agent receives the reply and sends it to the
+client.
+<a name="16_6"><H3>16.6 Vendor-Specific Information</H3></a>
+<P>
+In <a href="#fig_16_2">Figure 16.2</a> we showed a 64-byte vendor-specific
+area, RFC 1533 [Alexander and Droms 1993] defines the format of
+this area. This area contains optional information for the server
+to return to the client.
+<P>
+If information is provided, the first 4 bytes of
+this area are set to the IP address 99.130.83.99. This is called
+the <I>magic cookie</I> and means there is information in the
+area.
+<P>
+The rest of this area is a list of items. Each item
+begins with a 1-byte tag field. Two of the items consist of just
+the tag field: a tag of 0 is a pad byte (to force following items
+to preferred byte boundaries), and a tag of 255 marks the end
+of the items. Any bytes remaining in this area after the first
+end byte should be set to this value (255).
+<P>
+Other than these two 1-byte items, the remaining
+items consist of a single length byte, followed by the information.
+Figure 16.4 shows the format of some of the items in the vendor-specific
+area.
+<P>
+<CENTER><a name="fig_16_4"><img src="f_16_4.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_16_4.gif"></a><br>
+<B>Figure 16.4</B> Format
+of some of the items in the vendor-specific area.</CENTER>
+<P>
+The subnet mask and time value are really fixed-length
+items because their values always occupy 4 bytes. The time offset
+is the number of seconds since midnight January 1,1900, UTC.
+<P>
+The gateway item is an example of a variable-length
+item. The length is always a multiple of 4, and the values are
+the 32-bit IP addresses of one or more gateways (routers) for
+the client to use. The first one returned must be the preferred
+gateway.
+<P>
+There are 14 other items defined in RFC 1533. Probably
+the most important is the IP address of a DNS name server, with
+a tag value of 6. Other items return the IP address of a printer
+server, the IP address of a time server, and so on. Refer to the
+RFC for all the details.
+<P>
+Returning to our example in <a href="#fig_16_3">Figure 16.3</a>, we never
+saw an ICMP address mask request (<a href="icmp_int.htm#6_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#6_3">Section 6.3</a>) that would have
+been broadcast by the client to find its subnet mask. Although
+it wasn't output by <TT>tcpdump</TT>, we can
+probably assume that the client's subnet mask was returned in
+the vendor-specific area of the BOOTP reply.
+<P>
+<FONT SIZE=-1>The Host Requirements RFC recommends that a system
+using BOOTP obtain its subnet mask using BOOTP, not ICMP.</FONT>
+<P>
+The size of the vendor-specific area is limited to
+64 bytes. This is a constraint for some applications. A new protocol
+named DHCP (Dynamic Host Configuration Protocol) is built on,
+but replaces, BOOTP. DHCP extends this area to 312 bytes and is
+defined in RFC 1541 [Droms 1993].
+<a name="16_7"><H3>16.7 Summary</H3></a>
+<P>
+BOOTP uses UDP and is intended as an alternative
+to RARP for bootstrapping a diskless system to find its IP address.
+BOOTP can also return additional information, such as the IP address
+of a router, the client's subnet mask, and the IP address of a
+name server.
+<P>
+Since BOOTP is used in the bootstrap process, a diskless
+system needs the following protocols implemented in read-only
+memory: BOOTP, TFTP, UDP, IP, and a device driver for the local
+network.
+<P>
+The implementation of a BOOTP server is easier than
+an RARP server, since BOOTP requests and replies are in UDP datagrams,
+not special link-layer frames. A router can also serve as a proxy
+agent for a real BOOTP server, forwarding client requests to the
+real server on a different network.
+<H4>Exercises</H4>
+<P>
+<B>16.1</B> We've said that one
+advantage of BOOTP over RARP is that BOOTP can work through routers,
+whereas RARP, which is a link-layer broadcast, cannot. Yet in
+<a href="#16_5">Section 16.5</a> we had to define special ways for BOOTP to work through
+a router. What would happen if a capability were added to routers
+allowing them to forward RARP requests?
+<P>
+<B>16.2</B> We said that a BOOTP
+client must use the transaction ID to match responses with requests,
+in case there are multiple clients bootstrapping at the same time
+from a server that broadcasts replies. But in <a href="#fig_16_3">Figure 16.3</a> the
+transaction ID is 0, implying that this client ignores the transaction
+ID. How do you think this client matches the responses with its
+requests?
+</BODY>
+</HTML>

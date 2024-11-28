@@ -1,0 +1,1631 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 21. TCP Timeout and Retransmission</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="21_1"><H1><I>TCP Timeout and Retransmission</I></H1></a>
+<a name="21_1"><H3>21.1 Introduction</H3></a>
+<P>
+TCP provides a reliable transport layer. One of the
+ways it provides reliability is for each end to acknowledge the
+data it receives from. the other end. But data segments and acknowledgments
+can get lost. TCP handles this by setting a timeout when it sends
+data, and if the data isn't acknowledged when the timeout expires,
+it retransmits the data. A critical element of any implementation
+is the timeout and retransmission strategy. How is the timeout
+interval determined, and how frequently does a retransmission
+occur?
+<P>
+We've already seen two examples of timeout and retransmission:
+(1) In the ICMP port unreachable example in <a href="icmp_int.htm#6_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#6_5">Section 6.5</a> we saw
+the TFTP client using UDP employing a simple (and poor) timeout
+and retransmission strategy: it assumed 5 seconds was an adequate
+timeout period and retransmitted every 5 seconds. (2) In the ARP
+example to a nonexistent host (<a href="arp_addr.htm#4_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#4_5">Section 4.5</a>), we saw that when
+TCP tried to establish the connection it retransmitted its SYN
+using a longer delay between each retransmission. TCP manages
+four different timers for each connection.
+<OL>
+<LI>A <I>retransmission</I> timer is used when expecting
+an acknowledgment from the other end. This chapter looks at this
+timer in detail, along with related issues such as congestion
+avoidance.
+<LI>A <I>persist</I> timer keeps window size information
+flowing even if the other end closes its receive window. <a href="tcp_pers.htm#22_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_pers.htm#22_0">Chapter 22</a>
+describes this timer.
+<LI>A <I>keepalive</I> timer detects when the other
+end on an otherwise idle connection crashes or reboots. <a href="tcp_keep.htm#23_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_keep.htm#23_0">Chapter 23</a>
+ describes this timer.
+<LI>A <I>2MSL</I> timer measures the time a connection
+has been in the TIME_WAIT state. We described this state in
+<a href="tcp_conn.htm#18_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#18_6">Section 18.6</a>.
+</OL>
+<P>
+In this chapter we start with a simple example of
+TCP's timeout and retransmission and then move to a larger example
+that lets us look at all the details involved in TCP's timer management.
+We look at how typical implementations measure the round-trip
+time of TCP segments and how TCP uses these measurements to estimate
+the retransmission timeout of the next segment it transmits. We
+then look at TCP's congestion avoidance-what TCP does when packets
+are lost-and follow through an actual example where packets are
+lost. We also look at the newer fast retransmit and fast recovery
+algorithms, and see how they let TCP detect lost packets faster
+than waiting for a timer to expire.
+<a name="21_2"><H3>21.2 Simple Timeout and Retransmission Example</H3></a>
+<P>
+Let's first look at the retransmission strategy used
+by TCP. We'll establish a connection, send some data to verify
+that everything is OK, disconnect the cable, send some more data,
+and watch what TCP does:
+<P>
+<TABLE >
+<TR><TD WIDTH=295><TT>bsdi % <B>telnet svr4 discard</B></TT>
+</TD><TD WIDTH=295></TD></TR>
+<TR><TD WIDTH=295><TT>Trying 140.252.13.34...</TT></TD><TD WIDTH=295>
+</TD></TR>
+<TR><TD WIDTH=295><TT>Connected to svr4.</TT></TD><TD WIDTH=295>
+</TD></TR>
+<TR><TD WIDTH=295><TT>Escape character is '^]'.</TT></TD><TD WIDTH=295>
+</TD></TR>
+<TR><TD WIDTH=295><TT><B>Hello, world</B></TT>
+</TD><TD WIDTH=295><I>send this line normally</I>
+</TD></TR>
+<TR><TD WIDTH=295><TT><B>and hi</B></TT>
+</TD><TD WIDTH=295><I>disconnect cable before sending this line</I>
+</TD></TR>
+<TR><TD WIDTH=295><TT>Connection closed by foreign host.</TT>
+</TD><TD WIDTH=295><I>output whenTCP gives up after 9 minutes</I>
+</TD></TR>
+</TABLE>
+<P>
+Figure 21.1 shows the <TT>tcpdump</TT>
+output. (We have removed all the type-of-service information that
+is set by <TT>bsdi</TT>.)
+<P><CENTER>
+<a name="fig_21_1"><TABLE></a>
+<TR><TD WIDTH=36>1</TD><TD WIDTH=198><TT>0.0</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: S 1747921409:1747921409(0)
+<BR>
+win 4096 &lt;mss 1024&gt;</tt>
+</TD></TR>
+<TR><TD WIDTH=36>2</TD><TD WIDTH=198><TT>0.004811 ( 0.0048)</TT>
+</TD><TD WIDTH=500><tt>svr4.discard<B> &gt;</B> bsdi.1029: S 3416685569:3416685569(0)
+<BR>
+ack 1747921410 win 4096 &lt;mss 1024&gt;</tt>
+</TD></TR>
+<TR><TD WIDTH=36>3</TD><TD WIDTH=198><TT>0.006441 ( 0.0016)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029<B> &gt;</B> svr4.discard: . ack 1 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>4</TD><TD WIDTH=198><TT>6.102290 ( 6.0958)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: P 1:15(14) ack 1 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>5</TD><TD WIDTH=198><TT>6.259410 ( 0.1571)</TT>
+</TD><TD WIDTH=500><tt>svr4.discard &gt; bsdi.1029: . ack 15 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>6</TD><TD WIDTH=198><TT>24.480158 (18.2207)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: P 15:23(8) ack 1 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>7</TD><TD WIDTH=198><TT>25.493733 ( 1.0136)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: P 15:23(8) ack 1 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>8</TD><TD WIDTH=198><TT>28.493795 ( 3.0001)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: P 15:23(8) ack 1 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>9</TD><TD WIDTH=198><TT>34.493971 ( 6.0002)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: P 15:23(8) ack 1 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>10</TD><TD WIDTH=198><TT>46.484427 (11.9905)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: P 15:23(8) ack 1 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>11</TD><TD WIDTH=198><TT>70.485105 (24.0007)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: P 15:23(8) ack 1 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>12</TD><TD WIDTH=198><TT>118.486408 (48.0013)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: P 15:23(8) ack 1 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>13</TD><TD WIDTH=198><TT>182.488164 (64.0018)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: P 15:23(8) ack 1 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>14</TD><TD WIDTH=198><TT>246.489921 (64.0018)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: P 15:23(8) ack 1 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>15</TD><TD WIDTH=198><TT>310.491678 (64.0018)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: P 15:23(8) ack 1 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>16</TD><TD WIDTH=198><TT>374.493431 (64.0018)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: P 15:23(8) ack 1 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>17</TD><TD WIDTH=198><TT>438.495196 (64.0018)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: P 15:23(8) ack 1 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>18</TD><TD WIDTH=198><TT>502.486941 (63.9917)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: P 15:23(8) ack 1 win 4096</tt>
+</TD></TR>
+<TR><TD WIDTH=36>19</TD><TD WIDTH=198><TT>566.488478 (64.0015)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1029 &gt; svr4.discard: R 23:23(0) ack 1 win 4096</tt>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 21.1</B> Simple
+example of TCP's timeout and retransmission.</CENTER>
+<P>
+Lines 1, 2, and 3 correspond to the normal TCP connection
+establishment. Line 4 is the transmission of &quot;hello, world&quot;
+(12 characters plus the carriage return and linefeed), and line
+5 is its acknowledgment. We then disconnect the Ethernet cable
+from svr4.
+<P>
+Line 6 shows &quot;and hi&quot; being sent. Lines
+7-18 are 12 retransmissions of that segment, and line 19 is when
+the sending TCP finally gives up and sends a reset.
+<P>
+Examine the time difference between successive retransmissions:
+with rounding they occur 1, 3, 6, 12, 24, 48, and then 64 seconds
+apart. We'll see later in this chapter that the first timeout
+is actually set for 1.5 seconds after the first transmission.
+(The reason it occurs 1.0136 seconds after the first transmission,
+and not exactly 1.5 seconds, was explained in <a href="tcp_conn.htm#fig_18_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#fig_18_7">Figure 18.7</a>.) After
+this the timeout value is doubled for each retransmission, with
+an upper limit of 64 seconds.
+<P>
+This doubling is called an <I>exponential backoff.</I>
+Compare this to the TFTP example in <a href="icmp_int.htm#6_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#6_5">Section 6.5</a>, where every retransmission
+occurred 5 seconds after the previous.
+<P>
+The time difference between the first transmission
+of the packet (line 6 at time 24.480) and the reset (line 19 at
+time 566.488) is about 9 minutes. Modem TCP's are persistent when
+trying to send data!
+<P>
+<FONT SIZE=-1>On most implementations this total timeout value
+is not tunable. Solaris 2.2 allows the administrator to change
+this (the <tt>tcp_ip_abort_interval</tt> variable in <a href="append_e.htm#E_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_e.htm#E_4">Section E.4</a>) and its
+default is only 2 minutes, not the more common 9 minutes.</FONT>
+<a name="21_3"><H3>21.3 Round-Trip Time Measurement</H3></a>
+<P>
+Fundamental to TCP's timeout and retransmission is
+the measurement of the round-trip time (RTT) experienced on a
+given connection. We expect this can change over time, as routes
+might change and as network traffic changes, and TCP should track
+these changes and modify its timeout accordingly.
+<P>
+First TCP must measure the RTT between sending a
+byte with a particular sequence number and receiving an acknowledgment
+that covers that sequence number. Recall from the <a href="tcp_bulk.htm#20_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#20_0">previous chapter</a>
+that normally there is not a one-to-one correspondence between
+data segments and ACKs. In <a href="tcp_bulk.htm#fig_20_1" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#fig_20_1">Figure 20.1</a> this means that one RTT
+that can be measured by the sender is the time between the transmission
+of segment 4 (data bytes 1-1024) and the reception of segment
+7 (the ACK of bytes 1-2048), even though this ACK is for an additional
+1024 bytes. We'll use <I>M</I> to denote the measured RTT.
+<P>
+The original TCP specification had TCP update a smoothed
+RTT estimator (called <I>R)</I> using the low-pass filter
+<P>
+<FONT SIZE=+1><CENTER><I>R</i> &lt;- <FONT FACE="Symbol">a</FONT>R +
+(1-<FONT FACE="Symbol">a</FONT>)<i>M</I></CENTER></FONT>
+<P>
+where <FONT FACE="Symbol">a</FONT> is a smoothing factor with a recommended
+value of 0.9. This smoothed RTT is updated every time a new measurement
+is made. Ninety percent of each new estimate is from the previous
+estimate and 10% is from the new measurement.
+<P>
+Given this smoothed estimator, which changes as the
+RTT changes, RFC 793 recommended the retransmission timeout value
+(RTO) be set to
+<P>
+<FONT SIZE=+1><CENTER><I>RTO = R</i><FONT FACE="Symbol">b</FONT></CENTER></FONT>
+<P>
+where <FONT FACE="Symbol">b</FONT> is a delay variance factor with a
+recommended value of 2.
+<P>
+<FONT SIZE=-1>[Jacobson 1988] details the problems with this approach,
+basically that it can't keep up with wide fluctuations in the
+RTT, causing unnecessary retransmissions. As Jacobson notes, unnecessary
+retransmissions add to the network load, when the network is already
+loaded. It is the network equivalent of pouring gasoline on a
+fire.</FONT>
+<P>
+What's needed is to keep track of the variance in
+the RTT measurements, in addition to the smoothed RTT estimator.
+Calculating the <I>RTO</I> based on both the mean and variance
+provides much better response to wide fluctuations in the round-trip
+times, than just calculating the RTO as a constant multiple of
+the mean. Figures 5 and 6 in [Jacobson 1988] show a comparison
+of the RFC 793 <I>RTO</I> values for some actual round-trip times,
+versus the <I>RTO</I> calculations we show below, which take into
+account the variance of the round-trip times.
+<P>
+As described by Jacobson, the mean deviation is a
+good approximation to the standard deviation, but easier to compute.
+(Calculating the standard deviation requires a square root.) This
+leads to the following equations that are applied to each RTT
+measurement <I>M.</I>
+<P>
+<FONT SIZE=+1>
+<CENTER><I>Err = M - A<BR>
+A</I> &lt;- <I>A</i> + <i>gErr<BR>
+D</I> &lt;- <I>D</i>+ <i>h</I>(|<I>Err</i>| - <i>D</i>)<BR>
+<i>RTO = A</i> + 4<i>D</i></CENTER></FONT>
+<P>
+where <I>A</I> is the smoothed RTT (an estimator
+of the average) and <I>D</I> is the smoothed mean deviation. <I>Err</I>
+is the difference between the measured value just obtained and
+the current RTT estimator. Both <I>A</I> and <I>D</I> are used
+to calculate the next retransmission timeout (RTO). The gain <I>g</I>
+is for the average and is set to 1/8 (0.125). The gain for the
+deviation is <I>h</I> and is set to 0.25. The larger gain for
+the deviation makes the <I>RTO</I> go up faster when the RTT changes.
+<P>
+<FONT SIZE=-1>[Jacobson 1988] specified 2D in the calculation of
+RTO, but after further research, [Jacobson 1990c] changed the
+value to 4D, which is what appeared in the BSD Net/1 implementation.</FONT>
+<P>
+Jacobson specifies a way to do all these calculations
+using integer arithmetic, and this is the implementation typically
+used. (That's one reason <I>g, h,</I> and the multiplier 4 are
+all powers of 2, so the operations can be done using shifts instead
+of multiplies and divides.)
+<P>
+Comparing the original method with Jacobson's, we
+see that the calculations of the smoothed average are similar
+(<FONT FACE="Symbol">a</FONT> is one minus the gain <I>g</I>) but a different gain
+is used. Also, Jacobson's calculation of the <I>RTO</I> depends
+on both the smoothed RTT and the smoothed mean deviation, whereas
+the original method used a multiple of the smoothed RTT.
+<P>
+We'll see how these estimators are initialized in
+the <a href="#21_4">next section</a>, when we go through an example.
+<H4>Karn's Algorithm</H4>
+<P>
+A problem occurs when a packet is retransmitted.
+Say a packet is transmitted, a timeout occurs, the <I>RTO</I>
+is backed off as shown in <a href="#21_2">Section 21.2</a>, the packet is retransmitted
+with the longer <I>RTO,</I> and an acknowledgment is received.
+Is the ACK for the first transmission or the second? This is called
+the <I>retransmission ambiguity problem.</I>
+<P>
+[Karn and Partridge 1987] specify that when a timeout
+and retransmission occur, we cannot update the RTT estimators
+when the acknowledgment for the retransmitted data finally arrives.
+This is because we don't know to which transmission the ACK corresponds.
+(Perhaps the first transmission was delayed and not thrown away,
+or perhaps the ACK of the first transmission was delayed.)
+<P>
+Also, since the data was retransmitted, and the exponential
+backoff has been applied to the RTO, we reuse this backed off
+RTO for the next transmission. Don't calculate a new RTO until
+an acknowledgment is received for a segment that was not retransmitted.
+<a name="21_4"><H3>21.4 An RTT Example</H3></a>
+<P>
+We'll use the following example throughout this chapter
+to examine various implementation details of TCP's timeout and
+retransmission, slow start, and congestion avoidance.
+<P>
+Using our <TT>sock</TT> program,
+32768 bytes of data are sent from our host <TT>slip</TT>
+to the discard service on the host <TT>vangogh.cs.berkeley.edu</TT>
+using the command:
+<P>
+<TT>slip % <B>sock -D -i -n32
+vangogh.cs.berkeley.edu discard</B></TT>
+<P>
+From the figure on the inside front cover, <TT>slip</TT>
+is connected from the 140.252.1 Ethernet by two SLIP links, and
+from there across the Internet to the destination. With two 9600
+bits/sec SLIP links, we expect some measurable delays.
+<P>
+This command performs 32 1024-byte writes, and since
+the MTU between <TT>slip</TT> and <TT>bsdi</TT>
+is 296, this becomes 128 segments, each with 256 bytes of user
+data. The total time for the transfer is about 45 seconds and
+we see one timeout and three retransmissions.
+<P>
+While this transfer was running we ran <TT>tcpdump</TT>
+on the host <TT>slip</TT> and captured all
+the segments sent and received. Additionally we specified the
+<TT>-D</TT> option to turn on socket debugging
+(<a href="append_a.htm#A_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_a.htm#A_6">Section A.6</a>). We were then able to run a modified version of
+the <TT>trpt</TT>(8) program to print numerous
+variables in the connection control block relating to the round-trip
+timing, slow start, and congestion avoidance.
+<P>
+Given the volume of trace output, we can't show it
+all. Instead we'll look at pieces as we proceed through the chapter.
+Figure 21.2 shows the transfer of data and acknowledgments for
+the first 5 seconds. We have modified this output slightly from
+our previous display of <TT>tcpdump</TT> output.
+Although we only measure the times that the packet is sent or
+received on the host running <TT>tcpdump</TT>,
+in this figure we want to show that the packets are crossing in
+the network (which they are, since this LAN connection is not
+like a shared Ethernet), and show when the receiving host is probably
+generating the ACKs. (We have also removed all the window advertisements
+from this figure, <TT>slip</TT> always advertised
+a window of 4096, and <TT>vangogh</TT> always
+advertised a window of 8192.)
+<P>
+<CENTER><a name="fig_21_2"><img src="f_21_2.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_21_2.gif"></a><br>
+<B>Figure 21.2</B> Packet
+exchange and RTT measurement.</CENTER>
+<P>
+Also note in this figure that we have numbered the
+segments 1-13 and 15, in the order in which they were sent or
+received on the host <TT>slip</TT>. This correlates
+with the <TT>tcpdump</TT>
+output that was collected on this host.
+<H4>Round-Trip Time Measurements</H4>
+<P>
+Three curly braces have been placed on the left side
+of the time line indicating which segments were timed for RTT
+calculations. Not all data segments are timed.
+<P>
+Most Berkeley-derived implementations of TCP measure
+only one RTT value per connection at any time. If the timer for
+a given connection is already in use when a data segment is transmitted,
+that segment is not timed.
+<P>
+The timing is done by incrementing a counter every
+time the 500-ms TCP timer routine is invoked. This means that
+a segment whose acknowledgment arrives 550 rns after the segment
+was sent could end up with either a 1 tick RTT (implying 500 ms)
+or a 2 tick RTT (implying 1000 ms).
+<P>
+In addition to this tick counter for each connection,
+the starting sequence number of the data in the segment is also
+remembered. When an acknowledgment that includes this sequence
+number is received, the timer is turned off. If the data was not
+retransmitted when the ACK arrives, the smoothed RTT and smoothed
+mean deviation are updated based on this new measurement.
+<P>
+The timer for the connection in <a href="#fig_21_2">Figure 21.2</a> is started
+when segment 1 is transmitted, and turned off when its acknowledgment
+(segment 2) arrives. Although its RTT is 1.061 seconds (from the
+<TT>tcpdump</TT> output), examining the socket
+debug information shows that three of TCP's clock ticks occurred
+during this period, implying an RTT of 1500 ms.
+<P>
+The next segment timed is number 3. When segment
+4 is transmitted 2.4 ms later, it cannot be timed, since the timer
+for this connection is already in use. When segment 5 arrives,
+acknowledging the data that was being timed, its RTT is calculated
+to be 1 tick (500 ms), even though we see that its RTT is 0.808
+seconds from the <TT>tcpdump</TT> output.
+<P>
+The timer is started again when segment 6 is transmitted,
+and turned off when its acknowledgment (segment 10) is received
+1.015 seconds later. The measured RTT is 2 clock ticks. Segments
+7 and 9 cannot be timed, since the timer is already being used.
+Also, when segment 8 is received (the ACK of 769), nothing is
+updated since the acknowledgment was not for bytes being timed.
+<P>
+Figure 21.3 shows the relationship in this example
+between the actual RTTs that we can determine from the <TT>tcpdump</TT>
+output, and the counted clock ticks.
+<P>
+<CENTER><a name="fig_21_3"><img src="f_21_3.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_21_3.gif"></a><br>
+<B>Figure 21.3</B> RTT
+measurements and clock ticks.</CENTER>
+<P>
+On the top we show the clock ticks, every 500 ms.
+On the bottom we show the times output by <TT>tcpdump</TT>,
+and when the timer for the connection is turned on and off. We
+know that 3 ticks occur between sending segment 1 and receiving
+segment 2, 1.061 seconds later, so we assume the first tick occurs
+at time 0.03. (The first tick must be between 0.00 and 0.061.)
+The figure then shows how the second measured RTT was counted
+as 1 tick, and the third as 2 ticks.
+<P>
+In this complete example, 128 segments were transmitted,
+and 18 RTT samples were collected. Figure 21.4 shows the measured
+RTT (taken from the <TT>tcpdump</TT> output)
+along with the <I>RTO</I> used by TCP for the timeout (taken from
+the socket debug output). The x-axis starts at time 0 in Figure
+21.2, when the first data segment is transmitted, not when the
+first SYN is transmitted.
+<P>
+<CENTER><B><a name="fig_21_4"><img src="f_21_4.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_21_4.gif"></a><br>
+Figure 21.4</B> Measured
+RTT and TCP's calculated RTO for example.</CENTER>
+<P>
+The first three data points for the measured RTT
+correspond to the 3 RTTs that we show in <a href="#fig_21_2">Figure 21.2</a>. The gaps
+in the RTT samples around times 10, 14, and 21 are caused by retransmissions
+that took place there (which we'll show later in this chapter).
+Kam's algorithm prevents us from updating our estimators until
+another segment is transmitted and acknowledged. Also note that
+for this implementation, TCP's calculated <I>RTO</I> is always
+a multiple of 500 ms.
+<H4>RTT Estimator Calculations</H4>
+<P>
+Let's see how the RTT estimators (the smoothed RTT
+and the smoothed mean deviation) are initialized and updated,
+and how each retransmission timeout is calculated.
+<P>
+The variables <I>A</I> and <I>D</I> are initialized
+to 0 and 3 seconds, respectively. The initial retransmission timeout
+is calculated using the formula
+<P>
+<FONT=+1><CENTER><I>RTO = A</I> + 2<I>D</I>
+= 0 + 2x3 = 6 seconds</CENTER></FONT>
+<P>
+(The factor 2<I>D</I> is used only for this initial
+calculation. After this 4D is added to <I>A</I> to calculate RTO,
+as shown earlier.) This is the <I>RTO</I> for the transmission
+of the initial SYN.
+<P>
+It turns out that this initial SYN is lost, and we
+time out and retransmit. Figure 21.5 shows the first four lines
+from the <TT>tcpdump</TT>
+output file.
+<P><CENTER>
+<a name="fig_21_5"><TABLE></a>
+<TR><TD WIDTH=26>1</TD><TD WIDTH=180><TT>0.0</TT>
+</TD><TD WIDTH=510><TT>slip.1024 &gt; vangogh. discard: S 35648001:35648001(0)
+<BR>
+win 4096 &lt;mss 256&gt;</TT>
+</TD></TR>
+<TR><TD WIDTH=26>2</TD><TD WIDTH=180><TT>5.802377 (5.8024)</TT>
+</TD><TD WIDTH=510><TT>slip.1024 &gt; vangogh.discard: S 35648001:35648001(0)
+<BR>
+win 4096 &lt;mss 256&gt;</TT>
+</TD></TR>
+<TR><TD WIDTH=26>3</TD><TD WIDTH=180><TT>6.269395 (0.4670)</TT>
+</TD><TD WIDTH=510><TT>vangogh.discard &gt; slip.1024: S 1365512705:1365512705(0)
+<BR>
+ack 35648002 win 8192 &lt;mss 512&gt;</TT>
+</TD></TR>
+<TR><TD WIDTH=26>4</TD><TD WIDTH=180><TT>6.270796 (0.0014)</TT>
+</TD><TD WIDTH=510><TT>slip. 1024 &gt; vangogh.discard: . ack 1 win 4096</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 21.5</B> Timeout
+and retransmission of initial SYN.</CENTER>
+<P>
+When the timeout occurs after 5.802 seconds, the
+current <I>RTO</I> is calculated as
+<P>
+<FONT SIZE=+1><CENTER><I>RTO = A</i> + 4<I>D</I>
+= 0 + 4x3 = 12 seconds</CENTER></FONT>
+<P>
+The exponential backoff is then applied to the <I>RTO</I>
+of 12. Since this is the first timeout we use a multiplier of
+2, giving the next timeout value as 24 seconds. The next timeout
+is calculated using a multiplier of 4, giving a value of 48 seconds:
+12 x 4. (These initial <I>RTOs</I> for the first SYN on a connection,
+6 seconds and then 24 seconds, are what we saw in <a href="arp_addr.htm#fig_4_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#fig_4_5">Figure 4.5</a>.)
+<P>
+The ACK arrives 467 ms after the retransmission.
+The values of <I>A</I> and D are not updated, because of Karn's
+algorithm dealing with the retransmission ambiguity. The next
+segment sent is the ACK on line 4, but it is not timed since it
+is only an ACK. (Only segments containing data are timed.)
+<P>
+When the first data segment is sent (segment 1 in
+<a href="#fig_21_2">Figure 21.2</a>) the RTO is not changed, again owing to Karn's algorithm.
+The current value of 24 seconds is reused until an RTT measurement
+is made. This means the RTO for time 0 in <a href="#fig_21_4">Figure 21.4</a> is really
+24, but we didn't plot that point.
+<P>
+When the ACK for the first data segment arrives (segment
+2 in <a href="#fig_21_2">Figure 21.2</a>), three clock ticks were counted and our estimators
+are initialized as
+<P>
+<FONT SIZE=+1><CENTER><I>A</I> = <I>M</I> +
+0.5 = 1.5 + 0.5 = 2<BR>
+<I>D = A</I>/2 = 1</CENTER></FONT>
+<P>
+(The value 1.5 for <I>M</I> is for 3 clock ticks.)
+The previous initialization of <I>A</I> and <I>D</I> to 0 and
+3 was for the initial RTO calculation. This initialization is
+for the first calculation of the estimators using the first RTT
+measurement <I>M.</I> The RTO is calculated as
+<P>
+<FONT SIZE=+1><CENTER><I>RTO  = A</i> + 4<I>D</I> = 2 + 4x1 = 6 seconds</CENTER></FONT>
+<P>
+When the ACK for the second data segment arrives
+(segment 5 in <a href="#fig_21_2">Figure 21.2</a>), 1 clock tick is counted (0.5 seconds)
+and our estimators are updated as
+<P>
+<FONT SIZE=+1><CENTER><I>Err = M</I> - <I>A
+= </I>0.5 - 2 = -1.5<BR>
+<I>A = A</i> + <i>gErr =</I> 2 - 0.125x1.5 = 1.8125<BR>
+<i>D = D</i> + h(|<i>Err</i>| - D) = 1 + 0.25x(1.5 - 1) = 1.125<BR>
+<i>RTO = A</i> + 4<I>D</I> = 1.8125 + 4x1.125 = 6.3125</CENTER></FONT>
+<P>
+There are some subtleties in the fixed-point representations
+of <I>Err, A,</I> and <I>D,</I> and the fixed-point calculations
+that are actually used (which we've shown in floating-point for
+simplicity). These differences yield an <I>RTO</I> of 6 seconds
+(not 6.3125), which is what we plot in <a href="#fig_21_4">Figure 21.4</a> for time 1.871.
+<H4>Slow Start</H4>
+<P>
+We described the slow start algorithm in <a href="tcp_bulk.htm#20_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#20_6">Section 20.6</a>.
+We can see it in action again in <a href="#fig_21_2">Figure 21.2</a>.
+<P>
+Only one segment is initially transmitted on the
+connection, and its acknowledgment must be received before another
+segment is transmitted. When segment 2 is received, two more segments
+are transmitted.
+<a name="21_5"><H3>21.5 Congestion Example</H3></a>
+<P>
+Now let's look at the transmission of the data segments.
+Figure 21.6 is a plot of the starting sequence number in a segment
+versus the time that the segment was sent. This provides a nice
+way to visualize the data transmission. Normally the data points
+should move up and to the right, with the slope of the points
+being the transfer rate. Retransmissions will appear as motion
+down and to the right.
+<P>
+At the beginning of <a href="#21_4">Section 21.4</a> we said the total
+time for the transfer was about 45 seconds, but we show only 35
+seconds in this figure. These 35 seconds account for sending the
+data segments only. The first data segment was not transmitted
+until 6.3 seconds after the first SYN was sent, because the first
+SYN appears to have been lost and was retransmitted (Figure 21.5).
+Also, after the final data segment and the FIN were sent (at time
+34.1 in Figure 21.6) it took another 4.0 seconds to receive the
+final 14 ACKs from the receiver, before the receiver's FIN was
+received.
+<P>
+<CENTER><a name="fig_21_6"><img src="f_21_6.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_21_6.gif"></a><br>
+<B>Figure 21.6</B> Sending
+of 32768 bytes of data from <TT>slip</TT>
+to <TT>vangogh</TT>.</CENTER>
+<P>
+We can immediately see the three retransmissions
+around times 10, 14, and 21 in Figure 21.6. At each of these three
+points we can also see that only one segment is retransmitted,
+because only one dot dips below the upward slope.
+<P>
+Let's examine the first of these dips in detail (around
+the 10-second mark). From the <TT>tcpdump</TT>
+output we can put together Figure 21.7.
+<P>
+<CENTER><a name="fig_21_7"><img src="f_21_7.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_21_7.gif"></a><br>
+<B>Figure 21.7</B> Packet
+exchange for retransmission around the 10-second mark.</CENTER>
+<P>
+We have removed all the window advertisements from
+this figure, except for segment 72, which we discuss below, <TT>slip</TT>
+always advertised a window of 4096, and <TT>vangogh</TT>
+advertised a window of 8192. The segments are numbered in this
+figure as a continuation of <a href="#fig_21_2">Figure 21.2</a>, where the first data
+segment across the connection was numbered 1. As in <a href="#fig_21_2">Figure 21.2</a>,
+the segments are numbered according to their send or receive order
+on the host <TT>slip</TT>, where <TT>tcpdump</TT>
+was being run. We have also removed a few segments that have no
+relevance to the discussion (44, 47, and 49, all ACKs from <TT>vangogh</TT>).
+<P>
+It appears that segment 45 got lost or arrived damaged-we
+can't tell from this output. What we see on the host <TT>slip</TT>
+is the acknowledgment for everything up through but not including
+byte 6657 (segment 58), followed by eight more ACKs of this same
+sequence number. It is the reception of segment 62, the third
+of the duplicate ACKs, that forces the retransmission of the data
+starting at sequence number 6657 (segment 63). Indeed, Berkeley-derived
+implementations count the number of duplicate ACKs received, and
+when the third one is received, assume that a segment has been
+lost and retransmit only one segment, starting with that sequence
+number. This is Jacobson's <I>fast retransmit</I> algorithm, which
+is followed by his <I>fast recovery</I> algorithm. We discuss
+both algorithms in <a href="#21_7">Section 21.7</a>.
+<P>
+Notice that after the retransmission (segment 63),
+the sender continues normal data transmission (segments 67, 69,
+and 71). TCP does not wait for the other end to acknowledge the
+retransmission.
+<P>
+Let's examine what happens at the receiver. When
+normal data is received in sequence (segment 43), the receiving
+TCP passes the 256 bytes of data to the user process. But the
+next segment received (segment 46) is out of order: the starting
+sequence number of the data (6913) is not the next expected sequence
+number (6657). TCP saves the 256 bytes of data and responds with
+an ACK of the highest sequence number successfully received, plus
+one (6657). The next seven segments received by <TT>vangogh</TT>
+(48, 50, 52, 54, 55, 57, and 59) are also out of order. The data
+is saved by the receiving TCP, and duplicate ACKs are generated.
+<P>
+Currently there is no way for TCP to tell the other
+end that a segment is missing. Also, TCP cannot acknowledge out-of-order
+data. All <TT>vangogh</TT> can do at this
+point is continue sending the ACKs of 6657.
+<P>
+When the missing data arrives (segment 63), the receiving
+TCP now has data bytes 6657-8960 in its buffer, and passes these
+2304 bytes to the user process. All 2304 bytes are acknowledged
+in segment 72. Also notice that this ACK advertises a window of
+5888 (8192 - 2304), since the user process hasn't had a chance
+to read the 2304 bytes that are ready for it.
+<P>
+If we look in detail at the <TT>tcpdump</TT>
+output for the dips around times 14 and 21 in <a href="#fig_21_6">Figure 21.6</a>, we
+see that they too were caused by the receipt of three duplicate
+ACKs, indicating that a packet had been lost. In each of these
+cases only a single packet was retransmitted.
+<P>
+We'll continue this example in <a href="#21_8">Section 21.8</a>, after
+describing more about the congestion avoidance algorithms.
+<a name="21_6"><H3>21.6 Congestion Avoidance Algorithm</H3></a>
+<P>
+Slow start, which we described in <a href="tcp_bulk.htm#20_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#20_6">Section 20.6</a>, is
+the way to initiate data flow across a connection. But at some
+point we'll reach the limit of an intervening router, and packets
+can be dropped. Congestion avoidance is a way to deal with lost
+packets. It is described in [Jacobson 1988].
+<P>
+The assumption of the algorithm is that packet loss
+caused by damage is very small (much less than 1%), therefore
+the loss of a packet signals congestion somewhere in the network
+between the source and destination. There are two indications
+of packet loss: a timeout occurring and the receipt of duplicate
+ACKs. (We saw the latter in <a href="#21_5">Section 21.5</a>. If we are using a timeout
+as an indication of congestion, we can see the need for a good
+RTT algorithm, such as that described in <a href="#21_3">Section 21.3</a>.)
+<P>
+Congestion avoidance and slow start are independent
+algorithms with different objectives. But when congestion occurs
+we want to slow down the transmission rate of packets into the
+network, and then invoke slow start to get things going again.
+In practice they are implemented together.
+<P>
+Congestion avoidance and slow start require that
+two variables be maintained for each connection: a congestion
+window, <I>cwnd,</I> and a slow start threshold size, <I>ssthresh.
+</I>The combined algorithm operates as follows:
+<P>
+<OL>
+<LI>Initialization for a given connection sets <I>cwnd</I>
+to one segment and <I>ssthresh</I> to 65535 bytes.
+<LI>The TCP output routine never sends more than the
+minimum of <I>cwnd</I> and the receiver's advertised window.
+<P>
+Congestion avoidance is flow control imposed by the
+sender, while the advertised window is flow control imposed by
+the receiver. The former is based on the sender's assessment of
+perceived network congestion; the latter is related to the amount
+of available buffer space at the receiver for this connection.
+<LI>When congestion occurs (indicated by a timeout
+or the reception of duplicate ACKs), one-half of the current window
+size (the minimum of <I>cwnd</I> and the receiver's advertised
+window, but at least two segments) is saved in <I>ssthresh. </I>Additionally,
+if the congestion is indicated by a timeout, <I>cwnd</I> is set
+to one segment (i.e., slow start).
+<LI>When new data is acknowledged by the other end,
+we increase <I>cwnd,</I> but the way it increases depends on whether
+we're performing slow start or congestion avoidance.
+<P>
+If <I>cwnd</I> is less than or equal to <I>ssthresh,</I>
+we're doing slow start; otherwise we're doing congestion avoidance.
+Slow start continues until we're halfway to where we were when
+congestion occurred (since we recorded half of the window size
+that got us into trouble in step 2), and then congestion avoidance
+takes over.
+<P>
+Slow start has <I>cwnd</I> start at one segment,
+and be incremented by one segment every time an ACK is received.
+As mentioned in <a href="tcp_bulk.htm#20_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#20_6">Section 20.6</a>, this opens the window exponentially:
+send one segment, then two, then four, and so on.
+<P>
+Congestion avoidance dictates that <I>cwnd</I> be
+incremented by 1/<I>cwnd</I> each time an ACK is received. This
+is an additive increase, compared to slow start's exponential
+increase. We want to increase <I>cwnd</I> by at most one segment
+each round-trip time (regardless how many ACKs are received in
+that RTT), whereas slow start will increment <I>cwnd</I> by the
+number of ACKs received in a round-trip time.
+<P>
+<FONT SIZE=-1>All 4.3BSD releases and 4.4BSD incorrectly add a
+small fraction of the segment size (the segment size divided by
+8) during congestion avoidance. This is wrong and should not be
+emulated in future releases [Floyd 1994]. Nevertheless, we show
+this term in future calculations, to arrive at the same answer
+as the (incorrect) implementation.
+<P>
+The 4.3BSD Tahoe release, described in [Leffler et
+al. 1989], performed slow start only if the other end was on a
+different network. This was changed with the 4.3BSD Reno release
+so that slow start is always performed.</FONT>
+</OL>
+<P>
+Figure 21.8 is a visual description of slow start
+and congestion avoidance. We show <I>cwnd</I> and <I>ssthresh</I>
+in units of segments, but they're really maintained in bytes.
+<P>
+<CENTER><a name="fig_21_8"><img src="f_21_8.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_21_8.gif"></a><br>
+<B>Figure 21.8</B> Visualization
+of slow start and congestion avoidance.</CENTER>
+<P>
+In this figure we assume that congestion occurred
+when <I>cwnd</I> had a value of 32 segments. <I>ssthresh</I> is
+then set to 16 segments and <I>cwnd</I> is set to 1 segment. One
+segment is then sent at time 0 and assuming its ACK is returned
+at time 1, <I>cwnd</I> is incremented to 2 segments. Two segments
+are then sent and assuming their ACKs return by time 2, <I>cwnd
+</I>is incremented to 4 segments (once for each ACK). This exponential
+increase continues until <I>cwnd</I> equals <I>ssthresh,</I> after
+8 ACKs are received between times 3 and 4. From this point on
+the increase in <I>cwnd</I> is linear, with a maximum increase
+of one segment per round-trip time.
+<P>
+As we can see in this figure, the term &quot;slow
+start&quot; is not completely correct. It is a slower transmission
+of packets than what caused the congestion, but the rate of increase
+in the number of packets injected into the network increases during
+slow start. The rate of increase doesn't slow down until <I>ssthresh</I>
+is reached, when congestion avoidance takes over.
+<a name="21_7"><H3>21.7 Fast Retransmit and Fast Recovery Algorithms</H3></a>
+<P>
+Modifications to the congestion avoidance algorithm
+were proposed in 1990 [Jacobson 1990b]. We've already seen these
+modifications in action in our congestion example (<a href="#21_5">Section 21.5</a>).
+<P>
+Before describing the change, realize that TCP is
+required to generate an immediate acknowledgment (a duplicate
+ACK) when an out-of-order segment is received. This duplicate
+ACK should not be delayed. The purpose of this duplicate ACK is
+to let the other end know that a segment was received out of order,
+and to tell it what sequence number is expected.
+<P>
+Since we don't know whether a duplicate ACK is caused
+by a lost segment or just a reordering of segments, we wait for
+a small number of duplicate ACKs to be received. It is assumed
+that if there is just a reordering of the segments, there will
+be only one or two duplicate ACKs before the reordered segment
+is processed, which will then generate a new ACK. If three or
+more duplicate ACKs are received in a row, it is a strong indication
+that a segment has been lost. (We saw this in <a href="#21_5">Section 21.5</a>.) We
+then perform a retransmission of what appears to be the missing
+segment, without waiting for a retransmission timer to expire.
+This is the <I>fast retransmit</I> algorithm. Next, congestion
+avoidance, but not slow start is performed. This is the <I>fast
+recovery</I> algorithm.
+<P>
+In <a href="#fig_21_7">Figure 21.7</a> we saw that slow start was not performed
+after the three duplicate ACKs were received. Instead the sender
+did the retransmission, followed by three more segments with new
+data (segments 67, 69, and 71), before the acknowledgment of the
+retransmission was received (segment 72).
+<P>
+The reason for not performing slow start in this
+case is that the receipt of the duplicate ACKs tells us more than
+just a packet has been lost. Since the receiver can only generate
+the duplicate ACK when another segment is received, that segment
+has left the network and is in the receiver's buffer. That is,
+there is still data flowing between the two ends, and we don't
+want to reduce the flow abruptly by going into slow start. This
+algorithms are usually implemented together as follows.
+<P>
+<OL>
+<LI>When the third duplicate ACK is received, set
+<I>ssthresh</I> to one-half the current congestion window, <I>cwnd.</I>
+<P>
+Retransmit the missing segment. Set <I>cwnd</I> to
+<I>ssthresh</I> plus 3 times the segment size.
+<LI>Each time another duplicate ACK arrives, increment
+<I>cwnd</I> by the segment size and transmit a packet (if allowed
+by the new value of <I>cwnd).</I>
+<LI>When the next ACK arrives that acknowledges new
+data, set <I>cwnd</I> to <I>ssthresh </I>(the value set in step
+1). This should be the ACK of the retransmission from step 1,
+one round-trip time after the retransmission. Additionally, this
+ACK should acknowledge all the intermediate segments sent between
+the lost packet and the receipt of the first duplicate ACK. This
+step is congestion avoidance, since we're slowing down to one-half
+the rate we were at when the packet was lost.
+<P>
+</OL>
+We'll see what happens to the two variables <I>cwnd</I>
+and <I>ssthresh</I> in the calculations in the <a href="#21_8">next section</a>.
+<P>
+<FONT SIZE=-1>The fast retransmit algorithm first appeared in the
+4.3BSD Tahoe release, but it was incorrectly followed by slow
+start. The fast recovery algorithm appeared in the 4.3BSD Reno
+release.</FONT>
+<a name="21_8"><H3>21.8 Congestion Example (Continued)</H3></a>
+<P>
+Watching a connection using <TT>tcpdump</TT>
+and the socket debug option (which we described in <a href="#21_4">Section 21.4</a>)
+we can see the values of <I>cwnd</I> and <I>ssthresh</I> as each
+segment is transmitted. If the MSS is 256 bytes, the initial values
+of <I>cwnd</I> and <I>ssthresh</I> are 256 and 65535, respectively.
+Each time an ACK is received we can see <I>cwnd</I> incremented
+by the MSS, taking on the values 512, 768, 1024, 1280, and so
+on. Assuming congestion doesn't occur, eventually the congestion
+window will exceed the receiver's advertised window, meaning the
+advertised window will limit the data flow.
+<P>
+A more interesting example is to see what happens
+when congestion occurs. We'll use the same example from <a href="#21_4">Section 21.4</a>.
+There were four occurrences of congestion while this example
+was being run. There was a timeout on the transmission of the
+initial SYN to establish the connection (<a href="#fig_21_5">Figure 21.5</a>), followed
+by three lost packets during the data transfer (<a href="#fig_21_6">Figure 21.6</a>).
+<P>
+Figure 21.9 shows the values of the two variables
+<I>cwnd</I> and <I>ssthresh</I> when the initial SYN is retransmitted,
+followed by the first seven data segments. (We showed the exchange
+of the initial data segments and their ACKs in Figure 21.2.) We
+show the data bytes transmitted using the <TT>tcpdump</TT>
+notation: 1:257(256) means bytes 1 through 256.
+<P>
+<CENTER>
+<a name="fig_21_9"><TABLE BORDER=1></a>
+<TR><TD WIDTH=105><CENTER>Segment#</CENTER>
+</TD><TD COLSPAN=3 WIDTH=293><CENTER>Action</CENTER>
+</TD><TD COLSPAN=2 WIDTH=113><CENTER>Variable</CENTER>
+</TD></TR>
+<TR><TD WIDTH=105><CENTER>(<a href="#fig_21_2">Figure 21.2</a>)</CENTER>
+</TD><TD WIDTH=105><CENTER>Send</CENTER></TD>
+<TD WIDTH=90><CENTER>Receive</CENTER></TD>
+<TD WIDTH=111><CENTER>Comment</CENTER></TD>
+<TD WIDTH=56><CENTER><I>cwnd</I></CENTER>
+</TD><TD WIDTH=58><CENTER><I>ssthresh</I></CENTER>
+</TD></TR>
+<TR><TD WIDTH=105></TD><TD WIDTH=105>
+<BR>
+<CENTER>SYN<BR>
+<BR>
+SYN<BR>
+<BR>
+ACK</CENTER>
+</TD><TD WIDTH=90><BR>
+<BR>
+<BR>
+<BR>
+<CENTER>SYN, ACK</CENTER><br>-
+</TD><TD WIDTH=111><CENTER>initialize<BR>
+<BR>
+timeout<BR>
+retransmit<br><br>-</CENTER>
+</TD><TD WIDTH=56><CENTER>256<BR>
+<BR>
+256<br><br>-</CENTER>
+</TD><TD WIDTH=58><CENTER>65535<BR>
+<BR>
+512<br><br>-</CENTER>
+</TD></TR>
+<TR><TD WIDTH=105><CENTER>1<BR>
+2<BR>
+3<BR>
+4<BR>
+5<BR>
+6<BR>
+7<BR>
+8<BR>
+9<BR>
+10<BR>
+11<BR>
+12</CENTER>
+</TD><TD WIDTH=105><CENTER>1:257(256)<BR>
+<BR>
+257:513(256)<BR>
+513:769(256)<BR>
+<BR>
+769:1025(256)<BR>
+1025:1281(256)<BR>
+<BR>
+1281:1537(256)<BR>
+<BR>
+1537:1793(256)<BR>
+-
+</CENTER>
+</TD><TD WIDTH=90>
+<CENTER><br>
+ACK 257<BR>
+<BR>
+<BR>
+ACK 513<BR>
+<BR>
+<BR>
+ACK 769<BR>
+<BR>
+ACK 1025<BR>
+<BR>
+ACK 1281</CENTER>
+</TD><TD WIDTH=111><BR>
+<CENTER>slow start<BR>
+<BR>
+<BR>
+slow start<BR>
+<BR>
+<BR>
+cong. avoid<BR>
+<BR>
+cong. avoid<BR>
+<BR>
+cong. avoid</CENTER>
+</TD><TD WIDTH=56>
+<CENTER><br>512<BR>
+<BR>
+<BR>
+768<BR>
+<BR>
+<BR>
+885<BR>
+<BR>
+991<BR>
+<BR>
+1089</CENTER>
+</TD><TD WIDTH=58>
+<CENTER><br>512<BR>
+<BR>
+<BR>
+512<BR>
+<BR>
+<BR>
+512<BR>
+<BR>
+512<BR>
+<BR>
+512</CENTER>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 21.9</B> Example
+of congestion avoidance.</CENTER>
+<P>
+When the timeout of the SYN occurs, <I>ssthresh</I>
+is set to its minimum value (512 bytes. which is two segments
+for this example), <I>cwnd</I> is set to one segment (256 bytes,
+which it was already at) to enter the slow start phase.
+<P>
+When the SYN and ACK are received, nothing happens
+to the two variables, since new data is not being acknowledged.
+<P>
+When the ACK 257 arrives, we are still in slow start
+since <I>cwnd</I> is less than or equal to <I>ssthresh,</I> so
+<I>cwnd</I> in incremented by 256. The same thing happens when
+the ACK 512 arrives.
+<P>
+When the ACK 769 arrives we are no longer in slow
+start, but enter congestior avoidance. The new value for <I>cwnd</I>
+is calculated as
+<P>
+<FONT SIZE=+1><CENTER><I>cwnd </I>&lt;- <I>cwnd
++ segsize </I>x <I>segsize/cwnd</I> + <I>segsize</I>/8</CENTER></FONT>
+<P>
+This is the 1/<I>cwnd</I> increase that we mentioned
+earlier, taking into account that <I>cwnd </I>is really maintained
+in bytes and not segments. For this example we calculate
+<P>
+<FONT SIZE=+1><CENTER><I>cwnd</I> &lt;- 768
++ 256 x 256 / 768 + 256 / 8</CENTER></FONT>
+<P>
+which equals 885 (using integer arithmetic). When
+the next ACK 1025 arrives we calculate
+<P>
+<FONT SIZE=+1><CENTER> <I>cwnd</I> &lt;- 885 + 256x256/885 + 256/8</CENTER></FONT>
+<P>
+which equals 991. (In these expressions we include
+the incorrect 256/8 term to match the values calculated by the
+implementation, as we noted in <a href="#21_6">Section 21.6</a>)
+<P>
+This additive increase in <I>cwnd</I> continues until
+the first retransmission, around the 10-second mark in <a href="#fig_21_6">Figure 21.6</a>.
+Figure 21.10 is a plot of the same data as in <a href="#fig_21_6">Figure 21.6</a>,
+with the value of <I>cwnd</I> added.
+<P>
+<CENTER><a name="fig_21_10"><img src="f_21_10.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_21_10.gif"></a><br>
+Figure 21.10 Value of <I>cwnd</I> and send sequence
+number while data is being transmitted.</CENTER>
+<P>
+The first six values for <I>cwnd</I> in this figure
+are the values we calculated for <a href="#fig_21_9">Figure 21.9</a>. It is impossible
+in this figure to tell the difference visually between the exponential
+increase during slow start and the additive increase during congestion
+avoidance, because the slow start phase is so quick.
+<P>
+We need to explain what is happening at the three
+points where a retransmission occurs. Recall that each of the
+retransmissions took place because three duplicate ACKs were received,
+indicating a packet had been lost. This is the fast retransmit
+algorithm from <a href="#21_7">Section 21.7</a>. <I>ssthresh</I> is immediately set
+to one-half the window size that was in effect when the retransmission
+took place, but <I>cwnd</I> is allowed to keep increasing while
+the duplicate ACKs are received, since each duplicate ACK means
+that a segment has left the network (the receiving TCP has buffered
+it, waiting for the missing hole in the data to arrive). This
+is the fast recovery algorithm.
+<P>
+Figure 21.11 is similar to <a href="#fig_21_9">Figure 21.9</a>, showing the
+values of <I>cwnd</I> and <I>ssthresh.</I> The segment numbers
+in the first column correspond to <a href="#fig_21_7">Figure 21.7</a>.
+<P>
+<CENTER>
+<a name="fig_21_11"><TABLE BORDER=1></a>
+<TR><TD WIDTH=105><CENTER>Segment#</CENTER>
+</TD><TD COLSPAN=3 WIDTH=293><CENTER>Action</CENTER>
+</TD><TD COLSPAN=2 WIDTH=113><CENTER>Variable</CENTER>
+</TD></TR>
+<TR><TD WIDTH=105><CENTER>(Figure 21.7)</CENTER>
+</TD><TD WIDTH=105><CENTER>Send</CENTER></TD>
+<TD WIDTH=95><CENTER>Receive</CENTER></TD>
+<TD WIDTH=140><CENTER>Comment</CENTER></TD>
+<TD WIDTH=56><CENTER><I>cwnd</I></CENTER>
+</TD><TD WIDTH=58><CENTER><I>ssthresh</I></CENTER>
+</TD></TR>
+<TR><TD WIDTH=105><CENTER>58
+<BR>
+59<BR>
+60<BR>
+61<BR>
+62<BR>
+63<BR>
+64<BR>
+65<BR>
+66<BR>
+67<BR>
+68<BR>
+69<BR>
+70<BR>
+71<BR>
+72</CENTER>
+</TD><TD WIDTH=105><BR>
+<CENTER>8705:8961(256)<BR>
+<BR>
+<BR>
+<BR>
+6657:6913(256)<BR>
+<BR>
+<BR>
+<BR>
+8961:9217(256)<BR>
+<BR>
+9217:9473(256)<BR>
+<BR>
+9473:9729(256)<BR><FONT SIZE=1>.</FONT>
+</CENTER>
+</TD><TD WIDTH=95><CENTER>ACK 6657<BR>
+<BR>
+ACK 6657<BR>
+ACK 6657<BR>
+ACK 6657<BR>
+<BR>
+ACK 6657<BR>
+ACK 6657<BR>
+ACK 6657<BR>
+<BR>
+ACK 6657<BR>
+<BR>
+ACK 6657<BR>
+<BR>
+ACK 8961</CENTER>
+</TD><TD WIDTH=140><CENTER>ACK of new data<BR>
+<BR>
+duplicate ACK #1<BR>
+duplicate ACK #2<BR>
+duplicate ACK #3<BR>
+retransmission<BR>
+duplicate ACK #4<BR>
+duplicate ACK #5<BR>
+duplicate ACK #6<BR>
+<BR>
+duplicate ACK #7<BR>
+<BR>
+duplicate ACK #8<BR>
+<BR>
+ACK of new data</CENTER>
+</TD><TD WIDTH=56><CENTER>2426<BR>
+<BR>
+2426<BR>
+2426<BR>
+1792<BR>
+<BR>
+2048<BR>
+2304<BR>
+2560<BR>
+<BR>
+2816<BR>
+<BR>
+3072<BR>
+<BR>
+1280</CENTER>
+</TD><TD WIDTH=58><CENTER>512<BR>
+<BR>
+512<BR>
+512<BR>
+1024<BR>
+<BR>
+1024<BR>
+1024<BR>
+1024<BR>
+<BR>
+1024<BR>
+<BR>
+1024<BR>
+<BR>
+1024</CENTER>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 21.11</B> Example
+of congestion avoidance (continued).</CENTER>
+<P>
+The values for <I>cwnd</I> have been increasing continually,
+from the final value in <a href="#fig_21_9">Figure 21.9</a> for segment 12 (1089), to
+the first value in Figure 21.11 for segment 58 (2426). The value
+of <I>ssthresh</I> has remained the same (512), since there have
+been no retransmissions in this period.
+<P>
+When the first two duplicate ACKs arrive (segments
+60 and 61) they are counted, and <I>cwnd</I> is left alone. (This
+is the flat portion of <a href="#fig_21_10">Figure 21.10</a> preceding the retransmission.)
+When the third one arrives, however, <I>ssthresh</I> is set to
+one-half <I>cwnd</I> (rounded down to the next multiple of the
+segment size), <I>cwnd</I> is set to <I>ssthresh</I> plus the
+number of duplicate ACKs times the segment size (i.e., 1024 plus
+3 times 256). The retransmission is then sent.
+<P>
+Five more duplicate ACKs arrive (segments 64-66,
+68, and 70) and <I>cwnd</I> is incremented by the segment size
+each time. Finally a new ACK arrives (segment 72) and <I>cwnd</I>
+is set to <I>ssthresh</I> (1024) and the normal congestion avoidance
+takes over. Since <I>cwnd</I> is less than or equal to <I>ssthresh</I>
+(they are equal), the segment size is added to <I>cwnd, </I>giving
+a value of 1280. When the next new ACK is received (which isn't
+shown in <a href="#fig_21_11">Figure 21.11</a>), <I>cwnd</I> is greater than <I>ssthresh,</I>
+so <I>cwnd</I> is set to 1363.
+<P>
+During the fast retransmit and fast recovery phase,
+we transmit new data after receiving the duplicate ACKs in segments
+66, 68, and 70, but not after receiving the duplicate ACKs in
+segments 64 and 65. The reason is the value of <I>cwnd,</I> versus
+the number of unacknowledged bytes of data. When segment 64 is
+received, <I>cwnd</I> equals 2048, but we have 2304 unacknowledged
+bytes (nine segments: 46, 48, 50, 52, 54, 55, 57, 59, and 63).
+We can't send anything. When segment 65 arrives, <I>cwnd</I> equals
+2304, so we still can't send anything. But when segment 66 arrives,
+<I>cwnd</I> equals 2560, so we can send a new data segment. Similarly
+when segment 68 arrives, <I>cwnd</I> equals 2816, which is greater
+than the 2560 bytes of unacknowledged data, so we can send another
+new data segment. The same scenario happens when segment 70 is
+received.
+<P>
+W^hen the next retransmission takes place at time
+14.3 in <a href="#fig_21_10">Figure 21.10</a>, it is also triggered by the reception of
+three duplicate ACKs, so we see the same increase in <I>cwnd</I>
+as one more duplicate ACK arrives, followed by a decrease to 1024.
+<P>
+The retransmission at time 21.1 in <a href="#fig_21_10">Figure 21.10</a> is
+also triggered by duplicate ACKs. We receive three more duplicates
+after the retransmission, so we see three additional increases
+in <I>cwnd,</I> followed by a decrease to 1280. For the remainder
+of the transfer <I>cwnd</I> increases linearly to a final value
+of 3615.
+<a name="21_9"><H3>21.9 Per-Route Metrics</H3></a>
+<P>
+Newer TCP implementations maintain many of the metrics
+that we've described in this chapter in the routing table entry.
+When a TCP connection is closed, if enough data was sent to obtain
+meaningful statistics, and if the routing table entry for the
+destination is not a default route, the following information
+is saved in the routing table entry, for the next use of the entry:
+the smoothed RTT, the smoothed mean deviation, and the slow start
+threshold. The quantity &quot;enough data&quot; is 16 windows
+of data. This gives 16 RTT samples, which allows the smoothed
+RTT filter to converge within 5% of the correct value.
+<P>
+Additionally, the <TT>route</TT>(8)
+command can be used by the administrator to set the metrics for
+a given route: the three values mentioned in the preceding paragraph,
+along with the MTU, the outbound bandwidth-delay product (<a href="tcp_bulk.htm#20_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#20_7">Section 20.7</a>),
+ and the inbound bandwidth-delay product.
+<P>
+When a new TCP connection is established, either
+actively or passively, if the routing table entry being used for
+the connection has values for these metrics, the corresponding
+variable is initialized from the metrics.
+<a name="21_10"><H3>21.10 ICMP Errors</H3></a>
+<P>
+Let's see how TCP handles ICMP errors that are returned
+for a given connection. The most common ICMP errors that TCP can
+encounter are source quench, host unreach-able, and network unreachable.
+Current Berkeley-based implementations handle these ICMP errors
+as follows:
+<UL>
+<LI>A received source quench causes the congestion
+window, <I>cwnd,</I> to be set to one segment to initiate slow
+start, but the slow start threshold, <I>ssthresh,</I> is not changed,
+so the window will open until it's either open all the way (limited
+by the window size and round-trip time) or until congestion occurs.
+<LI>A received host unreachable or network unreachable
+is effectively ignored, since these two errors are considered
+transient. It could be that an intermediate router has gone down
+and it can take the routing protocols a few minutes to stabilize
+on an alternative route. During this period either of these two
+ICMP errors can occur, but they must not abort the connection.
+Instead, TCP keeps trying to send the data that caused the error,
+although it may eventually time out. (Recall in <a href="#fig_21_1">Figure 21.1</a> that
+TCP did not give up for 9 minutes.)
+<P>Current Berkeley-based implementations record
+that the ICMP error occurred, and if the connection times out,
+the ICMP error is translated into a more relevant error code than
+&quot;connection timed out.&quot;
+<P>
+<FONT SIZE=-1>Earlier BSD implementations incorrectly aborted
+a connection whenever an ICMP host unreachable or network unreachable
+was received.</FONT>
+</UL>
+<H4>An Example</H4>
+<P>
+We can see how an ICMP host unreachable is handled
+by taking our dialup SLIP link down during the middle of a connection.
+We establish a connection from the host <TT>slip</TT>
+to the host <TT>aix</TT>. (From the figure
+on the inside front cover we see that this connection goes through
+our dialup SLIP link.) After establishing the connection and transferring
+some data, the dialup SLIP link between the routers sun and netb
+is taken down. This causes the default routing table entry on
+sun (which we showed in <a href="ip_rout.htm#9_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_2">Section 9.2</a>) to be removed. We expect
+sun to then respond to IP datagrams destined for the 140.252.1
+Ethernet with an ICMP host unreachable. We want to see how TCP
+handles these ICMP errors.
+<P>
+Here is the interactive session on the host <TT>slip</TT>:
+<TABLE>
+<TR><TD WIDTH=262><TT>slip % <B>sock aix echo</B></TT>
+</TD><TD WIDTH=380><I>run our sock program</I>
+</TD></TR>
+<TR><TD WIDTH=262><TT><B>test line</B></TT>
+</TD><TD WIDTH=380><I>type this line</I></TD>
+</TR>
+<TR><TD WIDTH=262><TT>test line</TT></TD><TD WIDTH=380><I>and it's echoed</I>
+</TD></TR>
+<TR><TD WIDTH=262></TD><TD WIDTH=380><I>SLIP link is brought down here</I>
+</TD></TR>
+<TR><TD WIDTH=262><TT><B>another line</B></TT>
+</TD><TD WIDTH=380><I>then type this line and watch retransmissions</I>
+</TD></TR>
+<TR><TD WIDTH=262></TD><TD WIDTH=380><I>SLIP link is reestablished here</I>
+</TD></TR>
+<TR><TD WIDTH=262><TT>another line</TT></TD><TD WIDTH=380><I>and the line and its echo are exchanged</I>
+</TD></TR>
+<TR><TD WIDTH=262><TT><B>line number 3</B></TT>
+</TD><TD WIDTH=380></TD></TR>
+<TR><TD WIDTH=262><TT>line number 3</TT></TD><TD WIDTH=380></TD>
+</TR>
+<TR><TD WIDTH=262><TT><B>the last line</B></TT>
+</TD><TD WIDTH=380></TD></TR>
+<TR><TD WIDTH=262></TD><TD WIDTH=380><I>SLIP link is brought down here, and not reestablished</I>
+</TD></TR>
+<TR><TD WIDTH=262><TT>read error: No route to host</TT></TD><TD WIDTH=380><I>TCP finally gives up</I>
+</TD></TR>
+</TABLE>
+<P>
+Figure 21.12 shows the corresponding <TT>tcpdump</TT>
+output, captured on the router <TT>bsdi</TT>.
+(We have removed the connection establishment and all the window
+advertisements.) We connect to the echo server on the host <TT>aix</TT>
+and type &quot;test line&quot; (line 1). It is echoed (line 2)
+and the echo is acknowledged (line 3). We then take down the SLIP
+link.
+<P><CENTER>
+<a name="fig_21_12"><TABLE></a>
+<TR><TD WIDTH=36>1</TD><TD WIDTH=236><TT>0.0</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix. echo: P 1:11(10) ack 1</TT>
+</TD></TR>
+<TR><TD WIDTH=36>2</TD><TD WIDTH=236><TT>0.212271 ( 0.2123)</TT>
+</TD><TD WIDTH=369><TT>aix.echo &gt; slip.1035: P 1:11(10) ack 11</TT>
+</TD></TR>
+<TR><TD WIDTH=36>3</TD><TD WIDTH=236><TT>0.310685 ( 0.0984)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: . ack 11</TT>
+</TD></TR>
+<TR><TD WIDTH=36></TD><TD WIDTH=236></TD><TD WIDTH=369><I>SLIP link brought down here</I>
+</TD></TR>
+<TR><TD WIDTH=36>4</TD><TD WIDTH=236><TT>174.758100 (174.4474)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: P 11:24(13) ack 11</TT>
+</TD></TR>
+<TR><TD WIDTH=36>5</TD><TD WIDTH=236><TT>174.759017 ( 0.0009)</TT>
+</TD><TD WIDTH=369><TT>sun &gt; slip: icmp: host aix unreachable</TT>
+</TD></TR>
+<TR><TD WIDTH=36>6</TD><TD WIDTH=236><TT>177.150439 ( 2.3914)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: P 11:24(13) ack 11</TT>
+</TD></TR>
+<TR><TD WIDTH=36>7</TD><TD WIDTH=236><TT>177.151271 ( 0.0008)</TT>
+</TD><TD WIDTH=369><TT>sun &gt; slip: icmp: host aix unreachable</TT>
+</TD></TR>
+<TR><TD WIDTH=36>8</TD><TD WIDTH=236><TT>182.150200 ( 4.9989)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: P 11:24(13) ack 11</TT>
+</TD></TR>
+<TR><TD WIDTH=36>9</TD><TD WIDTH=236><TT>182.151189 ( 0.0010)</TT>
+</TD><TD WIDTH=369><TT>sun &gt; slip: icmp: host aix unreachable</TT>
+</TD></TR>
+<TR><TD WIDTH=36>10</TD><TD WIDTH=236><TT>192.149671 ( 9.9985)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: P 11:24(13) ack 11</TT>
+</TD></TR>
+<TR><TD WIDTH=36>11</TD><TD WIDTH=236><TT>192.150608 ( 0.0009)</TT>
+</TD><TD WIDTH=369><TT>sun &gt; slip: icmp: host aix unreachable</TT>
+</TD></TR>
+<TR><TD WIDTH=36>12</TD><TD WIDTH=236><TT>212.148783 ( 19.9982)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: P 11:24(13) ack 11</TT>
+</TD></TR>
+<TR><TD WIDTH=36>13</TD><TD WIDTH=236><TT>212.149786 ( 0.0010)</TT>
+</TD><TD WIDTH=369><TT>sun &gt; slip: icmp: host aix unreachable</TT>
+</TD></TR>
+<TR><TD WIDTH=36></TD><TD WIDTH=236></TD><TD WIDTH=369><I>SLIP link brought up here</I>
+</TD></TR>
+<TR><TD WIDTH=36>14</TD><TD WIDTH=236><TT>252.146774 ( 39.9970)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: P 11:24(13) ack 11</TT>
+</TD></TR>
+<TR><TD WIDTH=36>15</TD><TD WIDTH=236><TT>252.439257 ( 0.2925)</TT>
+</TD><TD WIDTH=369><TT>aix.echo &gt; slip.1035: P 11:24(13) ack 24</TT>
+</TD></TR>
+<TR><TD WIDTH=36>16</TD><TD WIDTH=236><TT>252.505331 ( 0.0661)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: . ack 24</TT>
+</TD></TR>
+<TR><TD WIDTH=36>17</TD><TD WIDTH=236><TT>261.977246 ( 9.4719)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: P 24:38(14) ack 24</TT>
+</TD></TR>
+<TR><TD WIDTH=36>18</TD><TD WIDTH=236><TT>262.158758 ( 0.1815)</TT>
+</TD><TD WIDTH=369><TT>aix.echo &gt; slip.1035: P 24:38(14) ack 38</TT>
+</TD></TR>
+<TR><TD WIDTH=36>19</TD><TD WIDTH=236><TT>262.305086 ( 0.1463)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: . ack 38</TT>
+</TD></TR>
+<TR><TD WIDTH=36></TD><TD WIDTH=236></TD><TD WIDTH=369><I>SLIP link brought down here</I>
+</TD></TR>
+<TR><TD WIDTH=36>20</TD><TD WIDTH=236><TT>458.155330 (195.8502)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: P 38:52(14) ack 38</TT>
+</TD></TR>
+<TR><TD WIDTH=36>21</TD><TD WIDTH=236><TT>458.156163 ( 0.0008)</TT>
+</TD><TD WIDTH=369><TT>sun &gt; slip: icmp: host aix unreachable</TT>
+</TD></TR>
+<TR><TD WIDTH=36>22</TD><TD WIDTH=236><TT>461.136904 (2.9807)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: P 38:52(14) ack 38</TT>
+</TD></TR>
+<TR><TD WIDTH=36>23</TD><TD WIDTH=236><TT>461.137826 (0.0009)</TT>
+</TD><TD WIDTH=369><TT>sun &gt; slip: icmp: host aix unreachable</TT>
+</TD></TR>
+<TR><TD WIDTH=36>24</TD><TD WIDTH=236><TT>467.136461 (5.9986)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: P 38:52(14) ack 38</TT>
+</TD></TR>
+<TR><TD WIDTH=36>25</TD><TD WIDTH=236><TT>467.137385 (0.0009)</TT>
+</TD><TD WIDTH=369><TT>sun &gt; slip: icmp: host aix unreachable</TT>
+</TD></TR>
+<TR><TD WIDTH=36>26</TD><TD WIDTH=236><TT>479.135811 ( 11.9984)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: P 38:52(14) ack 38</TT>
+</TD></TR>
+<TR><TD WIDTH=36>27</TD><TD WIDTH=236><TT>479.136647 ( 0.0008)</TT>
+</TD><TD WIDTH=369><TT>sun &gt; slip: icmp: host aix unreachable</TT>
+</TD></TR>
+<TR><TD WIDTH=36>28</TD><TD WIDTH=236><TT>503.134816 ( 23.9982)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: P 38:52(14) ack 38</TT>
+</TD></TR>
+<TR><TD WIDTH=36>29</TD><TD WIDTH=236><TT>503.135740 ( 0.0009)</TT>
+</TD><TD WIDTH=369><TT>sun &gt; slip: icmp: host aix unreachabie</TT>
+</TD></TR>
+<TR><TD WIDTH=36></TD><TD WIDTH=236></TD><TD WIDTH=369><I>14 lines of output deleted here</I>
+</TD></TR>
+<TR><TD WIDTH=36>44</TD><TD WIDTH=236><TT>1000.219573 ( 64.0959)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: P 38:52(14) ack 38</TT>
+</TD></TR>
+<TR><TD WIDTH=36>45</TD><TD WIDTH=236><TT>1000.220503 ( 0.0009)</TT>
+</TD><TD WIDTH=369><TT>sun &gt; slip: icmp: host aix unreachable</TT>
+</TD></TR>
+<TR><TD WIDTH=36>46</TD><TD WIDTH=236><TT>1064.201281 ( 63.9808)</TT>
+</TD><TD WIDTH=369><TT>slip.1035 &gt; aix.echo: R 52:52(0) ack 38</TT>
+</TD></TR>
+<TR><TD WIDTH=36>47</TD><TD WIDTH=236><TT>1064.202182 ( 0.0009)</TT>
+</TD><TD WIDTH=369><TT>sun &gt; slip: icmp: host aix unreachable</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 21.12</B> TCP
+handling of received ICMP host unreachable error.</CENTER>
+<P>
+We type &quot;another line&quot; (line 3) and expect
+to see TCP time out and retransmit the message. Indeed, this line
+is sent six times before a reply is received. Lines 4-13 show
+the first transmission and the next four retransmissions, each
+of which generates an ICMP host unreachable from the router sun.
+&quot;This is what we expect: the IP datagrams go from <TT>slip</TT>
+to the router <TT>bsdi</TT> (which has a default
+route that points to sun), and then to sun, where the broken link
+is detected.
+<P>
+While these retransmissions are taking place, the
+SLIP link is brought back up, and the retransmission on line 14
+gets delivered. Line 15 is the echo from <TT>aix</TT>,
+and line 16 is the acknowledgment of the echo.
+<P>
+This shows that TCP ignores the ICMP host unreachable
+errors and keeps retransmitting. We can also see the expected
+exponential backoff in each retransmission timeout: the first
+appears to be 2.5 seconds, which is then multiplied by 2 (giving
+5 seconds), then 4 (10 seconds), then 8 (20 seconds), then 16
+(40 seconds).
+<P>
+We then type the third line of input (&quot;line
+number 3&quot;) and see it sent on line 17, echoed on line 18,
+and the echo acknowledged on line 19.
+<P>
+We now want to see what happens when TCP retransmits
+and gives up, after receiving the ICMP host unreachable, so we
+take down the SLIP link again. After taking it down we type &quot;the
+last line&quot; and see it transmitted 13 times before TCP gives
+up. (We have deleted lines 30-43 from the output. They are additional
+retransmissions.)
+<P>
+The thing we notice, however, is the error message
+printed by our <TT>sock</TT> program when
+it finally gives up: &quot;No route to host.&quot; This corresponds
+to the Unix error associated with the ICMP host unreachable error
+(<a href="icmp_int.htm#fig_6_12" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#fig_6_12">Figure 6.12</a>). This shows that TCP saves the ICMP error
+that it receives on the connection, and when it finally gives
+up, it prints that error, instead of &quot;Connection timed out.&quot;
+<P>
+Finally, notice the different retransmission intervals
+in lines 22-46, compared to lines 6-14. It appears that TCP updated
+its estimators when the third line we typed was sent and acknowledged
+without any retransmissions in lines 17-19. The initial retransmission
+timeout is now 3 seconds, giving successive values of 6, 12, 24,
+48, and then the upper limit of 64.
+<a name="21_11"><H3>21.11 Repacketization</H3></a>
+<P>
+When TCP times out and retransmits, it does not have
+to retransmit the identical segment again. Instead, TCP is allowed
+to perform <I>repacketization,</I> sending a bigger segment, which
+can increase performance. (Naturally, this bigger segment cannot
+exceed the MSS announced by the other receiver.) This is allowed
+in the protocol because TCP identifies the data being sent and
+acknowledged by its byte number, not its segment number.
+<P>
+We can easily see this in action. We use our <TT>sock</TT>
+program to connect to the discard server and type one line. We
+then disconnect the Ethernet cable and type a second line. While
+this second line is being retransmitted, we type a third line.
+We expect the next retransmission to contain both the second and
+third lines.
+<TABLE>
+<TR><TD WIDTH=280><TT>bsdi % <B>sock svr4 discard</B></TT>
+</TD><TD WIDTH=320></TD></TR>
+<TR><TD WIDTH=280><TT><B>hello there</B></TT>
+</TD><TD WIDTH=320><I>first line gets sent OK</I>
+</TD></TR>
+<TR><TD WIDTH=280></TD><TD WIDTH=320><I>then we disconnect the Ethernet cable</I>
+</TD></TR>
+<TR><TD WIDTH=280><TT><B>line number 2</B></TT>
+</TD><TD WIDTH=320><I>this line gets retransmitted</I>
+</TD></TR>
+<TR><TD WIDTH=280><TT><B>and 3</B></TT>
+</TD><TD WIDTH=320><I>type this line before second line sent OK</I>
+</TD></TR>
+<TR><TD WIDTH=280></TD><TD WIDTH=320><I>then reconnect Ethernet cable</I>
+</TD></TR>
+</TABLE>
+<P>
+Figure 21.13 shows the <TT>tcpdump</TT>
+output. (We have removed the connection establishment, the connection
+termination, and all the window advertisements.)
+<P><CENTER>
+<a name="fig_21_13"><TABLE></a>
+<TR><TD WIDTH=26>1</TD><TD WIDTH=189><TT>0.0</TT>
+</TD><TD WIDTH=500><tt>bsdi. 1032 &gt; svr4.discard: P 1:13(12) ack 1</tt>
+</TD></TR>
+<TR><TD WIDTH=26>2</TD><TD WIDTH=189><TT>0.140489 ( 0.1405)</TT>
+</TD><TD WIDTH=500><tt>svr4.discard &gt; bsdi.1032: . ack 13</tt>
+</TD></TR>
+<TR><TD WIDTH=26></TD><TD WIDTH=189></TD><TD WIDTH=500><I>Ethernet cable disconnected here</I>
+</TD></TR>
+<TR><TD WIDTH=26>3</TD><TD WIDTH=189><TT>26.407696 (26.2672)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1032 &gt; svr4.discard: P 13:27(14) ack 1</tt>
+</TD></TR>
+<TR><TD WIDTH=26>4</TD><TD WIDTH=189><TT>27.639390 ( 1.2317)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1032 &gt; svr4.discard: P 13:27(14) ack 1</tt>
+</TD></TR>
+<TR><TD WIDTH=26>5</TD><TD WIDTH=189><TT>30.639453 ( 3.0001)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1032 &gt; svr4.discard: P 13:27(14) ack 1</tt>
+</TD></TR>
+<TR><TD WIDTH=26></TD><TD WIDTH=189></TD><TD WIDTH=500><I>third line typed here</I>
+</TD></TR>
+<TR><TD WIDTH=26>6</TD><TD WIDTH=189><TT>36.639653 ( 6.0002)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1032 &gt; svr4.discard: P 13:33(20) ack 1</tt>
+</TD></TR>
+<TR><TD WIDTH=26>7</TD><TD WIDTH=189><TT>48.640131 (12.0005)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1032 &gt; svr4.discard: P 13:33(20) ack 1</tt>
+</TD></TR>
+<TR><TD WIDTH=26>8</TD><TD WIDTH=189><TT>72.640768 (24.0006)</TT>
+</TD><TD WIDTH=500><tt>bsdi.1032 &gt; svr4.discard: P 13:33(20) ack 1</tt>
+</TD></TR>
+<TR><TD WIDTH=26></TD><TD WIDTH=189></TD><TD WIDTH=500><I>Ethernet cable reconnected here</I>
+</TD></TR>
+<TR><TD WIDTH=26>9</TD><TD WIDTH=189><TT>72.719091 ( 0.0783)</TT>
+</TD><TD WIDTH=500><tt>svr4.discard &gt; bsdi.1032: . ack 33</tt>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 21.13</B> Repacketization
+of data by TCP.</CENTER>
+<P>
+Lines 1 and 2 show the first line (&quot;hello there&quot;)
+being sent and its acknowledgment. We then disconnect the Ethernet
+cable and type &quot;line number 2&quot; (14 bytes, including
+the newline). These bytes are transmitted on line 3, and then
+retransmitted on lines 4 and 5. Before the retransmission on line
+6 we type &quot;and 3&quot; (6 bytes, including the newline) and
+see this retransmission contain 20 bytes: both lines that we typed.
+When the acknowledgment arrives on line 9, it is for all 20 bytes.
+<a name="21_12"><H3>21.12 Summary</H3></a>
+<P>
+This chapter has provided a detailed look at TCP's
+timeout and retransmission strategy. Our first example was a lost
+SYN to establish a connection and we saw how an exponential backoff
+is applied to successive retransmission timeout values.
+<P>
+TCP calculates the round-trip time and then uses
+these measurements to keep track of a smoothed RTT estimator and
+a smoothed mean deviation estimator. These two estimators are
+then used to calculate the next retransmission timeout value.
+Many implementations only measure a single RTT per window. Karn's
+algorithm removes the retransmission ambiguity problem by preventing
+us from measuring the RTT when a packet is lost.
+<P>
+Our detailed example, which included three lost packets,
+let us see many of TCP's algorithms in action: slow start, congestion
+avoidance, fast retransmit, and fast recovery. We were also able
+to hand calculate TCP RTT estimators along with the congestion
+window and slow-start threshold, and verify the values with the
+actual values from the trace output.
+<P>
+We finished the chapter by looking at the effect
+various ICMP errors have on a TCP connection and how TCP is allowed
+to repacketize its data. We saw how the &quot;soft&quot; ICMP
+errors don't cause a connection to be terminated, but are remembered
+so that if the connection terminates abnormally, the soft error
+can be reported.
+<H4>Exercises</H4>
+<P>
+<B>21.1</B> In <a href="#fig_21_5">Figure 21.5</a> the
+first timeout was calculated as 6 seconds and the next as 12 seconds.
+If the ACK for the initial SYN had not arrived after the 12-second
+timeout expired, when would the next timeout occur?
+<P>
+<B>21.2</B> In the discussion
+following <a href="#fig_21_5">Figure 21.5</a> we said that the timeout intervals are calculated
+as 6, 24, and then 48 seconds, as we saw in <a href="arp_addr.htm#fig_4_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#fig_4_5">Figure 4.5</a>. But if
+we watch a TCP connection to a nonexistent host from an SVR4 system,
+the timeout intervals are 6, 12, 24, and 48 seconds. What's going
+on?
+<P>
+<B>21.3</B> Compare the performance
+of TCP's sliding window versus TFTP's stop-and-wait protocol as
+follows. In this chapter we transferred 32768 bytes in about 35
+seconds (<a href="#fig_21_6">Figure 21.6</a>) across a link with an RTT that averaged
+around 1.5 seconds (<a href="#fig_21_4">Figure 21.4</a>). Calculate how long TFTP would
+take for the same transfer.
+<P>
+<B>21.4</B> In <a href="#21_7">Section 21.7</a> we
+said that the receipt of a duplicate ACK is caused by a segment
+being lost or reordered. In <a href="#21_5">Section 21.5</a> we saw the generation
+of duplicate ACKs caused by a lost segment. Draw a picture showing
+that a reordering of segments also generates duplicate ACKs.
+<P>
+<B>21.5</B> There is a noticeable
+blip in <a href="#fig_21_6">Figure 21.6</a> between times 28.8 and 29.8. Is this a retransmission?
+<P>
+<B>21.6</B> In <a href="#21_6">Section 21.6</a> we
+said that the 4.3BSD Tahoe release only performed slow start if
+the destination was on a different network. How do you think &quot;different
+network&quot; was determined? (<I>Hint:</I> Look at <a href="append_e.htm#E_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_e.htm#E_0">Appendix E</a>.)
+<P>
+<B>21.7</B> In <a href="#tcp_bulk.htm#20_2">Section 20.2</a> we
+said that TCP normally ACKs every other segment. But in <a href="#fig_21_2">Figure 21.2</a>
+we see the receiver ACK every segment. Why?
+<P>
+<B>21.8</B> Are per-route metrics
+really useful, given the prevalence of default routes?
+</BODY>
+</HTML>

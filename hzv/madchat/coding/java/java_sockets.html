@@ -1,0 +1,455 @@
+<html>
+
+<head>
+<meta name="author" content="Qusay H. Mahmoud">
+<meta name="description" content="Writing client/server applications can be challenging and fun,
+especially with Java. Find out how sockets programming  in Java
+is seamless. (2,500 words)
+">
+<meta name="keywords" content="JavaWorld, Java, Java, magazine, programming, articles,  developers, JavaSoft, JavaWorld, Nuts &amp; Bolts, News &amp; Views, Java Resources">
+<meta name="publicationDate" content="1996-12-01">
+<title>Sockets programming in Java: A tutorial - JavaWorld December 1996</title>
+</head>
+
+<body bgcolor="#FFFFFF" text="#000000" link="#0000FF" alink="#FF0000" vlink="#551a8b" marginheight="0" topmargin="0">
+
+
+<!-- table 1 --> 
+<!-- end table 1 -->
+
+<h1 align="CENTER">Sockets programming in Java: A tutorial</h1>
+<h3 align="CENTER">Writing your own client/server applications can be done
+seamlessly using Java</h3>
+<blockquote>
+  <strong>Summary</strong><br>
+  Writing client/server applications can be challenging and fun, especially with
+  Java. Find out how sockets programming in Java is seamless. (<em>2,500 words</em>)
+</blockquote>
+<strong>By Qusay H. Mahmoud</strong>
+<p>
+
+
+
+<!-- begin body text -->his tutorial presents an introduction to sockets
+programming over TCP/IP networks and shows how to write client/server
+applications in Java.
+<p><font size="+1"><strong>A bit of history</strong></font><br>
+The Unix input/output (I/O) system follows a paradigm usually referred to as <em>Open-Read-Write-Close</em>.
+Before a user process can perform I/O operations, it calls <em>Open</em> to
+specify and obtain permissions for the file or device to be used. Once an object
+has been opened, the user process makes one or more calls to <em>Read</em> or <em>Write</em>
+data. <em>Read</em> reads data from the object and transfers it to the user
+process, while <em>Write</em> transfers data from the user process to the object.
+After all transfer operations are complete, the user process calls <em>Close</em>
+to inform the operating system that it has finished using that object.
+<p>When facilities for InterProcess Communication (IPC) and networking were
+added to Unix, the idea was to make the interface to IPC similar to that of file
+I/O. In Unix, a process has a set of I/O descriptors that one reads from and
+writes to. These descriptors may refer to files, devices, or communication
+channels (sockets). The lifetime of a descriptor is made up of three phases:
+creation (open socket), reading and writing (receive and send to socket), and
+destruction (close socket).
+<p>The IPC interface in BSD-like versions of Unix is implemented as a layer over
+the network TCP and UDP protocols. Message destinations are specified as socket
+addresses; each socket address is a communication identifier that consists of a
+port number and an Internet address.
+<p>The IPC operations are based on socket pairs, one belonging to a
+communication process. IPC is done by exchanging some data through transmitting
+that data in a message between a socket in one process and another socket in
+another process. When messages are sent, the messages are queued at the sending
+socket until the underlying network protocol has transmitted them. When they
+arrive, the messages are queued at the receiving socket until the receiving
+process makes the necessary calls to receive them.
+<p><font size="+1"><strong>TCP/IP and UDP/IP communications</strong></font><br>
+There are two communication protocols that one can use for socket programming:
+datagram communication and stream communication.
+<p><strong>Datagram communication:</strong><br>
+The datagram communication protocol, known as UDP (user datagram protocol), is a
+connectionless protocol, meaning that each time you send datagrams, you also
+need to send the local socket descriptor and the receiving socket's address. As
+you can tell, additional data must be sent each time a communication is made.
+<p><strong>Stream communication:</strong><br>
+The stream communication protocol is known as TCP (transfer control protocol).
+Unlike UDP, TCP is a connection-oriented protocol. In order to do communication
+over the TCP protocol, a connection must first be established between the pair
+of sockets. While one of the sockets listens for a connection request (server),
+the other asks for a connection (client). Once two sockets have been connected,
+they can be used to transmit data in both (or either one of the) directions.
+<p>Now, you might ask what protocol you should use -- UDP or TCP? This depends
+on the client/server application you are writing. The following discussion shows
+the differences between the UDP and TCP protocols; this might help you decide
+which protocol you should use.
+<p>In UDP, as you have read above, every time you send a datagram, you have to
+send the local descriptor and the socket address of the receiving socket along
+with it. Since TCP is a connection-oriented protocol, on the other hand, a
+connection must be established before communications between the pair of sockets
+start. So there is a connection setup time in TCP.
+<p>In UDP, there is a size limit of 64 kilobytes on datagrams you can send to a
+specified location, while in TCP there is no limit. Once a connection is
+established, the pair of sockets behaves like streams: All available data are
+read immediately in the same order in which they are received.
+<p>UDP is an unreliable protocol -- there is no guarantee that the datagrams you
+have sent will be received in the same order by the receiving socket. On the
+other hand, TCP is a reliable protocol; it is guaranteed that the packets you
+send will be received in the order in which they were sent.
+<p>In short, TCP is useful for implementing network services -- such as remote
+login (rlogin, telnet) and file transfer (FTP) -- which require data of
+indefinite length to be transferred. UDP is less complex and incurs fewer
+overheads. It is often used in implementing client/server applications in
+distributed systems built over local area networks.
+<p><font size="+1"><strong>Programming sockets in Java</strong></font><br>
+In this section we will answer the most frequently asked questions about
+programming sockets in Java. Then we will show some examples of how to write
+client and server applications.
+<p><em><strong>Note:</strong> In this tutorial we will show how to program
+sockets in Java using the TCP/IP protocol only since it is more widely used than
+UDP/IP. <strong>Also:</strong> All the classes related to sockets are in the </em>java.net<em>
+package, so make sure to import that package when you program sockets.</em>
+<p><em>How do I open a socket?</em>
+<p>If you are programming a client, then you would open a socket like this:
+<p><code>&nbsp;Socket MyClient;<br>
+&nbsp;MyClient = new Socket(&quot;Machine name&quot;, PortNumber);<br>
+</code>
+<p>Where Machine name is the machine you are trying to open a connection to, and
+PortNumber is the port (a number) on which the server you are trying to connect
+to is running. When selecting a port number, you should note that port numbers
+between 0 and 1,023 are reserved for privileged users (that is, super user or
+root). These port numbers are reserved for standard services, such as email, FTP,
+and HTTP. When selecting a port number for your server, select one that is
+greater than 1,023!
+<p>In the example above, we didn't make use of exception handling, however, it
+is a good idea to handle exceptions. (From now on, all our code will handle
+exceptions!) The above can be written as:
+<p><code>&nbsp;Socket MyClient;<br>
+&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;MyClient = new
+Socket(&quot;Machine name&quot;, PortNumber);<br>
+&nbsp;}<br>
+&nbsp;catch (IOException e) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;System.out.println(e);<br>
+&nbsp;}<br>
+</code>
+<p>If you are programming a server, then this is how you open a socket:
+<p><code>&nbsp;ServerSocket MyService;<br>
+&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;MyServerice = new ServerSocket(PortNumber);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;catch (IOException e) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;System.out.println(e);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+</code>
+<p>When implementing a server you also need to create a socket object from the <code>ServerSocket</code>
+in order to listen for and accept connections from clients.
+<p><code>&nbsp;Socket clientSocket = null;<br>
+&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;serviceSocket = MyService.accept();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;catch (IOException e) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;System.out.println(e);<br>
+&nbsp;}<br>
+</code>
+<p><em>How do I create an input stream?</em>
+<p>On the client side, you can use the <code>DataInputStream</code> class to
+create an input stream to receive response from the server:
+<p><code>&nbsp;DataInputStream input;<br>
+&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;input = new DataInputStream(MyClient.getInputStream());<br>
+&nbsp;}<br>
+&nbsp;catch (IOException e) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;System.out.println(e);<br>
+&nbsp;}<br>
+</code>
+<p>The class <code>DataInputStream</code> allows you to read lines of text and
+Java primitive data types in a portable way. It has methods such as <code>read</code>,
+<code>readChar,</code> <code>readInt,</code> <code>readDouble,</code> and <code>readLine,</code>.
+Use whichever function you think suits your needs depending on the type of data
+that you receive from the server.
+<p>On the server side, you can use <code>DataInputStream</code> to receive input
+from the client:
+<p><code>&nbsp;DataInputStream input;<br>
+&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;input = new DataInputStream(serviceSocket.getInputStream());<br>
+&nbsp;}<br>
+&nbsp;catch (IOException e) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;System.out.println(e);<br>
+&nbsp;}<br>
+</code>
+<p><em>How do I create an output stream?</em>
+<p>On the client side, you can create an output stream to send information to
+the server socket using the class <code>PrintStream</code> or <code>DataOutputStream</code>
+of java.io:
+<p><code>&nbsp;PrintStream output;<br>
+&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;output = new PrintStream(MyClient.getOutputStream());<br>
+&nbsp;}<br>
+&nbsp;catch (IOException e) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;System.out.println(e);<br>
+&nbsp;}<br>
+</code>
+<p>The class PrintStream has methods for displaying textual representation of
+Java primitive data types. Its Write and println methods are important here.
+Also, you may want to use the <code>DataOutputStream</code>:
+<p><code>&nbsp;DataOutputStream output;<br>
+&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;output = new DataOutputStream(MyClient.getOutputStream());<br>
+&nbsp;}<br>
+&nbsp;catch (IOException e) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;System.out.println(e);<br>
+&nbsp;}<br>
+</code>
+<p>The class <code>DataOutputStream</code> allows you to write Java primitive
+data types; many of its methods write a single Java primitive type to the output
+stream. The method <code>writeBytes</code> is a useful one.
+<p>On the server side, you can use the class <code>PrintStream</code> to send
+information to the client.
+<p><code>&nbsp;PrintStream output;<br>
+&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;output = new PrintStream(serviceSocket.getOutputStream());<br>
+&nbsp;}<br>
+&nbsp;catch (IOException e) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;System.out.println(e);<br>
+&nbsp;}<br>
+</code>
+<p><em>Note: You can use the class <code>DataOutputStream</code> as mentioned
+above.</em>
+<p><em>How do I close sockets?</em>
+<p>You should always close the output and input stream before you close the
+socket.
+<p>On the client side:
+<p><code>&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output.close();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;input.close();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;MyClient.close();<br>
+&nbsp;}<br>
+&nbsp;catch (IOException e) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;System.out.println(e);<br>
+&nbsp;}<br>
+</code>
+<p>On the server side:
+<p><code>&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;output.close();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;input.close();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;serviceSocket.close();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;MyService.close();<br>
+&nbsp;}<br>
+&nbsp;catch (IOException e) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;System.out.println(e);<br>
+&nbsp;}<br>
+</code>
+<p><font size="+1"><strong>Examples</strong></font><br>
+In this section we will write two applications: a simple SMTP (simple mail
+transfer protocol) client, and a simple echo server.
+<p>1. SMTP client
+<p>Let's write an SMTP (simple mail transfer protocol) client -- one so simple
+that we have all the data encapsulated within the program. You may change the
+code around to suit your needs. An interesting modification would be to change
+it so that you accept the data from the command-line argument and also get the
+input (the body of the message) from standard input. Try to modify it so that it
+behaves the same as the mail program that comes with Unix.
+<p><code>import java.io.*;<br>
+import java.net.*;<br>
+<br>
+public class smtpClient {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;public static void main(String[] args) {<br>
+<br>
+// declaration section:<br>
+// smtpClient: our client socket<br>
+// os: output stream<br>
+// is: input stream<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Socket smtpSocket = null;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DataOutputStream os = null;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DataInputStream is = null;<br>
+<br>
+// Initialization section:<br>
+// Try to open a socket on port 25<br>
+// Try to open input and output streams<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;smtpSocket
+= new Socket(&quot;hostname&quot;, 25);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;os = new
+DataOutputStream(smtpSocket.getOutputStream());<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;is = new
+DataInputStream(smtpSocket.getInputStream());<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} catch (UnknownHostException e)
+{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;System.err.println(&quot;Don't
+know about host: hostname&quot;);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} catch (IOException e) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;System.err.println(&quot;Couldn't
+get I/O for the connection to: hostname&quot;);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+<br>
+// If everything has been initialized then we want to write some data<br>
+// to the socket we have opened a connection to on port 25<br>
+<br>
+&nbsp;if (smtpSocket != null &amp;&amp; os != null &amp;&amp; is != null) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;try {<br>
+<br>
+// The capital string before each colon has a special meaning to SMTP<br>
+// you may want to read the SMTP specification, RFC1822/3<br>
+<br>
+&nbsp;&nbsp;os.writeBytes(&quot;HELO\n&quot;);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;os.writeBytes(&quot;MAIL
+From: k3is@fundy.csd.unbsj.ca\n&quot;);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;os.writeBytes(&quot;RCPT
+To: k3is@fundy.csd.unbsj.ca\n&quot;);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;os.writeBytes(&quot;DATA\n&quot;);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;os.writeBytes(&quot;From:
+k3is@fundy.csd.unbsj.ca\n&quot;);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;os.writeBytes(&quot;Subject:
+testing\n&quot;);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;os.writeBytes(&quot;Hi
+there\n&quot;); // message body<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;os.writeBytes(&quot;\n.\n&quot;);<br>
+&nbsp;&nbsp;os.writeBytes(&quot;QUIT&quot;);<br>
+<br>
+// keep on reading from/to the socket till we receive the &quot;Ok&quot; from
+SMTP,<br>
+// once we received that then we want to break.<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;String
+responseLine;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;while
+((responseLine = is.readLine()) != null) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;System.out.println(&quot;Server:
+&quot; + responseLine);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if
+(responseLine.indexOf(&quot;Ok&quot;) != -1) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;break;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+<br>
+// clean up:<br>
+// close the output stream<br>
+// close the input stream<br>
+// close the socket<br>
+<br>
+&nbsp;&nbsp;os.close();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;is.close();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;smtpSocket.close();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} catch
+(UnknownHostException e) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;System.err.println(&quot;Trying
+to connect to unknown host: &quot; + e);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} catch
+(IOException e) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;System.err.println(&quot;IOException:
+&quot; + e);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+}<br>
+<br>
+</code>
+<p>When programming a client, you must follow these four steps:
+<ul>
+  <li>Open a socket.
+  <li>Open an input and output stream to the socket.
+  <li>Read from and write to the socket according to the server's protocol.
+  <li>Clean up.
+</ul>
+<p>These steps are pretty much the same for all clients. The only step that
+varies is step three, since it depends on the server you are talking to.
+<p>2. Echo server
+<p>Now let's write a server. This server is very similar to the echo server
+running on port 7. Basically, the echo server receives text from the client and
+then sends that exact text back to the client. This is just about the simplest
+server you can write. Note that this server handles only one client. Try to
+modify it to handle multiple clients using threads.
+<p><code>import java.io.*;<br>
+import java.net.*;<br>
+<br>
+public class echo3 {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;public static void main(String args[]) {<br>
+<br>
+// declaration section:<br>
+// declare a server socket and a client socket for the server<br>
+// declare an input and an output stream<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ServerSocket echoServer = null;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;String line;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DataInputStream is;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PrintStream os;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Socket clientSocket = null;<br>
+<br>
+// Try to open a server socket on port 9999<br>
+// Note that we can't choose a port less than 1023 if we are not<br>
+// privileged users (root)<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;echoServer =
+new ServerSocket(9999);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;catch (IOException e) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;System.out.println(e);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+<br>
+// Create a socket object from the ServerSocket to listen and accept<br>
+// connections.<br>
+// Open input and output streams<br>
+<br>
+&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;clientSocket =
+echoServer.accept();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;is = new
+DataInputStream(clientSocket.getInputStream());<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;os = new
+PrintStream(clientSocket.getOutputStream());<br>
+<br>
+// As long as we receive data, echo that data back to the client.<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;while (true) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;line
+= is.readLine();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;os.println(line);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;catch (IOException e) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;System.out.println(e);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+}<br>
+<br>
+</code>
+<p><font size="+1"><strong>Conclusion</strong></font><br>
+Programming client/server applications is challenging and fun, and programming
+this kind of application in Java is easier than doing it in other languages,
+such as C. Socket programming in Java is seamless.
+<p>The java.net package provides a powerful and flexibile infrastructure for
+network programming, so you are encouraged to refer to that package if you would
+like to know the classes that are provided.
+<p>Sun.* packages have some good classes for networking, however you are not
+encouraged to use those classes at the moment because they may change in the
+next release. Also, some of the classes are not portable across all platforms.
+<p><a name="resources"><strong>Resources</strong></a>
+<ul>
+  <li>Sun's Custom Networking and Security documentation:<br>
+    <a href="http://java.sun.com/books/Series/Tutorial/networking/index.html">http://java.sun.com/books/Series/Tutorial/networking/index.html</a>
+  <li>The Java packages API (including java.net):<br>
+    <a href="http://www.javasoft.com:80/products/JDK/1.0.2/api/packages.html">http://www.javasoft.com:80/products/JDK/1.0.2/api/packages.html</a>
+</ul>
+Feedback: <a name="jweditors" href="/javaworld/cgi-bin/jw-mailto.cgi?jweditors@javaworld.com+/javaworld/jw-12-1996/jw-12-sockets.html+jweditors">jweditors@javaworld.com</a><br>
+Technical difficulties: <a name="webmaster" href="/javaworld/cgi-bin/jw-mailto.cgi?webmaster@javaworld.com+/javaworld/jw-12-1996/jw-12-sockets.html+webmaster">webmaster@javaworld.com</a><br>
+URL: http://www.javaworld.com/jw-12-1996/jw-12-sockets.html<br>
+Last modified: Wednesday, January 10, 2001
+
+
+<LAYER SRC="http://ad.doubleclick.net/adl/idg.us.javaworld/;pos=top;sz=468x60;tile=1;ord=31040108?" width=468 height=60 visibility="hidden" onLoad="moveToAbsolute(layer1.pageX,layer1.pageY);clip.height=60;clip.width=468; visibility='show';"></LAYER>
+
+
+<LAYER SRC="http://ad.doubleclick.net/adl/idg.us.javaworld/;pos=left1;sz=125x125;tile=3;ord=31040108?" width=125 height=125 visibility="hidden" onLoad="moveToAbsolute(layer3.pageX,layer3.pageY);clip.height=125;clip.width=125; visibility='show';"></LAYER>
+<LAYER SRC="http://ad.doubleclick.net/adl/idg.us.javaworld/;pos=left2;sz=125x125;tile=4;ord=31040108?" width=125 height=125 visibility="hidden" onLoad="moveToAbsolute(layer4.pageX,layer4.pageY);clip.height=125;clip.width=125; visibility='show';"></LAYER>
+<LAYER SRC="http://ad.doubleclick.net/adl/idg.us.javaworld/;pos=left3;sz=125x125;tile=5;ord=31040108?" width=125 height=125 visibility="hidden" onLoad="moveToAbsolute(layer5.pageX,layer5.pageY);clip.height=125;clip.width=125; visibility='show';"></LAYER>
+
+
+<LAYER SRC="http://ad.doubleclick.net/adl/idg.us.javaworld/;pos=bottom;sz=468x60;tile=7;ord=31040108?" width=468 height=60 visibility="hidden" onLoad="moveToAbsolute(layer7.pageX,layer7.pageY);clip.height=60;clip.width=468; visibility='show';"></LAYER>
+
+<!--Begin-Survey-->
+<LAYER SRC="http://ad.doubleclick.net/adl/idg.us.jwsurvey/jwsurvey121900;sz=1x1;tile=16;ord=31040108?" width=1 height=1 visibility="hidden" onLoad="moveToAbsolute(layer16.pageX,layer16.pageY);clip.height=1;clip.width=1; visibility='show';"></LAYER>
+<!--End-Survey-->
+
+</body>
+
+</html>

@@ -1,0 +1,803 @@
+<html>
+
+<head>
+<meta name="GENERATOR" content="Microsoft FrontPage 5.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Red Hat + Kismet - HOWTO</title>
+<link rel="stylesheet" type="text/css" href="/style/tipsybottle.css">
+<link rel="SHORTCUT ICON" href="http://www.tipsybottle.com/favicon.ico">
+<style>
+<!--
+ li.c4 {list-style: none}
+-->
+</style>
+</head>
+
+<body>
+
+<p><font face="Arial"><font color="#840606"><b><font size="5">Red Hat Linux 8.0 + Kismet HOWTO</font><br>
+<font size="4">(Works with Red Hat 9 too)</font></b></font><br>
+<a href="mailto:Ritchie@tipsybottle.com">Ritchie@tipsybottle.com</a><br>
+Created – October 30, 2002<br>
+Last updated – September 28, 2003&nbsp; </font></p>
+<p><b><font face="Arial">Description</font></b></p>
+<p><font face="Arial">The primary goal of this How-To is to install and 
+configure Red Hat Linux 9.0 with an Orinoco wireless NIC and the Kismet wireless 
+sniffer. Now these instructions also include drivers for Prism (SMC, Linksys, 
+D-Link, etc.), Cisco, and/or Atheros based 802.11a wireless NICs. These instructions 
+were primarily created for an IBM T30 with Windows 2000 Professional on half the 
+hard drive. I will use the other half of the hard drive for my Red Hat Linux 
+installation. Although, these instructions were created for my particular 
+situation, they should apply to many other configurations. </font></p>
+<p><font face="Arial">News - I have put together a FAQ with common questions I 
+have received.&nbsp; You can find the FAQ
+<a href="RedHat-Kismet-HOWTO-FAQ.shtml">here</a>.</font></p>
+<p><font face="Arial">Note - This process also works with Red Hat 8.0. The 
+process to install the wireless tools is the same, but the file names (because 
+of versions) is slightly different. I'm going to create a new document in the 
+next couple of weeks to this exact process.&nbsp; </font></p>
+<p><font face="Arial">Note - For a period of time it was necessary to recompile 
+the kernel when using Red Hat 8.0 + Orinoco-11b drivers. I believe changes were 
+made to the Orinoco&nbsp;drivers that make this task unnecessary (I first noticed 
+this in early March 2003). If you follow the following instructions you should 
+no longer need to recompile the Kernel. If you would like learn how to build a 
+simple kernel or want to use an older version of the Red Hat 8.0 kernel or 
+Orinoco drivers, see my old <a href="RedHat8-Orinoco-Kismet-HOWTO-old.shtml">Red Hat Linux 8.0 + 
+Orinoco + Kismet HOWTO</a> document. </font></p>
+<p><font face="Arial"><b><br>
+Index</b> </font></p>
+<ol>
+  <li><font face="Arial"><a href="#Install Red Hat 8.0 Linux">Install Red Hat 8.0
+  </a> </font></li>
+  <li><font face="Arial"><a href="#Download Required Files">Download Required Files</a> </font></li>
+  <li><font face="Arial"><a href="#Update to the most recent packages">Update to the most recent packages
+  </a> </font></li>
+  <li><font face="Arial"><a href="#Install the Orinoco Drivers">Install Orinoco drivers
+  </a> </font></li>
+  <li><font face="Arial">
+  <a href="#Install HostAP drivers for Prism based cards (Optional)">Install HostAP drivers for Prism based cards (Optional)
+  </a>
+</font></li>
+  <li><font face="Arial">
+  <a href="#Install ar5k drivers for Atheros based 802.11a cards (Optional)">Install ar5k drivers for Atheros 802.11a cards (Optional)
+  </a>
+</font></li>
+  <li><font face="Arial"><a href="#Install Libpcap">Install libpcap</a></font></li>
+  <li><font face="Arial"><a href="#Install Ethereal">Install Ethereal </a> </font></li>
+  <li><font face="Arial"><a href="#Install GpsDrive (Optional)">Install GPSDrive (Optional)
+  </a> </font></li>
+  <li><font face="Arial"><a href="#Install ImageMagick (Optional)">Install ImageMagick (Optional)
+  </a> </font></li>
+  <li><font face="Arial"><a href="#Install Kismet">Install Kismet </a> </font></li>
+  <li><font face="Arial"><a href="#Configure Kismet">Configure Kismet </a> </font></li>
+  <li><font face="Arial"><a href="#Running Kismet">Running Kismet </a> </font></li>
+  <li><font face="Arial"><a href="#FAQs">Other security tools
+  </a> </font></li>
+  <li><font face="Arial"><a href="#FAQs">Frequently Asked Questions</a></font></li>
+  <li><font face="Arial"><a href="#To Do">To-Do </a> </font></li>
+  <li><font face="Arial"><a href="#Questions/Concerns/Comments">Questions/Comments/Concerns
+  </a> </font></li>
+  <li><font face="Arial"><a href="#Credits">Credits</a></font></li>
+</ol>
+<p><b><font face="Arial"><br>
+<a name="Install Red Hat 8.0 Linux">Install Red Hat 8.0 Linux </a> </font></b></p>
+<p><font face="Arial">Red Hat Linux has become the most popular alternative the 
+Windows operating systems. From the beginning of Red Hat, the company has been 
+working to package an operating system that is simple to install, easy to use, 
+and contains a variety of practical features. </font></p>
+<p><font face="Arial">There are several options to obtain the media necessary to 
+install Red Hat Linux. Some of the more popular options include: </font></p>
+<ul>
+  <li><font face="Arial">Download the five Red Hat 8.0 ISOs and burn onto CD </font>
+  </li>
+  <li><font face="Arial">Download bootnet.img and perform a net install </font>
+  </li>
+  <li><font face="Arial">Support Red Hat by purchasing a copy from the store </font>
+  </li>
+</ul>
+<p><font face="Arial">If you install from CD, it is recommended that you verify 
+the integrity of the discs the first time you use them. You will be prompted for 
+this at the beginning of the installation. The first and most important step of 
+this install is to install Red Hat Linux. If you need help to install the 
+operating system, visit
+</font><span style='font-family:Arial'> <a
+href="http://www.redhat.com/docs/manuals/linux/RHL-8.0-Manual/install-guide/">http://www.Red
+Hat.com/docs/manuals/linux/RHL-8.0-Manual/install-guide/</a></span><font face="Arial">.
+</font></p>
+<p><font face="Arial">Additionally, if you need to download a copy of Red Hat 
+8.0, visit the following site to find a mirror:
+</font><span style='font-family:Arial'>
+<a href="http://www.redhat.com/download/mirror.html">
+http://www.redhat.com/download/mirror.html</a></span><font face="Arial">.
+</font></p>
+<p><font face="Arial">&nbsp;&nbsp;&nbsp; Here are the options I choose during the installation of 
+Red Hat Linux: </font></p>
+<ul>
+  <li><font face="Arial">Select Language (English) * Default </font></li>
+  <li><font face="Arial">Keyboard Configuration (US English) * Default </font>
+  </li>
+  <li><font face="Arial">Mouse Configuration (3 Button Mouse (PS/2) * Default
+</font></li>
+  <li><font face="Arial">Installation Type (Custom) </font></li>
+  <li><font face="Arial">Disk Partitioning Setup (Automatically partition) </font>
+  </li>
+  <li><font face="Arial">Automatic Partitioning (Remove all Linux Partitions on 
+  this system) </font></li>
+  <li><font face="Arial">Disk Setup (nothing) </font></li>
+  <li><font face="Arial">Boot Loader Configuration (Default) </font></li>
+  <li><font face="Arial">Network Configuration (Set hostname manually 
+  “wireless1”) </font></li>
+  <li><font face="Arial">Firewall configuration (Default) </font></li>
+  <li><font face="Arial">Additional Language Support (Default) </font></li>
+  <li><font face="Arial">Time Zone Selection (America/Chicago) </font></li>
+  <li><font face="Arial">Account Configuration (enter password for root account 
+  and create user account) </font></li>
+  <li><font face="Arial">Authentication Configuration (Default) </font></li>
+  <li><font face="Arial">Package Group Selection (Add the following) </font>
+  </li>
+</ul>
+<blockquote>
+  <ul>
+    <li><font face="Arial">SQL Database Server - Add &quot;mysql-server&quot; (Click on 
+Details) </font></li>
+    <li><font face="Arial">Development Tools </font></li>
+    <li><font face="Arial">Kernel Development </font></li>
+    <li><font face="Arial">X Software Development </font></li>
+    <li><font face="Arial">Gnome Software Development </font></li>
+    <li><font face="Arial">Select System Tools, but remove &quot;ethereal&quot; </font>
+    </li>
+  </ul>
+</blockquote>
+<p><font face="Arial">&nbsp;&nbsp;&nbsp; Total install size: 1,921M </font></p>
+<ul>
+  <li><font face="Arial">About to Install (forward) </font></li>
+</ul>
+<p><font face="Arial">&nbsp;&nbsp;&nbsp; Installation (25 minutes later for a CD install, 4 hours 
+for a net install) </font></p>
+<ul>
+  <li><font face="Arial">Boot Diskette Creation (create one if you wish) </font>
+  </li>
+  <li><font face="Arial">Graphical Interface (X) Configuration (Select what you 
+have – I have the ATI Radeon Mobility 7500) </font></li>
+  <li><font face="Arial">Monitor Configuration (Unprobed Monitor) </font></li>
+  <li><font face="Arial">Customize Graphics Configuration (Default) </font></li>
+  <li><font face="Arial">Exit </font></li>
+</ul>
+<p><font face="Arial">&nbsp;&nbsp;&nbsp; (Automatically Shutdown and restart into Red Hat Linux)
+</font></p>
+<ul>
+  <li><font face="Arial">Welcome (forward) </font></li>
+  <li><font face="Arial">Date and Time (I selected Enable Network Time Protocol 
+  - forward) </font></li>
+  <li><font face="Arial">Sound (forward) </font></li>
+  <li><font face="Arial">Update Agent (forward) register and install updates
+</font></li>
+  <li><font face="Arial">Additional CDs (select what you want) </font></li>
+  <li><font face="Arial">Finish Setup (Forward) </font></li>
+</ul>
+<p><b><font face="Arial"><a name="Update to the most recent packages"><br>
+Update to the most recent packages</a></font></b></p>
+<p><font face="Arial">&nbsp;&nbsp;&nbsp; Register with the Red Hat Network </font></p>
+<p><font face="Arial">&nbsp;&nbsp;&nbsp; Login using root and your password </font></p>
+<p><font face="Arial">&nbsp;&nbsp;&nbsp; Run up2date to update the system with the latest and most 
+stable packages. </font></p>
+<p><font face="Arial">Note – I understand it is not recommended that you run a 
+NIX system as root, and I agree if it were a multi-user system that this would 
+be discouraged. </font></p>
+<p><b><font face="Arial"><br>
+<a name="Download Required Files">Download Required Files </a> </font></b></p>
+<p><font face="Arial">Several files will be required to complete the 
+installation process. Download the following files into the specified 
+directories: </font></p>
+<ul>
+  <li><font face="Arial">Orinoco drivers </font>
+  <ul>
+    <li><font face="Arial">
+    <a href="http://ozlabs.org/people/dgibson/dldwd/orinoco-0.13e.tar.gz">
+    orinoco-0.13e.tar.gz</a> </font></li>
+    <li>
+  <span style="font-family: Arial">
+  <a href="http://ozlabs.org/people/dgibson/dldwd/">
+  http://ozlabs.org/people/dgibson/dldwd/</a> </span><font face="Arial">&nbsp;</font></li>
+    <li><font face="Arial">Download to /root/ </font></li>
+  </ul>
+  </li>
+  <li><font face="Arial">Orinoco monitor mode patch </font>
+  <ul>
+    <li><span
+      style='font-family:Arial'>
+    <a href="http://airsnort.shmoo.com/orinoco-0.13e-patch.diff">orinoco-0.13e-patch.diff</a></span></li>
+    <li><span
+      style='font-family:Arial'><a
+      href="http://airsnort.shmoo.com/orinocoinfo.html">http://airsnort.shmoo.com/orinocoinfo.html</a></span></li>
+    <li><font face="Arial">Download to /root/ </font></li>
+  </ul>
+  </li>
+  <li><font face="Arial">HostAP drivers (If you have a Prism based NIC - not 
+necessary otherwise) </font>
+  <ul>
+    <li><font face="Arial">
+    <a href="http://hostap.epitest.fi/releases/hostap-0.0.4.tar.gz">hostap-0.0.4.tar.gz</a> </font></li>
+    <li>
+  <span style="font-family: Arial"><a href="http://hostap.epitest.fi/">
+  http://hostap.epitest.fi/</a></span></li>
+    <li><font face="Arial">Download to /root/ </font></li>
+  </ul>
+  </li>
+  <li><font face="Arial">Ar5k 802.11a drivers (If you have an Atheros based 802.11a 
+NIC - not necessary otherwise) </font>
+  <ul>
+    <li><font face="Arial">
+    <a href="http://team.vantronix.net/download/ar5k/vt_ar5k_20030509.tar.gz">
+    vt_ar5k_20030509.tar.gz</a></font></li>
+    <li>
+  <span style="font-family: Arial"><a href="http://team.vantronix.net/ar5k/">
+  http://team.vantronix.net/ar5k/</a></span></li>
+    <li><font face="Arial">Download to /root/ </font></li>
+  </ul>
+  </li>
+  <li><font face="Arial">Libpcap current </font>
+  <ul>
+    <li><font face="Arial">libpcap-current.tar.gz </font></li>
+    <li><span
+      style='font-family:Arial'><a
+      href="http://www.tcpdump.org/">http://www.tcpdump.org</a></span><font face="Arial"> </font>
+    </li>
+    <li><font face="Arial">Download to /root/ </font></li>
+  </ul>
+  </li>
+  <li><font face="Arial">Ethereal </font>
+  <ul>
+    <li><span
+      style='font-family:Arial'>
+    <a href="http://www.ethereal.com/distribution/ethereal-0.9.15.tar.gz">ethereal-0.9.15.tar.gz</a>
+      <o:p></o:p></span><font face="Arial">&nbsp;</font></li>
+    <li><span
+      style='font-family:Arial'><a href="http://www.ethereal.com/distribution/">http://www.ethereal.com/distribution/</a></span><font face="Arial"> </font>
+    </li>
+    <li><font face="Arial">Download to /usr/src/ </font></li>
+  </ul>
+  </li>
+  <li><font face="Arial">GPS Drive (Optional) </font>
+  <ul>
+    <li>
+   <font face="Arial">
+   <a href="http://gpsdrive.kraftvoll.at/gpsdrive-2.04.tar.gz">
+   gpsdrive-2.04.tar.gz</a></font> </li>
+    <li>
+   <font face="Arial"><a href="http://www.kraftvoll.at/software/download.shtml">
+   http://www.kraftvoll.at/software/download.shtml</a> </font>
+    </li>
+    <li><font face="Arial">Download to /root/ </font></li>
+  </ul>
+  </li>
+  <li><font face="Arial">ImageMagick (Optional) </font>
+  <ul>
+    <li>
+   <font face="Arial">
+   imageMagick-5.5.7-10.tar.gz </font></li>
+    <li>
+   <font face="Arial"><a href="http://imagemagick.sourceforge.net/">
+   http://imagemagick.sourceforge.net/</a> </font></li>
+    <li><font face="Arial">Download to /root/ </font></li>
+  </ul>
+  </li>
+  <li><font face="Arial">Kismet – (I like the development code because it is 
+frequently updated, but you might go with the stable version) </font>
+  <ul>
+    <li><font face="Arial">kismet-devel.tar.gz </font></li>
+    <li><span
+      style='font-family:Arial'><a
+      href="http://www.kismetwireless.net/download.shtml">http://www.kismetwireless.net/download.shtml</a></span><font face="Arial"> </font>
+    </li>
+    <li><font face="Arial">Download to /root/ </font></li>
+  </ul>
+  </li>
+</ul>
+<blockquote>
+<p><font face="Arial">Login with your username and password. </font></p>
+<p><font face="Arial">Start a terminal window. </font></p>
+</blockquote>
+<p><font face="Arial">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </font>
+<font face="Courier">&nbsp;&nbsp;&nbsp; Red Hat Icon -&gt; System Tools -&gt; Terminal </font></p>
+<p><font face="Arial">Note – Because it’s Linux, and you should get use to the 
+command line, you might add a link to the terminal window to the panel window 
+(Microsoft calls it the Task Bar). Right click on the panel window -&gt; Add to 
+Panel -&gt; Launcher from menu -&gt; System Tools -&gt; Terminal. </font></p>
+<p><b><font face="Arial"><br>
+<a name="Install the Orinoco Drivers">Install the Orinoco Drivers </a> </font></b></p>
+<p><font face="Arial">There are several different drivers that work with Orinoco 
+wireless NICs. The best and most popular drivers are written by David Gibson, 
+but do not include support to put the card into monitor mode. The Orinoco 
+drivers by must be modified with a patch from Shmoo to enable this 
+functionality. To find out more information about the Orinoco drivers visit 
+<a href="http://ozlabs.org/people/dgibson/dldwd/">http://ozlabs.org/people/dgibson/dldwd/</a>.&nbsp; Additionally, for information about the Shmoo patch for Orinoco cards, visit 
+<a href="http://airsnort.shmoo.com/orinocoinfo.html">http://airsnort.shmoo.com/orinocoinfo.html</a>.
+</font></p>
+<blockquote>
+<p><font face="Arial">Install the Orinoco drivers</font></p>
+  <blockquote>
+
+<p><font face="Courier New"># cd or # cd /root/<br>
+# tar -zxf orinoco-0.13e.tar.gz<br>
+# patch -p0 &lt; orinoco-0.13e-patch.diff<br>
+<br>
+patching file orinoco-0.13e/hermes.c <br>
+patching file orinoco-0.13e/hermes.h<br>
+patching file orinoco-0.13e/orinoco.c<br>
+patching file orinoco-0.13e/orinoco.h<br>
+# cd orinoco-0.13e&nbsp;&nbsp; </font></p>
+
+<p><font face="Courier New"># make<br>
+# make install </font></p>
+  </blockquote>
+<p><font face="Arial"><a name="Orinoco dmesg">To test that the Orinoco drivers have installed correctly, 
+you should see the following lines after running the “dmesg“ command. </a> </font>
+</p>
+</blockquote>
+<p><font face="Arial">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</font><font face="Courier New">&nbsp; # dmesg </font></p>
+<blockquote>
+  <blockquote>
+<p><font face="Courier New">hermes.c: 4 Dec 2002 David Gibson &lt;hermes@gibson.dropbear.id.au&gt;<br>
+orinoco.c 0.13e (David Gibson &lt;hermes@gibson.dropbear.id.au&gt; 
+and others) <br>
+orinoco_cs.c 0.13e (David Gibson &lt;hermes@gibson.dropbear.id.au&gt; 
+and others) <br>
+eth1: Station identity 001f:0001:0008:000a <br>
+eth1: Looks like a Lucent/Agere firmware version 8.72 <br>
+eth1: Ad-hoc demo mode supported <br>
+eth1: IEEE standard IBSS ad-hoc mode supported <br>
+eth1: WEP supported, 104-bit key <br>
+eth1: MAC address 00:02:DE:AD:BE:EF <br>
+eth1: Station name &quot;HERMES I&quot; <br>
+eth1: ready <br>
+eth1: index 0x01: Vcc 5.0, irq 3, io 0x0100-0x013f <br>
+eth1: New link status: Connected (0001)
+</font></p>
+  </blockquote>
+<p><font face="Arial">Additionally, to test that the Shmoo patch installed 
+correctly, you should see “monitor” listed as one of the available features.
+</font></p>
+  <blockquote>
+<p><font face="Courier New"># iwpriv eth1<br>
+eth1 Available private ioctl :<br>
+&nbsp;&nbsp;&nbsp; force_reset&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (8BE0) : set 0 &amp; get 0<br>
+&nbsp;&nbsp;&nbsp; card_reset reset (8BE1) : set 0 &amp; get 0 <br>
+&nbsp;&nbsp;&nbsp; set_port3 reset&nbsp; (8BE2) : set 1 int &amp; get 0 <br>
+&nbsp;&nbsp;&nbsp; get_port3&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (8BE3) : set 0 &amp; get 1 int
+<br>
+&nbsp;&nbsp;&nbsp; set_preamble&nbsp;&nbsp;&nbsp;&nbsp; (8BE4) : set 1 int &amp; get 0
+<br>
+&nbsp;&nbsp;&nbsp; get_preamble&nbsp;&nbsp;&nbsp;&nbsp; (8BE5) : set 0 &amp; get 1 int
+<br>
+&nbsp;&nbsp;&nbsp; set_ibssport&nbsp;&nbsp;&nbsp;&nbsp; (8BE6) : set 1 int &amp; get 0
+<br>
+&nbsp;&nbsp;&nbsp; get_ibssport&nbsp;&nbsp;&nbsp;&nbsp; (8BE7) : set 0 &amp; get 1 int
+<br>
+&nbsp;&nbsp;&nbsp; monitor&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (8BE8) : set 2 int &amp; get 0 </font></p>
+  </blockquote>
+</blockquote>
+<p><font face="Arial">Note – I have notices that the Orinoco drivers do not want 
+to release from the interface and you must manually shut down the interface. If 
+you remove a wireless NIC, type in &quot;# ifconfig eth1 down&quot; before you reinsert or 
+restart any PCMCIA NIC. </font></p>
+<p><font face="Arial"><br>
+<b><a name="Install HostAP drivers for Prism based cards (Optional)">Install HostAP drivers for Prism based cards (Optional)</a>
+</b>
+</font></p>
+<p><font face="Arial">There are three main Linux drivers for Prism based cards 
+with different features (Orinoco drivers,
+<a href="http://www.linux-wlan.org/index.html">Linux-wlan drivers</a>, and HostAP 
+drivers). For my How-To document, I choose the HostAP driver because of the 
+feature to turn the wireless NIC into an Access Point. For more information 
+about the HostAP drivers go to <a href="http://hostap.epitest.fi/">http://hostap.epitest.fi/</a>.&nbsp; </font></p>
+<blockquote>
+<p><font face="Arial">Copy the proper Red Hat Kernel config file for your system 
+into the Kernel source folder. The source file will be different for different 
+systems. Because my computer is a Pentium 4, I will use the 
+kernel-2.4.18-i686.config file. </font></p>
+  <blockquote>
+<p><font face="Courier New"># cp /usr/src/linux-2.4/configs/kernel-2.4.18-i686.config 
+/usr/src/linux-2.4/.config </font></p>
+  </blockquote>
+<p><font face="Arial">Expand the HostAP file </font></p>
+  <blockquote>
+<p><font face="Courier New"># cd or cd /root<br>
+# tar –xzf hostap-0.0.4.tar.gz <br>
+# cd hostap-0.0.4 </font></p>
+  </blockquote>
+<p><font face="Arial">Compile and install the drivers </font></p>
+  <blockquote>
+<p><font face="Courier New"># make pccard KERNEL_PATH=/usr/src/linux-2.4<br>
+# make install_pccard KERNEL_PATH=/usr/src/linux-2.4 </font></p>
+  </blockquote>
+<p><font face="Arial"><a name="hostap dmesg">To test that the HostAP drivers have installed correctly, 
+you should see the following lines after running the “dmesg“ command. </a> </font>
+</p>
+  <blockquote>
+<p><font face="Courier New"># dmesg<br>
+<br>
+hostap_crypt: registered algorithm 'NULL' <br>
+hostap_cs: hostap_cs.c 0.0.4 (SSH 
+Communications Security <br>
+Corp, Jouni Malinen)<br>
+hostap_cs: (c) Jouni Malinen &lt;jkmaline@cc.hut.fi&gt;&nbsp;&nbsp; <br>
+ostap_cs: setting Vcc=33 (constant) <br>
+hostap_cs: CS_EVENT_CARD_INSERTION <br>
+prism2_config() <br>
+hostap_cs: setting Vcc=50 (from config) <br>
+Checking CFTABLE_ENTRY 0x01 (default 0x01) <br>
+IO window settings: cfg-&gt;io.nwin=1 dflt.io.nwin=1 <br>
+io-&gt;flags = 0x0046, io.base=0x0000, len=64 <br>
+hostap_cs: index 0x01: Vcc 5.0, irq 3, io 0x0100-0x013f <br>
+divert: allocating divert_blk for wlan0 <br>
+hostap_cs: Registered netdevice wlan0 <br>
+prism2_hw_init() <br>
+prism2_hw_config: initialized in 9396 iterations <br>
+wlan0: NIC: id=0x8002 v1.0.0 <br>
+wlan0: PRI: id=0x15 v0.3.0 <br>
+wlan0: STA: id=0x1f v0.8.3 <br>
+wlan0: defaulting to host-based encryption as a workaround 
+for firmware <br>
+bug in Host AP mode WEP <br>
+wlan0: LinkStatus=2 (Disconnected) </font></p>
+  </blockquote>
+</blockquote>
+<p><br>
+<b><font face="Arial">
+<a name="Install ar5k drivers for Atheros based 802.11a cards (Optional)">Install ar5k drivers for Atheros based 802.11a cards 
+(Optional) </a> </font></b></p>
+<p><font face="Arial">The ar5k drivers are the first open source Linux drivers 
+written for Atheros 802.11a cards. Currently the drivers only enable the receive 
+components of the wireless NIC, but just enough features necessary to monitor 
+802.11a networks. </font></p>
+<blockquote>
+<p><font face="Arial">Expand the vt_ar5k file </font></p>
+  <blockquote>
+<p><font face="Courier New"># cd or cd /root <br>
+# tar –xzf vt_ar5k_20030509.tar.gz <br>
+# cd vt_ar5k&nbsp; </font></p>
+  </blockquote>
+<p><font face="Arial">Compile ar5k drivers </font></p>
+  <blockquote>
+<p><font face="Courier New"># make KERNEL_SOURCE=/usr/src/linux-2.4 </font></p>
+  </blockquote>
+<p><font face="Arial">Install the ar5k drivers into the proper locations. I had 
+problems with &quot;make install&quot; so I'm installing them manually. </font></p>
+  <blockquote>
+<p><font face="Courier New"># cp vt_ar5k.o /lib/modules/2.4.18-27.8.0/net/vt_ar5k.o
+<br>
+# cp etc/pcmcia/vt_ar5k.conf /etc/pcmcia/vt_ar5k.conf
+</font></p>
+  </blockquote>
+<p><font face="Arial">Edit the &quot;/etc/modules.conf&quot; file </font></p>
+<p><font face="Arial">Add the following line to select the channels that are 
+available. This will be slightly different if you live outside the US. </font>
+</p>
+  <blockquote>
+<p><font face="Courier New">options vt_ar5k reg_domain=fcc </font></p>
+  </blockquote>
+<p><font face="Arial">Restart the pcmcia service </font></p>
+  <blockquote>
+<p><font face="Courier New"># service pcmcia restart </font></p>
+  </blockquote>
+<p><font face="Arial"><a name="ar5k dmesg">To test that the ar5k drivers have installed correctly, 
+you should see the following lines after running the “dmesg“ command. </a> </font>
+</p>
+  <blockquote>
+<p><font face="Courier New"># dmesg <br>
+<br>
+vt_ar5k: found [mem_start:0xd1ddc000, mem_end:0xd1dec000, 
+len: 65536, irq:11] <br>
+vt_ar5k: setting up initial configuration register <br>
+divert: allocating divert_blk for wlan0 <br>
+vt_ar5k (wlan0): starting card in standard mode <br>
+vt_ar5k (wlan0): MAC revision 0x0007 <br>
+vt_ar5k (wlan0): PHY revision 0x0003 <br>
+vt_ar5k (wlan0): A2 revision 0x0001 <br>
+vt_ar5k (wlan0): hardware address 00:DE:AD:BE:EF:02 <br>
+vt_ar5k (wlan0): status 0x00000100 <br>
+vt_ar5k (wlan0): card initialized successfully <br>
+cs: IO port probe 0x0c00-0x0cff: clean. <br>
+cs: IO port probe 0x0100-0x04ff: excluding 0x3b8-0x3df 
+0x4d0-0x4d7 <br>
+cs: IO port probe 0x0a00-0x0aff: clean. </font></p>
+  </blockquote>
+</blockquote>
+<p><font face="Arial"><br>
+<a name="Install Libpcap"><b>Install Libpcap</b> </a> </font></p>
+<p><font face="Arial">Libpcap provides a network library that helps programmers 
+create code that is easy to wire and portable to other operating systems. This 
+package is now optional to get Kismet working, but recommended if you want to 
+use Ethereal or tcpdump. </font></p>
+<blockquote>
+<p><font face="Arial">Expand the libpcap file. </font></p>
+  <blockquote>
+<p><font face="Courier New"># cd or cd /root <br>
+# tar –xzf libpcap-current.tar.gz </font></p>
+  </blockquote>
+<p><font face="Arial">The following line will depend on the date you downloaded 
+the file. </font></p>
+  <blockquote>
+<p><font face="Courier New"># cd libpcap-2002.10.19 <br>
+# ./configure <br>
+# make <br>
+# make install </font></p>
+  </blockquote>
+</blockquote>
+<p><font face="Arial"><br>
+<b><a name="Install Ethereal">Install Ethereal </a></b> </font></p>
+<p><font face="Arial">Ethereal is a network protocol analyzer that allows for 
+the capture, viewing, and analysis of information of each packet that is 
+transmitted over a network. When Kismet runs, it collects packets and saves them 
+to a file that is compatible with Ethereal. The Kismet dump files can be opened 
+and further analyzed in Ethereal. For more information about the use and 
+installation of Ethereal, visit 
+<a href="http://www.ethereal.com/docs/user-guide/">http://www.ethereal.com/docs/user-guide/</a>.&nbsp; </font>
+</p>
+<blockquote>
+<p><font face="Arial">The installation of Ethereal is as follows: </font></p>
+  <blockquote>
+<p><font face="Courier New"># cd /usr/src <br>
+# tar –xzf ethereal-0.9.15.tar.gz <br>
+# cd ethereal-0.9.15<br>
+# ./configure <br>
+# make <br>
+# make install </font></p>
+  </blockquote>
+</blockquote>
+<p><font face="Arial"><br>
+<b><a name="Install GpsDrive (Optional)">Install GpsDrive (Optional) &nbsp; </a>
+</b> </font></p>
+<p><font face="Arial">GpsDrive is a navigation system that works in conjunction 
+with a NMEA compatible GPS device to determine your exact position by collecting 
+coordinate information. The installation of this program is optional and only 
+necessary if you would like the ability to collect location information while 
+using Kismet. The location data collected from a GPS combined with signal 
+strength can be used to create maps of radio coverage. The coverage maps are 
+created using the &quot;gpsmaps&quot; program included with Kismet. Additionally, recent 
+versions of GPSDrive (greater the 1.30) can log access points detected with 
+Kismet into a backend MySQL database. </font></p>
+<blockquote>
+<p><font face="Arial">Begin the installation of GpsDrive by uncompressing the 
+files: </font></p>
+  <blockquote>
+<p><font face="Courier New"># cd / or cd /root <br>
+# tar –xzf gpsdrive-2.04.tar.gz <br>
+# cd gpsdrive-2.04</font></p>
+  </blockquote>
+<p><font face="Arial">Configure, compile, and install the GpsDrive program: </font></p>
+  <blockquote>
+<p><font face="Courier New"># ./configure <br>
+# make <br>
+# make install </font></p>
+  </blockquote>
+<p><font face="Arial">Now start the the mysqld service. </font></p>
+  <blockquote>
+<p><font face="Courier New"># service mysqld start </font></p>
+  </blockquote>
+<p><font face="Arial">(you could also add mysqld to start automatically when 
+Linux boots - Red Hat -&gt; Server Settings -&gt; Services, select mysqld, and click 
+save) </font></p>
+<p><font face="Arial">Now run the script provided by GpsDrive to create a MySQL database 
+and tables that will hold 
+the access points that you detect. </font></p>
+  <blockquote>
+<p><font face="Courier New"># mysql &lt; create.sql </font></p>
+  </blockquote>
+<p><font face="Arial">&nbsp;To verify that GpsDrive works, </font></p>
+  <blockquote>
+<p><font face="Courier New"># gpsdrive &amp; </font></p>
+  </blockquote>
+<p><font face="Arial">Select “setup” </font></p>
+<p><font face="Arial">Select the serial port you will be using on your computer 
+(I’m using “/dev/ttyS0”) </font></p>
+</blockquote>
+<p><font face="Arial">Note – If you’ve configured GpsDrive and are receiving 
+“Input/output error”, you might verify that the serial port is enabled in BIOS. 
+You can verify you are receiving data from the GPS with the following command: </font></p>
+<blockquote>
+  <blockquote>
+<p><font face="Arial"># cat /dev/ttyS0 </font></p>
+  </blockquote>
+</blockquote>
+<p><b><font face="Arial"><br>
+<a name="Install ImageMagick (Optional)">Install ImageMagick (Optional) </a> </font>
+</b></p>
+<p><font face="Arial">ImageMagick is a graphics package that contains tools and 
+libraries necessary if you would like to use the program “gpsmap” included with 
+Kismet. Gpsmap combines coordinate information collected from a GPS, with signal 
+strength information to produce maps of wireless coverage areas. </font></p>
+<blockquote>
+<p><font face="Arial">Install ImageMagick from source </font></p>
+  <blockquote>
+<p><font face="Courier New"># cd or # cd /root <br>
+# tar –xzf ImageMagick-5.5.7-10.tar.gz <br>
+# cd ImageMagick-5.5.7-10<br>
+# ./configure <br>
+# make <br>
+# make install </font></p>
+  </blockquote>
+</blockquote>
+<p><b><font face="Arial"><br>
+<a name="Install Kismet">Install Kismet </a> </font></b></p>
+<p><font face="Arial">Kismet has become one of the standard tools necessary to 
+perform wireless security assessments or just good old war driving. The included 
+features challenge that of most commercial products, and are only limited to the 
+weekly (many times daily) update the author provides. </font></p>
+<blockquote>
+<p><font face="Arial">To compile kismet, complete the following steps. </font>
+</p>
+  <blockquote>
+<p><font face="Courier New"># cd or cd /root <br>
+# tar –xzf kismet-devel.tar.gz <br>
+# cd kismet-devel <br>
+# ./configure --with-ethereal=/usr/src/ethereal-0.9.14 <br>
+# make dep <br>
+# make <br>
+# make install </font></p>
+  </blockquote>
+<p><font face="Arial">If you have problems installing Kismet or need help with 
+other configuration options.
+<a href="http://www.kismetwireless.net/documentation.shtml">
+http://www.kismetwireless.net/documentation.shtml</a>.&nbsp; </font></p>
+</blockquote>
+<p><b><br>
+<font face="Arial"><a name="Configure Kismet">Configure Kismet</a> </font></b></p>
+<p><font face="Arial">Kismet must be configured to specify various options 
+including the type of wireless network card you will be using. </font></p>
+<blockquote>
+<p><font face="Arial">Edit the “/usr/local/etc/kismet.conf“ file. </font></p>
+  <blockquote>
+<p><font face="Arial">Red Hat -&gt; Accessories -&gt; Text Editor </font></p>
+  </blockquote>
+<p><font face="Arial">Open -&gt; /usr/local/etc/kismet.conf </font></p>
+<p><font face="Arial">Or use a command line editor such as pico or vi </font>
+</p>
+  <blockquote>
+<p><font face="Courier New"># pico /usr/local/etc/kismet.conf </font></p>
+  </blockquote>
+<p><font face="Arial">Change the following values in kismet.conf. </font></p>
+  <blockquote>
+<p><font face="Courier New">suiduser=&lt;username you created&gt; </font></p>
+  </blockquote>
+<p><font face="Arial">Verify that eth1 is your wireless interface (I have a 
+wired NIC eth0 and the Orinoco as eth1). </font></p>
+  <blockquote>
+<p><font face="Arial">source=orinoco,eth1,Kismet </font></p>
+  </blockquote>
+<p><font face="Arial">I prefer&nbsp; to specify the exact path where we will 
+place the logs.</font></p>
+  <blockquote>
+<p><font face="Courier New">logtemplate=%h/kismet-logs/%n-%d-%i.%l </font></p>
+  </blockquote>
+<p><font face="Arial">Save the “kismet.conf” configuration file and exit. </font>
+</p>
+<p><font face="Arial">Make the kismet-logs directory that we stated in the 
+kismet configuration file. </font></p>
+</blockquote>
+<blockquote>
+  <blockquote>
+<p><font face="Courier New"># cd /home/&lt;username you created&gt; <br>
+# mkdir kismet-logs </font></p>
+  </blockquote>
+</blockquote>
+<p><font face="Arial">Note – If you have been doing everything as root, be sure 
+to change the permissions on the kismet-logs directory to belong to the user and 
+not to root. </font></p>
+<blockquote>
+  <blockquote>
+<p><font face="Courier New"># chown your_user_name:your_user_name kismet-logs </font></p>
+  </blockquote>
+</blockquote>
+<p><b><font face="Arial"><br>
+<a name="Running Kismet">Running Kismet</a> </font></b></p>
+<p><font face="Arial">The most recent devel versions of Kismet have made it an 
+easy task to start the tool.&nbsp; Now only one command is necessary to place 
+the card into monitor mode, start the channel hopping, start the Kismet server, 
+and start the Kismet client.</font></p>
+<blockquote>
+<p><font face="Arial">To begin Kismet (With a recent devel version), just enter following command. </font></p>
+  <blockquote>
+<p><font face="Courier New"># kismet </font></p>
+  </blockquote>
+<p><font face="Arial">If you want to use GpsDrive with Kismet, type the following 
+commands in another terminal window. </font></p>
+  <blockquote>
+<p><font face="Courier New"># service mysqld start</font><font face="Arial">&nbsp;&nbsp;&nbsp;&nbsp; (you could also add it to start 
+automatically when linux boots - Red Hat -&gt; Server Settings -&gt; Services, select 
+mysqld, and click save) </font></p>
+<p><font face="Courier New"># gpsdrive &amp;</font></p>
+<p><font face="Arial">Select &quot;start gpsd&quot; </font></p>
+<p><font face="Arial">Select the &quot;use SQL&quot; option </font></p>
+<p><font face="Arial">Select the &quot;Show WP&quot; option </font></p>
+  </blockquote>
+<p><font face="Arial">If you want to use Kismet, but only monitor a specific 
+channel, enter the following command.&nbsp; Just&nbsp; replace &lt;source&gt; with the 
+name of the source from the &quot;</font><font face="Courier New">kismet.conf</font><font face="Arial">&quot; 
+file and &lt;channel&gt; is the channel you want to monitor.</font></p>
+<blockquote>
+<p><font face="Courier New"># kismet -X -I &lt;source&gt;:&lt;channel&gt; </font></p>
+</blockquote>
+<p><font face="Arial">If you're using an older version of Kismet, you must start 
+the channel hopper and then start Kismet.&nbsp; You do this with the following 
+two commands</font></p>
+<blockquote>
+<p><font face="Courier New"># kismet_monitor -H<br>
+# kismet </font></p>
+</blockquote>
+</blockquote>
+<p><font face="Arial">Kismet has a number of built in help documents.&nbsp; Once 
+you begin the Kismet program, press “h” to open a help window. Most screens will 
+have a help window that explains each area, and keys that can be pressed for 
+various actions.&nbsp; Another good source of help can be found in both the Kismet 
+forum and the Netstumbler forum. <br>
+&nbsp;</font></p>
+<p><a name="FAQs"><b><font face="Arial">Frequently Asked Questions</font></b></a></p>
+<p><font face="Arial">I have collected a number of Frequently Asked Questions 
+from the Red Hat + Kismet - HOWTO, and put them together in a FAQ document.&nbsp; 
+Follow this link to find the <a href="RedHat-Kismet-HOWTO-FAQ.shtml">Red Hat + 
+Kismet HOWTO - FAQ</a> document.</font></p>
+<p><font face="Arial"><br>
+<b><a name="Other Security Tools (coming soon)">Other Security Tools (instructions coming soon)
+</a></b> </font></p>
+<blockquote>
+<p><font face="Arial">Airsnort – <a href="http://airsnort.shmoo.com">http://airsnort.shmoo.com</a>
+<br>
+Wellenreiter – <a href="http://www.remote-exploit.org/">http://www.remote-exploit.org/</a>
+<br>
+Tcpdump – <a href="http://www.tcpdump.org">http://www.tcpdump.org</a> <br>
+Nmap – <a href="http://www.insecure.org">http://www.insecure.org</a> <br>
+AirJack – <a href="http://802.11ninja.net">http://802.11ninja.net</a>&nbsp; </font></p>
+</blockquote>
+<p><font face="Arial"><br>
+<b><a name="To Do">To Do</a> </b> </font></p>
+<ul>
+  <li><font face="Arial">Get the T30 sound card to work in Kismet (I got this to 
+work with the ALSA drivers and with Red Hat 9) </font></li>
+</ul>
+<p><font face="Arial"><br>
+<a name="Change Log"><b>Change Log</b> </a> </font></p>
+<p><font face="Arial">1/13/2003 - Added Database Server, Added Change Log <br>
+1/15/2003 - Added GPSDrive Instructions <br>
+1/21/2003 - Added ImageMagick Instructions <br>
+2/7/2003 - A couple of corrections (Thanks S. Seglie) <br>
+3/13/2003 - Don't know what exactly what change, but I 
+found it's no longer necessary to recompile the Red Hat kernel. I believe that 
+one of the Red Hat Kernel updates must have made a change to how it supports 
+modules. If you need to recompile the kernel, you might try the 
+<a href="RedHat8-Orinoco-Kismet-HOWTO-old.shtml">old version of 
+my HOWTO instructions</a>. <br>
+3/18/2003 - Renamed the document to Red Hat 8.0 Kismet 
+HOWTO because now I've added support for other wireless NIC drivers. Updated the 
+versions of Ethereal and ImageMagick. <br>
+3/27/2003 - Removed some old language about the pcmcia-cs 
+drivers <br>
+3/31/2003 - Fixed two small mistakes (Thanks Robert) <br>
+4/21/2003 - Mentioned that the process works with Red Hat 
+9.0<br>
+5/23/2003 - Reformatted the entire document.&nbsp; Added internal document 
+links.&nbsp; Updated the versions used.<br>
+6/13/2003 - Updated a couple of versions.&nbsp;
+<a href="RedHat-Kismet-HOWTO-FAQ.shtml">Links to the FAQ</a>.&nbsp; Spelling 
+mistake.<br>
+7/8/2003 - Updated how you start Kismet under devel.<br>
+8/13/2003 - Updated Orinoco, Ethereal, GPSDrive, and HostAP versions<br>
+9/26/2003 - Updated Ethereal, and GPSDrive versions</font></p>
+<p><font face="Arial"><br>
+<b><a name="Questions/Concerns/Comments">Questions/Concerns/Comments </a></b> </font></p>
+<p><font face="Arial">Feel free to contact me at Ritchie@tipsybottle.com. </font>
+</p>
+<p><font face="Arial"><br>
+<b><a name="Credits">Credits</a></b> </font></p>
+<p><font face="Arial">btrimble, J. Repucci (corrections), S. Seglie, Robert &nbsp;
+</font></p>
+<p align="center"><font face="Arial" size="1">Copyright 2002 
+<a href="http://tipsybottle.com">Tipsybottle.com</a>. All Rights Reserved </font>
+</p>
+
+</body>
+
+</html>

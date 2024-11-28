@@ -1,0 +1,1630 @@
+================================================================================
+ Exploitation des flux autorisés par un système de contrôle d'accès réseau pour 
+                     un transfert de données arbitraires :
+             Tunneling et canaux cachés au sein du protocole HTTP.
+
+                                v1.0 - Juillet 2003
+                                
+                   Simon Castro <scastro [at] entreelibre.com>
+            
+                           Traduction Française de :
+********************************************************************************
+ Exploitation of data streams authorized by a network access control system for
+                              arbitrary data transfers : 
+                 tunneling and covert channels over the HTTP protocol.
+
+	                         v1.0 - June 2003
+
+                      Alex Dyatlov <alex [at] gray-world.net>
+                    Simon Castro <scastro [at] entreelibre.com>
+                            http://www.gray-world.net
+********************************************************************************
+================================================================================
+
+********************************************************************************
+  Consultez la partie NOTES A LA TRADUCTION FRANCAISE pour la  licence  associée
+à cette traduction.
+********************************************************************************
+
+================================================================================
+Copyright (c) 2003, Alex Dyatlov and Simon Castro.
+Permission is granted to copy, distribute and/or modify this document under  the
+terms of the GNU Free Documentation License, Version 1.2  or  any later  version
+published by the Free Software Foundation; with  the  Invariant  Sections  being
+LIST THEIR  TITLES,  with  the  Front-Cover  Texts  being  LIST, and   with  the
+Back-Cover Texts being LIST.
+You must have received a copy of the license with this document and  it   should
+be present in the fdl.txt file. 
+If you did not receive this file or if you don't think this  fdl.txt  license is
+correct,  have  a  look  on  the  official   http://www.fsf.org/licenses/fdl.txt
+licence file.
+================================================================================
+
+======
+RESUME
+======
+
+  Les autorisations de transit de données entre des réseaux inter-connectés sont
+définies et implémentées au niveau des Systèmes de  contrôle  d'accès  réseau  (
+Network Access Control System (NACS)).
+
+  En fonction de la configuration du NACS, il est possible à  l'heure  actuelle,
+via différentes méthodes d'évasion, d'utiliser les  flux  autorisés  pour  faire
+transiter des données arbitraires dont le trafic est interdit, mettant ainsi  en
+place un canal de communication qui est fréquemment nommé "canal caché".
+
+
+  Les canaux cachés et le tunneling font désormais  l'objet  d'un  grand  nombre
+d'articles ou d'implémentations  logicielles.  Certains  sont  cachés  dans  les
+couches basses du modèles OSI alors que d'autres s'inscrivent dans  les  couches
+hautes.
+
+  Le protocole HTTP étant l'un  des  protocoles  les  plus  utilisés  à  l'heure
+actuelle,  la   possibilité  de  réaliser  des  implémentations  logicielles  de
+tunneling et de canaux cachés en son sein devrait être  un  sujet  de  réflexion
+pour les chercheurs et les administrateurs réseau.
+
+  La conception d'un outil de type  Client/Serveur  permettant  d'exploiter  des
+canaux cachés au sein  du  protocole  HTTP  peut  être  basée  sur  les  aspects
+suivants : Quel modèle de serveur doit être implémenté  (Httpd,  Proxy,  CGI)  -
+Comment l'outil pourra t'il être conçu pour accroître la confusion d'un éventuel
+observateur surveillant le  trafic (Chaîne  de  proxy,  Serveurs  intermédiaires
+distribués, Pseudo serveurs Proxy, utilisation de serveurs tiers) - Quel type de
+fonctionnalité sera mis  en  oeuvre  (Application  cliente  unique,  Application
+cliente en mode proxy, Serveur en mode proxy, Application cliente en mode  proxy
+inversé, protocole d'échange prédéfini et propriétaire).
+ 
+  Une fois l'outil de type Client/Serveur  modélisé,  les  développeurs  peuvent
+réfléchir au moyen d'appliquer ce modèle à un environnement concret : Quel  type
+de méthode HTTP peut être utilisé (Avec ou sans corps de données HTTP,  avec  ou
+sans la méthode CONNECT) - Quel type de serveur HTTP légitime peut  être utilisé
+pour faire transiter le flux de données  arbitraires au travers du  NACS  (Proxy
+HTTP et Reverse-Proxyies, applications tierces).
+
+  La conception d'un outil de communication de ce  type  implique  également  de
+réfléchir à sa sécurité intrinsèque : authentification et autorisation du client
+et  du  serveur,  chiffrement  et  contrôle  d'intégrité  du  flux  de  données,
+protection contre le rejeu. Une attention spéciale doit  également  être  portée
+au  développement  du  code  source  en  évitant,  autant  que  faire  se  peut,
+d'introduire d'éventuelles failles.
+
+
+  Le principe fondamental des méthodes d'établissement de canaux cachés reposant
+sur leur furtivité intrinsèque, une attention particulière peut  également  être
+portée  sur   l'utilisation  de  techniques  de  couvertures  et  de  techniques
+stéganographiques de façon à accroître la confusion d'un éventuel observateur.
+
+  Cacher des données dans les requêtes et réponses HTTP  (entêtes et  corps  des
+données HTTP)  avec des techniques stéganographiques, ajouter un  trafic  réseau
+aléatoire ou spécialement contruit, modéliser des comportements de serveurs pour
+qu'ils semblent être ce qu'ils ne sont pas.
+
+  Toutes ces méthodes augmentent drastiquement la furtivité des canaux cachés.
+
+
+  L'article "Exploitation des flux autorisés par un système de contrôle  d'accès
+réseau pour un transfert de données arbitraires : Tunneling et canaux cachés  au
+sein du protocole HTTP." de Gray-World présente ces concepts aux  chercheurs  et
+aux  administrateurs  NACS  afin  de  leur  expliquer  qu'à  chaque  fois  qu'un
+administrateur croit n'autoriser que l'entrée et la sortie du protocole HTTP  en
+dehors de son réseau interne, il autorise également des  transferts  de  données
+arbitraires au travers de son périmètre sécurisé.
+
+  
+  Cet article est publié sous la licence GNU FDL (Free  Documentation  Licence),
+Version 1.2 et est copyleft Alex Dyatlov et Simon Castro - www.gray-world.net.
+
+================================================================================
+
+========
+SOMMAIRE
+========
+
+  RESUME
+  SOMMAIRE
+  INTRODUCTION
+
+  1. APPROCHE THEORIQUE DU PROTOCOLE HTTP
+     1.1. LE PROTOTOCOLE HTTP DANS NOTRE CYBER-MONDE
+     1.2. SOMMAIREMENT, LE PROTOCOLE HTTP EST
+     1.3. L'ABSTRACTION CLIENT/SERVEUR DU PROTOCOLE HTTP
+     1.4. POURQUOI AVONS NOUS CHOISI UNE APPROCHE THEORIQUE DU PROTOCOLE HTTP
+  2. IMPLEMENTATIONS CLIENT/SERVEUR
+     2.1. MODELES SERVEUR
+          2.1.1. Modèle serveur Httpd
+          2.1.2. Modèle serveur Proxy
+          2.1.3. Modèle serveur CGI
+     2.2. MODELES ORIENTES FLUX RESEAUX
+          2.2.1. Modèle de chaînes de proxy
+          2.2.2. Modèle de serveurs intermédiaires distribués
+          2.2.3. Modèle de pseudo-proxy
+          2.2.4. Modèle de serveurs tiers légitimes
+     2.3. MODES
+          2.3.1. Mode application cliente unique
+          2.3.2. Mode application cliente en mode proxy
+          2.3.3. Mode serveur en mode proxy
+          2.3.4. Mode application cliente en mode proxy inversé
+          2.3.5. Protocole d'échange prédéfini et propriétaire
+     2.4. APPLIQUER LES MODELES ET MODES DANS UN ENVIRONNEMENT CONCRET
+          2.4.1. Les proxy HTTP
+          2.4.2. Les proxy inversés
+          2.4.3. D'autres applications utilisent des intermédiaires HTTP
+  3. UTILISER LES METHODES HTTP
+     3.1. RESTRICTIONS RELATIVES AUX CONTAINERS DE DONNEES
+          3.1.1. Chaînes URI
+          3.1.2. Chaînes d'entête
+          3.1.3. Corps d'un message HTTP
+     3.2. METHODES SANS CORPS DE DONNEES : GET, HEAD, DELETE
+          3.2.1. La méthode GET
+          3.2.2. La méthode HEAD
+          3.2.3. La méthode DELETE
+     3.3. METHODES AVEC CORPS DE DONNEES : OPTIONS, POST, PUT, TRACE
+          3.3.1. La méthode OPTIONS
+          3.3.2. La méthode POST
+          3.3.3. La méthode PUT
+          3.3.4. La méthode TRACE
+     3.4. LA METHODE CONNECT DES PROXY HTTP
+     3.5. CONCLUSION
+  4. ASPECTS SECURITE
+     4.1. AUTHENTIFICATION
+     4.2. AUTORISATION
+     4.3. CHIFFREMENT DU FLUX DE DONNEES
+     4.4. INTEGRITE DU FLUX DE DONNEES
+     4.5. PROTECTION CONTRE LE REJEU
+  5. METHODES DE COUVERTURE ET DE STEGANOGRAPHIE
+     5.1. CONFUSION SUR LE FLUX HTTP
+          5.1.1. Cacher des données dans le header HTTP
+          5.1.2. Cacher des données dans le corps HTTP
+     5.2. CONFUSION SUR LE FLUX DE DONNEES
+     5.3. CONFUSION SUR LE COMPORTEMENT DU SERVEUR
+
+  CONCLUSION
+  WEBOGRAPHIE ET OUTILS
+  REMERCIEMENTS
+  NOTES A LA TRADUCTION FRANCAISE
+
+================================================================================
+
+============
+INTRODUCTION
+============
+
+  Les autorisations de transit de données entre des réseaux inter-connectés  via
+un (des) système(s)  de  contrôle  d'accès  sont  définies  et  mises  en  place
+conformément à une politique de sécurité. Une politique de  sécurité  exemplaire
+relative aux contrôles d'accès réseau s'appuie sur le postulat  qui  consiste  à
+interdire tous les flux  de  données  qui  n'ont  pas  été  strictement  prévus.
+Autrement dit "Nous interdisons tout, puis nous ouvrons des accès spécifiques et
+précis !"
+
+  Les systèmes de contrôle  d'accès  réseau  les  plus  fréquents  reposent  sur
+l'utilisation, conjointe ou non, d'outils effectuant un filtrage au  niveau  des
+différentes couches du modèle OSI (équipements réseau : niveau 2 et 3, routeurs:
+niveau 3, pare-feu/Firewall : niveaux 3, 4  et  pare-feu/Firewall  applicatifs :
+couches > 4). A ces équipements peuvent être associés d'autres outils  dont  les
+interactions avec les flux réseaux se positionnent au niveau des couches  hautes
+du modèle OSI : serveurs mandataires (proxy), anti-virus, systèmes de  détection
+d'intrusion  (Intrusion  Detection  System),  outils  de  filtrage  de  contenu,
+systèmes de détection d'anomalie (Anomaly  Detection  System),  normaliseurs  de
+flux réseaux etc.
+
+  Toutefois, malgré l'emploi de ces systèmes de contrôle d'accès réseau, il  est
+à l'heure actuelle possible, via différentes méthodes d'  "évasion",  d'utiliser
+les flux autorisés par la politique de sécurité pour faire transiter des données
+arbitraires dont le trafic  est  imprévu/interdit.  Ces  possibilités  d'évasion
+permettent l'ouverture  de  canaux  de  communication  (covert  channel,  canaux
+subliminaux) donnant accès à des services externes à partir du réseau interne ou
+accès à des ressources internes à partir du réseau externe.
+
+
+  Le principe fondamental de ces "évasions" repose sur l'absence de vérification
+de  la  valeur  intrinsèque   des   données   qui   transitent.   Les   diverses
+implémentations  de  systèmes  de  contrôle  d'accès  reposent,  en  effet,  sur
+l'abstraction protocolaire qui voudrait qu'un transfert  de  données  s'appuyant
+sur les diverses couches du modèle OSI ne puisse  servir  qu'à  transporter  les
+données prévues par le(s) protocole(s) sous-jacent(s).
+
+
+  Bien qu'il soit possible de détecter  certains  flux  anormaux  transitant  au
+travers du système de contrôle d'accès réseau, il peut être tenu pour acquis que
+l'utilisation de certains  types  de  canaux  de  communication  est  à  l'heure
+actuelle indétectable.
+
+================================================================================
+
+=======================================
+1. APPROCHE THEORIQUE DU PROTOCOLE HTTP
+=======================================
+
+  1.1. LE PROTOTOCOLE HTTP DANS NOTRE CYBER-MONDE
+  -----------------------------------------------
+
+    Le Protocole de Transfert HyperTexte (HyperText Transfer  Protocol  :  HTTP)
+  est vastement utilisé dans  le  monde  entier  à  l'heure  actuelle.  Même  si
+  certaines  compagnies   ou  organisations   d'Etat  ne  sont  pas  directement
+  connectées à Internet, la majorité  d'entre  elles  offrent un  accès  à  leur
+  utilisateurs au travers de leur système de contrôle  d'accès  réseau  (Network
+  Access Control System : NACS).
+
+    Les compagnies commerciales sont convaincues qu'autoriser leurs utilisateurs
+  à surfer sur le World Wide Web via un NACS ne représente pas un vrai risque de
+  sécurité. En fait, installer des pare-feux (firewalls) pour protéger des  DMZs
+  et des reseaux locaux internes, configurer des  Antivirus,  des  IDS,  ADS  ou
+  n'importe quoi d'autre protège effectivement les  compagnies  de  la  majorité
+  des attaques Internet connues.
+
+    Cependant, il est à l'heure actuelle communément admis, dans la  communeauté
+  de la  sécurité,  que  le  protocole  HTTP  souffre  d'un  certain  nombre  de
+  faiblesses de conception permettant l'établissement  de  canaux  cachés.  Mais
+  ceci est compréhensible car ce protocole n'a pas été conçu pour éviter ce  que
+  les chercheurs présentent à la communeauté depuis une dizaine d'années.
+
+  1.2. SOMMAIREMENT, LE PROTOCOLE HTTP EST
+  ----------------------------------------
+
+    Le "protocole HTTP est un protocole de niveau  applicatif  [...].  C'est  un
+  protocole générique, sans état et  qui  peut  être  utilisé  pour  remplir  de
+  nombreuses tâches divergentes de  son  emploi  pour  le  protocole  HyperTexte
+  [...]." ("Hypertext Transfer Protocol -- HTTP/1.1", RFC 2616) [1].
+
+    Le "protocole HTTP est un protocol basé sur l'échange  de requêtes/réponses.
+  Un client émet une requête vers un serveur sous  la  forme  d'une  méthode  de
+  requête, d'une URI et d'une version de protocole suivie d'un message  analogue
+  à un message  de  type  MIME  contenant  des  modificateurs  de  requête,  des
+  informations sur le client et un éventuel corps de  donnée  via  la  connexion
+  ouverte avec le serveur. Le serveur répond par une ligne de  statut  contenant
+  le numéro de version du protocole et un code d'erreur ou  de  réussite  suivie
+  par un message analogue à un message de type MIME contenant  des  informations
+  sur le serveur, des meta-informations et un corps de données." [1]
+
+    Dans  la  version  "HTTP/1.0,  la  plupart  des  implementations ouvrent une
+  connexion pour chaque échange de requête/réponse. Dans  la  version  HTTP/1.1,
+  une connexion unique peut être utilisée pour un plusieurs échanges de requête/
+  réponse, bien que les connexions puissent  être  interrompues  pour  un  grand
+  nombre de raisons [...]." [1]
+
+  1.3. L'ABSTRACTION CLIENT/SERVEUR DU PROTOCOLE HTTP
+  ---------------------------------------------------
+
+    La "communication HTTP prend habituellement place sur des connexions TCP/IP"
+  [1], le client ouvre une connexion TCP vers le prochain intermédiaire qui peut
+  être le serveur lui-même.
+
+    Le client envoie ensuite son message de requête  et  attend  le  message  de
+  réponse du serveur. Cette connexion  peut  rester  active  si  le  client,  le
+  serveur ou un intermédiaire a accepté que le mode des connexions  persistantes
+  soit activé ou si la méthode spéciale CONNECT envoyée  par  le  client  a  été
+  acceptée.
+
+    Il est ainsi trivial de noter que le protocole HTTP n'empèche à aucun moment
+  qu'un échange de donnée quelconque soit mis en place si celui-ci  est bâti sur
+  un échange de requêtes/réponses conforme au protocole HTTP.
+
+    En d'autres mots, le sens unique du transfert de données d'un modèle client/
+  serveur est une abstraction protocolaire qui indique uniquement que l'une  des
+  deux extrémités (que nous nommons "Client") de l'une des couches du modèle  de
+  communication doit initier une connexion.
+
+    Cependant, une fois que la canal de communication est  ouvert,  personne  ne
+  peut préjuger du "véritable" sens d'échange des données.
+
+  1.4. POURQUOI AVONS NOUS CHOISI UNE APPROCHE THEORIQUE DU PROTOCOLE HTTP
+  ------------------------------------------------------------------------
+
+    Un grand nombre de recherches dédiées au tunneling et aux canaux cachés sont
+  disponibles en tant qu'articles ou  en  tant  qu'outils  à  l'heure  actuelle.
+  Certaines approches cachent les données dans les couches basses du modèle  OSI
+  et d'autres dans les couches hautes.
+
+    Les outils les plus connus agissant sur les couches  basses  du  modèle  OSI
+  utilisent   les  champs   d'identification  des   paquets  IP,   les   numéros
+  d'acquittement TCP, les messages echo des datagrammes ICMP ou les messages  de
+  requête/réponse DNS. En fait, la plupart des entêtes des datagrammes IP ou des
+  paquets TCP/UDP/ICMP peuvent contenir un  nombre  limité  mais  arbitraire  de
+  données.
+
+    Cependant, ces outils requièrent souvent (toujours (?))  les  droits  super-
+  utilisateur et souffrent d'un certain nombre de  limitations :  sur  la  bande
+  passante à ne pas dépasser pour garder le canal caché par exemple.
+ 
+    Nous nous sommes intéressés dans ce document au  protocole  HTTP  car  c'est
+  l'un des protocoles les plus utilisés (d'autres protocoles très utilisés  sont
+  le protocole d'échange de courriers électroniques  SMTP/POP  et  le  protocole
+  DNS).
+
+    De plus, nous considérons  qu'utiliser  des  canaux  cachés  au  niveau  des
+  couches 3 et 4 du modèle OSI devient de plus en plus théorique. La plupart des
+  NACS devenant de plus en plus sécurisés, il peut être tenu pour acquis que les
+  systèmes de détection d'anomalies (ADS) et les normaliseurs  de  flux  peuvent
+  désormais empécher un attaquant de mettre en place cette sorte de tunnel.
+
+    Pour finir, quel est l'intérèt pratique d'utiliser les numéros  de  séquence
+  TCP ou les numéros d'identification IP pour mettre en place des canaux  cachés
+  si nous ne sommes pas surs que les équipements réseaux  n'altéreront  pas  nos
+  flux de données ?
+
+    Pourquoi ne pas utiliser le protocole  HTTP  quand  nous  savons  qu'il  est
+  vastement déployé, quand nous savons que les données qu'il  véhicule  ne  sont
+  pas modifiées à l'heure actuelle, quand nous savons que nous pouvons nous-même
+  concevoir n'importe quel protocole de niveau applicatif : Invites de commandes
+  (shells) directes ou inversées, communication pour portes  dérobées,  proxying
+  et proxying inversé d'applications et bien plus encore...
+
+    Certains équipements  réseau  tentent  aujourd'hui  d'analyser  les  couches
+  hautes du modèle OSI : Checkpoint a annoncé dans [6] que  son  pare-feu  était
+  capable de filtrer les structures SOAP et XML, d'autres vendeurs indiquent que
+  leurs équipements réseau sont capables d'implémenter du filtrage de contenu  à
+  haut niveau.
+
+    Ce  document  tentera,  cependant,  de  démontrer  qu'à  chaque  fois  qu'un
+  utilisateur peut envoyer et recevoir un contenu HTTP au travers d'un NACS,  il
+  peut également envoyer et recevoir des données arbitraires.
+
+================================================================================
+
+=================================
+2. IMPLEMENTATIONS CLIENT/SERVEUR
+=================================
+
+  La conception d'un outil d'exploitation  de  canaux  cachés  peut  prendre  en
+compte divers aspects. Nous en décrivons certains ci-après :
+
+  * Quel modèle de serveur peut être implémenté (Serveur Httpd,  Serveur  Proxy,
+    Serveur CGI) ?
+  * Comment l'outil peut il être conçu de façon à ajouter un brin  de  confusion
+    du point de vue d'un  observateur  des  flux  (Chaînes  de  proxy,  serveurs
+    intermédiaires distribués, pseudo-proxy, serveurs tiers légitimes) ?
+  * Quel type de fonctionnalité peut être implémenté au niveau du canal caché  (
+    Application cliente unique, application cliente en mode  proxy,  serveur  en
+    mode proxy, application cliente en mode proxy inversé,  protocole  d'échange
+    prédéfini et propriétaire) ?
+
+  Nous aborderons finalement plusieurs méthodes d'application  de  ces  concepts
+dans des environnements concrets.
+
+  2.1. MODELES SERVEUR
+  --------------------
+
+    Nous nous intéressons dans  cette  partie  à  la  conception  de  la  partie
+  serveur et supposons, pour les modèles suivants, que le programme  client  est
+  executé sur le réseau local interne et qu'il interagit, directement ou via  un
+  serveur mandataire HTTP, avec un  serveur  situé  sur  le  réseau  externe  en
+  utilisant le protocole HTTP.
+
+    Dans certains cas, l'architecture cliente ne  peut  pas  être  conçue  aussi
+  simplement qu'il y paraît et peut refléter un type  d'architecture  serveur  -
+  Par exemple quand elle est conçue comme une sorte de proxy interne. Cependant,
+  nous n'aborderons pas ces cas dans  cette  partie  du  document  (réferez-vous
+  plutôt à la partie 2.3. MODES).
+
+    Les types de message  de  requête/réponse  HTTP  utilisés  entre  client  et
+  serveur ne sont également pas présentés dans cette partie (réferez-vous  à  3.
+  UTILISER LES METHODES HTTP).
+
+    Les données émises/reçues sur les flux HTTP peuvent être protégées  grâce  à
+  des méthodes cryptographiques  (consultez 4. ASPECTS SECURITE) et/ou  par  des
+  méthodes   stéganographiques  (consultez  5.  METHODES  DE  COUVERTURE  ET  DE
+  STEGANOGRAPHIE). Dans  les  modèles  serveurs  suivants,  le  terme  'données'
+  concerne tout autant des données en clair que leurs  équivalents  chiffrés  ou
+  masqués.
+
+    2.1.1. Modèle serveur Httpd
+    ---------------------------
+  
+      Ce modèle de serveur fonctionne comme un faux serveur HTTP. Il est executé
+    en tant que démon sur une station du réseau public et est en  écoute  sur un
+    port TCP - sur le port utilisé par défaut (80/TCP)  pour  les communications
+    HTTP par exemple.
+
+                       client CC ---> NACS ---> serveur CC comme faux httpd
+                |--- Réseau interne ---|---- Réseau Interne et/ou Externe ----|
+
+      Le client créant les Canaux Cachés (CC) ouvre  une connexion à destination
+    du serveur CC  et  envoie  des  données  arbitraires  encapsulées  dans  des
+    requêtes HTTP. Le serveur CC peut  transmettre  ces  données  à  un  serveur
+    applicatif ou les traiter lui-même et envoie les données résultat  dans  des
+    réponses HTTP.
+
+      L'un des avantages de cette architecture est que plusieurs  méthodes  HTTP
+    diverses peuvent être utilisées pour transporter ces données arbitraires.
+
+      Et comme le serveur CC n'est pas un véritable serveur HTTP, la plupart des
+    champs des entêtes HTTP peuvent également contenir des données.
+
+    2.1.2. Modèle serveur Proxy
+    ---------------------------
+
+      Ce modèle de canaux cachés fonctionne comme un "presque-vrai" proxy  HTTP.
+    Il est executé en tant que démon sur une station du réseau  public et est en
+    écoute sur un port TCP - sur le port 3128/TCP par exemple.
+
+                       client CC ---> NACS ---> serveur proxy CC  ---> httpd
+                |--- Réseau interne ---|---- Réseau Interne et/ou Externe ----|
+
+      Le client créant les Canaux Cachés (CC) ouvre  une connexion à destination
+    du serveur CC et envoie des données arbitraires  encapsulées  dans  certains
+    champs de l'entête  HTTP.  Ces  requêtes  HTTP  sont  construites  comme  de
+    véritables requêtes et sont adressées à un serveur HTTP arbitraire du réseau
+    public.
+
+      Le serveur CC extrait ses données de l'entête HTTP et : envoie ces données
+    à un serveur applicatif ou les traite lui-même.
+
+      Il peut ensuite retourner les données  résultat  au  client  CC  dans  les
+    réponses HTTP qu'il a obtenu du serveur arbitraire HTTP original.
+
+      Le serveur CC peut implémenter la plupart des fonctionnalités d'un serveur
+    proxy standard ou rediriger les requêtes du  client  CC  vers  un  véritable
+    serveur proxy une fois son extraction des données arbitraires réalisée.
+
+      Une extrapolation de ce modèle, concentrée sur l'apparence du   trafic  au
+    niveau du réseau public, est présentée  dans  la  partie  2.2.3.  Modèle  de
+    pseudo-proxy.
+
+    2.1.3. Modèle serveur CGI
+    -------------------------
+
+      Ce modèle de serveur est executé comme un programme  CGI  (Common  Gateway
+    Interface) tournant sur un serveur HTTP normal.
+
+      Grâce aux spécifications CGI,  ce  programme  peut  recevoir  des  données
+    arbitraires depuis la chaîne URI de la requête HTTP, depuis d'autres chaînes
+    de l'entête HTTP et depuis le corps des données de cette même requête.
+
+      Dans les deux premiers cas,  le  programme  reçoit  les  données  via  les
+    variables d'environnement standard CGI et dans le  dernier  cas  depuis  son
+    flux d'entrée standard (STDIN).
+
+                       client CC ---> NACS ---> serveur HTTP avec serveur CC
+                |--- Réseau interne ---|---- Réseau Interne et/ou Externe ----|
+
+      Le client créant les Canaux Cachés (CC) ouvre une connexion à  destination
+    du serveur HTTP et envoie ses données arbitraires dans des requêtes HTTP. Le
+    serveur HTTP passe ses requêtes au serveur CC et retourne la sortie standard
+    du serveur CC au client CC dans des réponses HTTP.
+
+      Un tel modèle d'interaction est discret. De plus, comme le serveur CC doit
+    être terminé après chaque procédure requête/réponse,  un  nouveau  processus
+    doit être créé sur le serveur HTTP de façon à gérer les  sessions.  Appelons
+    ce nouveau processus : Processus de  Gestion de Session (Session  Management
+    Process : SMP) pour l'exemple suivant.
+
+      Dans cet exemple, le modèle serveur CGI est utilisé  pour  encapsuler  des
+    connexions TCP/IP au sein d'un canal caché.
+
+      N'importe quelle communication  Inter-Processus  peut  être  utilisée pour
+    permettre l'échange de données entre  le  serveur  CC  et  le  Processus  de
+    Gestion de Session : mémoire  partagée,  named  pipes,  fichiers  locaux  et
+    autres mécanismes spécifiques à la plate-forme utilisée.
+
+    Exemple de Canal Caché TCP/UDP basé sur un modèle serveur CGI :
+
+      (1) Le client CC accepte des connexions  TCP/UDP  de  clients  applicatifs
+          situés sur le réseau interne.
+
+      (2) Il envoie une requête HTTP au serveur CC avec une demande de tunneling
+          placée dans l'entête HTTP.
+
+      (3) Le serveur CC extrait la demande de tunneling de l'entête HTTP et crée
+          un nouveau Processu de Gestion de Session (SMP).
+
+      (4) Le SMP ouvre la connexion TCP/UDP requise vers le  serveur  applicatif
+          désiré.
+
+      (5) Le client CC envoie des requêtes HTTP  au  serveur  CC  toutes  les  5
+          secondes avec les données arbitraires reçues des  clients  applicatifs
+          et le serveur CC passe ces données au SMP. Le SMP envoie  ensuite  ces
+          données au serveur applicatif cible.
+
+      (6) Le SMP reçoit des données  du  serveur  applicatif  et  les  passe  au
+          serveur CC. Finalement le serveur CC envoie ces  données  résultat  au
+          client CC dans les réponses HTTP des requêtes HTTP qui suivent.
+
+      (7) Le client CC retourne les données reçues au client applicatif.
+
+      L'exemple précédent explique comment il  est  possible  de  construire des
+    canaux de communications permanents entre le réseau local,  protégé  par  un
+    NACS et le réseau public, grâce à des requêtes et réponses HTTP.
+
+      Comme les données arbitraires passent au travers de serveurs HTTP normaux,
+    certaines restrictions comme la taille et le type des données  doivent  être
+    prises en considération. Notez que ces limitations dépendent  fortement   de
+    l'implémentation choisie par les développeurs des serveurs  HTTP  (consultez
+    3.1. RESTRICTIONS RELATIVES AUX CONTAINERS DE DONNEES).
+
+  2.2. MODELES ORIENTES FLUX RESEAUX
+  ----------------------------------
+
+    Nous nous concentrons dans cette partie sur l'apparence que les flux réseaux
+  peuvent avoir pour un observateur externe. En  d'autres  mots,  quel  type  de
+  preuve   un  moniteur   du   trafic   (administrateur  réseau  ou  système  de
+  surveillance automatisé) peut obtenir de  notre  flux  de  données  transitant
+  entre la station cliente et le NACS ou entre le NACS et la station serveur. Et
+  est-ce que ces preuves lui permettent de conclure qu'il est en  présence  d'un
+  canal caché établi sur le réseau qu'il surveille.
+
+    Plusieurs types de modèles orientés flux réseaux peuvent  être  conçus  mais
+  ils ont tous un point commun : tromper un éventuel surveillant du trafic.
+
+    2.2.1. Modèle de chaînes de proxy
+    ---------------------------------
+
+      Ce modèle est à l'heure actuelle implémenté dans bon  nombre  d'outils  et
+    est habituellement basé sur l'emploi de la méthode HTTP  CONNECT  (consultez
+    3.4. LA METHODE CONNECT DES PROXY HTTP).
+
+      Nous rencontrons fréquement ce modèle dans le mode suivant :
+
+         Client CC ---> NACS ---> Proxy HTTP 1 -/-> Proxy HTTP X ---> Serveur CC
+   |--- Réseau interne ---|------------ Réseau Interne et/ou Externe ---------|
+
+      Cependant, il est possible d'imaginer que la chaîne  de  proxy  est  aussi
+    longue que l'on veut pour l'établissement du flux de données  logique  entre
+    le client et le serveur applicatifs.
+
+    2.2.2. Modèle de serveurs intermédiaires distribués
+    ---------------------------------------------------
+
+      Ce modèle théorique est basé sur la  possibilité  d'ajouter  des  serveurs
+    intermédiaires distribués (ID) entre la partie cliente et la partie  serveur
+    responsables de l'etablissement du canal caché.
+
+                                      |---> Serveur ID 1 --->|
+				      |                      |
+              client CC ---> NACS --->|---> Serveur ID 2 --->|---> serveur CC
+                                      |                      |
+                                      |---> Serveur ID X --->|
+
+       |--- Réseau interne ---|------ Réseau Interne et/ou Externe ------|
+
+      Le client CC envoie aléatoirement (ou non) ses requêtes HTTP aux  serveurs
+    intermédiaires distribués. Ces serveurs intermédiaires transmettent  à  leur
+    tour  les   données  au   serveur  CC   qui  les   envoie  au(x)  serveur(s)
+    applicatif(s).
+
+      Ce modèle orienté flux réseaux semble être basé sur une distribution  de n
+    serveurs destination pour un observateur du trafic.
+
+      La distribution en n serveurs intermédiaires peut, evidemment,  être  mise
+    en oeuvre sur le réseau interne permettant ainsi l'augmentation du nombre de
+    de sources d'émission de données que le NACS aura à surveiller.
+
+    2.2.3. Modèle de pseudo-proxy
+    -----------------------------
+
+      Cette partie présente succinctement une description orienté  flux  réseaux
+    du modèle serveur documenté dans la partie 2.1.2. Modèle serveur Proxy.
+
+      Le nombre de serveurs HTTP arbitraires mais légitimes présents derrière le
+    pseudo-proxy peut être élevé et  les  requêtes  HTTP  légitimes  leur  étant
+    adressées peuvent être construites/envoyées aléatoirement.
+
+                                                     |---> Httpd légitime 1
+                                                     |         
+           client CC ---> NACS ---> Pseudo-Proxy --->|---> Httpd légitime 2
+                                          |          |
+                                          |          |---> Httpd légitime X
+					  |
+					  |---> serveur CC / Serveur applicatif
+
+    |--- Réseau interne ---|---------- Réseau Interne et/ou Externe ----------|
+
+      Ce modèle orienté flux réseaux est basé sur une distribution de n serveurs
+    destination pour un observateur tentant de comprendre le flux de données.
+
+      Si cet observateur ne veut pas être trompé par le grand nombre de serveurs
+    destination, il (que cet observateur soit un  administrateur  réseau  ou  un
+    système de surveillance automatisé) doit assimiler le fait que la conception
+    de l'architecture serveur repose  sur  le  serveur  proxy  et  non  sur  les
+    serveurs destination - et ceci peut ne pas être aussi facile qu'il y  paraît
+    car la présence d'un autre modèle orienté flux réseaux (présenté  en  2.2.2.
+    Modèle de serveurs intermédiaires distribués) est tout aussi probable.
+
+      Dans ce modèle, les données sont poussées vers le serveur  applicatif  via
+    le serveur CC.
+
+    2.2.4. Modèle de serveurs tiers légitimes
+    -----------------------------------------
+
+      Ce modèle a initialement été présenté par  Errno  Jones  dans  "Legitimate
+    Sites as Covert Channels - An Extension  to  the  Concept  of  Reverse  HTTP
+    Tunnels" [2]. Il décrit un modèle de canaux cachés basé  sur  un  traitement
+    asynchrone grâce à l'utilisation de sites Web légitimes permettant de poster
+    des messages en ligne.
+
+      Fondamentalement, le client vérifie dans un forum  de  discussion  si  des
+    commandes à exécuter ont été publiées, le serveur poste  ces  commandes,  le
+    client les récupère, les exécute et poste le résultat sur le forum. Résultat
+    que le serveur récupère quand il est disponible.
+
+              client CC ---> NACS ---> Tiers légitime <--- client CC
+
+       |--- Réseau interne ---|----- Réseau Interne et/ou Externe -----|
+
+      L'approche d'Errno Jones est  intéressante  pour  plusieurs  raisons :  il
+    décrit un modèle de canal caché basé sur des traitements asynchrone (méthode
+    utilisant un forum de discussion), il décrit également un  modèle  basé  sur
+    une distribution de  n  serveurs  destination  et  présente  finalement  une
+    possibilité d'utiliser des hôtes externes légitimes pour l'établissement  de
+    canaux cachés.
+
+      Une autre différence entre ce modèle et les deux modèles précédents réside
+    dans le fait que le serveur applicatif et le client envoient  et  récupèrent
+    tous deux des données vers un serveur public tiers légitime. Il n'est  ainsi
+    pas nécessaire d'implémenter une architecture de canaux cachés basée sur  le
+    modèle théorique client/serveur habituel.
+
+  2.3. MODES
+  ----------
+
+    Nous allons maintenant aborder les fonctionnalités de la partie serveur.  En
+  d'autres mots : quel type de canal de données peut être  implémenté  dans  une
+  architecture client/serveur ?
+
+    Deux types de canaux de données peuvent être  implémentés  dans  des  canaux
+  cachés : Le premier concerne le transit des flux de données  générés  par  des
+  applications publiquement disponibles (comme le protocole SSH par exemple)  et
+  le second est relatif au transit de données basé sur  un  protocole  d'échange
+  prédéfini et propriétaire.
+
+    Alors que le premier type de transit peut être détecté à cause  d'un  trafic
+  généré anormalement élevé, nous considérons qu'il  est,  à  l'heure  actuelle,
+  impossible de decouvrir le second et spécialement si celui-ci est couvert  par
+  des méthodes stéganographiques.
+
+    Nous présentons tout d'abord des modes  permettant  le  transit  de  données
+  générées par des applications "réelles" et finirons par un  court  exemple  de
+  conception d'un protocole d'échange prédéfini et propriétaire.
+
+    Note : Dans les modes présentés ci-après, nous parlerons de  tunneling  http
+  quand le serveur applicatif est localisé au niveau du serveur et de  tunneling
+  http inversé quand le serveur applicatif est localisé au niveau du client.
+
+    2.3.1. Mode application cliente unique
+    --------------------------------------
+
+                       client CC ---> NACS ---> Serveur
+                |--- Réseau interne ---|--- Réseau Interne et/ou Externe ---|
+
+      Le client établissant  les  Canaux  Cachés  (CC)  ouvre  une  connexion  à
+    destination du serveur au travers d'un NACS. Une fois la connexion autorisée
+    établie, le transfert de données arbitraire peut débuter.
+
+      Le client CC et le serveur savent tous deux comment gérer les données  qui
+    leur parviennent.
+
+      En fonction de l'implémentation choisie, nous pourrons utiliser X  Clients
+    CC pour un seul Serveur ou 1 client CC par Serveur.
+
+    2.3.2. Mode application cliente en mode proxy
+    ---------------------------------------------
+
+                  (1)            (2)       (2)
+           Client ---> client CC ---> NACS ---> Serveur
+      |-------- Réseau interne --------|--- Réseau Interne et/ou Externe ---|
+
+    (1) : Un client applicatif ouvre une connexion vers le client CC.
+    (2) : Le client CC ouvre une connexion vers le serveur applicatif.
+
+      Le client CC utilise des méthodes spécifiques pour passer  au  travers  du
+    NACS mais seuls le Client et le Serveur savent  comment  gérer  les  données
+    émises/reçues.
+
+      En fonction de l'implémentation choisie, nous pourrons  utiliser  1  ou  X
+    client(s) applicatifs pour un client CC et 1 ou Y client(s) pour un Serveur.
+
+    2.3.3. Mode serveur en mode proxy
+    ---------------------------------
+
+                  (1)            (2)       (2)             (3)
+      Client_Appl ---> client CC ---> NACS ---> serveur CC ---> Serveur_Appl
+      |-------- Réseau interne --------|--- Réseau Interne et/ou Externe ---|
+
+    (1) : Un Client Applicatif ouvre une connexion vers un client CC.
+    (2) : Le client CC ouvre une connexion vers le serveur CC.
+    (3) : Le serveur CC ouvre une connexion vers le Serveur Applicatif.
+
+      Deux flux de données différents apparaissent  dans  ce  mode.  Le  premier
+    concerne les clients CC et le serveur CC alors que le second est relatif aux
+    Clients et Serveurs Applicatifs.
+
+      L'idée principale de ce mode est  que  ce  sont  les  clients  applicatifs
+   situés sur le réseau interne qui choisissent d'utiliser un canal caché.
+
+     En fonction de l'implémentation choisie,  X  clients  applicatifs  pourront
+   demander à un client CC d'accéder à Y serveurs applicatifs et  nous  pourrons
+   mettre en place Z clients CC par serveur CC.
+
+    2.3.4. Mode application cliente en mode proxy inversé
+    -----------------------------------------------------
+
+                    (3)           (1)       (1)              (2)
+      Serveur_Appl <--- client CC ---> NACS ---> serveur CC <--- Client_Appl
+      |-------- Réseau interne ---------|--- Réseau Interne et/ou Externe ---|
+
+    (1) : Le client CC ouvre une connexion vers le serveur CC.
+    (2) : Un Client Applicatif ouvre une connexion vers le serveur CC et demande
+          au   serveur  CC  de   retransmettre  la  connexion  vers  le  Serveur
+          Applicatif.
+    (3) : Le serveur CC retransmet le flux de données  vers  le  client  CC  qui
+          ouvre une connexion vers le Serveur Applicatif.
+
+      Deux flux de données différents apparaissent à nouveau dans  ce  mode.  Le
+    premier concerne les clients et le  serveur  CC  alors  que  le  second  est
+    relatif aux Clients et Serveurs Applicatifs.
+
+      L'idée principale de ce mode est qu'une fois qu'un canal caché est  ouvert
+    au travers du NACS, ce sont les clients applicatifs  situés  sur  le  réseau
+    externe qui choisissent d'utiliser un canal caché.
+
+    2.3.5. Protocole d'échange prédéfini et propriétaire
+    ----------------------------------------------------
+
+      Ce mode repose  sur  la  définition d'un  protocole d'échange propriétaire
+    préalablement à l'échange de données entre les deux extrémités du  canal  de
+    communication.
+
+      Par exemple, si les deux parties d'un  canal  de  communication  possèdent
+    tous deux un moyen commun d'établir des relations entre  des  alias  et  des
+    requêtes complètes, il suffit que chaque émetteur envoie les alias  en  lieu
+    et place des requêtes complêtes.
+
+      En nous basant sur la méthode GET présentée en '3.2.1. La méthode GET', et
+    sur le fichier de définition d'alias partagé par les deux parties  du  canal
+    de communication :
+      1A cat
+      1B echo
+      7A "/etc/passwd"
+      8A >
+      9A "root::0:0:root:/:/bin/sh"
+
+      Prenez maintenant en compte les requêtes HTTP suivantes émises  par  l'une
+    des deux parties :
+      GET /subdirectory/1A-7A HTTP/1.0
+      GET /subdirectory/1B-9A-8A-7A HTTP/1.0
+
+      Dans cet exemple de protocole d'échange  prédéfini  et  propriétaire, nous
+    comprenons parfaitement que la bande passante utilisée par  le  Canal  Caché
+    est drastiquement réduite. L'utilisation de tels modes de transit de données
+    est une bonne solution pour  la  création  de  canaux  de  communication  de
+    portes dérobées.
+
+  2.4. APPLIQUER LES MODELES ET MODES DANS UN ENVIRONNEMENT CONCRET
+  -----------------------------------------------------------------
+
+      Cette partie du document s'intéresse  au  concept  "Comment  appliquer les
+    modèles et modes  dans  un  environnement  concret".  En  fait, ce  document
+    n'aurait pas été réellement complet ni utilisable si nous n'avions pas parlé
+    des moyens qui nous permettent d'utiliser des architectures  existantes pour
+    faire transiter nos canaux cachés.
+
+     Le  protocole HTTP doit supporter la possibilité qu'un (ou que  plusieurs)
+    intermédiaire(s) soi(en)t situé(s) entre le client et le serveur final.
+
+      "Trois formes courantes d'intermédiaires existent : proxy, passerelle,  et
+    tunnel. Un proxy est un agent qui restransmet les  données,  il  reçoit  des
+    requêtes pour une URI dans sa forme complète,  réécrit  tout  ou  partie  du
+    message et retransmet la requête réécrite au serveur  identifié  par  l'URI.
+    Une passerelle est un agent de réception, il agit comme une  sous-couche  d'
+    autres serveurs et, si c'est nécessaire,  convertit  les  requêtes  dans  le
+    sous-protocole du serveur. Un tunnel agit comme un relais entre deux  points
+    de connexion sans changer les messages; les tunnels sont utilisés  quand  la
+    communication  doit  transiter  au  travers  d'un  intermédiaire  (comme  un
+    pare-feu) et ce, même si cet intermédiaire ne comprend  pas  le  contenu  du
+    message." [1].
+
+      Nous allons maintenant nous  interesser  aux  deux  formes  courantes  des
+    intermédiaires  susceptibles  d'être  rencontrés  dans  des  NACS  et   nous
+    présenterons brièvement un autre type d'intermédiaire HTTP utilisable.
+
+    2.4.1. Les proxy HTTP
+    ---------------------
+
+      Les proxy  HTTP font  fréquemment  partie  des  équipements  intégrés  aux
+    NACS et ces proxy  composent la forme d'intermédiaire  la  plus  courante  à
+    l'heure actuelle. Ces équipements peuvent être des  des proxy   HTTP  dédiés
+    (Squid par exemple) ou des serveurs  HTTP  implémentant  une  fonctionnalité
+    proxy (Les serveurs Web Apache par exemple).
+
+      Deux méthodes permettent de mettre en place un canal de  communication  au
+    travers d'un proxy HTTP : L'utilisation de la méthode CONNECT  si  elle  est
+    autorisée ou l'utilisation des autres  méthodes  HTTP  avec  un  paramétrage
+    relatif à la gestion d'un  proxy  HTTP  (intermédiaire  de  type  tunnel  ou
+    intermédiaire de type proxy respectivement).
+
+      La méthode permettant de passer au travers d'un proxy HTTP avec la méthode
+    CONNECT est présentée dans la partie 3.4. LA METHODE CONNECT DES PROXY  HTTP
+    de ce document.
+
+      L'utilisation d'un intermédiaire de type proxy est décrite dans  l'exemple
+    suivant :
+
+      (1) Le client ouvre une connexion TCP vers le proxy HTTP.
+
+      (2) Le client envoie la requête HTTP :
+          GET http://<server_host>/<uri> HTTP/1.0
+          Host: <server_host>
+
+      (3) Le proxy HTTP ouvre une connexion TCP vers le prochain intermédiaire.
+
+      (4a) Si le prochain intermédiaire est le serveur HTTP final, aller en (5).
+
+      (4b) Si le prochain intermédiaire n'est pas le serveur HTTP  final,  aller
+           en (3) et envoyer la requête HTTP décrite dans (2).
+
+      (5) Le proxy HTTP envoie la requête réécrite au serveur final :
+          GET /<uri> HTTP/1.0
+          Host: <server_host_2>
+
+      (6) La chaîne d'intermédiaire envoie le message de réponse au client.
+
+      Comme nous le décrivons  ci-dessus, l'utilisation  d'un  proxy  HTTP  pour
+    émettre/recevoir des données nécessite, uniquement, de construire l'URI  des
+    requêtes correctement. Il existe, bien sur, un grand  nombre  de  directives
+    HTTP  permettant   d'informer  la  chaîne  d'intermédiaires  que  le  client
+    recquiert un certain type de service pour le transit de ses  données  (Cache
+    ou non, Authentification ou non, connexions persistantes, etc.).
+
+    2.4.2. Les proxy inversés
+    -------------------------
+
+      Nous ne discuterons pas ici du concept des proxy inversés. Il nous  paraît
+    suffisante de mentionner q'un proxy inversé mal configuré  peut  fonctionner
+    comme un proxy standard pour le monde extérieure.
+
+      Et  si   tel  est  le  cas,  ce  type  de  mauvaise  configuration   ouvre
+    immédiatement une porte pour des clients situés sur le réseau  externe  vers
+    services situés sur le réseau interne.
+
+    2.4.3. D'autres applications utilisent des intermédiaires HTTP
+    -------------------------------------------------------------
+
+      Un grand nombre d'applications différentes des navigateurs  HTTP  standard
+    utilisent désormais le protocole HTTP.  L'autorisation  de  transit  de  ces
+    applications au travers d'un NACS peut  impliquer,  ou  non,  l'installation
+    d'intermédiaires HTTP dans la zone protégée du NACS.
+
+      Par exemple, il peut être courant pour une  organisation  d'autoriser  ses
+    employés à accéder à des serveurs RTSP publics.  Il  serait  possible,  pour
+    cette entreprise d'installer un proxy RTSP dans une  zone  protégée  de  son
+    NACS, mais il lui serait également possible d'utiliser  ses  serveurs  proxy
+    HTTP existants pour autoriser le transit des flux de données RTSP.
+
+      Dans ces deux cas, il est trivial d'indiquer que la  création  d'un  canal
+    caché au travers du NACS est possible. Comment cela  est  possible  est  une
+    autre histoire.
+
+================================================================================
+
+=============================
+3. UTILISER LES METHODES HTTP
+=============================
+
+  Plusieurs méthodes d'évasion peuvent être employées pour utiliser des flux  de
+données formatés selon le protocole HTTP de façon  à  permettre  un  transit  de
+données arbitraires et à créer un canal caché.
+
+  Comme il est présenté dans la  partie  'APPROCHE THEORIQUE DU PROTOCOLE HTTP',
+l'établissement d'une connexion basée sur le protocole  HTTP  recquiert  que  le
+client et le serveur échangent des requêtes et des réponses HTTP.
+
+  Ces messages de requête/réponse HTTP peuvent contenir des données arbitraires.
+Ces données peuvent être ajoutée en clair,  dans  un  format  chiffré  ou  caché
+(référez vous à  4.  ASPECTS  SECURITE  et  5.  METHODES  DE  COUVERTURE  ET  DE
+STEGANOGRAPHIE) comme partie de chaînes URI, comme  partie  de  champs  d'entête
+HTTP standard ('User-Agent' par exemple), dans des champs d'entêtes étendus  non
+définis dans une RFC ou dans le corps de données HTTP si celui-ci est disponible
+dans la méthode utilisée pour la communication.
+
+  Quand les requêtes HTTP ne sont consultées que  par  le  serveur  HTTP  (HEAD,
+DELETE, OPTIONS, PUT, TRACE), le seul moyen d'utiliser un container  HTTP  comme
+base pour un dialogue HTTP est de concevoir une architecture serveur  basée  sur
+un faux serveur httpd.
+
+  Dans les autres cas, les données des requêtes HTTP (GET,  POST)  peuvent  être
+transmises par le serveur HTTP à un sous-programme ayant la possibilité  de  les
+gérer. Ceci nous permet de concevoir une architecture basée sur des CGI.
+
+  Nous allons maintenant nous concentrer sur les méthodes HTTP  existantes  dans
+le protocole HTTP/1.1 (comme défini dans [1]) de façon à comprendre comment nous
+pouvons utiliser des canaux de communications HTTP autorisées  pour  transporter
+des données arbitraires.
+
+  3.1. RESTRICTIONS RELATIVES AUX CONTAINERS DE DONNEES
+  -----------------------------------------------------
+
+    3.1.1. Chaînes URI
+    ------------------
+
+      Le standard HTTP/1.1 [1] indique que la longueur maximale d'une chaîne URI
+    n'est pas limitée et que les caractères différents des  caractères  reservés
+    et des caractères non sûrs  doivent  être  codés  avec  leur  représentation
+    "'%'HEX HEX" presentation ("Uniform  Resource  Identifiers  (URI) :  Generic
+    Syntax", RFC 2396) [4].
+
+      Des serveurs mandataires anciens peuvent ne pas supporter des chaînes  URI
+    d'une longueur supérieure à 255 octets. Si nous utilisons l'un  d'entre  eux
+    pour faire transiter nos flux HTTP,  nous  ne  devrions  pas  construire  de
+    chaînes URI supérieures à cette taille "sûre".
+    
+      Dans les exemples ci-dessous, nous utiliserons  la  notation  [*_uri_data]
+    pour indiquer que les données sont placées dans des chaînes URI.
+
+    3.1.2. Chaînes d'entête
+    -----------------------
+
+      Les tailles des chaînes d'entête  ne  sont  également  pas  limitées  mais
+    doivent contenir des données TEXTE [1] :
+
+      OCTET = <n'importe quelle séquence 8-bit de données>
+      SP    = <US-ASCII SP, esspace (32)>
+      HT    = <US-ASCII HT, tab horizontal (9)>
+      CTL   = <n'importe quel caractère US-ASCII de contrôle (octets 0 - 31)  et
+              DEL (127)>
+      CRLF  = CR LF
+      LWS   = [CRLF] 1*( SP | HT )
+      TEXT  = <n'importe quel OCTET à l'exception des CTLs, mais incluant LWS>
+
+      Cependant, la longueur d'une chaîne d'entête peut être restreinte par  les
+    développeurs de services HTTP, comme cela est proposé dans [1]. Dans ce cas,
+    les  services  HTTP  (proxy/httpd)  devraient  répondre  avec  les  messages
+    correspondants - "Bad Request" (400). Par exemple, une distribution standard
+    du  serveur  Apache  n'accepte  pas  des  chaînes  d'entête  d'une  longueur
+    supérieure à 8190 octets (nom du champ de l'entête plus  valeur  du  champ).
+    Néanmoins, ceci peut être modifié avec la directive <LimitRequestFieldSize>.
+
+      Dans les exemples ci-dessous, nous utiliserons la notation [*_header_data]
+    pour indiquer que les données sont placées dans des chaînes d'entête.
+
+    3.1.3. Corps d'un message HTTP
+    ------------------------------
+
+      Encore une fois, il n'existe pas de limitation  de  taille.  A  partir  du
+    moment où nous décrivons les caractères de données utilisés, n'importe  quel
+    binaire peut transiter dans  le  tunnel.  Le  serveur  Apache  possède,  par
+    exemple, la directive <LimitRequestBody> et la constante  (positionnée  lors
+    de la compilation) DEFAULT_LIMIT_REQUEST_BODY qui spécifient que  la  taille
+    maximale du corps de données d'une requête cliente doit être comprise  entre
+    0 et 2Gb. De  telles  restrictions  sont  utilisées  comme  des  protections
+    additionnelles aux attaques DoS ciblant les ressources CGI.
+
+      Nous utiliserons dans les exemples ci-dessous  la  notation  [*_body_data]
+    pour indiquer que les données figurent dans le corps de données  du  message
+    HTTP.
+
+  3.2. METHODES SANS CORPS DE DONNEES : GET, HEAD, DELETE
+  -------------------------------------------------------
+
+    3.2.1. La méthode GET
+    ---------------------
+
+      "La méthode GET demande la récupération des informations (sous forme d'une
+    entité) identifiées par l'URI de la requête" [1].
+
+    Architectures serveur possibles : Faux serveurs httpd/proxy, programmes CGI.
+    Méthodes d'inclusion de données arbitraires : URI, chaînes  d'entête,  corps
+    de données de la réponse.
+
+      Exemple :
+      -----------------------------------------------------------------------
+      Client request:
+      GET [outbound_uri_data] | /cgi-bin/srv.cgi?[outbound_uri_data] HTTP/1.1
+      Host: <server_host>
+      X-Data: [outbound_header_data]
+
+      Server response:
+      HTTP/1.1 200 OK
+      Date: Wed, 28 May 2003 06:24:25 GMT
+      Server: Apache/1.3.27
+      Content-Length: <content_length>
+      Content-Type: application/octet-stream
+      X-Data: [inbound_header_data]
+
+      [inbound_body_data]
+      -----------------------------------------------------------------------
+
+    3.2.2. La méthode HEAD
+    ----------------------
+
+      "La méthode HEAD est identique à la méthode GET; néanmoins, le serveur  NE
+    DOIT PAS retourner un corps de données dans la réponse. La  meta-information
+    contenue dans l'entête HTTP de la réponse à une requête  HEAD  DEVRAIT  être
+    identique aux informations envoyées en réponse à une requête GET" [1].
+
+    Architectures serveur possibles : Faux serveurs httpd/proxy.
+    Méthodes d'inclusion de données arbitraires : URI, chaînes  d'entête.
+
+      Exemple :
+      --------------------------------------
+      Client request:
+      HEAD [outbound_uri_data] HTTP/1.1
+      Host: <server_host>
+      X-Data: [outbound_header_data]
+
+      Server response:
+      HTTP/1.1 200 OK
+      Date: Wed, 28 May 2003 06:24:25 GMT
+      Server: Apache/1.3.27
+      Content-Length: <content_length>
+      Content-Type: application/octet-stream
+      X-Data: [inbound_header_data]
+      --------------------------------------
+
+    3.2.3. La méthode DELETE
+    ------------------------
+
+      "La méthode DELETE demande au serveur destinataire d'effacer la  ressource
+    identifiée par l'URI de la requête" [1].
+
+    Architectures serveur possibles : Faux serveurs httpd/proxy.
+    Méthodes d'inclusion de données arbitraires : URI, chaînes  d'entête.
+
+      Un exemple d'utilisation de la méthode DELETE peut être similaire à  celui
+    qui est présenté pour la requête HEAD.
+
+  3.3. METHODES AVEC CORPS DE DONNEES : OPTIONS, POST, PUT, TRACE
+  ---------------------------------------------------------------
+
+    3.3.1. La méthode OPTIONS
+    -------------------------
+
+      "La méthode OPTIONS représente une demande d'informations sur les  options
+    disponibles pour  la  communication  relative  à  l'échange  requête/réponse
+    identifié par l'URI de la requête."; ".. De futures extensions au  protocole
+    HTTP pourront utiliser le corps de données de la méthode OPTION pour  mettre
+    en place des requêtes plus détaillées destinées au serveur" [1].
+
+    Architectures serveur possibles : Faux serveurs httpd/proxy.
+    Méthodes d'inclusion de données arbitraires : URI, chaînes  d'entête,  corps
+    de données des requêtes/réponses.
+
+      Exemple :
+      ----------------------------------------
+      Client request:
+      OPTIONS * | [outbound_uri_data] HTTP/1.1
+      Host: <server_host>
+      Content-Length: <content_length>
+      Content-Type: application/octet-stream
+      Max-Forwards: 0
+      X-Data: [outbound_header_data]
+
+      [outbound_body_data]
+
+      Server response:
+      HTTP/1.1 200 OK
+      Date: Wed, 28 May 2003 06:24:25 GMT
+      Server: Apache/1.3.27
+      Content-Length: <content_length>
+      Content-Type: application/octet-stream
+      Allow: GET, HEAD, OPTIONS, TRACE
+      X-Data: [inbound_header_data]
+
+      [inbound_body_data]
+      ----------------------------------------
+
+    3.3.2. La méthode POST
+    ----------------------
+
+      "La méthode POST est utilisée pour demander au serveur distant  d'accepter
+    l'entité incluse dans la requête  comme  des  données  à  transmettre  à  la
+    ressource identifiée par l'URI de la requête." [1].  De  facto,  la  méthode
+    POST est le moyen le plus populaire de transmission  de  données  depuis  un
+    client HTTP vers un serveur HTTP.
+
+    Architectures serveur possibles : Faux serveurs httpd/proxy, programmes CGI.
+    Méthodes d'inclusion de données arbitraires : URI, chaînes  d'entête,  corps
+    de données des requêtes/réponses.
+
+      Exemple :
+      ------------------------------------------------------------------------
+      Client request:
+      POST [outbound_uri_data] | /cgi-bin/srv.cgi?[outbound_uri_data] HTTP/1.1
+      Host: <server_host>
+      Content-Length: <content_length>
+      Content-Type: application/octet-stream
+      X-Data: [outbound_header_data]
+
+      [outbound_body_data]
+
+      Server response:
+      HTTP/1.1 200 OK
+      Date: Wed, 28 May 2003 06:24:25 GMT
+      Server: Apache/1.3.27
+      Content-Length: <content_length>
+      Content-Type: application/octet-stream
+      X-Data: [inbound_header_data]
+
+      [inbound_body_data]
+      ------------------------------------------------------------------------
+
+      La chaîne URI de  cet  exemple  est  fonction  de  l'architecture  serveur
+    utilisée pour la création du tunnel HTTP. Dans  le  cas  d'un  faux  serveur
+    httpd, n'importe quelle donnée peut être placée dans l'URI et dans le cas d'
+    un programme CGI, l'URI doit commencer par la  localisation  d'un  programme
+    serveur et doit être suivie par un "?" et par les données arbitraires.
+
+    3.3.3. La méthode PUT
+    ---------------------
+
+      "La méthode PUT demande que l'entité incluse soit enregistrée à  la  place
+    indiquée par la chaîne URI fournie" [1]. Cette méthode est  similaire  à  la
+    méthode POST, mais ".. la différence entre les requêtes POST et  PUT  réside
+    dans la différence de sens de l'URI présente dans la  requête.  L'URI  d'une
+    requête POST identifie la ressource chargée de gérer l'entité incluse" [1].
+
+    Architectures serveur possibles : Faux serveurs httpd/proxy.
+    Méthodes d'inclusion de données arbitraires : URI, chaînes  d'entête,  corps
+    de données des requêtes/réponses.
+
+      Exemple :
+      --------------------------------------
+      Client request:
+      PUT [outbound_uri_data] HTTP/1.1
+      Host: <server_host>
+      Content-Length: <content_length>
+      Content-Type: application/octet-stream
+      X-Data: [outbound_header_data]
+
+      [outbound_body_data]
+
+      Server response:
+      HTTP/1.1 200 OK
+      Date: Wed, 28 May 2003 06:24:25 GMT
+      Server: Apache/1.3.27
+      Content-Length: <content_length>
+      Content-Type: application/octet-stream
+      X-Data: [inbound_header_data]
+
+      [inbound_body_data]
+      --------------------------------------
+
+    3.3.4. La méthode TRACE
+    -----------------------
+
+      "La méthode TRACE est utilisée pour demander un loop-back  de  la  requête
+    émise à l'extremité  applicative  distante.  Le  destinataire  final  de  la
+    requête DEVRAIT refléter le message retourné au client comme une  entité  du
+    corps de donnée d'une réponse 200 (OK)" [1]. Comme la partie serveur renvoie
+    un message HTTP/200, il pourrait inclure des  données  arbitraires  dans  le
+    corps de données en lieu et place de la requête originale proposée par [1].
+
+    Architectures serveur possibles : Faux serveurs httpd/proxy.
+    Méthodes d'inclusion de données arbitraires : URI, chaînes  d'entête,  corps
+    de données des requêtes/réponses.
+
+      Exemple :
+      --------------------------------------
+      Client request:
+      TRACE [outbound_uri_data] HTTP/1.1
+      Host: <server_host>
+      Max-Forwards: 0
+      Content-Length: <content_length>
+      Content-Type: application/octet-stream
+      X-Data: [outbound_header_data]
+
+      [outbound_body_data]
+
+      Server response:
+      HTTP/1.1 200 OK
+      Date: Wed, 28 May 2003 06:24:25 GMT
+      Server: Apache/1.3.27
+      Transfer-Encoding: chunked
+      Content-Type: message/http
+
+      <message_length>
+      TRACE [inbound_uri_data] HTTP/1.1
+      Host: <server_host>
+      Max-Forwards: 0
+      Content-Length: <content_length>
+      Content-Type: application/octet-stream
+      X-Data: [inbound_header_data]
+
+      [inbound_body_data]
+      --------------------------------------
+
+  3.4. LA METHODE CONNECT DES PROXY HTTP
+  --------------------------------------
+
+    Cette méthode est réservé pour le tunneling de protocoles arbitraires  basés
+  sur le protocole TCP. Elle était initialement conçue pour permettre un support
+  des flux SSL au niveau des serveurs mandataires  (Draft  Tunneling  TCP  based
+  protocols through Web proxy servers - Ari Luotonen) [3].
+
+    Le client commence par initier une connexion avec un serveur  mandataire  et
+  envoie la requête HTTP "CONNECT home.netscape.com:443 HTTP/1.1".
+
+    ...  Si   le  serveur  mandataire   répond  avec  "HTTP/1.0  200  Connection
+  established", le client peut commencer à émettre et  à  recevoir  des  données
+  vers ou depuis le service TCP destinataire.
+
+    Quand l'utilisation de cette méthode est autorisée par  l'administrateur  du
+  serveur mandataire, la création de tunnels permettant de faire  transiter  des
+  flux TCP est  possible.  Malheureusement,  la  méthode  CONNECT  est  rarement
+  autorisée sur la majorité des serveurs mandataires publics ou d'entreprise.
+
+  3.5. CONCLUSION
+  ---------------
+
+    Nous venons tout juste de présenter les méthodes du protocole HTTP  définies
+  dans [1]. Bien qu'elles puissent toutes être utilisées pour établir des canaux
+  cachés, certaines sont exotiques et rarement  utilisées  (PUT  et  DELETE  par
+  exemple).
+
+    L'utilisation de ces méthodes exotiques pour passer  au  travers  d'un  NACS
+  qu'un administrateur surveillerait en recherchant les anomalies survenant pour
+  le  trafic HTTP résulterait immédiatement dans la  détection  de  notre  canal
+  caché.
+
+    Il serait, ainsi, préférable d'utiliser les méthodes GET  ou  POST  ou  leur
+  combinaison pour transporter nos données arbitraires au delà des frontières du
+  NACS.
+
+================================================================================
+
+===================
+4. ASPECTS SECURITE
+===================
+
+  Un  certain  nombre  d'aspects  liés  à  la  sécurité  doivent  être  pris  en
+considération quand on conçoit un outil permettant d'établir des canaux cachés.
+
+  Le premier aspect concerne le développement de l'outil à proprement dit. Comme
+l'outil ouvre un accès "non-sécurisé" dans une architecture réseau  "sécurisée",
+une attention spéciale doit être apportée pour empécher la capture du  programme
+par des méthodes d'exploitation des failles de développement.
+
+  Les aspects sécurité suivant concernent : l'authentification,  l'autorisation,
+le chiffrement des flux de données, les  contraintes  d'intégrité  des  flux  de
+données et la protection contre le rejeu.
+
+  Note: Dans les parties suivantes, le terme 'serveur' concernera tout autant la
+partie serveur d'un programme qu'une partie cliente fonctionnant  dans  un  mode
+'proxy'.
+
+  4.1. AUTHENTIFICATION
+  ---------------------
+
+    Cet aspect sécurité concerne tout autant le  serveur  que  le(s)  client(s).
+  Le(s) client(s) devrai(en)t être capable(s)  d'authentifier  le  serveur  pour
+  éviter que le flux de données ne soit modifié  par  une  tierce partie  et  le
+  serveur devrait être capable d'authentifier  les  clients  pour  éviter  qu'un
+  client non  autorisé utilise ses ressources.
+
+  4.2. AUTORISATION
+  -----------------
+
+    Dès que la partie serveur de l'outil est conçue pour gérer  un  mode  multi-
+  clients, le serveur devrait posséder des Listes  de  Contrôle d'Accès (LCA) de
+  façon à autoriser  l'utilisation  des  ressources  sur  une  base  de  clients
+  autorisés.
+
+  4.3. CHIFFREMENT DU FLUX DE DONNEES
+  -----------------------------------
+
+    Le canal caché pouvant servir à véhiculer des informations sensibles,  comme
+  les informations d'identification  relatives à la connexion courante ou  comme
+  les informations du flux de données encapsulé  (noms  d'utilisateur,  mots  de
+  passe, adresses, etc.), le flux de données doit être chiffré.
+
+    Si un analyste réseau espionne le flux de données, il ne devrait pas être en
+  mesure d'obtenir des informations sur celui-ci ni être capable  de  mettre  en
+  place des filtres sur un ADS/normaliseur/sniffeur.
+
+  4.4. INTEGRITE DU FLUX DE DONNEES
+  ---------------------------------
+
+    La conception de l'outil d'établissement  des  canaux cachés  devrait  aussi
+  prendre en compte la possibilité qu'une personne altère  le  flux  de  données
+  pour ajouter/supprimer/modifier certaines informations, occasionnant ainsi une
+  compromission plus ou moins importante du système.
+
+    Ceci pourrait être évité par l'utilisation de fonctions cryptographiques qui
+  créeraient et signeraient les empreintes de chaque unité de données émise.
+
+  4.5. PROTECTION CONTRE LE REJEU
+  -------------------------------
+
+    La conception d'outils créant des canaux cachés devrait prendre en compte la
+  protection contre le rejeu. Un intercepteur ne devrait pas être en  mesure  de
+  rejouer tout ou partie d'un trafic réseau préalablement enregistré de façon  à
+  obtenir un accès aux parties cliente(s) ou serveur.
+
+================================================================================
+
+==============================================
+5. METHODES DE COUVERTURE ET DE STEGANOGRAPHIE
+==============================================
+
+  Toutes les méthodes présentées ici ont un point commun : Ajouter  un  brin  de
+confusion dans l'esprit d'un éventuel observateur (que cet observateur  soit  un
+outil de surveillance automatisé ou non ne devrait rien changer au concept).
+
+  Le terme Stéganographie signifie "Ecriture cachée" en Grec et  présente  l'art
+de cacher des données arbitraires dans des données légitimes. Ce concept  repose
+sur la "théorie" de 'sécurité par l'obscurité' qui implique que si  personne  ne
+sait qu'un message est caché, personne ne tentera  de  l'intercepter  ou  de  le
+résoudre.
+
+  Cela revient, basiquement,  à  utiliser  les bits ou octets non indispensables
+d'un container de données pour transporter nos données cachées.
+
+  5.1. CONFUSION SUR LE FLUX HTTP
+  -------------------------------
+
+    En fonction de la conception de l'outil de canaux cachés et de la méthode de
+  communication  choisie  (consultez  2.  IMPLEMENTATIONS  CLIENT/SERVEUR et  3.
+  UTILISER LES METHODES HTTP), deux principaux moyens de transport  des  données
+  arbitraires sont disponibles : via les entêtes et via le corps de données  des
+  requêtes/réponses HTTP. Nous abordons maintenant ces deux moyens.
+
+    5.1.1. Cacher des données dans le header HTTP
+    ---------------------------------------------
+
+      Du coté du client, les  données  peuvent  être  cachées  dans  les  champs
+    principaux ou étendus des entêtes HTTP. Supposons que nous  désirons  placer
+    de petites quantités de données arbitraires  et  regardons  les  moyens  qui
+    peuvent être mis à notre disposition.
+
+      Figure ci-dessous un exemple d'une requête GET (presque vraie)  émise  via
+    un proxy HTTP :
+
+      ----------------------------------------------------------------------
+      GET http://www.somehost.com/cgi-bin/board.cgi?view=12121212 / HTTP/1.0
+      Host: www.somehost.com
+      User-Agent: Mozilla/5.0 (12121212)
+      Accept: text/html
+      Accept-Language: en,fr,en,fr,en,en,en,en
+      Accept-Encoding: gzip,deflate,compress
+      Accept-Charset: ISO-8859-1,utf-8,ISO-1212-1
+      CONNECTION: close
+      Proxy-Connection: close
+      X-Microsoft-Plugin: unexpected error #12121212
+      ----------------------------------------------------------------------
+
+      Bien entendu, si nous utilisons ce  message  pour  transporter  de  larges
+    quantités  de  données,  nous  serons  limités  par  sa  taille.  L'approche
+    stéganographique veut que le container des données cachées  ait  une  taille
+    bien supérieure à celles-ci.  Si  ce  n'est  pas  le  cas,  notre  canal  de
+    communication risque d'être découvert à cause du grand  nombre  de  requêtes
+    HTTP qui seront générées.
+
+    Les moyens de tromper un éventuel observateur sont :
+
+    (1) La chaîne URI ressemble à une demande de service relative à  un  service
+        web public : conversation en  ligne,  forum  de  discussion,  etc..  Les
+        données sont codées dans une chaîne additionnelle : "view=12121212".
+    (2) Les données sont codées dans une partie du champ  "User-Agent"  avec  la
+        valeur: "(12121212)".
+    (3) Les données sont codées comme une fausse requête de type de caractères :
+        "ISO-1212-1".
+    (4) Les données sont codées dans un champ étendu de l'entête:
+        "X-Microsoft-Plugin: unexpected error #12121212"
+
+    Quelques méthodes stéganographiques :
+
+    (1) En utilisant différents ordres de chaînes, nous sommes capable  de coder
+        une information : 
+          "Accept: text/html", "Accept-Language: en"     = 0
+          "Accept-Language: en", "Accept: text/html"     = 1
+    (2) La présence ou l'absence de certains champs peut  également  représenter
+        une information :
+          Si le champ "Accept-Encoding" est présent     => 0
+          Si le champ "Accept-Encoding" est absent      => 1
+    (3) Si nous supposons que "en" => 0 et que "fr" => 1, alors  un  octet  peut
+        être codé dans le champ d'entête suivant :
+          Accept-Language: en,fr,en,fr,en,en,en,en => 01010000 = 0x50
+    (4) Comme les noms de champs n'ont pas de casse particulière, des lettres en
+        minuscule ou en majuscule peuvent également représenter une information:
+          "Connection: close"  = 0
+	  "CONNECTION: close"  = 1
+
+      La liste précédente n'est pas exhaustive.  Les  méthodes  présentées  sont
+    toutes valides du point de vue du protocole HTTP et peuvent  être  employées
+    dans toutes les combinaisons possibles. Un programme tiers, comme  un  proxy
+    HTTP ou un serveur, pourrait corrompre notre codage  stéganographique,  mais
+    il devrait fonctionner sans problème si le modèle serveur Httpd est  utilisé
+    et si nous communiquons directement avec lui. Le codage (2)  pourrait  aussi
+    être utilisé sans problème avec le modèle serveur CGI.
+
+      De telles méthodes stéganographiques ne sont pas utilsables pour véhiculer
+    d'importantes quantités de données mais elles peuvent être  employées  comme
+    la base d'un protocole de communication pour une porte dérobée, c'est à dire
+    quand la commande "0"  ou  "1"  d'un  serveur  correspond  à  une  suite  de
+    commandes pour la porte dérobée qu'est le programme client.
+
+      Les méthodes pour cacher des informations au niveau du  programme  serveur
+    sont en tout point identiques à celles que nous venons de présenter.
+
+    5.1.2. Cacher des données dans le corps HTTP
+    --------------------------------------------
+
+      Il existe encore plus de possibilités de cacher des données dans le  corps
+    de données d'un message HTTP que dans son entête.
+
+      Les approches suivantes sont semblables à celles qui sont présentées  dans
+    la partie précedente : Tromper un observateur en lui présentant une  requête
+    "presque" légitime et cacher des données  dans  d'autres  en  utilisant  des
+    méthodes stéganographiques.
+
+      Ci-dessous figure un exemple d'une requête POST "presque vraie" émise  via
+    un proxy HTTP et semblant être l'envoi d'un message à un forum de discussion
+    en ligne :
+
+      --------------------------------------------------------------------------
+      POST http://www.somehost.com/cgi-bin/linuxchat.cgi?action=newmsg HTTP/1.0
+      Host: www.somehost.com
+      User-Agent: Mozilla/5.0
+      Content-Type: multipart/form-data
+      Content-Length: 75
+      Connection: close
+      Proxy-Connection: close
+
+      name=Mike&pass=12121212&message="__ editor is great and __ is a ^&*(% !!!"
+      --------------------------------------------------------------------------
+
+    Les moyens de tromper un éventuel observateur sont :
+
+    (1) Le corp de la requête semble être un formulaire de données,  posté  vers
+        le forum public. Les données cachées sont passées comme dans  la  valeur
+        de ce qui semble être un mot de passe : "..pass=12121212..".
+    (2) La requête/réponse peut faire partie ou composer une  image  en  faisant
+        attention à positionner la valeur du champ "Content-Type" à "image/gif".
+        Les données semblant être : "GIF89121212121212..".
+    (3) La réponse peut contenir des données encapsulées dans une  page  HTML et
+        dans des tags standard ou non :
+          <121212></121212> ou <img src=".." alt="121212>
+
+    Quelques méthodes stéganographiques :
+
+    (1) Si nous prenons en compte l'exemple POST  précédent,  le  message  caché
+        peut être situé dans la partie textuelle du message. Submitted by Mike:,
+        codé comme "^&*(%", codé comme les espaces entre les  mots,  codé   avec
+        les  lettres  majuscules  ou  minuscules,  etc...  Le  message   textuel
+        aléatoire, le container des données à cacher, peuvent être  pris  depuis
+        un dictionnaire.
+    (2) Les requêtes/réponses peuvent contenir des données  cachées  encapsulées
+        dans une ou plusieurs images. Ces images  peuvent  être  générées  à  la
+        volée et utilisées comme des containers de données tandis que  le  texte
+        statique ne servirait qu'à tromper l'observateur.
+    (3) Les réponses HTTP pourraient contenir des données codées  à  l'intérieur
+        d'une page HTML. Une approche pourrait être celle qui est  employée  par
+        le projet Deogol [5]  qui  permet  de  coder  des  informations  par  le
+        placement des attributs des tags dans  différents  ordres.  Jusqu'à  300
+        octets peuvent être codés dans un container HTML d'une taille de 16Ko.
+
+        En voici un exemple:
+          <img src=".." alt="..">  => 0
+          <img alt=".." src="..">  => 1
+
+  5.2. CONFUSION SUR LE FLUX DE DONNEES
+  -------------------------------------
+
+    Un autre moyen de tromper un observateur est basé sur l'ajout  d'un   trafic
+  bruyant (aléatoire ou réquêtes/réponses HTTP inutiles) au niveau ou à coté  du
+  canal de communication utilisé.
+
+    Ces messages bruyants peuvent être des requêtes/réponses  HTTP  sans  aucune
+  donnée utile ou être de véritables requêtes HTTP  (générées  aléatoirement  ou
+  non) destinées à des ressources Web publiques.
+
+    Ils peuvent faire partie de connexions HTTP différentes ou être ajoutés dans
+  le canal  de  communication  HTTP  normal  à  coté  des  messages  de  données
+  arbitraires grâce au mode Pipeline du protocole HTTP.
+
+  5.3. CONFUSION SUR LE COMPORTEMENT DU SERVEUR
+  ---------------------------------------------
+
+    Comme le serveur gérant les canaux cachés peut  être  situé  sur  le  réseau
+  public, il est accessible par n'importe qui (et ce "n'importe qui"  inclut  la
+  personne qui surveille le trafic réseau).
+
+    Pour ajouter un brin de confusion dans l'esprit de cet éventuel analyste, le
+  serveur peut être conçu pour réagir comme  une  sorte  de  ressource  publique
+  véritable. Si un client est authentifié/autorisé, il obtiendra  un  accès  aux
+  ressources de création de canaux cachés du serveur et s'il ne  l'est  pas,  il
+  obtiendra une fausse réponse simulée.
+
+    Ainsi, le serveur pourrait répondre avec des messages  "HTTP/200 OK",  comme
+  le fait un serveur Apache, avec ou sans données,  indiquant  par ce fait qu'il
+  semble être un serveur httpd s'il est conçu selon le modèle serveur Httpd.  Il
+  pourrait également ressembler à un forum d'échange de messages, à un forum  de
+  discussion en ligne ou à n'importe quoi d'autre s'il est conçu selon le modèle
+  serveur CGI.
+
+    Un autre moyen de masquer les Canaux Cachés eux-mêmes pourrait être  employé
+  avec les techniques décrites dans le modèle 2.2.3. Modèle de pseudo-proxy.
+
+================================================================================
+
+==========
+CONCLUSION
+==========
+
+  Un grand nombre de recherches dédiées au tunneling et aux canaux  cachés  sont
+disponibles en tant  qu'articles  ou  en  tant  qu'outils  à  l'heure  actuelle.
+Certaines approches cachent les données dans les couches basses du modèle OSI et
+d'autres dans les couches hautes.
+
+  Nous nous sommes intéressés dans ce document au protocole HTTP car c'est  l'un
+des protocoles les plus utilisés (d'autres  protocoles  très  utilisés  sont  le
+protocole d'échange de courriers électroniques SMTP/POP et le protocole DNS)  et
+car il paraît aujourd'hui impossible de normaliser/altérer un  flot  de  données
+HTTP entre un serveur et ses clients.
+
+  Mettre en place un point d'accès à Internet, configurer un système de contrôle
+d'accès réseau avec des  pare-feu restrictifs, des serveurs mandataires  et  des
+anti-virus pour n'autoriser qu'une consultation Web et des échanges de mails est
+à la portée de n'importe quel administrateur réseau.
+
+  Mais  ces  administrateurs  savent  ils  qu'à   chaque  fois   qu'ils  pensent
+n'autoriser que le protocole HTTP en entrée et en sortie de leur réseau interne,
+ils autorisent par la même occasion l'entrée et la sortie de données arbitraires
+au dehors de leur périmètre sécurisé ?
+
+================================================================================
+
+=====================
+WEBOGRAPHIE ET OUTILS
+=====================
+
+  Vous trouverez des informations sur le concept de contournement des  "Systèmes
+de contrôle d'accès réseau" sur le site http://www.gray-world.net.
+
+  [1] : Hypertext Transfer Protocol -- HTTP/1.1, RFC 2616 , 1999
+        http://www.w3.org/Protocols/rfc2616/rfc2616.html
+
+  [2] : Legitimate Sites as Covert Channels - An Extension  to  the  Concept  of
+        Reverse HTTP Tunnels - Errno Jones , ?
+        http://www.gray-world.net/papers/lsacc.txt
+
+  [3] : Tunneling TCP based protocols through Web proxy servers - Ari Luotonen,
+        1998
+	This page can be found on the W3 searching for the keyword :
+	  draft-luotonen-web-proxy-tunneling-00
+
+  [4] : Uniform Resource Identifiers (URI): Generic Syntax, RFC 2396 , 1998
+        ftp://ftp.rfc-editor.org/in-notes/rfc2396.txt
+
+  [5] : Deogol project, Stephen Forrest
+        http://forrest.cx/projects/deogol/
+
+  [6] : Securing Web Services Check Point Application Intelligence
+        http://www.checkpoint.com/products/fp3/\
+          webservices_application_intelligence.html
+
+  [7] : Hypertext Transfer Protocol -- HTTP/12.1212, RFC 1212 , 1212
+        http://www.w3.org/Protocols/rfc1212/rfc1212.html
+
+================================================================================
+
+=============
+REMERCIEMENTS
+=============
+
+  o Hadi El-Khoury <helkhoury [ at ] entreelibre.com>
+    Pour sa précieuse vérification de l'anglais et sa lecture de l'article.
+
+  o Olivier Dembour <modu [at] entreelibre.com>
+    Pour sa lecture, sa vérification et ses remarques sur la pré-version.
+
+  o Sergey Degtyarenko
+    Pour sa lecture et une vraiment bonne idée à ajouter dans l'article.
+
+********************************************************************************
+************************ NOTES A LA TRADUCTION FRANCAISE ***********************
+********************************************************************************
+
+  o J'ai tenté de rédiger une traduction Française convenable - c'est à dire non
+    littérale. Si vous pensez que j'ai omis ou transformé un concept,  n'hésitez
+    pas à m'en faire part.
+
+  o Les traductions des citations des RFCs sont de mon cru. N'hésitez pas  à  m'
+    indiquer d'éventuelles erreurs.
+
+  o Cette traduction est publiée sous les termes de la  GNU  Free  Documentation
+    Licence version 1.2 et est  donc  copyleft 2003 Simon  Castro  <scastro [at]
+    entreelibre.com>
+
+
+
+

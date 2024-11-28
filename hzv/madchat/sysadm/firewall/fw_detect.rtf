@@ -1,0 +1,131 @@
+{\rtf1\ansi\ansicpg1252\uc1 \deff0\deflang1033\deflangfe1036{\fonttbl{\f0\froman\fcharset0\fprq2{\*\panose 02020603050405020304}Times New Roman;}{\f16\froman\fcharset238\fprq2 Times New Roman CE;}{\f17\froman\fcharset204\fprq2 Times New Roman Cyr;}
+{\f19\froman\fcharset161\fprq2 Times New Roman Greek;}{\f20\froman\fcharset162\fprq2 Times New Roman Tur;}{\f21\froman\fcharset186\fprq2 Times New Roman Baltic;}}{\colortbl;\red0\green0\blue0;\red0\green0\blue255;\red0\green255\blue255;
+\red0\green255\blue0;\red255\green0\blue255;\red255\green0\blue0;\red255\green255\blue0;\red255\green255\blue255;\red0\green0\blue128;\red0\green128\blue128;\red0\green128\blue0;\red128\green0\blue128;\red128\green0\blue0;\red128\green128\blue0;
+\red128\green128\blue128;\red192\green192\blue192;}{\stylesheet{\nowidctlpar\widctlpar\adjustright \fs20\lang1036\cgrid \snext0 Normal;}{\*\cs10 \additive Default Paragraph Font;}}{\info{\author Windows}{\operator Windows}
+{\creatim\yr2002\mo10\dy8\hr11\min5}{\revtim\yr2002\mo10\dy8\hr11\min6}{\version2}{\edmins1}{\nofpages7}{\nofwords3065}{\nofchars17476}{\*\company  }{\nofcharsws21461}{\vern73}}\paperw11906\paperh16838\margl1273\margr1273\margt1417\margb1134 
+\widowctrl\ftnbj\aenddoc\hyphhotz425\hyphcaps0\viewkind4\viewscale150 \fet0\sectd \linex0\headery1440\footery1440\colsx709\sectdefaultcl {\*\pnseclvl1\pnucrm\pnstart1\pnindent720\pnhang{\pntxta .}}{\*\pnseclvl2\pnucltr\pnstart1\pnindent720\pnhang
+{\pntxta .}}{\*\pnseclvl3\pndec\pnstart1\pnindent720\pnhang{\pntxta .}}{\*\pnseclvl4\pnlcltr\pnstart1\pnindent720\pnhang{\pntxta )}}{\*\pnseclvl5\pndec\pnstart1\pnindent720\pnhang{\pntxtb (}{\pntxta )}}{\*\pnseclvl6\pnlcltr\pnstart1\pnindent720\pnhang
+{\pntxtb (}{\pntxta )}}{\*\pnseclvl7\pnlcrm\pnstart1\pnindent720\pnhang{\pntxtb (}{\pntxta )}}{\*\pnseclvl8\pnlcltr\pnstart1\pnindent720\pnhang{\pntxtb (}{\pntxta )}}{\*\pnseclvl9\pnlcrm\pnstart1\pnindent720\pnhang{\pntxtb (}{\pntxta )}}\pard\plain 
+\nowidctlpar\widctlpar\adjustright \fs20\lang1036\cgrid {\b Detection of Firewalls, and Probing networks behind firewalls\line \line }{I found this in a text some time ago and thought its worth posting. \line ----------------- \line \line 
+This paper will discuss identification, detection and the penetration techniques of firewalls, more specifically; the ability to probe a network behind a firewall. The continued version will discuss the ability to have access to a key or target network be
+h
+ind a firewall, without having to disable/alter the firewall, and again a bit more specifically; port redirection techniques. It is recommended that you have knowledge of networking, the UNIX Operating system, and an nmap utility on hand (http://www.insec
+ure.org/nmap). Enjoy...and my apologies for the crappy format. \line \line \line The Suicide Mission: \line \line 
+Allowing a server to connect to the internet without a firewall. Since the writing of Cheswick and Bellovin's book about deploying and building firewalls, firewalls hav
+e been constant needs for ISP's, hosting companies, even personal users. Equally as destructive, reckless, and suicidal, is allowing the non-experienced to configure the firewall. Usually its the network or the system administrator. The administrator migh
+t have experience with the network...but their security skills may be limited. Leading to a misconfigured firewall. Result; an overly confident administrator that thinks his network is secure, and a major hole in the networks packet traffic filter... 
+\line \line \line Introduction: \line \line 
+Two most familiar firewalls arise popularity in the market at the moment; Application Proxies, and Packet Filtering Gateways. Mosts opinion resides that Application Proxies are more secure than Packet Filtering Gateways. They have their Pro's 
+and Con's. Application Proxies are far more strict on letting packets into the network, as well as being harsh for any packets sent outward. Packet Filtering Gateways can be found on large corporate networks, they have high performance and inbound traffic
+ requirements. \line \line 
+Firewalls have secured many systems and networks over the past years. Secured them from malicious packets, prying eyes, etc. But just a plain firewall is nothing near secure. Vulnerabilities in these firewalls arise quite often. Each type o
+f firewall is found with a new exploit and technique to circumvent. The biggest exploit vulnerability is a misconfiguration of the firewall. \line \line 
+Don't take me wrong. A well-configured, -architecturally designed, -updated, and maintained firewall, is hardly p
+enetrable. Most hackers will run into these firewalls, and not bother with them, attempting to find a way to work around them. By either exploiting trust with the secured systems behind the firewall, or even by attacking through another service not filter
+ed by the firewall, i.e. dialup. \line \line \line Detecting Present Firewalls and Beyond: \line \line 
+Each firewall has its own unique style of identifying itself. Attackers are able to take advantage of this identification sequence by using simple scanning, banner grabbing, etc. 
+They may even be able to identify the version, type, and maybe even some certain rules. This identification doesn't seem important, but once they map out your firewall's strategic points, weaknesses begin to surface. \line \line 
+About the most simplest detection/ind
+entification technique is a simple scan for open ports. Certain firewalls can be identified by the default open ports. CheckPoint's Firewall-1 by default listens on TCP ports 256, 257, 258. Whereas Microsoft's Proxy Server also by default listens on TCP p
+orts 1745 and 1080. Other firewalls come with their own default ports. Using nmap, launching it with certain arguements allow us to check for a certain firewall, or to check if a firewall exists or not. Simply: \line \line 
+[root@localhost]# nmap -n -vv -P0 -p256, 257, 258, 1080, 1745 10.10.1.8 \line \line 
+Its quite certain that any skilled, or even newly introduced attacker will preform these scans on a network to provide them with information of any firewall or packet filtering obstacle. By the way, Intrusion Detection Systems
+, commonly known as IDSes, they don't pick these scans up. You should probably be able to configure your IDS to pick up any scans, but usually they log only the "hardcore" threatening scans. Also note banner grabbing is a technique used to identify firewa
+lls, much like a default port. \line \line C:> nc -v -n 10.10.1.8 23 \line (UNKNOWN) [10.10.1.8] 23 (?) open \line Eagle Secure Gateway. \line Hostname: \line \line 
+Even for more evidence that this may be a firewall, using netcat to TCP 25 (Send Mail Transfer Protocol, SMTP): \line \line C:> nc -v -n 10.10.1.8 25 \line (UNKNOWN) [10.10.1.8] 25 (?) open \line 
+421 10.10.1.8 Sorry, the firewall does not provide mail service to you. \line \line Therefore showing that our host is a firewall. Allowing further mapping of the network. \line \line Also, a third way for identification of fir
+ewalls resides in a port identification technique. Several firewalls may give back a sequential set of numbers, therefore identifying the firewall type and version. Example of netcat connecting to an SNMP management on port TCP 259 with a Checkpoint Firew
+all-1 impelemented. \line \line \line [root@localhost]# nc -v -n 10.10.1.72 259 \line (UNKNOWN) [192.168.21.1] 259 (?) open \line 30000003 \line \line \line [root@localhost]# nc -v -n 10.10.1.95 259 \line (UNKNOWN) [192.168.29.212] 259 (?) open \line 
+31300003 \line \line \line Another technique is using debugging tools. 
+Traceroute works fine. Traceroute, or known as tracert.exe on Windows systems, is a network debugging utility used to detect amount and active hops towards a host. Sends UDP datagram packets by default, or ICMP ECHO packets by switch decision. These packe
+t
+s are set with a TTL (Time to Live) field. The TTL is set for 1. The Packets TTL field is incremented by 1 per host detected, therefore reaching the latest undetected host with a TTL field of 0. When this packet with a TTL of 0 reaches a router, the route
+r
+ will by default respond with an ICMP error message (TTL exceeded in transit.) to the original, tracerouting host. Traceroute chooses a high UDP port thats very unlikely to be used by any running service or application, thus no errors may occur. Therefore
+ traceroute can be used for detection of firewalls. Yet certain deductions and reading must be enabled in the users mind, but its possible. The following example shows a basic traceroute attempt to discover a firewall. \line \line \line Traceroute: \line 
+\line In this scenario, a n
+etwork is protected by a packet filtering device that blocks all excess and found traffic except for ping and ping responses (ICMP types 8 and 0 respectively). We can and will attempt to use the traceroute program to show us what hosts are behind this fil
+ter, which can be the firewall, or a router (which is presumably against the security policy). \line \line \line [root@localhost]# traceroute 10.10.1.10 \line traceroute to 10.10.1.10 [10.10.1.10], 15 hops max, 20 byte packets \line 
+1 10.10.1.2 [10.10.1.2] 0.022 ms 0.024 ms 0.025 ms \line 2 10.10.1.3 [10.10.1.3] 1.327 ms 2.360 ms 2.380 ms \line 3 10.10.1.4 [10.10.1.4] 4.217 ms 4.612 ms 4.656 ms \line 4 10.10.1.5 [10.10.1.5] 4.927 ms 5.090 ms 5.238 ms \line 
+5 10.10.1.6 [10.10.1.6] 5.529 ms 5.812 ms 6.003 ms \line 6 10.10.1.7 [10.10.1.7] 56.921 ms 59.162 ms 61.762 ms \line 7 10.10.1.8 [10.10.1.8] 63.832 ms 63.682 ms 61.235 ms \line 8 * * * \line 9 * * * \line 10 * * * \line \line \line 
+Hop 7, at 10.10.1.8, is assumed to be the firewall. Of course, we may not be right. As you learned earlier, a firewall can be a router, or any other packet filtering or redirection application. \line 
+Our Packets pass through to detect the firewall. Using the -I arguement on the Linux version of traceroute. \line \line \line [root@localhost]# traceroute -I 10.10.1.10 \line traceroute to 10.10.1.10 [10.10.1.10], 15 Hops Max, 20 byte packets \line 
+1 10.10.1.2 [10.10.1.2] 0.022 ms 0.024 ms 0.025 ms \line 2 10.10.1.3 [10.10.1.3] 1.327 ms 2.360 ms 2.380 ms \line 3 10.10.1.4 [10.10.1.4] 4.217 ms 4.612 ms 4.656 ms \line 4 10.10.1.5 [10.10.1.5] 4.927 ms 5.090 ms 5.238 ms \line 
+5 10.10.1.6 [10.10.1.6] 5.529 ms 5.812 ms 6.003 ms \line 6 10.10.1.7 [10.10.1.7] 56.921 ms 59.162 ms 61.762 ms \line 7 10.10.1.8 [10.10.1.8] 63.832 ms 63.682 ms 61.235 ms \line 8 10.10.1.9 [10.10.1.9] 62.926 ms 66.125 ms 67.032 ms \line 
+9 10.10.1.10 [10.10.1.10] 70.482 ms 71.273 ms 71.762 ms \line 10 10.10.1.11 [10.10.1.11] 73.192 ms 76.921 ms 82.325 ms \line \line 
+So, instead of using the default UDP datagram TTL packets, which seemed to not work. We decided to force traceroute with the -I arguement to use ICMP packets. Looking at the traceroute results carefully you can see that we we
+re able to detect hosts, and systems behind the firewall. \line \line 
+One Common scenario configuration is a firewall blocking all connections and traffic, inbound or outbound the network except for the Domain Name Service, also known as DNS. This leaves UDP port 53 open. \line \line [root@localhost]# traceroute 10.10.1.10 
+\line traceroute to 10.10.1.10 [10.10.1.10], 15 hops max, 20 byte packets \line 1 10.10.1.2 [10.10.1.2] 0.022 ms 0.024 ms 0.025 ms \line 2 10.10.1.3 [10.10.1.3] 1.327 ms 2.360 ms 2.380 ms \line 3 10.10.1.4 [10.10.1.4] 4.217 ms 4.612 ms 4.656 ms \line 
+4 10.10.1.5 [10.10.1.5] 4.927 ms 5.090 ms 5.238 ms \line 5 10.10.1.6 [10.10.1.6] 5.529 ms 5.812 ms 6.003 ms \line 6 10.10.1.7 [10.10.1.7] 56.921 ms 59.162 ms 61.762 ms \line 7 10.10.1.8 [10.10.1.8] 63.832 ms 63.682 ms 61.235 ms \line 8 * * * \line 
+9 * * * \line 10 * * * \line \line \line 
+Looking up at the recent example...the last detected hop is at 10.10.1.8. We're assuming everything else is blocked through, except for Domain Name Server, UDP 53. We have this knowledge, therefore we can use it to our advantage. Using and customizi
+ng traceroute, will allow us to probe targets behind the firewall. We can control a couple things, the starting traceroute port used, which is increased by every probe. And we can control the number of probes sent, which is by default set to 3. We can als
+o use the following determination of how many hops are between our attacking host and the firewall. \line \line Beginning our scan with a starting port number of : \line \line (target_port - (number_of_hops * num_of_probes)) - 1 \line \line 
+We will attempt to fool the firewall into thin
+king that we are sending it a Domain Name Server query packet, therefore bypassing and circumventing Access Control Lists (ACL's). Using the formula listed above (not really a formula, i just want myself to feel more educated). We can use it to help us co
+nfigure and customize our traceroute packet. Also note that firewalls do not do packet content analysis, therefore they can be fooled by spoofing a packet. Formula variables plugged in with or scenario: \line \line ( 53 - ( 8 * 3 )) - 1 = 28 \line \line 
+The new reconstructed packet will have an acceptable and accesible port number, therefore allowing it to bypass ACL restrictions. As shown in the following example. \line \line \line [root@localhost]# traceroute -p28 10.10.1.10 \line 
+traceroute to 10.10.1.10 [10.10.1.10], 15 hops max, 20 byte packets \line 1 10.10.1.2 [10.10.1.2] 0.522 ms 0.624 ms 0.625 ms \line 2 10.10.1.3 [10.10.1.3] 5.327 ms 6.360 ms 6.380 ms \line 3 10.10.1.4 [10.10.1.4] 7.217 ms 7.612 ms 7.656 ms \line 
+4 10.10.1.5 [10.10.1.5] 8.927 ms 9.090 ms 9.238 ms \line 5 10.10.1.6 [10.10.1.6] 9.529 ms 10.812 ms 12.003 ms \line 6 10.10.1.7 [10.10.1.7] 56.921 ms 59.162 ms 61.762 ms \line 7 10.10.1.8 [10.10.1.8] 63.832 ms 63.682 ms 61.235 ms \line 
+8 10.10.1.9 [10.10.1.9] 65.158 ms * * \line 9 * * * \line 10 * * * \line \line Recalling the fact that traceroute increases the port number for each probe s
+ent, or scan terminates after passing our target firewall. Since the first probe had an assigned port of UDP 53 (DNS), the next probe sent had UDP 54. Based on the ACL's gathered for this packet filtering application, the UDP 54 is blocked. To possibly ge
+t
+ more information and probe the network yet some more, we must keep the packet at a condition where it will bypass the ACL. And since we would like to keep the port at UDP 53, we need to issue another arguement to disable incrementation of packet portnumb
+er for each probe. Allowing every packet sent to fit the ACL requirements and be acceptable, therefore permitting us further probing of the network. Here traceroute1.4a5 is used, found at http://www.packetfactory.com. \line \line 
+[root@localhost]# traceroute -S -p28 10.10.1.12 \line traceroute to 10.10.1.12 [10.10.1.12], 15 hops max, 20 byte packets \line 1 10.10.1.2 [10.10.1.2] 0.522 ms 0.624 ms 0.625 ms \line 2 10.10.1.3 [10.10.1.3] 5.327 ms 6.360 ms 6.380 ms \line 
+3 10.10.1.4 [10.10.1.4] 7.217 ms 7.612 ms 7.656 ms \line 4 10.10.1.5 [10.10.1.5] 8.927 ms 9.090 ms 9.238 ms \line 5 10.10.1.6 [10.10.1.6] 9.529 ms 10.812 ms 12.003 ms \line 6 10.10.1.7 [10.10.1.7] 56.921 ms 59.162 ms 61.762 ms \line 
+7 10.10.1.8 [10.10.1.8] 63.832 ms 63.682 ms 61.235 ms \line 8 10.10.1.9 [10.10.1.9] 62.926 ms 66.125 ms 67.032 ms \line 9 10.10.1.10 [10.10.1.10] 92.332 ms 93.214 ms 96.016 ms \line 10 10.10.1.11 [10.10.1.11] 101.523 ms 103.273 ms 103.923 ms \line 
+11 10.10.1.12 [10.10.1.12] 104.516 ms 105.523 ms 105.682 ms \line 12 10.10.1.13 [10.10.1.13] 109.231 ms 111.122 ms 117.923 ms \line \line \line \line Firewalking: \line \line Wh
+ile we're still talking about traceroute and traceroute packets, I will breifly discuss Firewalking. Firewalk works by constructing packets with an IP TTL calculated to expire exactly one hop past the firewall, like Traceroute. Expected Result: The packet
+ 
+is allowed by the firewall, it will be allowed to pass and will expire as instructed. Therefore giving off an "ICMP TTL expired in transit" message. Of course, if the packet is blocked by the firewall's rules, it will be dropped down, and we will recieve 
+e
+ither a null response (no response), or an ICMP type 13 Admin Prohibited filter packet. By sending probes in a successive manner and recording which ones answer and which ones don't, the access list on the gateway can be determined.We must have two pieces
+ of information before we begin: \line \line 1) IP Address of the Last Gateway detected before the firewall kicks in. \line 2) IP Address of a host located in the firewalled area, behind the firewall. \line \line 
+IP Address 1, the gateway, will provide us as a way point. If we can 
+not get a response beyond this machine, it is assumed that our packet is being blocked by whatever protocol we tried to pass. As you might have figured out already, IP Address 2, the host, will be used as a destination for the packets. An example of firew
+alk in action: \line \line \line [root@localhost]# firewalk -n -P1-8 -pTCP 10.10.1.7 10.10.1.12 \line Firewalking through 10.0.0.5 (towards 10.0.0.20) with a maximum of 25 hops. \line Ramping up hopcounts to binding host... \line 
+probe: 1 TTL: 1 port 33434: [10.10.1.1] \line probe: 2 TTL: 2 port 33434: [10.10.1.2] \line probe: 3 TTL: 3 port 33434: [10.10.1.3] \line probe: 4 TTL: 4 port 33434: [10.10.1.4] \line probe: 5 TTL: 5 port 33434: [10.10.1.5] \line 
+probe: 6 TTL: 6 port 33434: [10.10.1.6] \line probe: 7 TTL: 7 port 33434: Bound scan: 7 hops [10.10.1.7] \line port 135: open \line port 136: open \line port 137: open \line port 138: open \line port 139: * \line port 140: open \line \line 
+As we can see, the firewall's ACL rules are bypassed by the use of firewalk. More information including the source code can be found at www.packetfactory.net/projects/. \line \line 
+Now back to our cool radical utility nmap. Reason: nmap scans a host like a normal scanner and gives you an "open" or "closed", plus it tells you what ports may be blocked. There are 3 reasons or conditions that may cause the return of a fitlered port: 
+\line 1) No SYN/ACK packet was recieved. \line 2) No RST/ACK packet was recieved. \line 3) System replied with an ICMP type 3 (Destination Unreachable) with code 13 (Communication Administratively Prohibited). \line \line 
+Nmap will use all these conditions and consider it a filtered port. For Example: \line \line [root@localhost]# nmap -p21,23,53,80 -P0 -vv 10.10.1.10 \line Starting nmap V. 2.07 by Fyodor (fyodor@dhp.com, www.insecure.com/nmap/) \line 
+Initiating TCP connect() scan against (10.10.1.10) \line Adding TCP port 21 (state Open). \line Adding TCP port 53 (state Firewalled). \line Adding TCP port 23 (state Firewalled). \line Adding TCP port 80 (state Open). \line 
+Interesting ports on (10.10.1.10): \line Port State Protocol Service \line 21 open tcp ftp \line 23 filtered tcp telnet \line 53 filtered tcp domain \line 80 open tcp http \line \line \line From wha
+t we see in the ouput, a couple of ports are `Firewalled`. We can use the tcpdump output to determine the reason its filtered. \line \line Raw Packet Transmission and HPING: \line \line 
+Raw packet transmission is also used to probe networks behind a firewall. Hping works by s
+ending TCP packets a destinational port, then analyzing and reporting the packet recieved. Hping allows us to discover accepted, blocked, dropped, or rejected packets. Thus allowing our probing of the ACL rules to expand even further and more indepth. 
+\line \line [root@localhost]# hping 10.10.1.7 -c2 -S -p21 -n \line HPING 10.10.1.7 (eth0 10.10.1.1) : S set, 40 data bytes \line 60 bytes from 10.10.1.1: flags=SA seq=0 ttl=242 id=65121 win=64240 \line time=144.4 ms \line \line \line 
+Looking at the recent example, we can see that TCP port 21 on 10.1
+0.1.7 is open, given the fact that we recieved a packet with an SA flag set, which is basically a SYN/ACK packet. This says that a port is open, but we do not know if it is the firewall or not. A little more probing must take place. \line \line 
+[root@localhost]# hping 10.10.1.10 -c2 -S -p80 -n \line HPING 10.10.1.10 (eth0 10.10.1.1) : S set, 40 data bytes \line ICMP Unreachable type 13 from 10.10.1.8 \line \line 
+For this hping, we recieve an ICMP type 13 packet, which is an ICMP administrator prohibited filter packet. From these few com
+mands we have confirmed that 10.10.1.8 is our firewall, and it is most likely blocking port 80 on 10.10.1.10. Another likely response you might get from a firewalled host is as follows. \line \line [root@localhost]# hping 10.10.1.16 -c2 -S -p23 -n \line 
+HPING 10.10.1.16 (10.10.1.1) : S set, 40 data bytes \line 60 bytes from 10.10.1.1: flags=RA seq=0 ttl=59 id=0 win=0 time=0.5 ms \line \line \line 
+This shows 1 of 2 items of possibilities. Number 1 being that the packet was accepted by the firewall and the packet fit the ACL rules, yet the hos
+t is not listening on that port. Or Number 2 being that the firewall rejected the packet (as in Checkpoint's reject packet option and rules). \line \line 
+By using the ICMP type 13 packet we had obtained earlier, we can assume that the firewall is allowing our packet
+ through, but the host is just not listening. And Of course, when a paranoid administrator configures the firewall to block all packets, you will receive: \line \line [root@localhost]# hping 10.10.1.16 -c2 -S -p23 -n \line 
+HPING 10.10.1.16 (10.10.1.1) : S set, 40 data bytes \line \line \line Source Port Scanning: \line \line 
+This technique applies to packet filtering applications and devices which do not maintain state. For example, Cisco's IOS. When thought about, if a firewall cannot maintain state, then it cannot manifest if the connection is 
+inward or outbound. In this case, transmissions may pass through unfiltered. Setting the source port to a common port that is allowed through firewalls, for example our earlier example, UDP port 53 (DNS). Using the -g option with nmap: \line \line \line 
+[root@localhost]# nmap -sS -P0 -g 53 -p 139 10.10.1.15 \line \line If you receive a positive output of open ports, then you most likely have a vulnerable firewall. \line \line Badly Configured ICMP Packets: \line \line 
+I will breifly discuss this, it has been well documented at www.blackhat.com. According the paper, we can use various methods to elicit an ICMP error message back from a probed host and discover its existence. Some of the methods are as follows: \line 
+\line - Mangling IP headers \line \line - Different Header Length Field \line \line - IP Options Field \line \line - Using non-valid field values in the IP header \line \line - Using valid field values in the IP header (opposite of above) \line \line 
+- Abusing Fragmentation \line \line With the first method we are using bad IP headers in the IP datagram that would generate an ICMP Parameter Problem err or back 
+from the probed machine to the source IP address of the probing datagram. The second method use non-valid field values in the IP header in order to force the probed machine to generate ICMP Destination Unreachable error message back to the malicious compu
+t
+er attacker. The third method discussed uses fragmentation to trigger an ICMP Fragment Reassembly Time Exceeded error message from the probed machine. The last method uses the UDP Scan method to elicit ICMP Port Unreachable error message back from a close
+d UDP port(s) on the probed host(s). You can learn more about it at http://expert.cc.purdue.edu/~frantzen. \line \line 
+If we probe the entire IP range of the targeted network with all combinations of protocols and ports, it would draw us the targeted network topology
+ map, and will allow us to determine the access list (ACL) a Filtering Device (If present, and not blocking outgoing ICMP Parameter Problem Error messages) is forcing. \line \line \line Conclusion: \line \line 
+There are many ways to detect and probe a network. I have just discusse
+d a few main key-points that will lead to the discovery of other techniques. This document was also aimed at administrators who believe that they're networks are secure, and to try these techniques out themselves on their own systems. These techniques can
+ be constantly used to probe and draw out your network's topology, including the firewall's ACL. \line \line 
+Truth; a well-configured is very hard to bypass. Tools like traceroute, nmap, hping, and others that can be used, help attackers to discover (or at least, ass
+ume) access paths through your roughter and firewall as well as the type of firewall you are using. Many vulnerabilities found are due to misconfigurations in your firewalls ACL's, or even a lack of monitoring and administration of the logs, traffic, and 
+maintenance. \line \line --Ka0ticSH \line asm.coder@verizon.net \line 
+\par }{
+\par }}

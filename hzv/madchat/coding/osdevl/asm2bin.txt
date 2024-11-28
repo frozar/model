@@ -1,0 +1,195 @@
+
+
+    +===============================+
+    | De l'assembleur au binaire... |
+    +===============================+
+
+
+
+Bien qu'il existe déjà beaucoup de documentation sur la manières d'encoder les
+instructions assembleur en binaire (notamment la doc d'intel), je trouve les
+manières décrites peut pratiques à utiliser. J'ai donc décidé d'écrire mon
+propre article en utilisant une notation correspondant à mes besoins.
+Seuls les instructions les plus courantes sont présentées ici.
+De plus, seuls les opérations de types registres à registres ou de imm32 à
+registre sont détaillés.
+
+Encodage des registres:
+-----------------------
+
+DWORD WORD BYTE CODE
+eax   ax   al   000
+ebx   bx   bl   011
+ecx   cx   cl   001
+edx   dx   dl   010
+esi   si   dh   110
+edi   di   bh   111
+ebp   bp   ch   101
+esp   sp   ah   100
+
+Opérations arithmétiques:
+-------------------------
+
+ADD --> ADD reg1, reg2: 03h 11xxxyyyb (xxx: reg1 / yyy: reg2)
+        ADD eax, imm32: 05h imm32
+        ADD reg, imm32: 81h 11000xxxb imm32
+
+SUB --> SUB reg1, reg2: 2Bh 11xxxyyyb (xxx: reg1 / yyy: reg2)
+        SUB eax, imm32: 2Dh imm32
+        SUB reg, imm32: 81h 11101xxxb imm32
+
+XOR --> XOR reg1, reg2: 33h 11xxxyyyb (xxx: reg1 / yyy: reg2)
+        XOR eax, imm32: 35h imm32
+        XOR reg, imm32: 81h 11110xxxb imm32
+
+AND --> AND reg1, reg2: 23h 11xxxyyyb (xxx: reg1 / yyy: reg2)
+        AND eax, imm32: 25h imm32
+        AND reg, imm32: 81h 11100xxxb imm32
+
+OR  --> OR reg1, reg2: 0Bh 11xxxyyyb (xxx: reg1 / yyy: reg2)
+        OR eax, imm32: 0Dh imm32
+        OR reg, imm32: 81h 11001xxxb imm32
+
+INC --> INC reg: 01000xxxb
+
+DEC --> DEC reg: 01001xxxb
+
+RCL --> RCL reg, 1: D1h 11010xxxb
+        RCL reg, cl: D3h 11010xxxb
+        RCL reg, imm8: C1h 11010xxxb imm8
+
+RCR --> RCR reg, 1: D1h 11011xxxb
+        RCR reg, cl: D3h 11011xxxb
+        RCR reg, imm8: C1h 11011xxxb imm8
+
+ROL --> ROL reg, 1: D1h 11000xxxb
+        ROL reg, cl: D3h 11000xxxb
+        ROL reg, imm8: C1h 11000xxxb imm8
+
+ROR --> ROR reg, 1: D1h 11001xxb
+        ROR reg, cl: D3h 11001xxxb
+        ROR reg, imm8: C1h 11001xxxb imm8
+
+SHL --> SHL reg, 1: D1h 11100xxxb
+        SHL reg, cl: D3h 11100xxxb
+        SHL reg, imm8: C1h 11100xxxb imm8
+
+SHR --> SHR reg, 1: D1h 11101xxxb
+        SHR reg, cl: D3h 11101xxxb
+        SHR reg, imm8: C1h 11101xxxb imm8
+
+SAL --> SAL reg, 1: D1h 11110xxxb
+        SAL reg, cl: D3h 11110xxxb
+        SAL reg, imm8: C1h 11110xxxb imm8
+
+SAR --> SAR reg, 1: D1h 11111xxxb
+        SAR reg, cl: D3h 11111xxxb
+        SAR reg, imm8: C1h 11111xxxb imm8
+
+MUL --> MUL reg: F7h 11100xxxb
+
+DIV --> DIV reg: F7h 11110xxxb
+
+NEG --> NEG reg: F7h 11011xxxb
+
+NOT --> NOT reg: F7h 11010xxxb
+
+Opérations de sauts:
+--------------------
+
+CALL --> E8h imm32
+
+JMP  --> EBh imm8
+
+JCXZ --> 67h E3h imm8
+
+JO   --> 70h imm8
+
+JNO  --> 71h imm8
+
+JB   --> 72h imm8
+
+JNB  --> 73h imm8
+
+JZ   --> 74h imm8
+
+JNZ  --> 75h imm8
+
+JBE  --> 76h imm8
+
+JNBE --> 77h imm8
+
+JS   --> 78h imm8
+
+JNS  --> 79h imm8
+
+JP   --> 7Ah imm8
+
+JNP  --> 7Bh imm8
+
+JL   --> 7Ch imm8
+
+JNL  --> 7Dh imm8
+
+JLE  --> 7Eh imm8
+
+JNLE --> 7Fh imm8
+
+Opérations de boucles:
+----------------------
+
+LOOP   --> E2h imm8
+
+LOOPNZ --> E0h imm8
+
+LOOPZ  --> E1h imm8
+
+Opérations de comparaisons:
+---------------------------
+
+CMP  --> CMP reg1, reg2: 3Bh 11xxxyyyb (xxx: reg1 / yyy: reg2)
+         CMP eax, imm32: 3Dh imm32
+         CMP reg, imm32: 81h 11111xxxb imm32
+
+TEST --> TEST reg1, reg2: 85h 11xxxyyyb (xxx: reg1 / yyy: reg2)
+         TEST eax, imm32: A9h imm32
+         TEST reg, imm32: F7h 11000xxxb imm32
+
+Opérations de chargement des registres:
+---------------------------------------
+
+MOV  --> MOV reg1, reg2: 8Bh 11xxxyyyb (xxx: reg1 / yyy: reg2)
+         MOV reg, imm32: 10111xxxb imm32
+
+XCHG --> XCHG eax, reg: 10010xxxb
+         XCHG reg1, reg2: 87h 11xxxyyyb (xxx: reg2 / yyy: reg1)
+
+Opérations de manipulations de la pile:
+---------------------------------------
+
+PUSH  --> PUSH reg: 01010xxxb
+          PUSH imm32: 68h imm32
+
+POP   --> POP reg: 01011xxxb
+
+PUSHA --> 60h
+
+POPA  --> 61h
+
+PUSHF --> 9Ch
+
+POPF  --> 9Dh
+
+Opérations diverses:
+--------------------
+
+CLC     --> F8h
+
+STC     --> F9h
+
+NOP     --> 90h
+
+INT 03h --> CCh
+
+RET     --> C3h
+

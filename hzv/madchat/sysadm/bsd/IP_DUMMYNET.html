@@ -1,0 +1,555 @@
+<HTML>
+<HEAD>
+<TITLE>IP_DUMMYNET </TITLE>
+</HEAD>
+<BODY>
+
+<A HREF="http://www.iet.unipi.it/~luigi/">Back
+to my home page</A><BR>
+</P>
+
+<H1 ALIGN=CENTER>dummynet
+<IMG SRC="http://www.iet.unipi.it/~luigi/dummynet.gif" ALT="" HEIGHT=102 WIDTH=163 ALIGN=CENTER><BR>
+</H1>
+
+<H2>1. Description</H2>
+
+<TT>dummynet</TT> is a flexible tool originally designed for testing
+networking protocols, and since then (mis)used for bandwidth
+management.<P>
+
+It simulates/enforces queue and bandwidth limitations, delays,
+packet losses, and multipath effects. It also implements
+a variant of Weighted Fair Queueing called WF2Q+. It can be used on user's
+workstations, or on FreeBSD machines acting as routers or bridges.<P>
+
+Just to get the idea of what you can do with dummynet, e.g. by
+using dummynet on your workstation, or putting a PC with two ethernet
+cards between your network and your router and booting from the <A
+HREF="#PicoBSD">floppy-image</A> below, here are a few examples :<P>
+
+These rules limit the total ICMP traffic (inbound+outbound)
+to 50Kbit/s
+<PRE>
+    ipfw add pipe 1 icmp from any to any
+    ipfw pipe 1 config bw 50Kbit/s queue 10
+</PRE>
+<P>
+
+These rules limit inbound traffic to 300Kbit/s
+for each host on your network 10.1.2.0/24.
+<PRE>
+    ipfw add pipe 2 ip from any to 10.1.2.0/24
+    ipfw pipe 2 config bw 300Kbit/s queue 20 mask dst-ip 0x000000ff
+</PRE>
+If you want all machines to share evenly a single link, you should
+use instead:
+<PRE>
+    ipfw add queue 1 ip from any to 10.1.2.0/24
+    ipfw queue 1 config weight 5 pipe 2 mask dst-ip 0x000000ff
+    ipfw pipe 2 config bw 300Kbit/s
+</PRE>
+<P>
+And these rules simulate an ADSL link to the moon:
+<PRE>
+    ipfw add pipe 3 ip from any to any out
+    ipfw add pipe 4 ip from any to any in
+    ipfw pipe 3 config bw 128Kbit/s queue 10 delay 1000ms
+    ipfw pipe 4 config bw 640Kbit/s queue 30 delay 1000ms
+</PRE>
+
+dummynet works by intercepting packets (selected by <TT>ipfw</TT>
+rules - ipfw is one of the FreeBSD firewalls) in their way through
+the protocol stack, and passing them through one or more objects
+called <B>queue</B>s and <B>pipe</B>s, which simulate the effects of bandwidth
+limitations, propagation delays, bounded-size queues, packet losses,
+multipath. Pipes are fixed-bandwidth channels. Queues represent
+instead queues of packets, associated with a weight, which share
+the bandwidth of the pipe they are connected to proportionally
+to their weight.
+<P>
+
+Each pipe and queue can be configured separately, so you can apply different
+limitations/delays to different traffic according to the ipfw rules
+(e.g. selecting on protocols, addresses and ports ranges, interfaces,
+etc.).
+Pipes and queues can be created dynamically, so using a single set of rules
+you can apply independent limitations to all hosts in a subnet, or
+to all types of traffic, etc.
+You can also configure the system to build cascades of pipes, so
+you can simulate networks with multiple links and paths between
+source(s) and destination(s).<P>
+
+<H2>2. Performance, status and availability</H2>
+
+Unlike other traffic shaping packages which run in userland,
+dummynet has a very little overhead, as
+all processing is done within the kernel. There is
+no data copying involved to move packets through pipes,
+just a bit of pointer shuffling, and the implementation is
+able to handle thousands of pipes with O(log N) cost, where N
+is the number of active pipes.<P>
+
+The WFQ variant we implement, called WF2Q+, has a complexity
+which is O(log N) in the number of active flows, so again it
+is able to handle efficiently thousands of flows.
+
+dummynet is part of <A HREF="http://www.freebsd.org/">FreeBSD</A>
+since Sept.1998. It has been recently (Jan.2000 and June 2000) rewritten, so the
+most recent, feature-rich and robust versions are in FreeBSD
+3.4-STABLE and newer releases.<P>
+
+You don't need to install FreeBSD on your hard disk to use it, as
+<A HREF="#PicoBSD">below</A> you will find a bootable single-floppy
+version of FreeBSD which includes dummynet, bridging, and a lot of
+other goodies.<P>
+
+Dummynet is being heavily used by lots of people, and the code
+seems to be extremely stable and robust, especially in the
+3.4-STABLE version and above. Bug fixes are generally applied to the
+FreeBSD source tree and are available from the
+<A HREF="http://www.freebsd.org/cgi-bin/cvsweb.cgi/">CVS tree</A>
+or in newer snapshot/releases of FreeBSD.
+From time to time i update the floppy image on this site as well.<P>
+
+<H2>3. Support</H2>
+
+If you have found some bug, please <B>report it to me</B>
+by email, but don't forget to include information on which
+version of FreeBSD and dummynet you are using, your rules
+<TT>(ipfw show; ipfw pipe show)</TT>, your configuration
+(bridge or router) etc.<BR>
+If you have a simple question, again just email me and i generally try
+to reply as soon as possible. Again, please supply details!<BR>
+For more complex things (like "i have
+no time to learn how to use it, i just want this work done"), or
+customizations and additions of new features to dummynet/ipfw, I
+am available (through my department) for doing support on a contract
+basis.<BR>
+Email <A HREF="mailto:luigi@iet.unipi.it">luigi@iet.unipi.it</A>
+for discussing details.<P>
+
+This said, FreeBSD users should be able to use dummynet without
+the need for support.<BR>
+The relevant manpages (<TT>ipfw(8), dummynet(4), bridge(4)</TT>)
+are a great source of information, so please read updated
+version of them before asking questions.<BR>
+
+You can also try posting
+on the various FreeBSD mailing lists or newsgroups, they are
+usually a very good source of information.<P>
+
+<H2>4. Using dummynet</H2>
+
+Dummynet is entirely controlled by the <TT>ipfw</TT> commands
+and a set of sysctl variables.
+
+<H2>4.1 Basic ipfw commands</H2>
+
+The basic structure of ipfw commands is
+<PRE>
+   ipfw add [N] [prob X] action PROTO from SRC to DST [options]
+</PRE>
+where N is the rule number ;<BR>
+X is a number between 0 and 1 that, when present, indicates
+the probability of getting a match on this rule
+if all other fields are correct. The default is deterministic
+match;<BR>
+<TT>action</TT> is one of the actions executed on a match,
+which can be any of <TT>allow, deny, skipto N, pipe N</TT>
+and others. To send a packet to a dummynet pipe, we have
+to use <TT>pipe N</TT>;
+PROTO is the protocol type we want to match (IP, TCP, UDP, ...);<BR>
+SRC and DST are address specifier (we can use addresses with netmasks
+and optionally followed by ports or port ranges);<BR>
+<TT>options</TT> can be used to restrict the attention to
+packets coming from/to specific interfaces, or carrying some
+TCP flags or ICMP options, or bridged, etc.<P>
+
+<H2>4.2 Sysctl variables</H2>
+
+The following are the main sysctl variables to
+ control the behaviour of ipfw, bridging and dummynet:
+
+<H3>Controlling ipfw</H3>
+
+The firewall is mostly controlled by <TT>ipfw</TT>, and the
+sysctl variables only serve to give global configuration
+and default parameters.
+
+<PRE>
+net.inet.ip.fw.enable: 1
+	enables firewall in the IP stack
+
+net.inet.ip.fw.one_pass: 1
+	Forces a single pass through the firewall. If set to 0,
+	packets coming out of a pipe will be reinjected into the
+	firewall starting with the rule after the matching one.
+	NOTE: there is always one pass for bridged packets.
+
+net.inet.ip.fw.dyn_buckets: 256 (readonly)
+	Current hash table size used for dynamic rules.
+
+net.inet.ip.fw.curr_dyn_buckets: 256
+	Desired hash table size used for dynamic rules.
+
+net.inet.ip.fw.dyn_count: 3
+	Current number of dynamic rules. (readonly)
+	
+net.inet.ip.fw.dyn_max: 1000
+	Max number of dynamic rules. If you exceed this limit, you will
+	have to wait for a rule to expire before being able to create
+	a new one.
+
+net.inet.ip.fw.dyn_ack_lifetime: 300
+net.inet.ip.fw.dyn_syn_lifetime: 20
+net.inet.ip.fw.dyn_fin_lifetime: 20
+net.inet.ip.fw.dyn_rst_lifetime: 5
+net.inet.ip.fw.dyn_short_lifetime: 5
+	Lifetime (in seconds) for various types of dynamic rules.
+</PRE>
+
+<H3>Controlling dummynet</H3>
+
+Also dummynet is mostly controlled by <TT>ipfw</TT>, with the
+sysctl variables serving mostly for default parameters.
+
+<PRE>
+net.inet.ip.dummynet.hash_size: 64
+	Size of hash table for dynamic pipes.
+
+net.inet.ip.dummynet.expire: 1
+	Delete dynamic pipes when they become empty.
+
+net.inet.ip.dummynet.max_chain_len: 16
+	Max ratio between number of dynamic queues and hash buckets.
+	When you exceed (max_chain_len*buckets) queues on a pipe,
+	packets not matching any of these will be all put into the
+	same default queue.
+</PRE>
+
+<H3>Controlling bridging</H3>
+
+Bridging is almost exclusively controlled by sysctl variables.
+
+<PRE>
+net.link.ether.bridge_cfg: ed2:1,rl0:1,
+	set of interfaces for which bridging is enabled, and cluster
+	they belong to.
+
+net.link.ether.bridge: 0
+	enable bridging.
+
+net.link.ether.bridge_ipfw: 0
+	enable ipfw for bridging.
+
+</PRE>
+
+<H2>4.3 Pipe and queue configuration</H2>
+
+The following <TT>ipfw</TT> commands control dummynet pipes
+<UL>
+<LI><TT>ipfw pipe NN config ...</TT><BR>
+This command is used to create or reconfigure a pipe.
+NN is the numeric
+identifier (between 1 and 65535) of the pipe. Issuing multiple
+time the configuration command results in the pipe being
+reconfigured.<P>
+
+<LI><TT>ipfw [-s field] pipe [NN] show</TT><BR>
+This command shows the parameters of a pipe. If the pipe is
+a dynamic one (see <TT>mask</TT> parameter), then all dynamic
+pipes created from this one are listed. The list can be very very
+long. The -s option allows you to sort the listing on one
+of the four counters associated to the pipe.
+
+<LI><TT>ipfw pipe NN delete</TT>
+Destroys a single pipe. Remember that packets sent to
+a non-existing pipe are silently dropped.
+
+<LI><TT>ipfw pipe flush</TT>
+Destroys all pipes.
+</UL>
+
+The following parameters can be configured for a pipe, adding the
+command in the <TT>pipe config... </TT> line:
+<UL>
+<LI><B>Bandwidth:</B> <TT>bw NNunit</TT><BR>
+NN is the bandwidth assigned to the pipe, unit (which must
+follow the number with no intervening spaces) can be any of
+<TT>bit/s Kbit/s Mbit/s Byte/s KByte/s MByte/s</TT> or
+non-ambiguous abbreviations.<BR>
+A bandwidth of 0 (or no bandwidth) results in no bandwidth
+limitations (hence, no queues will ever build up).
+
+<LI><B>Queue size:</B> <TT>queue NN [unit]</TT><BR>
+Sets the queue size, in slots if only NN is specified,
+otherwise in Bytes or KBytes. When there is no room in the
+queue, packets are dropped. The default queue size is 50 slots.<BR>
+The combination of bandwidth
+and queue size influence the queueing delay. Be careful
+when using low bandwidths not to use too large queues, or
+you might end up with several seconds of queueing delay.<BR>
+Also be careful when you specify the queue size in packets:
+if you run tests over the loopback interface, a packet can
+be very large, e.g. 16KB, again resulting in huge delays.
+
+<LI><B>Delay:</B> <TT>delay NN ms</TT><BR>
+Sets the propagation delay of the pipe, in milliseconds.
+Note that the queueing delay component is independent of
+the propagation delay. Also note that all delays are approximated
+with a granularity of 1/HZ seconds (HZ is typically 100, but we
+suggest using HZ=1000 and maybe even larger values).
+
+<LI><B>Random Packet Loss:</B> <TT>plr X</TT><BR>
+X is a floating point number between 0 and 1 which causes
+packets to be dropped at random. This is done generally to
+simulate lossy links. The default is 0, or no loss.
+
+<LI><B>Dynamic queue creation:</B> <TT>mask ...</TT><BR>
+It is possible to associate a mask to a pipe so that
+bandwidth and queue limitations are enforced separately
+for packets  belonging to different flows.<P>
+The <TT>mask</TT> command lets you specify which parts
+of the following fields contribute to identify a flow:
+<PRE>
+[proto N] [src-ip N] [dst-ip N] [src-port N] [dst-port N]
+</PRE>
+where N is a bitmask where significant bits are set to 1.
+You can specify one or more masks, or the <TT>all</TT>
+keyword to mean that all fields are fully significant.<BR>
+The default (when no mask are specified) is to ignore
+all fields, so that all packets are considered to belong
+to the same flow.<P>
+Whenever a new flow is encountered, a new queue (with
+the specified bandwidth and queue size) is created.<P>
+<B>WARNING!!!</B> the number of dynamic queues that can
+be created in this way can become very large. They are
+accessed through a hash table, whose size you can define
+using the <TT> buckets NN</TT> specifier after the mask command.
+</UL>
+
+To use WF2Q+, packets must be passed to queues which in turn
+must be connected to a pipe.<P>
+
+The following <TT>ipfw</TT> commands control dummynet pipes
+<UL>
+<LI><TT>ipfw queue NN config ...</TT><BR>
+This command is used to create or reconfigure a queue.
+NN is the numeric
+identifier (between 1 and 65535) of the queue. Issuing multiple
+time the configuration command results in the queue being
+reconfigured.<P>
+
+<LI><TT>ipfw queue NN delete</TT>
+Destroys a single queue. Remember that packets sent to
+a non-existing queue are silently dropped.
+
+<LI><TT>ipfw queue flush</TT>
+Destroys all queues.
+</UL>
+
+The following parameters can be configured for a queue, adding the
+command in the <TT>queue config... </TT> line:
+<UL>
+<LI><B>Pipe:</B> <TT>pipe NN</TT><BR>
+NN is the identifier of the pipe used for regulating traffic.
+
+<LI><B>Weight:</B> <TT>weight NN</TT><BR>
+NN is the weight (1..100, default 1)
+associated to the queue.
+
+<LI><B>Per-Flow queueing:</B> <TT>mask ...</TT><BR>
+The syntax is the same as for pipes. However, all queues
+created dynamically will share the parent pipe's bandwidth according
+to the weight.
+
+<LI><B>Queue size, Random Packet Loss:</B><BR>
+Same as for pipes.
+</UL>
+
+<H2>5. Using dummynet for testing protocols</H2>
+
+Dummynet was originally created to test network protocols and
+applications, possibly even on a standalone system. As a consequence,
+some of its features such as delay emulation, random loss etc. are
+explicitly designed for that purpose.<P>
+There are a few things you should take in mind when doing such
+tests, to avoid getting incorrect results. They are all
+obvious things, still it is better to have them in mind.<P>
+
+<UL>
+<LI><B>Choosing a reasonable buffer size.</B><BR>
+As said earlier, packet can be subject to a delay which is
+proportional to the total queue size (in bytes), and inversely
+proportional to the bandwidth. At low bandwidths, this queueing
+delays can be extremely high, especially if the queue size is
+defined in terms of packets and packets are large. The default
+queue size is almost certainly too large for most purposes, and
+it is often preferable to define the queue size in terms of 
+bytes rather than packets.
+
+<LI><B>Half-duplex vs. Full-duplex channels.</B><BR>
+With the exception of shared-medium networks such as the
+ethernet, most links that you want to simulate for your
+experiments are full duplex. As such, the proper configuration
+is the following:
+<PRE>
+    ipfw add pipe 1 ip from A to B
+    ipfw add pipe 2 ip from B to A
+    ipfw pipe 1 config ...
+    ipfw pipe 2 config ...
+</PRE>
+Should you really need to mode a half duplex network,
+then you can use the following sequence. But think twice before
+you do so, as it is often a non-realistic mode.
+<PRE>
+    ipfw add pipe 3 ip from A to B
+    ipfw add pipe 3 ip from B to A
+    ipfw pipe 3 config ...
+</PRE>
+<P>
+<LI><B>Interactions between bridging and multicast</B><BR>
+You can use ipfw (and dummynet) in a bridge by setting some
+sysctl variables:
+<PRE>
+	sysctl -w net.link.ether.bridge=1
+	sysctl -w net.link.ether.bridge_ipfw=1
+</PRE>
+and then specify your firewall configuration.<BR>
+Be careful when you run experiment involving multicast traffic
+through a dummynet-enabled bridge.
+Unless you set the rules right, multicast traffic in
+a bridge goes through the firewall code twice: once
+during forwarding at level 2, once when the packet is
+passed to the local IP stack of the bridge.<P>
+Starting from Feb.2000, there are to avoid this problem.
+One involves a sysctl variable:
+<PRE>
+	sysctl -w net.inet.ip.fw.enable=0
+</PRE>
+which avoids that the firewall is invoked at the ip level.
+
+Otherwise, you can use the <TT>bridged</TT> specifier in your
+ruleset to match only bridged packets:
+<PRE>
+    ipfw add pipe 1 ip from any to any bridged
+</PRE>
+<P>
+
+<LI><B>Running over the loopback interface.</B><BR>
+Dummynet was originally designed for running experiments on a
+standalone machine. The loopback interface lets you run
+senders and receivers on the same machine, but you should
+remember a few things:<P>
+<UL>
+<LI><B>The firewall is invoked on all packets.</B><BR>
+This means that if you have a configuration such as
+<PRE>
+    ipfw add pipe 4 ip from 127.0.0.1 to 127.0.0.1
+    ipfw pipe 4 config delay 100ms
+</PRE>
+and do a simple <TT>ping 127.0.0.1</TT> you will see a delay
+of approximately 400ms. In fact the ICMP request goes through
+the pipe twice (once down, once up), and the same for the ICMP
+reply. For the same reason, if you also have bandwidth or queue
+limitations, remember that the queue sees the traffic multiple
+times.<BR>
+You can partially overcome this problem by using additional
+ipfw options, e.g. specifying a direction
+for matching packets, or the uid of the sender or receiving process.
+Alternatively, you can assign multiple aliases to the loopback
+interface, and make sure that the sender and receiver bind
+their local endpoint to different addresses so that
+you will have distinct rules matching traffic in the
+two directions.<P>
+<LI><B>The MTU of the loopback interface defaults to 16KB</B><BR>
+The usual default for ethernet is 1500, and for point-to-point
+links often smaller (576 or so). You can simply fix this by
+redefining the mtu to the desired value with
+<PRE>
+    ifconfig lo0 mtu 1500
+</PRE>
+<P>
+</UL>
+<LI><B>TCP defaults.</B><BR>
+Be very careful when using TCP, especially between processes running
+on the same machine, or on the same subnet.<BR>
+Apart from the MTU issue mentioned earlier, at least on FreeBSD,
+TCP starts with a full window when the remote endpoint is on the
+same subnet as one of the local addresses.
+You need a simple fix in the source (tcp_input.c i believe)
+to fix this behaviour in FreeBSD 3.x, whereas FreeBSD 4.x has
+sysctl variable(s) to set the initial window.<BR>
+Secondly, when you do experiments on configuration with
+a large delay-bandwidth product, remember that many applications
+use the default window size which is small, something like 16KB.
+You might end up not using the full bandwidth just because your
+data transfer is window-limited.
+<P>
+</UL>
+
+<H2>5.1 Simulating multipath</H2>
+One nice feature of the new version of dummynet is the ability to
+simulate multiple paths between sender and receiver.
+This is done using probabilistic match, e.g.:
+<PRE>
+    ipfw add prob 0.33 pipe 1 ip from A to B
+    ipfw add prob 0.5  pipe 2 ip from A to B
+    ipfw add           pipe 3 ip from A to B
+    ipfw pipe 1 config ...
+    ipfw pipe 2 config ...
+    ipfw pipe 3 config ...
+</PRE>
+Given the right packet, the first rule will match with probability 1/3;
+in the remaining 2/3 of occurrence we move to the second rule, which
+will match with prob 1/2 (so overall 1/2*1/3 = 1/3), and the remaining
+1/3 of occurrence will move to the third rule, which has a
+deterministic match. We can then configure the three pipes as desired
+to emulate phenomena such as packet reordering etc.
+<P>
+
+<HR>
+<H1>6 Related links</H1>
+
+Here i collect some info on how to do various ipfw-related
+things. Most of this is just URLs collected from the mailing list
+so the reliability of the info might be different (for good or bad)
+from what is in this page.
+
+<UL>
+<LI><A HREF="http://sympaticousers.org/faq/freebsd_howto.htm">
+    PPP Over Ethernet</HR><BR>Detailed instructions on how to
+    set up a PPPoE connection.
+<LI><A HREF="http://www.csl.sony.co.jp/person/kjc/kjc/software.html">
+    ALTQ</A><BR>Alternate queueing scheme.
+</UL>
+
+<HR>
+<A NAME="PicoBSD">
+<H2>A PicoBSD floppy</H2>
+</A>
+
+To conclude... if you want to try dummynet, here is a bootable
+floppy image of a system with FreeBSD, bridging, ipfw, dummynet,
+natd, ppp, drivers for a few interfaces, and accessible via telnet.<P>
+To setup this system,
+download the 1.44MB image,
+<A HREF="pico.000608.bin">pico.000608.bin</A> and copy it
+to a floppy using <TT>dd</TT> under FreeBSD,
+or <A HREF="rawrite.exe">rawrite</A> under DOS/Windows.<P>
+Then put the floppy into a machine with hopefully at least one
+interface, and wait for it to boot. When the system comes up,
+login as root, password "setup", and you can play with 
+bridging, ipfw and dummynet using the above commands.
+
+<HR>
+Luigi Rizzo<BR>
+Dipartimento di Ingegneria dell'Informazione -- Univ. di Pisa<BR>
+via Diotisalvi 2 -- 56126 PISA<BR>
+tel. +39-050-568533 Fax +39-050-568522<BR>
+email: <A HREF="mailto:luigi@iet.unipi.it">luigi@iet.unipi.it</A>
+</P>
+
+</BODY>
+</HTML>

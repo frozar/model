@@ -1,0 +1,1360 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 26. Telnet and Rlogin: Remote Login</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="26_0"><H1><I>Telnet and Rlogin: Remote Login</I></H1></a>
+<a name="26_1"><H3>26.1 Introduction</H3></a>
+<P>
+Remote login is one of the most popular Internet
+applications. Instead of having a hardwired terminal on each host,
+we can login to one host and then remote login across the network
+to any other host (that we have an account on, of course).
+<P>
+Two popular applications provide remote login across
+TCP/IP internets.
+<OL>
+<LI>Telnet is a standard application that almost
+every TCP/IP implementation provides. It works between hosts that
+use different operating systems. Telnet uses option negotiation
+between the client and server to determine what features each
+end can provide.
+<LI>Rlogin is from Berkeley Unix and was developed
+to work between Unix systems only, but it has been ported to other
+operating systems also.
+</OL>
+<P>
+In this chapter we look at both Telnet and Rlogin.
+We start with Rlogin because it's simpler.
+<P>
+<FONT SIZE=-1>Telnet is one of the oldest of the Internet applications,
+dating back to 1969 on the ARPANET. Its name is actually an acronym
+that stands for &quot;telecommunications network protocol.&quot;</FONT>
+<P>
+Remote login uses the client-server paradigm. Figure
+26.1 shows the typical arrangement of the Telnet client and server.
+(We could draw a similar picture for an Rlogin client and server.)
+<P>
+<CENTER><a name="fig_26_1"><img src="f_26_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_26_1.gif"></a><br>
+<B>Figure 26.1</B> Overview
+of Telnet client-server.</CENTER>
+<P>
+There are numerous points in this figure.
+<OL>
+<LI>The Telnet client interacts with both the user
+at the terminal and the TCP/IP protocols. Normally everything
+we type is sent across the TCP connection, and everything received
+from the connection is output to our terminal.
+<LI>The Telnet server often deals with what's called
+a <I>pseudo-terminal</I> device, at least under Unix systems.
+This makes it appear to the login shell that's invoked on the
+server, and to any programs run by the login shell, that they're
+talking to a terminal device. Some applications, such as full-screen
+editors, assume they're talking to a terminal device. Indeed,
+making the login shell on the server think that it's talking to
+a terminal is often one of the hardest programming aspects involved
+in writing a remote login server.
+<LI>Only a single TCP connection is used. Since there
+are times when the Telnet client must talk to the Telnet server
+(and vice versa) there needs to be some way to delineate commands
+that are sent across the connection, versus user data. We'll see
+how both Telnet and Rlogin handle this.
+<LI>We show dashed boxes in <a href="#fig_26_1">Figure 26.1</a> to note that
+the terminal and pseudoterminal drivers, along with the TCP/IP
+implementation, are normally part of the operating system kernel.
+The Telnet client and server, however, are often user applications.
+<LI>We show the login shell on the server host to
+reiterate that we have to login to the server. We must have an
+account on that system to login to it, using either Telnet or
+Rlogin.
+</OL>
+<P>
+It is interesting to compare the complexity of Telnet
+and Rlogin by looking at the number of lines of source code required
+to implement the client and server for each. Figure 26.2 shows
+these counts for the standard Telnet and Rlogin client and server,
+as distributed in different versions from Berkeley (<a href="introduc.htm#fig_1_10" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#fig_1_10">Figure 1.10</a>).
+<P>
+<CENTER><a name="fig_26_2"><img src="f_26_2.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_26_2.gif"></a><br>
+<B>Figure 26.2</B> Comparison
+of Telnet/Rlogin/client/server, number of lines of source code.</CENTER>
+<P>
+It is the continuing addition of new options to Telnet
+that causes its implementation to grow, while Rlogin remains simple
+and stable.
+<P>
+Remote login is not a high-volume data transfer application.
+As we've mentioned earlier, lots of small packets are normally
+exchanged between the two end systems. [Paxson 1993] found that
+the ratio of bytes sent by the client (the user typing at the
+terminal) to the number of bytes sent back by the server is about
+1:20. This is because we type short commands that often generate
+lots of output.
+<a name="26_2"><H3>26.2 Rlogin Protocol</H3></a>
+<P>
+Rlogin appeared with 4.2BSD and was intended for
+remote login only between Unix hosts. This makes it a simpler
+protocol than Telnet, since option negotiation is not required
+when the operating system on the client and server are known in
+advance. Over the past few years, Rlogin has also been ported
+to several non-Unix environments.
+<P>
+RFC 1282 [Kantor 1991] specifies the Rlogin protocol.
+As with the Routing Information Protocol (RIP) RFC, however, this
+one was written after Rlogin had been in use for many years. Chapter
+15 of [Stevens 1990] describes programming remote login clients
+and servers, and provides the complete source code for the Rlogin
+client and server. Chapters 25 and 26 of [Comer and Stevens 1993]
+provide the implementation details and source code for a Telnet
+client.
+<H4>Application Startup</H4>
+<P>
+Rlogin uses a single TCP connection between the client
+and server. After the normal TCP connection
+establishment is complete, the following application protocol
+takes place between the client and server.
+<OL>
+<LI>The client writes four strings to the server;
+(a) a byte of 0, (b) the login name of the user on the client
+host, terminated by a byte of 0, (c) the login name of the user
+on the server host, terminated by a byte of 0, (d) the name of
+the user's terminal type, followed by a slash, followed by the
+terminal speed, terminated by a byte of 0. Two login names are
+required because users aren't required to have the same login
+name on each system.
+<P>The terminal type is passed from the client
+to the server because many full-screen applications need to know
+it. The terminal speed is passed because some applications operate
+differently depending on the speed. For example, the vi editor
+works with a smaller window when operating at slower speeds, so
+it doesn't take forever to redraw the window.
+<LI>The server responds with a byte of 0.
+<LI>The server has the option of asking the user
+to enter a password. This is handled as normal data exchange across
+the Rlogin connection-there is no special protocol. The server
+sends a string to the client (which the client displays on the
+terminal), often <TT>Password:</TT>. If the
+client does not enter a password within some time limit (often
+60 seconds), the server closes the connection.
+<P>We can create a file in our home directory on
+the server (named <TT>.rhosts</TT>) with lines
+containing a hostname and our username. If we login from the specified
+host with that username, we are not prompted for a password. Most
+security texts, such as [Curry 1992], strongly suggest never using
+this feature because of the security hole it presents.
+<P>If we are prompted by the server for a password,
+what we type is sent to the server as <I>cleartext.</I> Each character
+of the password that we type is sent as is. Anyone who can read
+the raw network packets can read the characters of our password.
+Newer implementations of the Rlogin client, such as 4.4BSD, first
+try to use Kerberos, which avoids sending cleartext passwords
+across the network. This requires a compatible server that also
+supports Kerberos. ([Curry 1992] describes Kerberos in more detail.)
+<LI>The server normally sends a request to the client
+asking for the terminal's window size (described later).
+</OL>
+<P>
+The client sends 1 byte at a time to the server and
+all echoing is done by the server. We saw this in <a href="tcp_int.htm#19_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_int.htm#19_2">Section 19.2</a>.
+Also, the Nagle algorithm is normally enabled (<a href="tcp_int.htm#19_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_int.htm#19_4">Section 19.4</a>),
+causing multiple input bytes to be sent as a single TCP segment
+across slower networks. The operation is simple: everything typed
+by the user is sent to the server, and everything sent by the
+server to the client is displayed on the terminal.
+<P>
+Additional commands exist that can be sent from the
+client to the server and from the server to the client. Let's
+first describe the scenarios that require these commands.
+<H4>Flow Control</H4>
+<P>
+By default, flow control is done by the Rlogin client.
+The client recognizes the ASCII STOP and START characters (Control-S
+and Control-Q) typed by the user, and stops or starts the terminal
+output.
+<P>
+If this isn't done, each time we type Control-S to
+stop the terminal output, the Control-S character is sent across
+the network to the server, and the server stops writing to the
+network-but up to a window's worth of output may have been already
+written by the server and will be displayed before the output
+is stopped. Hundreds or thousands of bytes of data will scroll
+down the screen before the output stops. Figure 26.3 shows this
+scenario.
+<P>
+<CENTER><a name="fig_26_3"><img src="f_26_3.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_26_3.gif"></a><br>
+<B>Figure 26.3</B> Rlogin
+connection if server performs STOP/START processing.</CENTER>
+<P>
+To an interactive user this delayed response to the
+Control-S character is bad.
+<P>
+Sometimes, however, the application running on the
+server needs to interpret each byte of input, and doesn't want
+the client looking at the input bytes and treating Control-S and
+Control-Q specially. (The <TT>emacs</TT> editor
+is an example of an application that uses these two characters
+for its own commands.) To handle this, the capability is provided
+for the server to tell the client whether or not to perform flow
+control.
+<H4>Client Interrupt</H4>
+<P>
+A problem similar to flow control occurs when we
+type the interrupt key (often DELETE or Control-C), to abort the
+process currently running on the server. The scenario is similar
+to what we show in <a href="#fig_26_3">Figure 26.3</a>, with up to one window full of
+data in the pipe from the server to the client, while the interrupt
+key makes its way across the connection in the other direction.
+We want the interrupt key to terminate what's being displayed
+on the screen as quickly as possible.
+<P>
+In both this case and the flow control scenario,
+it is rare for the flow of data from the client to the server
+to be stopped by flow control. This direction contains only characters
+that we type. Therefore it is not necessary for these special
+input characters (Control-S or interrupt) to be sent from the
+client to the server using TCP's urgent mode.
+<H4>Window Size Changes</H4>
+<P>
+With a windowed display we can dynamically change
+the size of the window while an application is running. Some applications
+(typically those that manipulate the entire window, such as a
+full-screen editor) need to know these changes. Most current Unix
+systems provide the capability for an application to be told of
+these window size changes.
+<P>
+With remote login, however, the change in the window
+size occurs on the client, but the application that needs to be
+told is running on the server. Some form of notification is required
+for the Rlogin client to tell the server that the window size
+has changed, and what the new size is.
+<H4>Server to Client Commands</H4>
+<P>
+We can now summarize the four commands that the Rlogin
+server can send to the client across the TCP connection. The problem
+is that only a single TCP connection is used, so the server needs
+to mark these command bytes so the client knows to interpret them
+as commands, and not display the bytes on the terminal. TCP's
+urgent mode is used for this (<a href="tcp_bulk.htm#20_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#20_8">Section 20.8</a>).
+<P>
+When the server sends a command to the client, the
+server enters urgent mode with the last byte of urgent data being
+the command byte from the server. When the client receives the
+urgent mode notification, it reads from the connection, saving
+the data until the command byte (the last byte of urgent data)
+is encountered. The data that's saved by the client can be displayed
+on the terminal, or discarded, depending on the command. Figure
+26.4 describes the four command bytes.
+<P>
+<CENTER>
+<a name="fig_26_4"><TABLE BORDER=1></a>
+<TR><TD WIDTH=45>Byte</TD><TD WIDTH=645><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=45><TT>0x02</TT></TD><TD WIDTH=645>Flush output. The client discards all the data received from the server, up through the command byte (the last byte of urgent data). The client also discards any pending terminal output that may be buffered. The server sends this command when it receives the interrupt key from the client.
+</TD></TR>
+<TR><TD WIDTH=45><TT>0x10</TT></TD><TD WIDTH=645>The client stops performing flow control.
+</TD></TR>
+<TR><TD WIDTH=45><TT>0x20</TT></TD><TD WIDTH=645>The client resumes flow control processing.
+</TD></TR>
+<TR><TD WIDTH=45><TT>0x80</TT></TD><TD WIDTH=645>The client responds immediately by sending the current window size to the server, and notifies the server in the future if the window size changes. This command is normally sent by the server immediately after the connection is established.
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 26.4</B> Rlogin
+commands from the server to the client.</CENTER>
+<P>
+One reason for sending these commands using TCP's
+urgent mode is that the first command (&quot;flush output&quot;)
+needs to be sent to the client even if the flow of data from the
+server to the client is stopped by TCP's windowed flow control.
+This condition-the server's output to the client being flow control
+stopped-is likely to occur, since processes running on the server
+can usually generate output faster than the client's terminal
+can display it. Conversely, it is rare for the flow of data from
+the client to the server to be flow control stopped, since this
+direction of data flow contains the characters that we type.
+<P>
+Recall our example in <a href="tcp_bulk.htm#fig_20_14" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#fig_20_14">Figure 20.14</a> where we saw the
+urgent notification go across the connection even though the window
+size was 0. (We'll see another example of this in the <a href="#26_3">next section</a>.)
+The remaining three commands aren't time critical, but they use
+the same technique for symplicity.
+<H4>Client to Server Commands</H4>
+<P>
+Only one command from the client to the server is
+currently defined: sending the current window size to the server.
+Window size changes from the client are not sent to the server
+unless the client receives the command <TT>0x80</TT>
+(<a href="#fig_26_4">Figure 26.4</a>) from the server.
+<P>
+Again, since a single TCP connection is used, the
+client must have some way of marking the commands that it sends
+across the connection, so that the server doesn't pass them to
+the application running on the server. The client does this by
+sending 2 bytes of <TT>0xff</TT> followed
+by two special flag bytes.
+<P>
+For the window size command, the two flag bytes are
+each the ASCII character <I>s. </I>Following this are four 16-bit
+values (in network byte order): the number of rows (e.g., 25),
+the number of characters per column (e.g., 80), the number of
+pixels in the X direction, and the number of pixels in the Y direction.
+Often the final two 16-bit values are 0, because most applications
+invoked by the Rlogin server deal with the size of the screen
+in characters, not pixels.
+<P>
+This form of command that we've described from the
+client to the server is called <I>in-band signaling</I> since
+the command bytes are sent in the normal stream of data. The bytes
+used to denote these in-band commands, <TT>0xff</TT>,
+are chosen because we are unlikely to type keys that generate
+these bytes. But the Rlogin method is not perfect. If we could
+generate two consecutive bytes of <TT>0xff</TT>
+from our keyboard, followed by two ASCII s's, the next 8 bytes
+we type will be interpreted as window sizes.
+<P>
+The Rlogin commands from the server to the client,
+which we described in <a href="#fig_26_4">Figure 26.4</a>, are termed <I>out-of-band</I>
+signaling since the technique used is called &quot;out-of-band
+data&quot; by most APIs. But recall our discussion of TCP's urgent
+mode in <a href="tcp_bulk.htm#20_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#20_8">Section 20.8</a> where we said that urgent mode is not out-of-band
+data, and the command byte is sent in the normal stream of data,
+pointed to by the urgent pointer.
+<P>
+Since in-band signaling is used from the client to
+the server, the server must examine every byte that it receives
+from the client, looking for two consecutive bytes of <TT>0xff</TT>.
+But with out-of-band signaling used from the server to the client,
+the client does not need to examine the data that it receives
+from the server, until the server enters urgent mode. Even in
+urgent mode, the client only needs to look at the byte pointed
+to by the urgent pointer. Since the ratio of bytes from the client
+to server, versus from the server to client, is about 1:20, it
+makes sense to use in-band signaling for the low-volume data flow
+(client to server) and out-of-band signaling for the higher volume
+data flow (server to client).
+<H4>Client Escapes</H4>
+<P>
+Normally everything we type to the Rlogin client
+is sent to the server. Occasionally, however, we want to talk
+directly to the Rlogin client program itself, and not have what
+we type sent to the server. This is done by typing a tilde (~)
+as the first character of a line, followed by one of the following
+four characters:
+<OL>
+<LI>A period terminates the client.
+<LI>The end-of-file character (often Control-D) terminates
+the client.
+<LI>The job control suspend character (often Control-Z)
+suspends the client.
+<LI>The job-control delayed-suspend character (often
+Control-Y) suspends only the client input. Everything we type
+is now interpreted by whatever program we run on the client host,
+but anything sent to the Rlogin client by the Rlogin server is
+output to our terminal. This can be used when we start a long
+running job on the server and we want to know when it outputs
+something, but we want to continue running other programs on the
+client.
+</OL>
+<P>
+The last two commands are supported only if the client
+Unix system supports job control.
+<a name="26_3"><H3>26.3 Rlogin Examples</H3></a>
+<P>
+We'll look at two examples: the first shows the client-server
+protocol at the start of an Rlogin session, and the second shows
+what happens when we type our interrupt key to abort a running
+process on the server that is generating lots of output. In <a href="tcp_int.htm#fig_19_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_int.htm#fig_19_2">Figure 19.2</a>
+we showed the normal flow of data across an Rlogin session.
+<H4>Initial Client-Server Protocol</H4>
+<P>
+Figure 26.5 shows the time line for an Rlogin connection
+from the host <TT>bsdi</TT> to the server
+on <TT>svr4</TT>. (We have removed the normal
+TCP connection establishment, the window advertisements, and the
+type-of-service information.)
+<P>
+<CENTER><a name="fig_26_5"><img src="f_26_5.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_26_5.gif"></a><br>
+<B>Figure 26.5</B> Time
+line for an Rlogin connection.</CENTER>
+<P>
+The protocol we described in the <a href="#26_2">previous section</a>
+can be seen in segments 1-9. The client sends a single byte of
+0 (segment 1) followed by three strings (segment 3). In this example
+the three strings are <TT>rstevens</TT> (the
+login name on the client), <TT>rstevens</TT>
+(the login name on the server), and <TT>ibmpc3/9600</TT>
+(the terminal type and speed). The server authenticates this and
+responds with a byte of 0 (segment 5).
+<P>
+The server then sends the window request command
+(segment 7). It is sent using TCP's urgent mode and again we see
+an implementation (SVR4) that uses the older, but more common
+interpretation, where the urgent pointer specifies the sequence
+number plus one of the last byte of urgent data. The client responds
+with 12 bytes of data: 2 bytes of <TT>0xff</TT>,
+2 bytes of <TT>s</TT>, and 4 16-bit values.
+<P>
+The next four segments from the server (10, 12, 14,
+and 16) are the operating system greeting from the server. This
+is followed by the 7-byte shell prompt on the server: &quot;<TT>svr4
+%</TT> &quot; in segment 18.
+<P>
+The data entered by the client is then sent 1 byte
+at a time, as shown in <a href="tcp_int.htm#fig_19_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_int.htm#fig_19_2">Figure 19.2</a>. The connection can be closed
+by either end. If we type a command that causes the shell running
+on the server to terminate, the server's end does the active close.
+If we type an escape to the Rlogin client (normally a tilde),
+followed by a period or our end-of-file character, the client
+does the active close.
+<P>
+<FONT SIZE=-1>The client port number in <a href="#fig_26_5">Figure 26.5</a> is 1023, which
+is within the range controlled by the IANA (<a href="introduc.htm#1_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#1_9">Section 1.9</a>). The
+Rlogin protocol requires the client to have a port number less
+than 1024, termed a <I>reserved port.</I> On Unix systems, a client
+cannot obtain a reserved port unless the process has superuser
+privilege. This is part of the authentication between the client
+and server, which allows the user to login without entering a
+password. [Stevens 1990] discusses these reserved ports and the
+authentication used between the client and server in more detail.</FONT>
+<H4>Client Interrupt Key</H4>
+<P>
+Let's look at another example, this one involving
+TCP's urgent mode, when the flow of data has been stopped and
+we type the interrupt key. This example brings together many of
+the TCP algorithms we described earlier: urgent mode, silly window
+avoidance, windowed flow control, and the persist timer. We start
+the client on the host <TT>sun</TT>. We login
+to <TT>bsdi</TT>, output a big text file to
+the terminal, and then stop the output by typing Control-S. When
+the output stops we type our interrupt key (DELETE) to abort the
+program:
+<TABLE>
+<TR><TD WIDTH=365><TT>sun % <B>rlogin bsdi</B></TT>
+</TD><TD WIDTH=365></TD></TR>
+<TR><TD WIDTH=365></TD><TD WIDTH=365><I>all the operating system greetings</I>
+</TD></TR>
+<TR><TD WIDTH=365><TT>bsdi % <B>cat /usr/share/misc/termcap</B></TT>
+</TD><TD WIDTH=365><I>output big file to terminal</I>
+</TD></TR>
+<TR><TD WIDTH=365></TD><TD WIDTH=365><I>lots of terminal output
+<BR>
+we type Control-S to stop the output, and wait until the output stops</I>
+</TD></TR>
+<TR><TD WIDTH=365><TT><B>^?</B></TT>
+</TD><TD WIDTH=365><I>type our interrupt key, and this is echoed</I>
+</TD></TR>
+<TR><TD WIDTH=365><TT>bsdi %</TT></TD><TD WIDTH=365><I>then our prompt is output</I>
+</TD></TR>
+</TABLE>
+<P>
+The following points summarize the state of the client,
+the server, and the connection.
+<OL>
+<LI>We stop the terminal output by typing Control-S.
+<LI>The Rlogin client is blocked from writing to
+the terminal, since the terminal's output buffer will fill.
+<LI>The Rlogin client therefore cannot read from
+the network, so the client's TCP receive buffer fills.
+<LI>The client's TCP advertises a window of 0 to
+stop the sender (the Rlogin server's TCP) when the receive buffer
+fills.
+<LI>The server's TCP send buffer fills when its output
+is stopped by the client's window of 0.
+<LI>The Rlogin server is stopped, since the send
+buffer is full. Therefore, the Rlogin server cannot read from
+the application that's running on the server (<TT>cat</TT>).
+<LI>The cat application stops when its output buffer
+fills.
+<LI>We then type the interrupt key to terminate the
+cat application on the server. This is sent from the client TCP
+to the server TCP because this direction of data flow has not
+been flow-control stopped.
+<LI>The cat application receives the interrupt, and
+terminates. This causes its output buffer (which the Rlogin server
+is reading) to be flushed, which wakes up the Rlogin server. The
+Rlogin server then enters urgent mode and sends the &quot;flush
+output&quot; command (<TT>0x02</TT>) to the
+client.
+</OL>
+<P>
+Figure 26.6 is a summary of the data flow from the
+server to the client. (The sequence numbers are taken from the
+time line that we show next.)
+<P>
+<CENTER><a name="fig_26_6"><img src="f_26_6.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_26_6.gif"></a><br>
+<B>Figure 26.6</B> Summary
+of data flow from server to client in Rlogin example.</CENTER>
+<P>
+The shaded portion of the send buffer is the unused
+portion of the 4096-byte buffer. Figure 26.7 is the time line
+for this example.
+<P>
+<CENTER><a name="fig_26_7"><img src="f_26_7.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_26_7.gif"></a><br>
+<B>Figure 26.7</B> Rlogin
+example when client stops output and then aborts program on server.</CENTER>
+<P>
+In segments 1-3 the server sends full-sized segments
+to the client. The ACK in segment 4 only advertises a window of
+1024 because the output is stopped: since the client can't write
+to the terminal, it can't read from the network. Segment 5 is
+not full sized, and the ACK in segment 6 advertises only the remaining
+space in the 4096-byte receive buffer. The client must advertise
+a window of 349 bytes, because if it advertised a window of 0
+(which we might expect from silly window avoidance. <a href="tcp_pers.htm#22_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_pers.htm#22_3">Section 22.3</a>),
+it would be moving the right edge of the window to the left, which
+must not happen (<a href="tcp_bulk.htm#20_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#20_3">Section 20.3</a>). Since the server can't send a
+full-sized buffer when it receives segment 6, it performs silly
+window avoidance, sends nothing, and sets a 5-second persist timer.
+When the timer expires it sends 349 bytes (segment 7) and since
+the client's output is still stopped, the acknowledgment in segment
+8 advertises a window of 0.
+<P>
+At this point we type our interrupt key and it is
+transmitted in segment 9. A window of 0 bytes is still advertised.
+When the Rlogin server receives the interrupt key it passes it
+to the application (<TT>cat</TT>) and the
+application terminates. Since the application was terminated by
+a terminal interrupt, its output is flushed and this is passed
+to the Rlogin server. This causes the server to send the &quot;flush
+output&quot; command to the client using TCP's urgent mode. We
+see this in segment 10. Notice, however, that the command byte
+of <TT>0x02</TT> is at sequence number 30146
+(the urgent pointer minus one). There are 3419 bytes ahead of
+the command byte (sequence numbers 26727:30145) buffered at the
+server that the server wants to send.
+<P>
+Segment 10, with the urgent notification, contains
+the next byte of data from the server to the client (sequence
+number 26727). It does not contain the &quot;flush output&quot;
+command byte. The server can send this single byte in segment
+10 because we saw in <a href="tcp_pers.htm#22_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_pers.htm#22_2">Section 22.2</a> that a sender with data can
+always probe a closed window by sending 1 byte of data. The client's
+TCP responds immediately in segment II with a zero window, but
+the receipt of the urgent notification in segment 10 causes the
+client's TCP to notify the Rlogin client that the other end of
+the connection has entered urgent mode.
+<P>
+Once the Rlogin client receives the urgent notification
+from its TCP, and starts reading the data that's already waiting
+for it, the window opens up (segment 13). The data buffered by
+the server is then sent (segments 14, 15, 17, and 18). The last
+of these contains the final byte of urgent data (sequence number
+30146), which contains the command byte from the server to the
+client. When the client reads this byte it discards all the data
+that it read in segments 14, 15, 17, and 18, and flushes its terminal
+output queue. The next 2 bytes, in segment 19, are the echo of
+the interrupt key: &quot;^?&quot;. The final segment we show (21)
+contains the shell prompt from the client.
+<P>
+This example shows how data can be buffered at both
+ends of the connection when the client types the interrupt key.
+If this action only discarded the 3419 bytes buffered at the server,
+without discarding the 4096 bytes at the client, these 4096 bytes
+of data, along with whatever was buffered in the terminal output
+queue on the client, would be output.
+<a name="26_4"><H3>26.4 Telnet Protocol</H3></a>
+<P>
+Telnet was designed to work between any host (i.e.,
+any operating system) and any terminal. Its specification in RFC
+854 [Postel and Reynolds 1983a] defines the lowest common denominator
+terminal, called the <I>network virtual terminal</I> (NVT). The
+NVT is an imaginary device from which both ends of the connection,
+the client and server, map their real terminal to and from. That
+is, the client operating system must map whatever type of terminal
+the user is on to the NVT. The server must then map the NVT into
+whatever terminal type the server supports.
+<P>
+The NVT is a character device with a keyboard and
+printer. Data typed by the user on the keyboard is sent to the
+server, and data received from the server is output to the printer.
+By default the client echoes what the user types to the printer,
+but we'll see that options are normally supported to change this.
+<H4>NVT ASCII</H4>
+<P>
+The term <I>NVT ASCII</I> refers to the 7-bit U.S.
+variant of the ASCII character set used throughout the Internet
+protocol suite. Each 7-bit character is sent as an 8-bit byte,
+with the high-order bit set to 0.
+<P>
+An end-of-line is transmitted as the 2-character
+sequence CR (carriage return) followed by an LF (linefeed). We
+show this as <TT>\r\n</TT>. A carriage return
+is transmitted as the 2-character sequence CR followed by a NUL
+(byte of 0). We show this as <TT>\r\0</TT>.
+<P>
+In the following chapters we'll see that FTP, SMTP,
+Finger, and Whois all use NVT ASCII for client commands and server
+responses.
+<H4>Telnet Commands</H4>
+<P>
+Telnet uses in-band signaling in both directions.
+The byte <TT>0xff</TT> (255 decimal) is called
+IAC, for &quot;interpret as command.&quot; The next byte is the
+command byte. To send the data byte 255, two consecutive bytes
+of 255 are sent. (In the previous paragraph we said that the data
+stream is NVT ASCII, which are 7-bit values, implying a data byte
+of 255 cannot be sent by Telnet. There is a binary option for
+Telnet, RFC 856 [Postel and Reynolds 1983b], which we don't discuss,
+that allows 8-bit data transmission.) Figure 26.8 lists all the
+Telnet commands.
+<P>
+<CENTER>
+<a name="fig_26_8"><TABLE BORDER=1></a>
+<TR><TD WIDTH=57><CENTER>Name</CENTER></TD>
+<TD WIDTH=76><CENTER>Code (decimal)</CENTER>
+</TD><TD WIDTH=320><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=57>EOF</TD><TD WIDTH=76><CENTER>236</CENTER>
+</TD><TD WIDTH=320>end-of-file</TD></TR>
+<TR><TD WIDTH=57>SUSP</TD><TD WIDTH=76><CENTER>237</CENTER>
+</TD><TD WIDTH=320>suspend current process (job control)
+</TD></TR>
+<TR><TD WIDTH=57>ABORT</TD><TD WIDTH=76><CENTER>238</CENTER>
+</TD><TD WIDTH=320>abort process</TD></TR>
+<TR><TD WIDTH=57>EOR</TD><TD WIDTH=76><CENTER>239</CENTER>
+</TD><TD WIDTH=320>end of record</TD></TR>
+<TR><TD WIDTH=57>SE</TD><TD WIDTH=76><CENTER>240</CENTER>
+</TD><TD WIDTH=320>suboption end</TD></TR>
+<TR><TD WIDTH=57>NOP</TD><TD WIDTH=76><CENTER>241</CENTER>
+</TD><TD WIDTH=320>no operation</TD></TR>
+<TR><TD WIDTH=57>DM</TD><TD WIDTH=76><CENTER>242</CENTER>
+</TD><TD WIDTH=320>data mark</TD></TR>
+<TR><TD WIDTH=57>BRK</TD><TD WIDTH=76><CENTER>243</CENTER>
+</TD><TD WIDTH=320>break</TD></TR>
+<TR><TD WIDTH=57>IP</TD><TD WIDTH=76><CENTER>244</CENTER>
+</TD><TD WIDTH=320>interrupt process</TD>
+</TR>
+<TR><TD WIDTH=57>AO</TD><TD WIDTH=76><CENTER>245</CENTER>
+</TD><TD WIDTH=320>abort output</TD></TR>
+<TR><TD WIDTH=57>AYT</TD><TD WIDTH=76><CENTER>246</CENTER>
+</TD><TD WIDTH=320>are you there?</TD></TR>
+<TR><TD WIDTH=57>EC</TD><TD WIDTH=76><CENTER>247</CENTER>
+</TD><TD WIDTH=320>escape character</TD></TR>
+<TR><TD WIDTH=57>EL</TD><TD WIDTH=76><CENTER>248</CENTER>
+</TD><TD WIDTH=320>erase line</TD></TR>
+<TR><TD WIDTH=57>GA</TD><TD WIDTH=76><CENTER>249</CENTER>
+</TD><TD WIDTH=320>go ahead</TD></TR>
+<TR><TD WIDTH=57>SB</TD><TD WIDTH=76><CENTER>250</CENTER>
+</TD><TD WIDTH=320>suboption begin</TD></TR>
+<TR><TD WIDTH=57>WILL</TD><TD WIDTH=76><CENTER>251</CENTER>
+</TD><TD WIDTH=320>option negotiation (<a href="#fig_26_9">Figure 26.9</a>)
+</TD></TR>
+<TR><TD WIDTH=57>WONT</TD><TD WIDTH=76><CENTER>252</CENTER>
+</TD><TD WIDTH=320>option negotiation</TD>
+</TR>
+<TR><TD WIDTH=57>IX)</TD><TD WIDTH=76><CENTER>253</CENTER>
+</TD><TD WIDTH=320>option negotiation</TD>
+</TR>
+<TR><TD WIDTH=57>DONT</TD><TD WIDTH=76><CENTER>254</CENTER>
+</TD><TD WIDTH=320>option negotiation</TD>
+</TR>
+<TR><TD WIDTH=57>IAC</TD><TD WIDTH=76><CENTER>255</CENTER>
+</TD><TD WIDTH=320>data byte 255</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 26.8</B> Telnet
+commands, when preceded by IAC (255).</CENTER>
+<P>
+Since many of these commands are rarely used, we
+describe the important commands when we encounter them in the
+discussion below and in the examples in the <a href="#26_4">next section</a>.
+<H4>Option Negotiation</H4>
+<P>
+Although Telnet starts with both sides assuming an
+NVT, the first exchange that normally takes place across a Telnet
+connection is option negotiation. The option negotiation is symmetric
+- either side can send a request to the other. Either side can
+send one of four different requests for any given option.
+<OL>
+<LI>WILL. The sender wants to enable the option itself.
+<LI>DO. The sender wants the receiver to enable the
+option.
+<LI>WONT. The sender wants to disable the option
+itself.
+<LI>DONT. The sender wants the receiver to disable
+the option.
+</OL>
+<P>
+Since the rules of Telnet allow a side to either
+accept or reject a request to enable an option (cases 1 and 2
+above), but require a side to always honor a request to disable
+an option (cases 3 and 4 above), these four cases lead to the
+six scenarios shown in Figure 26.9.
+<P>
+<CENTER>
+<a name="fig_26_9"><TABLE></a>
+<TR><TD WIDTH=28></TD><TD WIDTH=66><CENTER>Sender</CENTER>
+</TD><TD WIDTH=38></TD><TD WIDTH=66><CENTER>Receiver</CENTER>
+</TD><TD WIDTH=320><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=28>1.</TD><TD WIDTH=66>WILL
+</TD><TD WIDTH=38>-&gt;
+<BR>
+&lt;-</TD>
+<TD WIDTH=66><BR>
+DO</TD><TD WIDTH=320><B>sender</B> wants to <B>enable</B> option
+<BR>
+receiver says OK
+</TD></TR>
+<TR><TD WIDTH=28>2.</TD><TD WIDTH=66>WILL
+</TD><TD WIDTH=38>-&gt;<BR>
+&lt;-</TD><TD WIDTH=66><BR>
+DONT
+</TD><TD WIDTH=320><B>sender</B> wants to <B>enable</B> option
+<BR>
+receiver says NO
+</TD></TR>
+<TR><TD WIDTH=28>3.</TD><TD WIDTH=66>DO
+</TD><TD WIDTH=38>-&gt;<BR>
+&lt;-</TD><TD WIDTH=66><BR>
+WILL
+</TD><TD WIDTH=320>sender wants <B>receiver</B> to <B>enable</B> option<BR>
+receiver says OK
+</TD></TR>
+<TR><TD WIDTH=28>4.</TD><TD WIDTH=66>DO
+</TD><TD WIDTH=38>-&gt;<BR>
+&lt;-</TD><TD WIDTH=66><BR>
+WONT
+</TD><TD WIDTH=320>sender wants <B>receiver</B> to <B>enable</B> option<BR>
+receiver says NO
+</TD></TR>
+<TR><TD WIDTH=28>5.</TD><TD WIDTH=66>WONT
+</TD><TD WIDTH=38>-&gt;<BR>
+&lt;-</TD><TD WIDTH=66><BR>
+DONT
+</TD><TD WIDTH=320><B>sender</B> wants to <B>disable</B> option
+<BR>
+receiver must say OK
+</TD></TR>
+<TR><TD WIDTH=28>6.</TD><TD WIDTH=66>DONT
+</TD><TD WIDTH=38>-&gt;<BR>
+&lt;-</TD><TD WIDTH=66><BR>
+WONT
+</TD><TD WIDTH=320>sender wants <B>receiver</B> to <B>disable</B> option<BR>
+receiver must say OK
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 26.9</B> Six
+scenarios for Telnet option negotiation.</CENTER>
+<P>
+Option negotiation requires 3 bytes: the IAC byte,
+followed by the byte for WILL, DO, WONT, or DONT, followed by
+an ID byte specifying the option to enable or disable. Currently
+more than 40 different options can be negotiated. The Assigned
+Numbers RFC specifies the value for the option byte and the relevant
+RFC that describes the option. Figure 26.10 shows the option codes
+that we'll see in this chapter.
+<P>
+<CENTER>
+<a name="fig_26_10"><TABLE BORDER=1></a>
+<TR><TD WIDTH=100><CENTER>Option ID (decimal)</CENTER>
+</TD><TD WIDTH=190><CENTER>Name</CENTER></TD>
+<TD WIDTH=57><CENTER>RFC</CENTER></TD></TR>
+<TR><TD WIDTH=100><CENTER>1</CENTER></TD><TD WIDTH=190>echo
+</TD><TD WIDTH=57>857</TD></TR>
+<TR><TD WIDTH=100><CENTER>3</CENTER></TD><TD WIDTH=190>suppress go ahead
+</TD><TD WIDTH=57>858</TD></TR>
+<TR><TD WIDTH=100><CENTER>5</CENTER></TD><TD WIDTH=190>status
+</TD><TD WIDTH=57>859</TD></TR>
+<TR><TD WIDTH=100><CENTER>6</CENTER></TD><TD WIDTH=190>timing mark
+</TD><TD WIDTH=57>860</TD></TR>
+<TR><TD WIDTH=100><CENTER>24</CENTER></TD>
+<TD WIDTH=190>terminal type</TD><TD WIDTH=57>1091
+</TD></TR>
+<TR><TD WIDTH=100><CENTER>31</CENTER></TD>
+<TD WIDTH=190>window size</TD><TD WIDTH=57>1073
+</TD></TR>
+<TR><TD WIDTH=100><CENTER>32</CENTER></TD>
+<TD WIDTH=190>terminal speed remote</TD><TD WIDTH=57>1079
+</TD></TR>
+<TR><TD WIDTH=100><CENTER>33</CENTER></TD>
+<TD WIDTH=190>flow control</TD><TD WIDTH=57>1372
+</TD></TR>
+<TR><TD WIDTH=100><CENTER>34</CENTER></TD>
+<TD WIDTH=190>linemode</TD><TD WIDTH=57>1184
+</TD></TR>
+<TR><TD WIDTH=100><CENTER>36</CENTER></TD>
+<TD WIDTH=190>environment variables</TD><TD WIDTH=57>1408
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 26.10</B> Telnet
+option codes discussed in the text.</CENTER>
+<P>
+Telnet option negotiation, like most of the Telnet
+protocol, is intended to be symmetrical. Either end can initiate
+the negotiation of an option. But remote login is not a symmetrical
+application. The client performs some tasks, and the server performs
+others. We'll see as we look at some of the Telnet options that
+some are intended only for the client (asking to enable linemode,
+for example), and some are only for the server.
+<H4>Suboption Negotiation</H4>
+<P>
+Some options require more information than just &quot;enable&quot;
+or &quot;disable.&quot; Specifying the terminal type is an example:
+an ASCII string must be sent by the client identifying the type
+of terminal. To handle these options, suboption negotiation is
+defined.
+<P>
+RFC 1091 [VanBokkelen 1989] defines the suboption
+negotiation for the terminal type. First one side (normally the
+client) asks to enable the option by sending the 3-byte sequence
+<P>
+&lt;IAC, WILL, 24&gt;
+<P>
+where 24 (decimal) is the option ID for the terminal
+type option. If the receiver (the server) says OK, its response
+is
+<P>
+&lt;IAC, DO, 24&gt;
+<P>
+The server then sends
+<P>
+&lt;IAC, SB, 24, 1, IAC, SE&gt;
+<P>
+asking the client for its terminal type. SB is the
+suboption-begin command. The next byte of 24 identifies that this
+is a suboption for the terminal type option. (SB is always followed
+by the option number to which the suboption refers.) The next
+byte of 1 means &quot;send your terminal type.&quot; The suboption-end
+command must be prefixed by an IAC, just like the SB command.
+The client responds with the command
+<P>
+&lt;IAC, SB, 24, 0, 'I', 'B', 'M', 'P'<I>,</I> 'C',
+IAC, SE&gt;
+<P>
+if its terminal type is the string <TT>ibmpc</TT>.
+The fourth byte, 0, means &quot;my terminal type is.&quot; (The
+&quot;official&quot; list of acceptable terminal types is in the
+Assigned Numbers RFC, but on Unix systems at least, any name that
+is acceptable to the server is OK. This is normally the terminals
+supported by either the <TT>termcap</TT> or
+<TT>terminfo</TT> database.) The terminal
+type is specified in the Telnet suboption as all uppercase, and
+normally converted to lowercase by the server.
+<H4>Half-Duplex, Character at a Time, Line at a Time, or Linemode?
+</H4>
+<P>
+There are four modes of operation for most Telnet
+clients and servers.
+<P>
+<OL>
+<LI>Half-duplex.
+<P>
+This is the default mode, but it is rarely used today.
+The default NVT is a half-duplex device that requires a GO AHEAD
+command (GA) from the server before accepting user input. The
+user input is echoed locally from the NVT keyboard to the NVT
+printer so that only completed lines are sent from the client
+to the server.
+<P>
+While this provides the lowest common denominator
+for terminal support, it doesn't adequately handle full-duplex
+terminals communicating with hosts that support full-duplex communications,
+which is the norm today. RFC 857 [Postel and Reynolds 1983c] defines
+the ECHO option and RFC 858 [Postel and Reynolds 1983d] defines
+the SUPPRESS GO AHEAD option. The combination of these two options
+provides support for the next mode, character at a time, with
+remote echo.
+<P>
+<LI>Character at a time.
+<P>
+This is what we saw with Rlogin. Each character we
+type is sent by itself to the server. The server echoes most characters,
+unless the application on the server turns echoing off.
+<P>
+The problems with this mode are perceptible delays
+in echoing across long delay networks and the high volume of network
+traffic. Nevertheless, we'll see this is the common default for
+most implementations today.
+<P>
+We'll see that the way to enter this mode is for
+the server to have the SUPPRESS GO AHEAD option enabled. This
+can be negotiated by having the client send a DO SUPPRESS GO AHEAD
+(asking to enable the option at the server), or the server sending
+a WILL SUPPRESS GO AHEAD to the client (asking to enable the option
+itself). The server normally follows this with a WILL ECHO, asking
+to do the echoing.
+<P>
+<LI>Line at a time.
+<P>
+This is often called &quot;kludge line mode,&quot;
+because its implementation comes from reading between the lines
+in RFC 858. This REG states that both the ECHO and SUPPRESS GO
+AHEAD options must be in effect to have character-at-a-time input
+with remote echo. Kludge line mode takes this to mean that when
+either of these options is not enabled, Telnet is in a line-at-a-time
+mode. In the <a href="#26_5">next section</a> we'll see an example of how this mode
+is negotiated, and how it is disabled when a program that needs
+to receive every keystroke is run on the server.
+<P>
+<LI>Linemode.
+<P>
+We use this term to refer to the real linemode option,
+defined in RFC 1184 [Bor-man 1990]. This option is negotiated
+between the client and server and corrects all the deficiencies
+in the kludge line mode. Newer implementations support this option.
+</OL>
+<P>
+Figure 26.11 shows the default operating mode between
+various Telnet clients and servers. The entry &quot;char&quot;
+means character at a time, &quot;kludge&quot; means the kludge
+line mode, and &quot;linemode&quot; means the real RFC 1184 linemode.
+<P>
+<CENTER>
+<a name="fig_26_11"><TABLE BORDER=1></a>
+<TR><TD WIDTH=110><CENTER>Client</CENTER></TD>
+<TD COLSPAN=6 WIDTH=405><CENTER>Server</CENTER>
+</TD></TR>
+<TR><TD WIDTH=110></TD><TD WIDTH=110><CENTER>SunOS 4.1.3</CENTER>
+</TD><TD WIDTH=95><CENTER>Solaris 2.2</CENTER>
+</TD><TD WIDTH=64><CENTER>SVR4</CENTER></TD>
+<TD WIDTH=84><CENTER>AIX 3.2.2</CENTER></TD>
+<TD WIDTH=64><CENTER>BSD/386</CENTER></TD>
+<TD WIDTH=60><CENTER>4.4BSD</CENTER></TD>
+</TR>
+<TR><TD WIDTH=110>SunOS 4.1.3</TD><TD WIDTH=110><CENTER>char</CENTER>
+</TD><TD WIDTH=95><CENTER>char</CENTER></TD>
+<TD WIDTH=64><CENTER>char</CENTER></TD><TD WIDTH=84><CENTER>char</CENTER>
+</TD><TD WIDTH=64><CENTER>kludge</CENTER>
+</TD><TD WIDTH=60><CENTER>kludge</CENTER>
+</TD></TR>
+<TR><TD WIDTH=110>Solaris 2.2</TD><TD WIDTH=110><CENTER>char</CENTER>
+</TD><TD WIDTH=95><CENTER>char</CENTER></TD>
+<TD WIDTH=64><CENTER>char</CENTER></TD><TD WIDTH=84><CENTER>char</CENTER>
+</TD><TD WIDTH=64><CENTER>kludge</CENTER>
+</TD><TD WIDTH=60><CENTER>kludge</CENTER>
+</TD></TR>
+<TR><TD WIDTH=110>SVR4</TD><TD WIDTH=110><CENTER>char</CENTER>
+</TD><TD WIDTH=95><CENTER>char</CENTER></TD>
+<TD WIDTH=64><CENTER>char</CENTER></TD><TD WIDTH=84><CENTER>char</CENTER>
+</TD><TD WIDTH=64><CENTER>kludge</CENTER>
+</TD><TD WIDTH=60><CENTER>kludge</CENTER>
+</TD></TR>
+<TR><TD WIDTH=110>AIX 3.2.2</TD><TD WIDTH=110><CENTER>char</CENTER>
+</TD><TD WIDTH=95><CENTER>char</CENTER></TD>
+<TD WIDTH=64><CENTER>char</CENTER></TD><TD WIDTH=84><CENTER>char</CENTER>
+</TD><TD WIDTH=64><CENTER>kludge</CENTER>
+</TD><TD WIDTH=60><CENTER>kludge</CENTER>
+</TD></TR>
+<TR><TD WIDTH=110>BSD/386</TD><TD WIDTH=110><CENTER>char</CENTER>
+</TD><TD WIDTH=95><CENTER>char</CENTER></TD>
+<TD WIDTH=64><CENTER>char</CENTER></TD><TD WIDTH=84><CENTER>char</CENTER>
+</TD><TD WIDTH=64><CENTER>linemode</CENTER>
+</TD><TD WIDTH=60><CENTER>linemode</CENTER>
+</TD></TR>
+<TR><TD WIDTH=110>4.4BSD</TD><TD WIDTH=110><CENTER>char</CENTER>
+</TD><TD WIDTH=95><CENTER>char</CENTER></TD>
+<TD WIDTH=64><CENTER>char</CENTER></TD><TD WIDTH=84><CENTER>char</CENTER>
+</TD><TD WIDTH=64><CENTER>linemode</CENTER>
+</TD><TD WIDTH=60><CENTER>linemode</CENTER>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 26.11</B> Default
+modes of operation between various Telnet clients and servers.</CENTER>
+<P>
+The only two implementations in this figure that
+support real linemode are BSD/386 and 4.4BSD. These two servers
+are also the only ones that attempt to negotiate kludge line mode
+if real linemode isn't supported by the client. All the clients
+and servers shown in this figure do support kludge line mode,
+but they don't select it by default, unless negotiated by the
+server.
+<H4>Synch Signal</H4>
+<P>
+Telnet defines its <I>synch signal</I> as the Data
+Mark command (DM in <a href="#fig_26_8">Figure 26.8</a>) sent as TCP urgent data. The
+DM command is the synchronization mark in the data stream that
+tells the receiver to return to normal processing. It can be sent
+in either direction across a Telnet connection.
+<P>
+When one end receives notification that the other
+end has entered urgent mode, it starts reading the data stream,
+discarding all data other than Telnet commands. The final byte
+of urgent data is the DM byte. The reason for using TCP's urgent
+mode is to allow the Telnet commands to be sent across the connection,
+even if the TCP data flow has been stopped by TCP's flow control.
+We'll see examples of Telnet's synch signal in the <a href="#26_5">next section</a>.
+<H4>Client Escapes</H4>
+<P>
+As with the Rlogin client, the Telnet client also
+lets us talk to it, instead of sending what we type to the server.
+The normal client escape character is Control-] (control and the
+right bracket, commonly printed as &quot;<TT>^]</TT>&quot;<I>).</I>
+This causes the client to print its prompt, normally &quot;<TT>telnet&gt;
+</TT>&quot;. There are lots of commands that we can
+type at this point to change characteristics of the session or
+to print information. A <TT>help</TT> command
+is provided by most Unix clients that displays the available commands.
+<P>
+We'll see examples of the client escape, and some
+of the commands we can issue, in the <a href="#26_5">next section</a>.
+<a name="26_5"><H3>26.5 Telnet Examples</H3></a>
+<P>
+We'll now look at Telnet option negotiation, along
+with the three different modes of operation: character at a time,
+real linemode, and kludge line mode. We also see what happens
+when an interactive user aborts a running process on the server
+with the interrupt key.
+<H4>Character-at-a-Time Mode</H4>
+<P>
+We start with the basic character-at-a-time mode,
+similar to Rlogin. Each character we type on the terminal is sent
+by itself to the server, and the server echoes the character.
+But we'll run a newer client (BSD/386) that tries to enable many
+newer options, and see them refused by the older server (SVR4).
+<P>
+To see what's negotiated between the client and server
+we'll enable a client option that displays all the option negotiation,
+and we'll also run <TT>tcpdump</TT> to obtain
+a time line of the packet exchange. Figure 26.12 shows the interactive
+session.
+<P><CENTER>
+<a name="fig_26_12"><TABLE></a>
+<TR><TD WIDTH=397><TT>bsdi % <B>telnet</B></TT>
+</TD><TD WIDTH=391><I>invoke client without any command-line options</I>
+</TD></TR>
+<TR><TD WIDTH=397></TD><TD WIDTH=391></TD></TR>
+<TR><TD WIDTH=397><TT>telnet&gt; <B>toggle options</B></TT>
+</TD><TD WIDTH=391><I> tell client to display all the option processing</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>Will show option processing.</TT></TD><TD WIDTH=391>
+</TD></TR>
+<TR><TD WIDTH=397></TD><TD WIDTH=391></TD></TR>
+<TR><TD WIDTH=397><TT>telnet&gt; <B>open svr4</B></TT>
+</TD><TD WIDTH=391><I>now establish connection with server</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>Trying 140.252.13.34...</TT></TD><TD WIDTH=391>
+</TD></TR>
+<TR><TD WIDTH=397><TT>Connected to svr4.</TT></TD><TD WIDTH=391>
+</TD></TR>
+<TR><TD WIDTH=397><TT>Escape character is '^]'.</TT></TD><TD WIDTH=391>
+</TD></TR>
+<TR><TD WIDTH=397></TD><TD WIDTH=391></TD></TR>
+<TR><TD WIDTH=397><TT>SENT DO SUPPRESS GO AHEAD</TT></TD><TD WIDTH=391><I>1. (line numbers for discussion that follows)</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>SENT WILL TERMINAL TYPE</TT></TD><TD WIDTH=391><i>2.</i>
+</TD></TR>
+<TR><TD WIDTH=397><TT>SENT WILL NAWS</TT></TD><TD WIDTH=391><i>3.</i>
+</TD></TR>
+<TR><TD WIDTH=397><TT>SENT WILL TSPEED</TT></TD><TD WIDTH=391><i>4.</i>
+</TD></TR>
+<TR><TD WIDTH=397><TT>SENT WILL LFLOW</TT></TD><TD WIDTH=391><i>5.</i>
+</TD></TR>
+<TR><TD WIDTH=397><TT>SENT WILL LINEMODE</TT></TD><TD WIDTH=391><I>6.</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>SENT WILL ENVIRON</TT></TD><TD WIDTH=391><I>7.</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>SENT DO STATUS</TT></TD><TD WIDTH=391><I>8.</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>RCVD DO TERMINAL TYPE</TT></TD><TD WIDTH=391><I>9.</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>RCVD WILL SUPPRESS GO AHEAD</TT></TD><TD WIDTH=391><I>10.</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>RCVD DONT NAWS</TT></TD><TD WIDTH=391><I>11.</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>RCVD DONT TSPEED</TT></TD><TD WIDTH=391><I>12.</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>RCVD DONT LFLOW</TT></TD><TD WIDTH=391><I>13.</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>RCVD DONT LINEMODE</TT></TD><TD WIDTH=391><I>14.</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>RCVD DONT ENVIRON</TT></TD><TD WIDTH=391><I>15.</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>RCVD WONT STATUS</TT></TD><TD WIDTH=391><I>16.</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>RCVD IAC SB TERMINAL-TYPE SEND</TT></TD><TD WIDTH=391><I>17.</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>SENT IAC SB TERMINAL-TYPE IS &quot;IBMPC3&quot;</TT>
+</TD><TD WIDTH=391><I>18.</I></TD></TR>
+<TR><TD WIDTH=397><TT>RCVD WILL ECHO</TT></TD><TD WIDTH=391><I>19.</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>SENT DO ECHO</TT></TD><TD WIDTH=391><I>20.</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>RCVD DO ECHO</TT></TD><TD WIDTH=391><I>21.</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>SENT WONT ECHO</TT></TD><TD WIDTH=391><I>22.</I>
+</TD></TR>
+<TR><TD WIDTH=397></TD><TD WIDTH=391></TD></TR>
+<TR><TD WIDTH=397><TT>UNIX(r) System V Release 4.0 (svr4)</TT>
+</TD><TD WIDTH=391></TD></TR>
+<TR><TD WIDTH=397></TD><TD WIDTH=391></TD></TR>
+<TR><TD WIDTH=397><TT>RCVD DONT ECHO</TT>
+</TD><TD WIDTH=391><i>23.</i></TD></TR>
+<TR><TD WIDTH=397><TT>login<B>: rstevens</B></TT>
+</TD><TD WIDTH=391><I>we type our login name</I>
+</TD></TR>
+<TR><TD WIDTH=397><TT>Password:</TT></TD>
+<TD WIDTH=391><I>and password, which the server does not echo operating system greeting is then output ... then shell prompt</I>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 26.12</B> Initial
+option negotiation by Telnet client and server.</CENTER>
+<P>
+We've numbered the option negotiation lines that
+begin with SENT or RCVD, for the discussion that follows.
+<P>
+<OL>
+<LI>The client initiates the negotiation of the SUPPRESS
+GO AHEAD option. This option starts with a DO since the GO AHEAD
+command is normally sent by the server to the client, and the
+client wants the server to enable the option. (This is confusing
+since enabling the option disables the GA commands from being
+sent.) The server OKs this option in line 10.
+<P>
+<LI>The client wants to send its terminal type as
+specified in RFC 1091 [VanBokkelen 1989]. This is common with
+Unix clients. This option starts with a WILL since the client
+wants to enable the option at its end.
+<P>
+<LI>NAWS stands for &quot;negotiate about window size&quot;
+and is defined in RFC 1073 [Waitzman 1988]. If the server agrees
+(which it doesn't, in line II), the client then sends a suboption
+with the number of rows and columns in the terminal window. Additionally,
+the client will send this suboption at any time later if the window
+size changes. (This is similar to what we saw with the Rlogin
+<TT>0x80</TT> command in <a href="#fig_26_4">Figure 26.4</a>.)
+<P>
+<LI>The TSPEED option lets the sender (normally the
+client) send its terminal speed, as defined in RFC 1079 [Hedrick
+1988b]. If the server agrees (which it doesn't, in line 12), the
+client then sends a suboption with its transmit speed and receive
+speed.
+<P>
+<LI>LFLOW stands for &quot;local flow control,&quot;
+and is defined in RFC 1372 [Hedrick and Borman 1992]. The client
+sends this option to the server stating that it is willing to
+enable and disable flow control on command. If the server agrees
+(which it doesn't in line 13), the server would send a suboption
+to the client whenever the processing of Control-S and Control-Q
+needs to switch between the client and server. (This is similar
+to what we saw with the Rlogin <TT>0x10</TT>
+and <TT>0x20</TT> commands in <a href="#fig_26_4">Figure 26.4</a>.)
+As we said in our discussion of Rlogin, the interactive user obtains
+better response to flow control when it's done by the client,
+not by the server.
+<P>
+<LI>LINEMODE is the real linemode that we mentioned
+in <a href="#26_4">Section 26.4</a>. All the terminal character processing is done
+by the Telnet client (backspace, erase line, etc.) and complete
+lines are sent to the server. We'll see an example of it later
+in this section. This option is refused in line 14.
+<P>
+<LI>The ENVIRON option lets the client send environment
+variables to the server, as defined in RFC 1408 [Borman 1993a].
+&quot;This can automatically propagate variables in the user's
+environment on the client host to the server. The server refuses
+this option in line 15. (An environment variable in Unix is often
+an uppercase name, followed by an equals sign, followed by a string
+value, but this is only a convention.) By default the BSD/386
+Telnet client sends only the two variables <TT>DISPLAY</TT>
+and <TT>PRINTER</TT>, if they're defined and
+if the option is enabled. The Telnet user can specify additional
+environment variables to be sent.
+<P>
+<LI>The STATUS option (RFC 859 [Postel and Reynolds
+1983e]) lets one end ask the other for its perception of the current
+status of the Telnet options. In this example the client is asking
+the server to enable the option (DO). If the server agreed (which
+it doesn't in line 16), the client could ask the server in a suboption
+to send its status.
+<P>
+<LI>This is the first response from the server. The
+server agrees to enable the terminal type option. (Almost every
+Unix server supports this option.) The client, however, cannot
+send its terminal type until the server asks for it with a suboption
+(line 17).
+<P>
+<LI>The server agrees to suppress sending the GO AHEAD command.
+<P>
+<LI>The server does not agree to let the client send
+its window size.
+<P>
+<LI>The server does not agree to let the client
+send its terminal speed.
+<P>
+<LI>The server does not agree to let the client perform
+flow control.
+<P>
+<LI>The server does not agree to let the client enable
+the linemode option.
+<P>
+<LI>The server does not agree to let the client send
+environment variables.
+<P>
+<LI>The server will not send status information.
+<P>
+<LI>This is a suboption with the server asking the
+client to send its terminal type.
+<P>
+<LI>The client sends its terminal type as the 6-character
+string <TT>IBMPC3</TT>.
+<P>
+<LI>The server asks the client to let the server
+perform echoing. This is the first time the server has initiated
+the negotiation of an option.
+<P>
+<LI>The client agrees to let the server perform echoing.
+<P>
+<LI>The server asks the client to perform echoing.
+This command seems superfluous, given the exchange in the previous
+two lines, and it is. This is yet another kludge in most Unix
+Telnet servers to determine if the client is a 4.2BSD host or
+a later BSD release. If the client responds with WILL ECHO, it
+is probably an older 4.2BSD host and does not support TCP's urgent
+mode correctly. (In that case urgent mode won't be used.)
+<P>
+<LI>The client responds with WONT ECHO, implying
+it is not a 4.2BSD host.
+<P>
+<LI>The server responds to the received WONT ECHO
+with a DONT ECHO.
+</OL>
+<P>
+Figure 26.13 shows the time line for this client-server
+exchange. (We have removed the connection establishment.)
+<P>
+<CENTER><a name="fig_26_13"><img src="f_26_13.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_26_13.gif"></a><br>
+<B>Figure 26.13</B> Initial
+option negotiation by Telnet client and server.</CENTER>
+<P>
+Segment 1 contains lines 1-8 from <a href="#fig_26_12">Figure 26.12</a>. Each
+option occupies 3 bytes, for a segment containing 24 bytes. It
+is the client that starts the option negotiation. This segment
+shows that multiple Telnet options can appear in a single TCP
+segment.
+<P>
+Segment 3 is line 9 from <a href="#fig_26_12">Figure 26.12</a>, the DO TERMINAL
+TYPE command. Segment 5 contains the next eight option responses
+from the server, lines 10-17 from <a href="#fig_26_12">Figure 26.12</a>. The length of
+this segment is 27 bytes because lines 10-16 are regular options,
+each requiring 3 bytes, along with the suboption (line 17), which
+requires 6 bytes. The 12 bytes in segment 6 correspond to line
+18, the client sending the suboption with its terminal type.
+<P>
+Segment 8 (53 bytes) is a combination of two Telnet
+commands with 47 bytes of data to be output on the terminal. The
+first 6 bytes are the two commands from the server: WILL ECHO
+and DO ECHO (lines 19 and 21). The next 47 bytes are:
+<P>
+<TT>\r\n\r\nUNIX(r) System V Release 4.0 (svr4)\r\n\r\0\r\n\r\0</TT>
+<P>
+The first 4 bytes produce the two blank lines before
+the string is output. The 2-byte sequence <TT>\r\n</TT>
+is considered a newline by Telnet. The 2-byte sequence <TT>\r\0</TT>
+is considered a carriage return. This segment shows that data
+and commands can appear in the same segment. The Telnet client
+and Telnet server must scan every byte they receive, looking for
+the IAC byte and then processing what follows.
+<P>
+Segment 9 contains the final two options from the
+client: lines 20 and 22. The response in segment 10 is line 23,
+the final option from the server.
+<P>
+From this point in the time line user data is exchanged
+across the connection. There is nothing to prevent additional
+option negotiation, we just don't see any in this example. Segment
+12 is the <TT>login:</TT> prompt from the
+server. Segment 14 is the first character we type of our login
+name, with its echo returned in segment 15. This is the type of
+interactive traffic we saw in <a href="tcp_int.htm#19_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_int.htm#19_2">Section 19.2</a> with Rlogin: one character
+at a time sent by the client, with the server performing the echo.
+<P>
+<FONT SIZE=-1>The option negotiation in <a href="#fig_26_12">Figure 26.12</a> is initiated
+by the client, but throughout this text we've been using the Telnet
+client to connect to standard servers such as the daytime server
+and the echo server, to demonstrate various feature of TCP. When
+we watched the packet exchange in these examples, such as <a href="tcp_conn.htm#fig_18_1" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#fig_18_1">Figure 18.1</a>,
+we never saw the client initiate option negotiation. Why?
+The Unix Telnet client does not initiate any option negotiation
+if a port number other than the standard Telnet port (23) is specified.
+This lets the Telnet client, using the standard NVT, exchange
+data with other, non-Telnet servers. We've used it with the daytime,
+echo, and discard servers throughout the text, and we'll use it
+with the FTP and SMTP servers in later chapters.</FONT>
+<H4>Linemode</H4>
+<P>
+To see Telnet's linemode option in action we'll run
+the client on our host bsdi, connecting to the 4.4BSD server on
+<TT>vangogh.cs.berkeley.edu</TT>. Both BSD/386
+and 4.4BSD support this option.
+<P>
+We won't go through all the packets and option and
+suboption negotiations, because they're similar to the previous
+example and the linemode option is quite detailed. Instead we'll
+note the following differences with the option negotiation.
+<OL>
+<LI>The 4.4BSD server supports more of the options
+that the BSD/386 tries to negotiate: window size, local flow control,
+status, accepting environment variables, and terminal speed.
+<LI>The 4.4BSD server tries to negotiate a newer
+option that the BSD/386 client doesn't support: authentication
+(to avoid sending the user's password in clear-text across the
+connection).
+<LI>The client sends the WILL LINEMODE option, as
+before, but the server responds with DO LINEMODE, since it's supported.
+This causes the client to send its 16 special characters to the
+server as a suboption. These are the current values of the special
+terminal characters in effect at the client: the interrupt character,
+the end-of-file character, and so on.<BR>
+<BR>
+The server sends a suboption to the client telling the client
+to process all input lines, performing any editing functions (erase
+character, erase line, etc.). The client sends only completed
+lines to the server. The server also tells the client to translate
+any interrupts keys or signal keys into the corresponding Telnet
+character. For example, if the interrupt key is Control-C, and
+we type Control-C to interrupt a running process on the server,
+the client sends the Telnet IP command (&lt;IAC, IP&gt;) to the
+server.
+<LI>Another difference occurs when we type our password.
+With Rlogin and char-acter-at-a-time Telnet, the server is responsible
+for echoing, so when the server reads the password, it doesn't
+echo the characters. In linemode, however, the client does the
+echoing. To handle this, the following exchange takes place:<BR>
+(a) The server sends WILL ECHO, telling the client that the server
+will echo.<BR>
+(b) The client responds with DO ECHO.<BR>
+(c) &quot;The server sends the string<TT> Password:</TT>
+to the client, and the client outputs the string to the terminal.
+<BR>
+(d) We type our password and the client sends it to the server
+when we type the RETURN key. The password is not echoed, since
+the client thinks the server will echo it.<BR>
+(e) The server sends the 2-byte sequence CR, LF, to move the cursor,
+since the RETURN that completed the password was not echoed.<BR>
+(f) The server sends WONT ECHO.<BR>
+(g) The client responds with DONT ECHO. The client resumes echoing.
+</OL>
+<P>
+Once we login, the client builds complete lines and
+sends them to the server. This is the intent of the linemode option.
+It reduces the number of segments exchanged between the client
+and server, and provides faster response to client keystrokes
+(i.e., echoing and editing). Figure 26.14 shows the packet exchange
+when we type the command
+<P>
+<TT>vangogh % <B>date</B></TT>
+<P>
+across a Telnet connection using linemode. (We have
+removed the type-of-service information, along with the window
+advertisements.)
+<P>
+<CENTER><a name="fig_26_14"><img src="f_26_14.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_26_14.gif"></a><br>
+<B>Figure 26.14</B> Sending
+a command from client to server using Telnet linemode.</CENTER>
+<P>
+If we compare this with the same command typed to
+Rlogin (<a href="tcp_int.htm

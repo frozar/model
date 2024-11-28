@@ -1,0 +1,247 @@
+
+		       http://freeos.com/articles/2343/2/3/
+		       Project: Linux  Articles  
+
+                       Quick and dirty guide to diskless workstations 
+
+                       By Amit Chattopadhyay <amitc@technologist.com> 
+                       Posted: ( 2000-09-27 13:33:30 EST by ) 
+
+                       Diskless workstations can give a new lease of life to old machines that 
+                       are lying in your attic. A computer which has only a network card, 8MB RAM, 
+                       low-end cpu and a very simple mother-board with no modem/cdrom/floppy is an 
+                       ideal candidate for the diskless transition. 
+
+                       Diskless workstations can give a new lease of life to old machines that are 
+                       lying in your attic. Diskless nodes eliminate the cost of software upgrades, 
+                       system administration costs, hard disk, cdrom etc. A computer which has
+                       only a network card, 8MB RAM, low-end cpu and a very simple mother-board with 
+                       no modem/cdrom/floppy is an ideal candidate for the diskless transition! 
+
+                       The following guide will try to help you setup a diskless node as quickly and 
+                       easily. The "server" in this article is the node which contains the files 
+                       for the diskless node. In my example the server is Cel300, 64mb RAM running 
+                       Red Hat 6.1, Kernel 2.2.12. The "diskless node" is the node which will be
+                       able to run remote applications after booting into Linux from a bootrom. For 
+                       example, my P100, 48mb RAM will be designated as the "diskless node".
+
+                       The objective is to give the "diskless node" an IP address of 192.168.0.100 
+                       once it boots up and then be able to run remote applications from the diskless 
+                       node. So, let us get started.
+
+                       There are 4 important steps that have to be completed:
+
+                       . ETHERBOOT Setup
+                       . TAGGED Kernel Image
+                       . DHCP Setup
+                       . Root FS Setup
+
+
+                       ETHERBOOT Setup
+                       ---------------
+
+                       Etherboot is a package for creating ROM images that can download code over
+                       the network to be executed on an x86 computer. Etherboot requires the PC
+                       architecture, it does not work for other Linux platforms such as Alphas or
+                       Suns.
+
+                       Step #1:
+
+                       Download the latest version of etherboot from http://etherboot.sourceforge.net.
+                       Make sure to install the rpm or untar it into a directory where you can locate 
+                       all the files.
+
+                       Inside the etherboot directory, locate the file NIC under the src directory. 
+                       This file lists all the supported network cards and the name of the ROM 
+                       that has to be built. For example to build a NE2000 PCI compatible ROM, I
+                       would need to make nepci.rom. Other common hardwares are the NE1000/2000 ISA 
+                       ROM (ne.rom) and the Realtek 8029 (rtl8029.rom)
+
+
+                       The ROM can be loaded either from the memory of the network card or from a 
+                       floppy. It is advisable to use a floppy to test the configuration before you 
+                       ask someone to write the ROM onto your network card's EEPROM. 
+
+                       Step #2:
+
+                       To make a floppy ROM, insert a blank floppy into your first FDD and execute 
+                       the following inside the etherboot directory.
+
+                       # make bin32/.fd0 
+                       For example, to make a RTL8029 floppy ROM, make bin32/rtl8029.fd0
+
+                       Alternatively, you can make the ROM image.
+                       # make bin32/.rom
+                       Following my previous example, to make a RTL8029 ROM, make bin32/rtl8029.rom
+
+                       Step #3:
+
+                       Boot the "diskless node" with the floppy ROM you made. It should detect your 
+                       network card and stop after displaying, "looking for dhcp server". 
+
+                       Note down the hardware address of network card (7 hexadecimal number delimited 
+                       by colon). For example, my RTL8029 had the hardware address 00:80:AD:89:22:13
+
+                       TAGGED Kernel Image
+                       -------------------
+
+                       The "diskless node" will require a linux kernel image to load. This can be 
+                       easily created, but requires certain special options to be set. Finally
+                       the resultant bzImage/zImage has to be made into a special tagged image.
+
+                       Step #4:
+
+                       Set the following options before you compile a new kernel on your "server".
+
+                       1. Enable "IP:Kernel Level Autoconfiguration". Enable "BOOTP support" below it.
+                       [Networking Options]
+                       2. Enable "Root filesystem on NFS". [Filesystems/NFS]
+                       3. Make sure to compile the "diskless node's" network hardware into the kernel.
+                       Finally create the kernel by using either, make zImage or make bzImage.
+
+                       Step #5:
+
+                       Inside the etherboot directory is a mknbi directory. mknbi is the package used 
+                       to create the tagged image. If /tftpboot/ is not present then create it.
+
+                       # mkdir /tftpboot
+
+                       Assuming mknbi is in your path and you are in the newly compiled kernel 
+                       directory (/usr/src/linux/arch/i386/boot)
+
+                       # mknbi --output=/tftpboot/vmlinuz.test zImage --target=linux
+                       [Note: replace zImage with bzImage if you compiled into a bziped kernel]
+
+                       DHCP Setup
+                       ----------
+
+                       Step #6:
+
+                       Ensure that /etc/inetd.conf contains a line for starting tftp. Typically this 
+                       will look like, 
+                       tftp dgram udp wait root /usr/sbin/tcpd in.tftpd /tftpboot
+
+                       DHCP is Dynamic Host Configuration Protocol. It is used to control vital 
+                       networking parameters of hosts (running clients) with the help of a server. 
+                       DHCP is backward compatible with BOOTP.
+
+                       Step #7:
+
+                       Open a fresh /etc/dhcpd.conf which we will configure. Add the following
+                       entry.
+
+                       subnet 192.168.0.0 netmask 255.255.255.0 {
+                       filename "/tftpboot/vmlinuz.test";
+                       option subnet-mask 255.255.255.0;
+
+                       host banshee {
+                       hardware ethernet 00:80:AD:89:22:13;
+                       fixed-address 192.168.0.100;
+                       filename "/tftpboot/vmlinuz.test";
+                       }
+
+                       }
+
+                       [Note: change hardware ethernet to match your network card. 
+                       fixed-address represents the IP address assigned to the diskless node once
+                       it boots up. filename is the location of the tagged kernel image.]
+
+                       You may also need to create an empty dhcpd.leases file in the /var/state/dhcpd 
+                       directory.
+
+                       Step #8:
+
+                       Edit /etc/hosts to add an entry for the diskless node, for example:
+                       192.168.0.100 banshee
+
+                       Step #9:
+
+                       Start the dhcp daemon on the server. Make sure it reports no errors.
+
+                       # dhcpd
+
+                       Step #10:
+                       Boot the "diskless node" with the floppy ROM. Check to see that it finds 
+                       the DHCP server and loads the kernel using tftp.
+
+
+                       Root FS Setup
+                       -------------
+
+                       Download lts_core from http://www.ltsp.org/download/index.html. The RPM/TGZ 
+                       contains a root file system which can be readily used. Alternatively you may 
+                       want to read NFS-Root-Client HOWTO for more detailed instructions on manually 
+                       creating your own root FS for the diskless node.
+
+                       Step #11:
+
+                       Copy ltsroot.tgz into /tftpboot
+
+                       # tar xzpvf ltsroot.tgz
+                       # cp -a ltsroot 192.168.0.100
+                       # cd 192.168.0.100
+                       # mkdir sbin
+                       # cp /bin/umount ./bin
+
+                       You should replace 192.168.0.100 with the IP address of the diskless
+                       node. We shall add a local application (seti@home) that we want to run
+                       on the diskless node. After copying setiathome.tar.gz into the 
+                       /tftpboot/192.168.0.100 directory,
+
+                       # tar xzpvf setiathome.tar.gz
+
+                       The above will create a seti@home directory containing the seti files.
+
+                       Step #12:
+
+                       Make a /etc/exports file containing the following entries,
+                       /tftpboot/192.168.0.100 (rw,no_root_squash)
+                       /usr (ro,no_root_squash)
+                       /bin (ro,no_root_squash)
+                       /sbin (ro,no_root_squash)
+                       /lib (ro,no_root_squash)
+
+                       Step #13:
+
+                       Edit /tftpboot/192.168.0.100/etc/inittab,
+                       change "id:5:initdefault:" to "id:3:initdefault:"
+
+                       This will ensure that a bash prompt starts up.
+
+                       Step #14:
+
+                       Load nfs and export the shares,
+
+                       # nfs start
+                       # exportfs -ra
+
+                       Step #15:
+
+                       Reboot the diskless node. The system should startup and give you a bash prompt.
+                       Run the seti@home software which is a local copy for the diskless node.
+
+                       Step #16: 
+
+                       If you are happy with the settings, you should tell linux to startup 
+                       dhcpd and nfs on the server everytime your server boots. This can usually be
+                       added into the /etc/rc.d/rc.local file (for redhat)
+
+                       NOTE on sharing files with server
+                       ---------------------------------
+
+                       If you would like to share the binaries or other library files with the server, 
+                       add the following entry into the /tftpboot/192.168.0.100/etc/fstab (while at 
+                       the server). Note that the "server" in this example has IP address of
+                       192.168.0.1. You should change it to reflect the IP address of your server.
+
+                       192.168.0.1:/bin /bin nfs
+                       192.168.0.1:/sbin /sbin nfs
+                       192.168.0.1:/usr /usr nfs
+                       192.168.0.1:/lib /lib nfs
+
+                       Reboot the diskless node. At the bash prompt, type
+                       # mount -av
+
+                       The contents of the server will now be available on your diskless node.
+                       You can add the "mount -av" into your rc.sysinit. 
+

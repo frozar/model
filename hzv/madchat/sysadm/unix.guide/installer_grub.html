@@ -1,0 +1,167 @@
+<HTML>
+<HEAD>
+<TITLE>FreeBSD - Installer Grub</TITLE>
+<STYLE TYPE="text/css">A {text-decoration:none; color:#5e5e5e}</STYLE>
+</HEAD>
+<BODY BGCOLOR=white>
+<A NAME="start"></A>
+<HR>
+<H1><CENTER>FreeBSD - Installer Grub</CENTER></H1>
+<HR>
+<H2>1.<A HREF="#1"> Introduction</A></H2>
+<FONT SIZE=3><B>1.1. Ce document</B></FONT><BR>
+<FONT SIZE=3><B>1.2. Configuration de l'exemple tra&icirc;t&eacute;</B></FONT><BR>
+<H2>2.<A HREF="#2"> Installer le programme</A></H2>
+<FONT SIZE=3><B>2.1. A partir d'un package</B></FONT><BR>
+<FONT SIZE=3><B>2.2. A partir des ports</B></FONT><BR>
+<H2>3.<A HREF="#3"> Configuration</A></H2>
+<FONT SIZE=3><B>3.1. Cr&eacute;ation du r&eacute;pertoire de configuration</B></FONT><BR>
+<FONT SIZE=3><B>3.2. Fichier de menu</B></FONT><BR>
+<H2>4.<A HREF="#4"> Installer Grub dans le MBR</A></H2>
+<FONT SIZE=3><B>4.1. Cr&eacute;er une disquette de boot Grub</B></FONT><BR>
+<FONT SIZE=3><B>4.2. Installation finale</B></FONT><BR>
+<FONT SIZE=3><B>4.3. reboot</B></FONT><BR>
+<H2>5.<A HREF="#5"> Copyright</A></H2>
+
+
+<HR><H2>1.<A NAME="1"> Introduction</A> <FONT SIZE=2><A HREF="#start">back</A></FONT></H2>
+
+<H3>1.1. Ce document</H3>
+
+<P ALIGN=justify>Ce document traîte de l'installation de Grub à partir de FreeBSD 4.3-STABLE. Les liens suivants auront peut-être changés quand vous lirez ces lignes.</P>
+
+<H3>1.2. Configuration de l'exemple traîté</H3>
+
+<LI ALIGN=justify>1er disque dur (hd0) : 1 partition (hd0,0) Windows 98
+<LI ALIGN=justify>2ème disque dur (hd1) : 1 slice (hd1,0) FreeBSD 4.3-STABLE
+
+<HR><H2>2.<A NAME="2"> Installer le programme</A> <FONT SIZE=2><A HREF="#start">back</A></FONT></H2>
+
+<H3>2.1. A partir d'un package</H3>
+
+<P ALIGN=justify>C'est aussi simple que de taper la commande suivante en root (si vous êtes connecté à Internet):</P>
+
+<PRE>
+prompt# <B>pkg_add ftp://ftp.freebsd.org/pub/FreeBSD/ports/i386/packages-4-stable/All/grub-0.5.96.tgz</B>
+</PRE>
+
+<P ALIGN=justify>Sinon, téléchargez le package à l'adresse suivante <A HREF="ftp://ftp.freebsd.org/pub/FreeBSD/ports/i386/packages-4-stable/All/grub-0.5.96.tgz">ftp://ftp.freebsd.org/pub/FreeBSD/ports/i386/packages-4-stable/All/grub-0.5.96.tgz</A>, et tapez ensuite en root:</P>
+
+<PRE>
+prompt# <B>pkg_add chemin_vers_grub/grub-0.5.96.tgz</B>
+</PRE>
+
+<H3>2.2. A partir des ports</H3>
+
+<P ALIGN=justify>Si vous avez une connexion à Internet, vous pouvez directement taper ceci, en root:</P>
+
+<PRE>
+prompt# <B>cd /usr/ports/sysutils/grub</B>
+prompt# <B>make install clean</B>
+</PRE>
+
+<P ALIGN=justify>Sinon, téléchargez les sources de Grub ici: <A HREF="ftp://ftp.FreeBSD.org/pub/FreeBSD/ports/distfiles/grub-0.5.96.tar.gz">ftp://ftp.FreeBSD.org/pub/FreeBSD/ports/distfiles/grub-0.5.96.tar.gz</A>, puis copiez ce fichier dans /usr/ports/distfiles/, et en root tapez:</P>
+
+<PRE>
+prompt# <B>cd /usr/ports/sysutils/grub</B>
+prompt# <B>make install clean</B>
+</PRE>
+
+<HR><H2>3.<A NAME="3"> Configuration</A> <FONT SIZE=2><A HREF="#start">back</A></FONT></H2>
+
+<H3>3.1. Création du répertoire de configuration</H3>
+
+<P ALIGN=justify>Grub souhaite se trouver dans un répertoire bien précis: /boot/grub. Voici comment créer son répertoire de configuration (en root):</P>
+
+<PRE>
+prompt# <B>mkdir /boot/grub</B>
+prompt# <B>cd /boot/grub</B>
+prompt# <B>cp /usr/local/share/grub/i386-freebsd/* .</B>
+</PRE>
+
+<H3>3.2. Fichier de menu</H3>
+
+<P ALIGN=justify>Grub regarde dans le fichier /boot/grub/menu.lst pour savoir ce qu'il doit faire lors de son chargement au boot de la machine. Vous allez créer ce fichier avec votre éditeur favoris, et le remplir comme ceci:</P>
+
+<PRE>
+default 0	# quel OS booter par defaut, ici FreeBSD
+timeout 5	# le timeout
+
+# FreeBSD: choix 0
+title	FreeBSD		# Le titre a afficher dans le menu Grub
+root	(hd1,0,a)	# 2eme disque, 1er slice, disklabel a (/)
+kernel	/boot/loader	# Le loader de FreeBSD
+
+# Windows 98: choix 1
+title	Windows 98	# Le titre
+root	(hd0,0)		# 1er disque, 1ere partition
+makeactive		# Rendre la partition active
+chainloader +1		# Utiliser le boot de Windows
+</PRE>
+
+<HR><H2>4.<A NAME="4"> Installer Grub dans le MBR</A> <FONT SIZE=2><A HREF="#start">back</A></FONT></H2>
+
+<H3>4.1. Créer une disquette de boot Grub</H3>
+
+<P ALIGN=justify>Je vous conseil de créer une disquette de boot Grub, elle vous sera peut-être utile. Elle vous permettra de choisir quelle partition booter, quel OS booter si vous avez des problèmes avec votre MBR. Voici comment faire, sous FreeBSD après avoir inséré une disquette dans votre lecteur:</P>
+
+<PRE>
+prompt# <B>cd /boot/grub</B>
+prompt# <B>dd if=stage1 of=/dev/fd0 bs=512 count=1</B>
+1+0 records in
+1+0 records out
+512 bytes transferred in 1.181812 secs (433 bytes/sec)
+prompt# <B>dd if=stage2 of=/dev/fd0 bs=512 seek=1</B>
+155+1 records in
+155+0 records out
+79360 bytes transferred in 3.687975 secs (21519 bytes/sec)
+</PRE>
+
+<H3>4.2. Installation finale</H3>
+
+<P ALIGN=justify>Il vaut mieux installer Grub dans le MBR de votre disque d'amorce. Vous pourrez comme cela l'enlever facilement sous DOS avec la commance fdisk /mbr. Votre disque d'amorce est certainement le disque 0 (le 1er disque), vous pouvez vérifier cela dans le BIOS, au niveau de la séquence de boot (Boot Sequence). Ce doit être dans l'ordre: A, C.</P>
+
+<P ALIGN=justify>Donc, pour installer Grub à partir de FreeBSD, tapez ceci, en root:</P>
+
+<PRE>
+prompt# <B>grub</B>
+Probing devices to guess BIOS drives. This may take a long time.
+
+
+    GRUB  version 0.5.96  (640K lower / 3072K upper memory)
+
+ [ Minimal BASH-like line editing is supported.  For the first word, TAB
+   lists possible command completions.  Anywhere else TAB lists the possible
+   completions of a device/filename. ]
+
+grub> <B>root (hd1,0,a)</B>
+ Filesystem type is ffs, partition type 0xa5
+
+grub> <B>setup (hd0)</B>
+ Checking if "/boot/grub/stage1" exists... yes
+ Checking if "/boot/grub/stage2" exists... yes
+ Checking if "/boot/grub/ffs_stage1_5" exists... yes
+ Running "embed /boot/grub/ffs_stage1_5 (hd0)"...  14 sectors are embedded.
+succeeded
+ Running "install /boot/grub/stage1 d (hd0) (hd0)1+14 p (hd1,0,a)/boot/grub/stage2"... succeeded
+Done.
+
+grub> <B>quit</B>
+</PRE>
+
+<P ALIGN=justify>Nous pouvons noter qu'il a fallut taper les deux commandes: root et setup.</P>
+<LI ALIGN=justify>La premiere spécifie la partition sur laquelle Grub va trouver ses fichiers de configurations. Puisque nous les avons placés dans /boot/grub du disque 1 (2ème disque) contenant FreeBSD, nous passons en paramètre à cette commande (hd1,0,a). Le a précise qu'il s'agit du disklabel répertoire racine de FreeBSD (le répertoire /).
+<LI ALIGN=justify>La deuxième commande met à jour le MBR pour utiliser Grub. Le MBR que l'on utilise est celui du disque dur 0 (le 1er disque). On lui passe donc comme paramètre (hd0).
+
+<H3>4.3. reboot</H3>
+
+<P ALIGN=justify>Vous pouvez rebooter et tester votre nouvelle installation de Grub.</P>
+
+<HR><H2>5.<A NAME="5"> Copyright</A> <FONT SIZE=2><A HREF="#start">back</A></FONT></H2>
+<P>Ce document est fournis "tel qu'en l'&eacute;tat" par l'auteur (<A HREF="mailto:gomor@gomor.org">gomor@gomor.org</A>) et il n'est donn&eacute; aucune garantie, implicite ou explicite, quant &agrave; son utilisation commerciale, professionnelle ou autre.</P>
+<P>L'auteur ne peut en aucun cas &ecirc;tre tenu pour responsable  de quelque dommage ou pr&eacute;judice direct, indirect, secondaire ou accessoire (y compris les pertes financi&egrave;res dues au manque &agrave; gagner, &agrave; l'interruption d'activit&eacute;s, ou la perte d'informations et autres) d&eacute;coulant de l'utilisation de la documentation ou de l'impossibilit&eacute; d'utiliser celle-ci, et dont l'utilisateur accepte l'enti&egrave;re responsabilit&eacute;.</P>
+<P>Par ailleurs, ce document peut &ecirc;tre copier partiellement ou enti&egrave;rement, &agrave; condition que l'auteur soit cit&eacute;, et que son adresse <I>eMail</I> (<A HREF="mailto:gomor@gomor.org">gomor@gomor.org</A>) soit donn&eacute;e, dans cette copie.</P>
+<HR>
+<FONT SIZE=1>Derni&egrave;re mise &agrave; jours: Thu Nov  8 22:08:02 CET 2001</FONT>
+</BODY>
+</HTML>

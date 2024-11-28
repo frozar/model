@@ -1,0 +1,408 @@
+DNS ID hacking, par Neuro
+Date: 29 mai 2000
+
+                Traduction de l'article du crew ADM
+
+
+
+Neuro
+http://altern.org/neuromancien/mainpage.htm
+Me contacter: neuromancien@altern.org
+IRC: Neur0 #skreel et #Cryptnux, undernet.
+
+
+**********************************************************************************************
+
+--[1]-- Présentaion du hacking d'ID DNS.
+
+wOOwOO!
+Salut les gars, vous devez surement vous demander ce que le hacking (ou spoofing) d'ID DNS peut bien être. Le hacking d'ID DNS est n'est pas une méthode de hacking très courante (en tout cas moins que le blind spoofing ou le bind spoofing. Cette méthode se base sur une faille du protocole DNS. Plutot brutale, le hack/spoof d'ID DNS est tres efficace et tres puissante car il n'existe aucune génération de daemons DNS qui lui échappe (pas même WinNT!) [NDT: fuck Kro$oft].
+
+--[1.1]-- Explication du mécanisme de fonctionnement du protcole DNS.
+
+Dans un premier temps, il vous est indispensable de savoir comment fonctionne le DNS. J'expliquerai simplement les éléments les plus importants du protocole. Pour cela, nous allons suivre le chemin d'un paquet de requete DNS de A à Z!
+
+1: le client (bla.bibi.com) envoie une requete sur le domaine "www.heike.com". Pour résoudre le nom, bla.bibi.com utilise "dns.bibi.com" en guise de DNS. Jetons un oeil au graphique suivant:
+
+/--------------------------------\
+|111.1.2.123 = bla.bibi.com      |
+|111.1.2.222 = dns.bibi.com      |
+| Format:                        |
+|IP_ADDR:PORT-> IP_ADDR:PORT     |
+| ex:                            |
+|111.1.2.123:2999->111.1.2.222:53|
+\--------------------------------/
+...
+ gethostbyname("www.heike.com")
+...
+
+ [bla.bibi.com]                             [dns.bibi.com]
+111.1.2.123:1999 ---> [?www.heike.com] ---> 111.1.2.222:53
+
+Là, nous avons notre requete de résolution de nom partant du port 1999, qui demande le dns au port 53.
+
+[Note: le DNS se trouve toujours sur le port 53]
+
+Maintenant que dns.bibi.com a reçu la requete résolue de bla.bibi.com, dns.bibi.com va devoir retrouver le nom. Ca s'passe comme ca:
+
+[dns.bibi.com]       [ns.internic.net]
+111.1.2.222:53 ---> [dns?www.heike.com] ---> 198.41.0.4:53
+
+dns.bibi.com demande à ns.internic.net le nom du rooter pour l'adresse www.heike.com, et si il ne l'a pas, on s'adresse à un serveur qui a autorité dans les domaines .com. 
+
+[Note: on demande à internic parce qu'ils doivent avoir cette requette dans leur cache.]
+
+[ns.internic.net]                                     [ns.bibi.com]
+198.41.0.4:53 ---> [ns for.com est 144.44.44.4] ---> 111.1.2.222:53
+
+Ici, nous pouvons voir que ns.internic.net a répondu à ns.bibi.com (qui est le dns ayant autorité sur le domaine bibi.com), que le serveur for.com a l'IP 144.44.44.4 [appelons le ns.for.com]. Maintenant, notre ns.bibi.com va demander à ns.for.com l'adresse de www.heike.com; malheureusement, elle ne l'a pas, et va renvoyer la requete au dns de heike.com, qui a autorité pour heike.com.
+
+ [ns.bibi.com]                             [ns.for.com]
+111.1.2.222:53 ---> [?www.heike.com] ---> 144.44.44.4:53
+
+Réponse de ns.for.com:
+
+ [ns.for.com]                                             [ns.bibi.com]
+144.44.44.4:53 ---> [ns for heike.com is 31.33.7.4] ---> 111.1.2.222:53
+
+Maintenant que nous savons quelle adresse IP a autorité sur le domaine heike.com [nous l'apellerons ns.heike.com], on demande quelle est l'IP de la machine www [là, c'est www.heike.com :)].
+
+ [ns.bibi.com]                           [ns.heike.com]
+111.1.2.222:53 ---> [?www.heike.com] ---> 31.33.7.4:53
+
+Ca y-est, on a enfin la réponse!! [NDT pas trop tot lol]
+
+[ns.heike.com]                                       [ns.bibi.com]
+31.33.7.4:53 ---> [www.heike.com == 31.33.7.44] ---> 111.1.2.222:53
+
+Génial, on a la réponse; on peut enfin la faire parvenir à notre client bla.bibi.com.
+
+ [ns.bibi.com]                                          [bla.bibi.com]
+111.1.2.222:53 ---> [www.heike.com == 31.33.7.44] ---> 111.1.2.123:1999
+
+Hehe, maintenant, bla.bibi.com connait l'ip de www.heike.com :)
+
+Maintenant... imaginons que l'on veuille obtenir le nom d'une machine à partir de son IP. Pour faire ca, la démarche va être un peu différente, car l'IP va devoir être transformé.
+
+ exemple:
+100.20.40.3 deviendra 3.40.20.100.in-addr.arpa
+
+Attention!! Cette méthode est seulement pour pour la requete de résolution d'IP (ou reverse dns).
+
+Alors, regardons ce qui se passe quand on prend l'IP de www.heike.com (31.33.7.44 ou "44.7.33.31.in-addr.arpa", après une traduction dans un formable compréhensible pour le DNS).
+
+...
+ gethostbyaddr("31.33.7.44");
+...
+
+ [bla.bibi.com]                                       [ns.bibi.com]
+111.1.2.123:2600 ---> [?44.7.33.31.in-addr.arpa] ---> 111.1.2.222.53
+
+On a envoyé notre requete à ns.bibi.com
+
+ [ns.bibi.com]                                     [ns.internic.net]
+111.1.2.222:53 ---> ?44.7.33.31.in-addr.arpa] ---> 198.41.0.4:53
+
+ns.internic.net va envoyer l'ip du nom d'un serveur qui a autorité sur '31.in-addr.arpa'.
+
+[ns.internic.net]                                                     [ns.bibi.com]
+198.41.0.4:53 ---> [le dns pour 31.in-addr.arpa est 144.44.44.4] ---> 111.1.2.222:53
+
+Maintenant, ns.bibi.com va poser la même question sur le dns à 144.44.44.4
+
+[ns.bibi.com]                                        [ns.for.com]
+111.1.2.222:53 ---> [?44.7.33.31.in-addr.arpa] ---> 144.44.44.4:53
+
+Et ainsi de suite....
+En fait, le mécanisme est pratiquement le même que celui utilisé pour retrouver le nom.
+
+J'espere que vous avez compris comment fonctionnait le DNS. Ocuppons nous maintenant du format des messages DNS.
+
+--[1.2]-- Les paquets dns.
+
+Voici le format d'un message dns:
+
+    +---------------------------+---------------------------+
+    |     ID (lui-même :)       |  Marqueur                 |
+    +---------------------------+---------------------------+
+    |   nombre de questions     | nombre de réponses        |
+    +---------------------------+---------------------------+
+    | number of RR authority    |number of supplementary RR |
+    +---------------------------+---------------------------+
+    |                                                       |
+    \                                                       \
+    \                   QUESTION                            \
+    |                                                       |
+    +-------------------------------------------------------+
+    |                                                       |
+    \                                                       \
+    \                    REPONSE                            \
+    |                                                       |
+    +-------------------------------------------------------+
+    |                                                       |
+    \                                                       \
+    \                  Divers etc... On s'en fout           \
+    |                                                       |
+    +-------------------------------------------------------+
+
+--[1.3]-- Structure des paquets dns.
+
+__ID__
+
+L'ID permet d'identifier chaque paquet DNS, les échanges se faisant du port 53 au port 53, et du fait qu'il se fait souvent plus d'une requete à la fois, l'ID est la seule manière de différencier les différentes requetes DNS. Nous en parlerons plus tard...
+
+__Marqueurs__
+
+La zone de marqueurs est divisée en de nombreuses parties:
+
+       4 bits                    3 bits (toujours 0)
+       |                         |
+       |                         |
+[QR | opcode | AA| TC| RD| RA | zero | rcode ]
+                                         |
+ |           |__|__|__|                  |______ 4 bits
+ |                    |_ 1 bit
+ |
+1 bit
+
+QR      = Si le bit QR = 0, alors cela signifie qu'il s'agit d'une question. Autrement, c'est     une réponse.
+
+opcode  = La valeur est 0 pour une requete normale, 1 pour une requete reservée et 2 pour une     requete de statut. Mais nous n'avons pas besoin de savoir ce que ces deux modes         signifient.
+
+AA      = S'il est égal à 1, cela signifie que le serveur donne une réponse autoritaire.
+
+TC      = On s'en fout
+
+RD      = Si ce marqueur est égal à 1, cela signifie "Requete renvoyée". Par exemple, quand       bla.bibi.com demande à ns.bibi.com de retrouver le nom, le marqueur dit au DNS de       s'en ocupper tout seul.
+
+RA      = s'il est à 1, cela signifie que le renvoi est possible. Ce marqueur est mis à 1 dans    la réponse du nom du serveur, s'il supporte la renvoie.
+
+Zero    = voila trois zeros...
+
+Rcode   = il contient le message d'erreur en retours, pour les requetes DNS. Si le marqueur est           égal à 0, pas d'erreur. S'il est égal à trois, alors, il y a une erreur de nom
+
+
+LA QUESTION DNS:
+
+Voici le format d'une question DNS
+
++-----------------------------------------------------------------------+
+|                        Nom de la question                             |
++-----------------------------------------------------------------------+
+|       type de question         |      type de demande                 |
++--------------------------------+--------------------------------------+
+
+La structure de la question se présente ainsi:
+
+Exemple:
+www.heike.com sera [3|w|w|w|5|h|e|i|k|e|3|c|o|m|0]
+pour une adresse IP, c'est la même chose :)
+
+44.33.88.123.in-addr.arpa sera:
+[2|4|4|2|3|3|2|8|8|3|1|2|3|7|i|n|-|a|d|d|r|4|a|r|p|a|0]
+Note: un format compressé exite aussi, mais nous ne l'utiliserons pas.
+
+Type de questions:
+
+Voici les valeurs qui nous serons utiles dans la plupart des cas:
+Note: y'a plus de 20 valeurs différentes, mais là, j'en ai marre d'écrire :))
+
+        Nom     Valeur          
+         A   |     1    |                       (passer du nom à l'IP)
+         PTR |     12   |                       (passer de l'IP au nom)
+
+Type de demandes.
+
+Les valeurs sont les mêmes que dans le cas de la question (je ne sais pas si c'est vrai, mais là, le but n'est pas de vous apprendre le DNS de A à Z, pour ca vous pouvez regarder dans le RFC pages 1033 à 1035 et 1037. Ici, le but c'est de vous donner des conaissances assez générales pour une mise en pratique rapide (NDT: je croyais qu'il ne fallait surtout pas mettre ce que j'écris en pratique???)
+
+
+REPONSES DNS
+
+Les réponses sont dans un format nommé RR, mais là on s'en fout :)
+
+Voici le format d'une réponse (une RR)
+
++------------------------------------------------------------------------+
+|      Nom du domaine                                                    |
++------------------------------------------------------------------------+
+|   type                           |    classe                           |
++----------------------------------+-------------------------------------+
+|                           TTL (durée de vie)                           |
++------------------------------------------------------------------------+
+| longueur des données       |                                           |
+|----------------------------+                                           |
+|                       données ressources                               |
++-------------------------------------------------------------------------
+
+Nom de domaine:
+
+Le nom de domaine est retranscrit sous le format suivant:
+Le nom de domaine est stocké dans le même format que la partie question de la requete DNS de www.heike.com. Le marqueur "Nom de domaine" sera: [3|w|w|w|5|h|e|i|k|e|3|c|o|m|0]
+
+Type:
+Le marqueur type est le même que le marqueur "type de qquestion" dans la partie question du paquet.
+
+Classe:
+Le marqueur classe est égal à 1 pour des données internet.
+
+Durée de vie:
+Ce marqueur indique au routeur la durée de vie des informations en secondes.
+
+Longueur des informations:
+Elle donne la taille ocuppée par les informations en bite. 
+
+Ressources des données:
+Ici, on met l'ID, par exemple. Dans notre cas, on met AU MOINS l'ID.
+
+Je vais vous offrire un petit exemple concret, ca sera plus imple :)
+
+Voila ce qui se passe quand ns.bibi.com demande l'adresse de www.heike.com à ns.heike.com
+
+ns.bibi.com:53 ---> [?www.herike.com] ---> ns.heike.com:53 (tremble Heike ;)
+
++---------------------------------+--------------------------------------+
+|   ID = 1999                     | QR = 0 opcode = 0 RD = 1             |
++---------------------------------+--------------------------------------+
+| nombre de questions = htons(1)  | nombre de réponses = 0               |
++---------------------------------+--------------------------------------+
+| nombre de RR authoritaires = 0  | number de RR supplémentaires= 0      |
++---------------------------------+--------------------------------------+
+<La parti question>
++------------------------------------------------------------------------+
+|   nom de la question = [3|w|w|w|5|h|e|i|k|e|3|c|o|m|0]                 |
++------------------------------------------------------------------------+
+|  type de question = htons(1)    |      type de demande=htons(1)        |
++---------------------------------+--------------------------------------+
+
+Voila pour laquestion.
+
+Interessons nous maintenant à la réponse de ns.heike.com
+
+ns.heike.com:53 ---> [IP of www.heike.com is 31.33.7.44] ---> ns.bibi.com:53
+
++---------------------------------+---------------------------------------+
+|   ID = 1999                     | QR=1 opcode=0 RD=1  AA =1  RA=1       |
++---------------------------------+---------------------------------------+
+| numéro des questions = htons(1) | numéro des réponses = htons(1)        |
++---------------------------------+---------------------------------------+
+| nombre de RR authoritaires = 0  | nombre de RR supplémentaires = 0      |
++---------------------------------+---------------------------------------+
++-------------------------------------------------------------------------+
+|   nom de la question = [3|w|w|w|5|h|e|i|k|e|3|c|o|m|0]                  |
++-------------------------------------------------------------------------+
+|   type de question = htons(1)   |      type de demande = htons(1)       |
++-------------------------------------------------------------------------+
++-------------------------------------------------------------------------+
+|   nom du domaine = [3|w|w|w|5|h|e|i|k|e|3|c|o|m|0]                      |
++-------------------------------------------------------------------------+
+|       type        = htons(1)    |      classe   = htons(1)              |
++-------------------------------------------------------------------------+
+|                       time to live = 999999                             |
++-------------------------------------------------------------------------+
+| longueur des données = htons(4) | données =inet_addr("31.33.7.44")      |
++-------------------------------------------------------------------------+
+
+Voila, c'est tout pour l'instant :))
+NDT: p'tain, c'est pas trop tot
+
+Voici l'analyse:
+Dans la réponsee, QR = 1 parce qu'on a affaire à une réponse.
+AA = 1 parce que le rooter est autoritaire pour ce nom de domaine.
+RA = 1 parce que le retour est possible.
+
+Bien =) J'espere que vous avez compris, parce que vous allez en avoir besoin pour ce qui suit.
+
+
+--[2.0]-- Le hack/spoof de l'ID DNS
+
+Maintenant, c'est l'heure d'expliquer clairement ce qu'est le hack spoof d'ID DNS.
+Comme je l'ai expliqué plus tot, la seule manière pouyr un daemon DNS de différencier les différentes question/réponses est le marqueur ID dans le paquet. 
+Jeteons un oeil à cet exemple:
+
+ns.bibi.com;53 --->[?www.heike.com] ---> ns.heike.com:53
+
+Donc, vous avez juste besoin de spoofer (NDT: usurper en bon français, mais ca fais moins [3L1T3]) l'IP de ns.heike.com et répondre vos fausses informations à ns.bibi.com avant ns.heike.com!
+
+ns.bibi.com <------- . . . . . . . . . . .  ns.heike.com 
+                   |
+                   |<--[IP for www.heike.com is 1.2.3.4]<-- hum.roxor.com 
+
+Mais, en pratique, vous devez deviner le bon ID :) Si vous etes sur un lan, vous pouvez sniffer pour trouver cet ID, et répondre avant le rooter (c'est facile sur un reseau local :)
+
+Si vous voulez le faire manuellement, vous n'avez que quatre méthodes basiques
+
+1) Testez toute les valeur possibles pour le marqueur ID au hasard. Vous devez répondre avant le NS! (ns.heike.com dans cet exemple). Cette méthode est obsolete à moins que vous ne vouliez connaître l'ID, ou toute autre hypothèse quand à son identité.
+
+2) Envoyer quelque requetes DNS (200 ou 300) dans le but d'augmenter les chances de tomber sur le bon ID.
+
+3) Flooder (innonder) le DNS pour l'empecher de fonctionner. Le rooter va s'arreter et afficher l'erreur suivante:
+    >> Oct 06 05:18:12 ADM named[1913]: db_free: DB_F_ACTIVE set - ABORT
+       at this time named daemon is out of order :)
+
+4) Ou alors, vous pouvez utiliser les faiblesses BIND découvertes par la SNI (Secure Network inc), avec les prédictions d'ID. Mais nous y reviendrons un peu plus loin.
+
+Faiblesses ID WINDAUBE:
+Il existe une énorme faille dans WINBLOW$ 95: l'ID est des plus faciles à deviner car il est égal à 1 par défaut et 2 pour la seconde question, s'il y en a deux à la fois :)))
+
+Faille BIND
+Y'a une faille ici aussi: pour connaitre un ID, il vous suffit de sniffer le dns. Je vais vous expliquer ca:
+
+Le dns utilise un id aléatoire au début, puis l'augmente ensuite pour les questions suivantes... =)
+
+C'est facile d'exploiter cette faille:
+
+1. Il est facile de sniffer le message allant vers un dns aléatoire (ex: ns.dede.com)
+
+2. Vous demandez à ns.victime.com de résoudre (hasard).dede.com. Ns.victime.com va demander à ns.dede.com de retrouver (hasard).dede.com
+
+   ns.victime.com ---> [?(rand).dede.com ID = 444] ---> ns.dede.com
+
+3. Maintenant que vous conaissez l'ID du message, vous savez quel ID utiliser maintenant. (ID=444 dans cet exemple précis).
+
+4. Maintenant, vous faite votre demande de résolution. ex: www.micro$oft.com vers ns.victime.com
+
+   (vous) ---> [?www.kro$oft.com] ---> ns.victime.com
+
+   ns.victime.com ---> [?www.microsoft.com ID = 446 ] ---> ns.microsoft.com
+
+5. Inondez le serveur ns.victim.com avec l'ID que vous avez obtenu (444), et alors, vous le fait augmenter (vous l'incrémentez, en bon français).
+
+ ns.microsoft.com --> [www.microsoft.com = 1.1.1.1 ID = 444] --> ns.victime.com
+ ns.microsoft.com --> [www.microsoft.com = 1.1.1.1 ID = 445] --> ns.victime.com
+ ns.microsoft.com --> [www.microsoft.com = 1.1.1.1 ID = 446] --> ns.victime.com
+ ns.microsoft.com --> [www.microsoft.com = 1.1.1.1 ID = 447] --> ns.victime.com
+ ns.microsoft.com --> [www.microsoft.com = 1.1.1.1 ID = 448] --> ns.victime.com
+ ns.microsoft.com --> [www.microsoft.com = 1.1.1.1 ID = 449] --> ns.victime.com
+
+Vous savez maintenant que les ID Dns sont prévisibles, et qu'ils ne font qu'augmenter. Vous inondez ns.victime.com avec des réponses bidons à l'ID 444+ :)
+
+*** Autre manière ***
+
+Y'a une autre façon d'exploiter cette faille sans être root sur un quelconque dns que ce soit.
+
+Le mécanisme est fort simple, en voici l'explication.
+
+On envoie à ns.victime.com une demande de résolution pour *.provnet.fr
+
+(vous) ----------[?(hasard).provnet.fr] -------> ns.victime.com
+
+Puis, ns.victime.com demande à ns1.provnet.fr de retrouver (hasard).provnet.fr.
+Rien de nouveau ici, mauis c'est là que ca devient interessant.
+
+A partir de là, vous commencez à innonder ns.victim.com avec de fausses réponses (avec l'IP de ns1.provnet.fr), avec des ID allant de 100 à 110.
+
+(spoof) ----[(random).provnet.fr is 1.2.3.4 ID=100] --> ns.victime.com 
+(spoof) ----[(random).provnet.fr is 1.2.3.4 ID=101] --> ns.victime.com 
+(spoof) ----[(random).provnet.fr is 1.2.3.4 ID=102] --> ns.victime.com 
+(spoof) ----[(random).provnet.fr is 1.2.3.4 ID=103] --> ns.victime.com 
+.....
+
+Après cela, on demande à ns.victime.com si (hasard).provnet.fr a une IP.
+
+Si ns.victime.com nous donne une IP pour (hasard).provnet.fr, c'est bon. Sinon, il reste plus qu'à recommencer. Ca peut être long mais ca marche. Et rien ne vous interdit de le faire avec des amis (excepté la loi....)
+
+Voila, c'est tout. Amusez vous bien, ne faite pas ce que je dis, c'est interdit par la loi...
+
+
+
+

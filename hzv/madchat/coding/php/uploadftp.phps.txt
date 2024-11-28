@@ -1,0 +1,94 @@
+<?php die(); /* XSS SHIELD, REMOVE THIS LINE */ ?>
+<?
+		/*
+	    Permet d'uploader depuis le web vers un FTP	
+	   	
+		Requit :
+		Il faudra que les options suivante aye la valeur True (On) :
+		file_uploads=On
+		track_vars=On
+		register_globals=On
+		et que le module FTP soit activer:
+		Pour activer le module FTP de votre configuration PHP, il faut utiliser l'option --enable-ftp en PHP 4
+		et l'option --with-ftp en PHP 3 avec le script de configuration. 
+		
+		Les variables:
+		$dir : Vous mettrez ici le dossier du serveur ou sera uploader le fichier avant d'etre uploader vers le serveur (il sera apres deleter)
+		$host: Le serveur FTP ( exemple: madchat.org/incoming/madchat/ )
+		$rep : ou va t'on uploader le fichier ?
+		$ftp_user_name et $ftp_user_pass : Le username et le Pass
+		
+		Auteur ,Version & greetz:
+		SeriousMan l'haumme serieu (sa se voi)
+		Beta 0.001
+		MadChat pour tout ce que j'ai apris de leur site(avant) ,reposito(maintenant) ,La scene French et English
+		
+		P'tin ,les commantaires + gros que le code :)
+		
+		A+ SeriousMan@altern.org
+		*/
+		
+		//On affiche le formulaire
+		echo "<form action= \"$PHP_SELF\" method=\"POST\" ENCTYPE=\"multipart/form-data\">\n <input type=\"hidden\" name=\"MAX_FILE_SIZE\" value=\"10000000\" />\n<input type=\"file\" name=\"Uploaded\" /> <br /> \n <input type=\"submit\" value=\"Upload It\" />\n</form>\n";
+		//Si y a quelque chose d'uploader commence l'operation
+		if ($HTTP_POST_FILES['Uploaded'] != ""){
+			$dir = "download";
+			$ftoup = $HTTP_POST_FILES['Uploaded'];
+			if($ftoup || ($ftoup!="none"))
+			{
+				$name = $ftoup['name'];
+				$file_def = $dir.'/'.$name ;
+				//copie le fichier dans le serveur  (du tmp vers le vrai)
+				copy($HTTP_POST_FILES['Uploaded']['tmp_name'], $file_def);
+
+			}
+			$fd = fopen($file_def, "r");			//on ouvre le fichier
+			$host = "madchat.org";
+    		$rep  = "/incoming/madchat/"; //n'oubliez pas le / de fin (on dit /temp/ pas /temp)
+	    	$ftp_c = ftp_connect("$host"); //on se connecte au ftp
+	    	$ftp_user_name = "Anonymous";
+    		$ftp_user_pass = "";
+			$login_result = ftp_login($ftp_c, $ftp_user_name, $ftp_user_pass);//on se logue
+			
+			if (!$ftp_c) 
+			{
+				die("Connection: Erreur!!! <br>"); 
+    		} 
+	    	if (!$login_result)
+	    	{
+    			die("login impossible <br>");   // Comme tjs des erreurs
+   		 	}
+    		else 
+    		{
+        		echo "Connection: OK <br>";//WAW ca marche !!!!
+    			
+   				$upload_file = ftp_fput($ftp_c, $rep.$name , $fd, FTP_BINARY); //On l'upload
+				
+				if (!$upload_file) 
+				{
+    	    		die("Upload Fichier: Erreur !!!<br>"); //p'tin
+        		} 
+        		else
+       		 	{
+        			echo "Upload Fichier: OK <br>";  //BinGo !!!
+    			}
+			
+    			fclose($fd); //on ferme le fichier
+    			/* C'est la section de l'upload de la description du fichier (non fini-reste le formulaire) (peut etre sa vous interresse de la finir ?)	
+   				$upload_description = ftp_fput($ftp_c, $file , $desc, FTP_BINARY);
+				if (!$upload_description) 
+				{
+        			die("Upload Description: Erreur !!!<br>");
+        		} 
+	        	else
+    	    	{
+        			echo "Upload Description: OK <br>";
+    			}
+    			*/
+   		 		ftp_quit($ftp_c); //On ferme la connection
+    			unlink($file_def);//et on efface le fichier du serveur (HTTP pas du FTP :)
+    		}
+    	}
+
+//Et comme tjs on se dit A+
+?>

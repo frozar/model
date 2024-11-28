@@ -1,0 +1,60 @@
+Effacer ses traces (UNIX/LINUX)
+
+1. Ne rien laisser dans les répertoires HOME et TEMP des serveurs
+
+2. Lister tous les éléments modifiés avant de se déconnecter : ls -altr
+
+3. Utiliser les commandes csh suivantes pour effacer les données d'historique sans laisser de
+trace :
+
+	mv .logout save.1
+	echo rm .history>.logout
+	echo rm .logout>>.logout
+	echo mv save.1 logout>>.logout
+
+4. Nettoyer les fichiers "logs" des serveurs : Sous Unix il faut connaître au moins 3 fichiers
+importants:
+
+	WTMP - chaque connexion/déconnexion avec l'heure, le serveur et le terminal concerné
+	UTMP - tous les utilisateurs connectés à un moment donné
+	LASTLOG - origine des connexions
+
+L'admin peut utiliser ces fichiers pour les commandes statistiques (lastlogin), pour par exemple
+savoir quand a eu lieu l'intrusion et puis le temps estimé de l'attaque (tout pour vous
+retrouver). Il faut savoir aussi que toutes les connexions par ftp, rlogin, telnet sont
+enregistrées dans ces fichiers. Mais ne pas effacer ces fichiers car l'admin saura immédiatement
+que l'intrusion a eu lieu. Pour vous simplifier la tâche utiliser un prog de modification de ces
+fichiers: ZAP ou ZAP2 (remplace la dernière donnée de connexion par des 00000000).
+
+Recommandation: pour modifier le LASTLOG sans toucher au fichier, une fois connecté, lancer un
+rlogin "serveur cible" avec le login et pass du compte utilisateur hacké. Cela a pour effet
+d'enregistrer un LASTLOGIN à partir du serveur et non à partir de l'extérieur.
+
+Normalement ces modifs sont possibles que par le ROOT. Mais si le ROOT n'a pas été obtenu, il
+suffit pour certaines version d'Unix de faire un login lors de votre connexion sur le serveur
+pour modifier le LASTLOG.
+
+5.Trouver touus les fichiers modifiés après la connexion: juste après être connecté faire:
+"touch /tmp/check" avant de continuer à travailler. Par la suite faire: "find / -newer
+/tmpcheck -print" ou "find / -ctime 0 -print" ou encore "find / -cmin 0 -print", vérifier les
+fichiers d'audit et les modifier.
+
+6. Vérifier les répertoires s par défaut:
+/usr/adm , /var/adm , /var/log
+
+7. Manipuler les prg de sécurité installés: Sur les serveurs sécurisés, les prg de sécurité sont
+lancés à intervalles périodiques par cron. Ces programmes vérifient les tailles de fichiers ou
+analysent les logs serveurs. Ils peuvent également être stockés dans les répertoires /adm ou
+~bin (pour les sniffers).
+
+Accéder aux paramètres de cron. Le rep par défaut est /var/spool/cron/crontabs. Vérifiez toutes
+les entrées surtout les fichiers "root" et analysez les prgs lancés. Faire par exemple: "crontab
+-l root". Les prgs de sécurité sont en général: tiger, spi, tripwire, 15, binaudit, hobgoblin,
+s3, ... voilà bon là normalement vous pouvez être tranquil mais bon on est jamais trop prudent
+et faut se dire qu'il y a toujours plus malin que nous. Je ne cesse pas de le dire mais ne
+négligez pas la victime qui elle aussi peut s'y connaître en hack alors n'effacez rien et
+n'abîmez aucune donnée. Car un HACKER n'est pas un CRACKER... 
+
+
+
+    

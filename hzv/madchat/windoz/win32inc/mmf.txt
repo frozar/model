@@ -1,0 +1,570 @@
+	          Advanced Win32 Assembly Lessons
+			Memory Mapped Files 
+	           Sharing Data Between Instances
+	        
+
+	Memory management under Windows Operative system has greatly changed
+since the days when DOS was the king. Both Win16 and DOS share a common
+address space for all applications making them very prone to crashing. Under
+Win95/98/NT every application has its own private address space which cannot
+be seen by any other process. This address space is 4 GB long and each
+application access it using a 32 bit pointer. Supposedly, this configuration
+makes the operative system more stable, and although I am generalizing,
+there are meaningful differences between Win95/98 and WinNT, which we could
+better appreciate by analyzing the memory layout of any particular Win32
+process.
+	
+Win95/98 Virtual Address Space Memory Layout:
+---------------------------------------------
+
+
+From 0x00000000 to 0x00000FFF. These first 4KB is used to maintain
+compatibility with Win16 and DOS programs. It is unaccessible to any process
+raising an exception if a read/write attempt occurs.
+
+From 0x00001000 to 0x003FFFFF. This 4 MB area is also used for compatibility
+issues but is accessible by any process. Off course, it is not recommended
+to play with this area.
+
+From 0x00400000 to 0x7FFFFFFF. This 2 GB partition is the private address
+space assigned to every running process. Each win32 application receives an
+unshared, private 2 GB chunk of virtual address space (don't forget to
+subtract the bottom 4MB describe above). At this point, you should not
+confuse yourself, windows does not assign 2 GB of your precious memory to
+every running thread; this is "virtual" address space, not physical memory.
+Win95/98 (Win98 from now on) judiciously commits and maps physical storage
+the every process virtual address space according to its growing necessities.
+
+From 0x80000000 to 0xBFFFFFFF. This partition is 1 GB long and is shared
+among all Win32 process. Here, Win98 maps all memory allocations, dynamic
+link libraries (KERNEL32.DLL, USER32.DLL, GDI32.DLL, ADVAPI32.DLL), memory
+mapped files (MMF from now on) and Win16 applications. It is useful to say
+that DLL's are always mapped to the same fixed virtual addresses.
+
+From 0xC0000000 to 0xFFFFFFFF. This partition is also 1 GB long; here is
+where the operative system code resides. Unfortunately, this area is also
+accessible to all win32 processes and that is why Win98 is more prone to
+crashing than WinNT.
+
+	Now that you know how this wonderful 4 GB world is constrained by
+invisible barriers, is time to discuss about the subject of this
+tutorial.
+	
+	Managing memory under win98 can be achieved by three different
+strategies: virtual memory allocation, memory mapped files and heaps. Each
+method is best suited for certain tasks. MMF is used to access large buffers
+of data in memory, mainly files like EXE, DLL (which explains the name of
+this method), to be more accurate, both the user and the operative system
+can map files in memory, for instance, the operative system loads files like
+kernel32.dll using this feature.
+MMF has been fairly well described years before the release of Win95,
+nevertheless, we make a shy use of what is in fact, one of the most powerful
+features of Win32 OS for programmers and crackers.
+Although Win98 supports MMF to certain extent, it is WinNT which unleashes
+the whole power of it. Making use of MMF on any of these OS requires the
+knowledge of only a few API calls. Let's start by listing them:
+
+CreateFile
+CreateFileMapping
+MapViewOfFile - MapViewOfFileEx
+OpenFileMapping
+UnmapViewOfFile
+FlushViewOfFile
+CloseHandle
+
+	Some of these API functions feature a unicode version too. Instead
+of copy&Paste the information from the Win32 Programmer's Reference, is
+better to discuss each API on the context of a real life example. You can
+check the whole code in one piece in the MMF sharing data example file
+(included with this tutorial).
+	
+
+.- CreateFile: 
+
+	There is no real life code for this one because I didn't use it in
+the example. Check the parameters in your SDK API reference. This function
+is used to create or open already existing files (and other devices). It
+returns a handle that identifies the file object (hFile). CreateFileMapping
+requires as one of its parameters, the handle of the file that is going to
+be mapped, this handle is returned by CreateFile function, however, in all
+cases we don't need to map a file, but simply to commit an area of memory to
+store or share data, in which case the programmer doesn't need to call this
+function to create the mapping object. Both CreateFileMapping and CreateFile,
+return a handle. These handles are not the same and each one identifies a
+diferent object, thereby you should provide code to close them individually
+(by calling CloseHandle function) whenever the program does not need the
+mapping object anymore.
+	
+.- CreateFileMapping:
+
+        call CreateFileMappingA, INVALID_HANDLE_VALUE, 0, PAGE_READWRITE, \
+        0, 1000h, offset szObjectName
+
+        mov     hFileMapping, eax
+
+CreateFileMapping function simply creates a mapping object and returns a
+handle (HFileMapping) to it. It doesn't reserve or commits any memory.
+The first parameter is the Handle of the file that is going to be mapped
+returned by CreateFile function. In our case, INVALID_HANDLE_VALUE is used
+as the first parameter, so a mapping object not related to any particular
+file is created. A side-effect could occur due to this fact; if Createfile
+function fails, it returns 0xFFFFFFFF and not NULL as other API's, so the
+first parameter to CreatefileMapping in that instance would be 0xFFFFFFFF
+which is valid and all the mapping object manipulations would succeed,
+however, the application wouldn't be handling the intended file but a
+different mapping object. The second parameter is a pointer to a security
+attributes structure. It can be NULL (our case) to use the default security
+attributes. The third parameter specifies the protection characteristics for
+the mapping object, this value should be consistent with the protection
+attributes used in the CreateFile function. One particular parameter is
+important to discuss in detail, PAGE_WRITECOPY. Win98 is not asgood as WinNT to maintain consistency when a memory area is shared between
+several applications and to prevent any disaster there is PAGE_WRITECOPY.
+When specified, a single mapping object is created (as in any other case),
+but if a write attempt is carried out by a different instance of the program
+that created the mapping object, the system commits additional memory from
+the paging file and creates a private additional copy of these pages, finally
+mapping it to the virtual address space of the new program's instance. So
+each program modifies its own copy of the original file. Normally, to
+preserve resources, the same memory area is mapped to all virtual address
+spaces that access the same mapping object, so whatever one process changes
+in the mapping object would be reflected to all of the other instances of the
+program that are accessing the same data. The next two parameters are the
+maximum size the mapping object can take in memory. It serves to assure the
+system has enough resources to map the desiredobject. This value is expressed as a 64 bit value (two dwords) because the
+system is capable of handling files of up to 1 quintillion bytes (18 EB),
+however, only a 4 GB piece of such enormous file can be mapped at one time,
+but in practice, you will be mapping much more less than this and if you wish
+to handle large files, the system can map partial sections of a large file to
+preserve your scarce resources. You can set both of these parameters as NULL
+if you don't think the file will grow in size after the mapping object is
+manipulated, off course, if you think your file will grow in size (because
+you are a Win32 Virus programmer and your virus is going to end up attached
+to the host file), then you should consider a maximum space that is equal to:
+OriginalFileSize+VirusSize+SomeWorkSpace. In our example, I've used 1000h
+(4096 bytes) as the size of the mapping object. The MMF sharing example
+application only gathers a few bytes from the Edit control window and even
+so, I've reserved 4KB of your precious memory to map the object. Don't be mad
+at me, there's a reasonable explanation for this. In x86 machines, memory
+must be allocated in small chunks of 4096 bytes (this is known as the page
+size); you cannot allocate less than this and if you do, the system will
+round up your requested size to an even multiple of the page size. In the
+same way, memory areas must start and end at an even multiple of the
+allocation granularity of the system (64 KB for x86).
+The last parameter in CreatefileMapping is the mapping object's name. You
+can use NULL in most cases (not in our example) because the mapping object
+would be manipulated by a single instance of the program that created it, at
+a time. In our case, a name is assigned to the object as we intend to
+manipulate it from different instances of the same program.
+
+	Well, at this point you could be overwhelmed by all this technical
+issues, but now you can figure out the advantages of File-mapping;
+manipulating a file in memory using pointers instead of slow ReadFile,
+WriteFile and SetFilePointer operations, sharing large streams of data
+between several instances of the same program or various different programs,
+etc.
+	
+.- MapViewOfFile. 
+
+        call MapViewOfFile, hFileMapping, FILE_MAP_ALL_ACCESS, 0, 0, 1000h
+
+        mov lpMappedObject, eax
+
+	Now that the mapping object was created, you need to reserve and
+commit physical storage for your object. MapViewOfFile, takes some physical
+storage from the paging file and commits it, finally it maps the committed
+area to your program virtual space. This API takes 5 parameters; the first
+of it is the handle to the mapping object returned by CreateFileMapping
+function. This handle could also be obtained using OpenFileMapping function
+which is a key function in our MMF Sharing Data Example. The second parameter
+is related to the protection attributes of the committed memory area. This
+parameter has to be consistent (there's a complex relation here, so you
+better read it in the Win32 Programmer's Reference) with the protection
+parameter in CreateFileMapping function executed before. I used
+FILE_MAP_ALL_ACCESS to have unrestricted access to the file mapping object.
+The next two parameters are there because as I said before, you can map a
+selected piece of a big file (called VIEW). These two parameters refer to a
+64 bit pointer to the first byte in the file to be mapped. If you specify
+NULL in both parameters, the whole file is mapped. If the system does not
+have enough resources to map the file the function returns NULL. Win98 can
+not map an small view of a file if the total file size is bigger than its
+available resources; Win98 requires always to commit the whole file size
+from the paging file. WinNT can map an small view of a big file even if
+this file cannot be mapped in a whole, due to resources limitations. If
+you specify NULL in both parameters, the system attempts to map the file
+from its beginning. The last parameter refers to the number of bytes in the
+file you wish to map. This is a 32 bit value, so is obvious a file larger
+than 4 GB cannot be mapped. If you specify NULL in this parameter, the
+system attempts to map the whole file at once.
+	
+.- UnmapViewOfFile. 
+
+        call UnmapViewOfFile, lpMappedObject
+ 
+
+	When you no longer need the file mapping object, this function is
+used to cleanup the committed physical storage in your virtual address space.
+In other words, it frees your virtual address space of the file mapping
+object. Calling MapViewOfFile again, will simply map another location of
+your address space but it will not unmap the previous committed area. It
+takes only one parameter that is nothing more than the base address of the
+file mapping object as returned by MapViewOfFile function. One important
+feature of MMF is that all modifications in the mapping object are not
+immediately reflected in the paging file or in the file in the disk. In fact,
+much of these changes are stored in the system cache and later written in
+large chunks. When you call UnmapViewOfFile, everything that could be
+temporarily stored in the cache would be immediately written to the backed
+file whether it be the paging file or a file in one of your storage units.
+One important variation of the MapViewOfFile function is MapViewOfFileEx. It
+takes one additional parameter if compared with MapViewOfFile. This parameter
+is of the LPVOID type and indicates to the function the memory location in
+the process virtual address where the first byte of the mapping object should
+be located. This function is very important if you want to share a file
+mapping object between several instances of the same program and need that
+all instances "to see" the object at the same base address. Win98 usually
+maps several views of the same file using a common memory location in the
+virtual address space, but this is not always true.
+In other to clean the cache and update the backed file without calling
+UnmapViewOfFile, Win32 provides another function called FlushViewOfFile.
+	
+.- FlushViewOfFile. It ensures all data in the system cache is stored in the
+file.
+
+.- CloseHandle. 
+
+        call CloseHandle, hFileMapping
+
+	You must never forget to close any object opened during the process
+of creating MMF. Two objects, the file mapping object and the file object
+must be closed using this function. In our example, we didn't use any file
+object, only a file mapping object, that is why we closed only the mapping
+object.
+	
+	
+	Although you have been reading for quiet a while, very few has been
+said about the bottom line of this tutorial, in other words, we still have
+to explain how MMF are used to share data between applications. Let me write
+again here, the CreateFileMapping function layout:
+
+call CreateFileMappingA, INVALID_HANDLE_VALUE, 0, PAGE_READWRITE, \
+        0, 1000h, offset szObjectName
+
+As you can see, the last parameter is the file mapping object name. This
+parameter could be NULL if only one running instance needs to access the
+mapping object, but if you want to share it among several applications or
+instances, you'll have to pass here a pointer to a string zero terminated
+name for your object. This name can be passed later to another function,
+OpenFileMapping which returns a process relative handle to the original
+handle of the file mapping object. This handle can be used to create another
+view of the same file from the point of view of another instance or process
+passing it to MapViewOfFile function.
+
+.- OpenFileMapping. 
+
+        call OpenFileMappingA, FILE_MAP_ALL_ACCESS, TRUE, \
+        offset szObjectName
+        mov     hFileMapping, eax
+        call MapViewOfFile, hFileMapping, FILE_MAP_ALL_ACCESS, 0, 0, 1000h
+        mov     lpMappedObject, eax
+ 
+
+
+It opens an already created mapping object. If the object does not exist in
+the first place, the function returns NULL. If the object exists, this is
+what happens:
+
+The system maps the physical storage where the original object was located to
+the address space of the instance requesting access to the mapping object.
+Fortunately, the system does not commit additional physical storage to map
+the new view of the file; it just maps the same physical storage previously
+committed to both address spaces. The result is obvious, if any instance
+modifies the object in its virtual address, the same modification occurs in
+the physical storage and therefore in all other virtual spaces of any other
+instances where that physical storage was mapped too.
+Take a look on how I got a process relative handle to the original file
+mapping object. OpenFileMapping takes three parameters. The first one
+refers to the access attributes, I used a combination of READ and WRITE
+access (FILE_MAP_ALL_ACCESS). The next parameter indicates if the handle
+returned by the function can be inherited. It means that a child process can
+inherit not only the same mapping object, but even the same original handle
+to it. When you use OpenFileMapping, what you get is a handle to the original
+handle. In this last case you can use the original handle directly in the
+child process. Of course, you have to device a method to transfer the
+original handle from the parent process to its child because although the
+handle is inheritable, the child process has no way to get the original
+handle by itself. Another fundamental aspect of OpenFileMapping is that it
+cannot get a handle of a non-previously existing object, so it serves (as in
+our example) not only to get a handle to the shareable file mapping object
+but also to figure out if another instance has already created the object.
+There are several other ways to share data using MMF, inheritance (partially
+discussed) is a feature that permits the original handle of an object to be
+passed to a child process. the second parameter to CreateFileMapping is a
+structure called SECURITY_ATTRIBUTES that is 12 bytes long and once set it
+permits the handle obtained with this function to be inheritable. You can
+also share a mapping object (Win98 only) by directly accessing a mapped
+object in another's application address space. You can easily access the
+address space of another process using certain functions, but I do not
+recommend it in the case of MMF because if the application that created the
+mapping object decides to decommit the physical address, then, the second
+application would rise an access violation. The last possibility is to call
+CreateFileMapping using SEC_RESERVE parameter. This will reserve address
+space for the mapping object without committing physical storage to it. You
+can later commit physical storage to the mapping object space using
+VirtualAlloc. This memory space is shareable between processes because it is
+located inside a mapping object boundaries.
+	
+	Finally, if you want to experiment a little, run the Sharing Data
+Example included in the same package with this tutorial (mmf1.exe). Type some
+data in the Edit control and press the button "Store Data". A mapping object
+will be created to store the data you typed using the paging file. Now open
+another instance of the same program running mmf1.exe again (without closing
+the previous instance) and press the "Retrieve Data" button. The second
+instance will retrieve the data you typed in the Edit control of the first
+instance from the mapping object.
+	
+	I guess this is all for now. Here you have a copy of the original
+MMF Sharing Data Example application:
+	
+
+;--------------------------------------------------------------------------
+;                     mmf1.asm (compile using tasm32)
+;--------------------------------------------------------------------------
+.386
+.model flat,STDCALL
+
+include W32.INC ; Some useful structures definitions. Available in
+                ; Barry Kauler's Book companion disk.
+
+UNICODE = 0     ; ANSI character set defined
+
+extrn CreateFileMappingA:PROC
+extrn MapViewOfFile:PROC
+extrn UnmapViewOfFile:PROC
+extrn OpenFileMappingA:PROC
+extrn GetDlgItemTextA:PROC
+extrn OpenFileMappingA:PROC
+
+.data
+
+IDD_DIALOG1  equ                   101
+IDI_ICON1    equ                   102
+IDC_BUTTON1  equ                   1000
+IDC_BUTTON2  equ                   1001
+IDC_EDIT1    equ                   1002
+IDC_STATIC   equ                   -1
+
+rect		RECT <?>
+ps              PAINTSTRUCT <?>
+hInstance	dd ?
+hwnd		dd ?
+height          dd ?
+width           dd ?
+s_height        dd ?
+s_width         dd ?
+szObjectName    db 'mmfobject',0
+szRetData       db 1000h dup (0)
+szDataSize      dd ?
+szNewInst       db 'Open a new instance now!',0
+.code
+
+start:
+	
+	
+        call GetModuleHandle, 0
+        mov hInstance, eax
+
+        call DialogBoxParam, hInstance, IDD_DIALOG1, 0, offset DlgProc, 0
+        call ExitProcess, 0
+
+        DlgProc PROC hWP:HWND, message:UINT, wparam:WPARAM, lparam:LPARAM
+	
+        LOCAL hDW:HWND
+        LOCAL hwndChild:HWND
+        LOCAL hFile:HANDLE
+        LOCAL hFileMapping:HANDLE
+        LOCAL lpMappedObject:POINTER
+
+        .IF message==WM_PAINT
+
+        call      paint
+
+        .ELSEIF message==WM_COMMAND
+
+        call      command
+
+        .ELSEIF message==WM_INITDIALOG
+
+        call      initdlg
+
+        .ELSEIF message==WM_DESTROY
+
+        call      destroy
+
+        .ENDIF
+
+	xor eax, eax
+        ret 
+
+paint:
+
+        call BeginPaint, hWP, offset ps
+ 
+        call EndPaint, hWP, offset ps
+	
+        mov eax, 0
+	
+        ret
+	
+command:
+
+        cmp wparam, IDC_BUTTON1
+        jz map
+        cmp wparam, IDC_BUTTON2
+        jz retrieve
+        cmp wparam, IDCANCEL
+        jz destroy
+
+        mov eax, 0
+        ret
+
+map:
+        call GetDlgItemTextA, hWP, IDC_EDIT1, offset szRetData, 40h
+        lea     edi, [szRetData]
+        xor     eax, eax
+        or      ecx, -1
+        repnz   scasb
+        not     ecx
+        sub     edi, ecx
+        mov     szDataSize, ecx
+        cmp     [szRetData], 0
+        jnz     _map
+
+        xor eax, eax
+        ret
+
+_map:
+
+        call CreateFileMappingA, INVALID_HANDLE_VALUE, 0, PAGE_READWRITE, \
+        0, 1000h, offset szObjectName
+        mov     hFileMapping, eax
+
+        call MapViewOfFile, hFileMapping, FILE_MAP_ALL_ACCESS, 0, 0, 1000h
+        mov lpMappedObject, eax
+
+        call GetDlgItem, hWP, IDC_BUTTON2
+        mov hwndChild, eax
+        call EnableWindow, hwndChild, TRUE
+
+        xor      ecx, ecx
+        mov      ecx, szDataSize
+        lea      esi, [szRetData]
+        mov      edi, lpMappedObject
+        rep      movsb
+
+        call GetDlgItem, hWP, IDC_BUTTON1
+        mov hwndChild, eax
+        call EnableWindow, hwndChild, FALSE
+        call SetDlgItemTextA, hWP, IDC_EDIT1, offset szNewInst
+
+        ret
+
+retrieve:
+
+        call OpenFileMappingA, FILE_MAP_ALL_ACCESS, TRUE, \
+        offset szObjectName
+        mov     hFileMapping, eax
+        call MapViewOfFile, hFileMapping, FILE_MAP_ALL_ACCESS, 0, 0, 1000h
+        mov     lpMappedObject, eax
+        call SetDlgItemTextA, hWP, IDC_EDIT1, lpMappedObject
+
+        ret
+        
+initdlg:
+
+        call OpenFileMappingA, FILE_MAP_ALL_ACCESS, TRUE, \
+        offset szObjectName
+        cmp     eax, NULL
+        jnz     another_instance
+ 
+        call GetDlgItem, hWP, IDC_BUTTON2
+        mov hwndChild, eax
+        
+        call EnableWindow, hwndChild, FALSE
+        jmp Sk_Button
+
+another_instance:
+
+        call GetDlgItem, hWP, IDC_BUTTON1
+        mov hwndChild, eax
+    
+        call EnableWindow, hwndChild, FALSE
+
+Sk_Button:
+
+
+        call GetSystemMetrics, SM_CXFULLSCREEN
+        mov s_width, eax
+
+        call GetSystemMetrics, SM_CYFULLSCREEN
+        mov s_height, eax
+        
+        call GetWindowRect, hWP, offset rect
+
+        mov eax, rect.rc_bottom
+        sub eax, rect.rc_top
+        mov height, eax
+
+        mov eax, rect.rc_right
+        sub eax, rect.rc_left
+        mov width, eax
+
+        mov eax, s_width
+        sub eax, width
+        shr eax, 01h
+        mov s_width, eax
+
+        mov eax, s_height
+        sub eax, height
+        shr eax, 01h
+        mov s_height, eax
+
+        call MoveWindow, hWP, s_width, s_height, width, height, FALSE
+
+        ret
+
+destroy:
+
+        call UnmapViewOfFile, lpMappedObject
+        call CloseHandle, hFileMapping
+        call EndDialog, hWP, 0
+
+        ret
+	
+        DlgProc endp
+                	
+	ends
+	end	start
+
+;-------------------------------------------------------------------
+;			mmf1.rc (Compile using brcc32)
+;-------------------------------------------------------------------
+
+#define IDD_DIALOG1                     101
+#define IDI_ICON1                       102
+#define IDC_BUTTON1                     1000
+#define IDC_BUTTON2                     1001
+#define IDC_EDIT1                       1002
+#define IDC_STATIC                      -1
+
+IDD_DIALOG1 DIALOG DISCARDABLE  0, 0, 188, 94
+STYLE DS_3DLOOK | DS_CENTER | WS_POPUP | WS_CAPTION | WS_THICKFRAME
+CAPTION "MMF Sharing Data - (c) Aesculapius"
+FONT 8, "MS Sans Serif"
+BEGIN
+    PUSHBUTTON      "Exit",IDCANCEL,68,73,50,14
+    PUSHBUTTON      "Store Data",IDC_BUTTON1,7,52,76,17
+    PUSHBUTTON      "Retrieve Data",IDC_BUTTON2,105,52,76,17
+    EDITTEXT        IDC_EDIT1,34,33,118,12,ES_AUTOHSCROLL
+    LTEXT           "Type Data Here:",IDC_STATIC,66,21,54,8
+    ICON            IDI_ICON1,IDC_STATIC,7,7,21,20
+END
+IDI_ICON1               ICON    DISCARDABLE     "icon1.ico"

@@ -1,0 +1,963 @@
+<html>
+<head>
+<!--- Translation from RTF performed by UnRTF, version 0.18.1 --->
+<!--- For information about this marvellous program, --->
+<!--- please go to http://www.geocities.com/tuorfa --->
+<!--- document uses ANSI character set --->
+<!--- font table contains 9 fonts total --->
+<title>Hack en C </title>
+<!--author: Carole--->
+<!--- creaton date: 30 August 2001 16:02  --->
+<!--- revision date: 31 August 2001 11:18  --->
+<!--- total pages: 21 --->
+<!--- total words: 8047 --->
+</head>
+<body><font face="Times"><font size=3></font></font><font face="Times"><font size=3><b><font size=2>Hack en C <br>
+</font></b></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Cet article est consacr&eacute; &agrave; ce que certains appellent le hack. Il ne s'agit pas p&eacute;n&eacute;trer une n-i&egrave;me fois dans le poste de travail d'une secr&eacute;taire du Pentagone mais de tirer le maximum de performance des processeurs actuels. <br>
+<br>
+Ces processeurs sont devenus tr&egrave;s complexes. Notamment le core P6 (le c<!--- char 0x9c --->
+ur du processeur lui-m&ecirc;me) &agrave; la base des Pentium Pro, des PII avec le MMX et des PIII avec le MMX et le SSE (MMX pour nombres flottants), et des Celeron. Le Pentium 4 utilise un nouveau core encore plus sp&eacute;cial. Ces conseils s'appliquent &eacute;galement pour les autres processeurs comme l'Alpha ou le PowerPC. <br>
+<br>
+Tout le monde utilise aujourd'hui gcc. Malheureusement, il n'est plus vraiment adapt&eacute; pour garantir un maximum de performance. Par exemple, il ne sait pas encore g&eacute;rer les instructions comme le MMX et le SSE, qui utilisent un format de donn&eacute;es sp&eacute;cial (des paquets de nombres align&eacute;s en m&eacute;moire). Mais les structures de ces processeurs font que certaines mani&egrave;res de programmer permettent une acc&eacute;l&eacute;ration &eacute;norme des performances. Pour qu'un compilateur acc&eacute;l&egrave;re le code, il faudrait qu'il comprenne ce que l'on cherche &agrave; faire (la s&eacute;mantique). C'est ce que l'on appelle de la r&eacute;&eacute;criture et c'est encore au stade de la recherche. Pour l'instant, il faut y aller &agrave; la main. <br>
+<br>
+De ce fait, le code devient incroyablement complexe et tordu et donc parfaitement illisible. Il y a un certain nombre de r&egrave;gles &agrave; respecter pour que gcc s'en sorte le mieux possible. Il ne faut utiliser les autres 'trucs' qu'en dernier recours pour garder le code maintenable au maximum et compr&eacute;hensible, voire portable, si on utilise du code assembleur. <br>
+<br>
+Il ne faut pas oublier non plus que l'algorithme retenu d&eacute;termine les performances de l'application en premier lieu. Un meilleur codage peut faire gagner un facteur 10, un meilleur algorithme un facteur 1000. <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><b><font size=2>Options de gcc <br>
+</font></b></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Il faut d&eacute;j&agrave; que gcc soit pouss&eacute; dans ses retranchements avant d'aller plus avant. Voici toutes les options trouv&eacute;es dans le manuel de GCC : <br>
+<br>
+gcc -mcpu=i686 -O3 -g -o t test.c -fstrength-reduce -frerun-loop-opt -fexpensive-optimizations -fschedule-insns2 -funroll-loops -fomit-frame-pointer -malign-double -fno-strict-aliasing -pipe -malign-loops=2 -jumps=2 -malign-functions=2 -DCPU=686 -ffast-math <br>
+<br>
+Il s'agit des options qui ont l'air le plus efficace. Toutes les explications peuvent &ecirc;tre trouv&eacute;es sur : http://gcc.gnu.org/onlinedocs/gcc-2.95.3/gcc_2.html. <br>
+<br>
+-funroll-loops est utilis&eacute; pour une histoire de rendement d'instructions, assez simple &agrave; comprendre. Imaginons une b&ecirc;te boucle for : <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>label: add <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+i++<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>comparaison avec n<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+jump label<br>
+<br>
+Donc, une instruction sur quatre fait un calcul, le reste est seulement de la simple gestion de boucle. On peut donc voir un rendement de 25%... Si on a : <br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>label: add<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+add<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+i+=8<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+comparaison<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+jump label<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Donc, 8 sur 11, cela donne ainsi un rendement de 72 %. Mais il faut pouvoir d&eacute;rouler la boucle. Il semble que gcc aime bien la d&eacute;rouler 16 fois. <br>
+<br>
+Tous les "align" de la ligne de compilation servent &agrave; aligner les donn&eacute;es sur la largeur du bus du processeur. Intel pr&eacute;cise qu'un mauvais alignement peut dans le pire des cas cr&eacute;er une p&eacute;nalit&eacute; de plus de 100 cycles ! Le core P6 dispose de 3 d&eacute;codeurs. Ils re&ccedil;oivent ainsi le flot d'instructions par paquet. Lors d'une boucle, si l'adresse de saut n'est pas align&eacute;e, au pire, un seul d&eacute;codeur peut servir pour d&eacute;coder l'instruction suivante. D'o&ugrave; l'int&eacute;r&ecirc;t de l'alignement pour garantir que les 3 d&eacute;codeurs fonctionnent en m&ecirc;me temps le plus souvent. <br>
+<br>
+Il existe le m&ecirc;me probl&egrave;me pour les donn&eacute;es. En effet, le bus faisant 64 bits de large, lors d'acc&egrave;s sur des donn&eacute;es plus petites, le processeur doit faire un d&eacute;calage apr&egrave;s un load pour r&eacute;cup&eacute;rer les bonnes donn&eacute;es. C'est pour cela que l'on force l'alignement pour &eacute;viter ce d&eacute;calage de bits qui fait perdre du temps. <br>
+-pipe ne sert qu'&agrave; acc&eacute;l&eacute;rer la compilation en n'&eacute;crivant pas de fichiers temporaires sur le disque, ceci &agrave; condition que vous ayez suffisamment de m&eacute;moire. <br>
+Pour le reste, allez faire un tour du c&ocirc;t&eacute; du manuel (en bon anglais, RTFM ;-)! <br>
+<br>
+Pour &ecirc;tre s&ucirc;r des augmentations de performance, il faut cr&eacute;er un cadre strict et bien d&eacute;fini. <br>
+<br>
+Apr&egrave;s avoir effectu&eacute; une suite de tests, on s'aper&ccedil;oit vite que les temps mesur&eacute;s pour un m&ecirc;me programme, sur une m&ecirc;me machine, changent beaucoup, surtout s'ils sont courts. En fait, ces variations sont dues, le plus souvent, au temps pass&eacute; dans le noyau. Toutes les 10 ms, l'ordonnanceur est lanc&eacute;. Donc, si une performance tourne autour de 10 ms, le calcul peut se finir avant ou apr&egrave;s le passage dans l'ordonnanceur.<br>
+<br>
+Dans le temps mesur&eacute; pour une fonction donn&eacute;e, il n'y a pas que le temps pass&eacute; dans le code du noyau, mais aussi ce que l'on appelle la pollution du cache. C'est-&agrave;-dire que les donn&eacute;es contenues dans les caches sont remplac&eacute;es par celles du noyau au d&eacute;triment de celles de l'application, d'o&ugrave; une perte de temps qui, de plus, est assez al&eacute;atoire. <br>
+<br>
+En fait, il existe deux sch&eacute;mas d'ordonnancement dans le noyau Linux qui sont dits "temps r&eacute;el", SCHED_FIFO et SCHED_RR. Le mod&egrave;le habituel est le SCHED_OTHER. Il y a une notion de priorit&eacute; statique mais qui ne nous int&eacute;resse pas ici (man sched_setscheduler pour en savoir plus). Pour faire simple, un processus SCHED_FIFO garde toujours la main sauf pour la rendre express&eacute;ment (par une entr&eacute;e/sortie, par l'arriv&eacute;e d'un processus de priorit&eacute; statique sup&eacute;rieur ou par sched_yield() ). SCHED_RR est un peu plus gentil puisqu'il partage le temps entre les processus de m&ecirc;me priorit&eacute;. <br>
+<br>
+Donc, SCHED_FIFO nous garantit que l'ordonnanceur n'est jamais appel&eacute;. &Eacute;videmment, avec une boucle infinie et ce genre de priorit&eacute;, vous perdez d&eacute;finitivement la main. On peut s'en sortir en donnant la m&ecirc;me priorit&eacute; au shell que vous utilisez. Une autre solution consiste &agrave; faire de temps en temps des entr&eacute;es-sorties pour rendre un peu la main au syst&egrave;me. Le bon vieux printf() fera l'affaire. Mais je vous aurai pr&eacute;venu ! Il n'est plus question de ctrl-alt-F2 pour retrouver une petite console. <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>#include&lt;sched.h&gt;<br>
+<br>
+const struct sched_param *schedParam;<br>
+sched_setscheduler(0,SCHED_FIFO,schedParam);<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>0 d&eacute;signe le processus courant. On peut utiliser le PID pour en d&eacute;signer un autre. SCHED_FIFO d&eacute;signe le style d'ordonnancement voulu. schedParam renvoie les param&egrave;tres effectivement utilis&eacute;s par le processus. <br>
+<br>
+Pour des raisons de s&eacute;curit&eacute;, tout cela ne peut s'ex&eacute;cuter qu'en tant que root. <br>
+Pour garantir que la m&eacute;moire de l'application ne sera pas "swapp&eacute;e" sur le disque pour faire de la place, on peut utiliser : <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>#include &lt;sys/mman.h&gt;<br>
+mlockall(MCL_CURRENT); /* to avoid swaping page to disk */ <br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>munlockall();<br>
+<br>
+Ces techniques permettent de v&eacute;rifier que le code s'ex&eacute;cute un poil plus vite qu'un autre. Mais il ne faut pas oublier les applications r&eacute;elles o&ugrave; les processus ne devraient jamais tourner avec l'identit&eacute; root. <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><b><font size=2>Mesure du temps <br>
+</font></b></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Bon d'accord, pour mesurer un temps, on pourrait commencer par faire plus simple. Par exemple, on peut boucler plusieurs fois autour de la m&ecirc;me fonction pour en mesurer le temps effectif. Mais en fait, on ne mesure plus tout &agrave; fait la m&ecirc;me chose, encore &agrave; cause de la m&eacute;moire cache ! <br>
+<br>
+En fait, &agrave; la premi&egrave;re ex&eacute;cution, on remplit ce cache que l'on utilise par la suite. Il semble que le temps d'ex&eacute;cution se stabilise apr&egrave;s 3 passes. Cela d&eacute;pend &eacute;galement de l'application. Dans tous les cas, c'est une m&eacute;thode &agrave; oublier car c'est trop loin de la r&eacute;alit&eacute; ! <br>
+<br>
+Il faut pouvoir mesurer le temps de la fa&ccedil;on la plus pr&eacute;cise. L'outil de base est : <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>#include &lt;sys/times.h&gt;<br>
+struct tms timesApres;<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>times(&times;Apres);<br>
+Cette fonction renvoie donc une information sur le temps &eacute;coul&eacute; depuis le d&eacute;but d'ex&eacute;cution du processus. Pour plus d'information, faites un man 2 times. <br>
+<br>
+struct tms <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+clock_t tms_utime; /* dur&eacute;e utilisateur */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+clock_t tms_stime; /* dur&eacute;e syst&egrave;me */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+clock_t tms_cutime; /* dur&eacute;e utilisateur des fils */<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+clock_t tms_cstime; /* dur&eacute;e syst&egrave;me des fils */<br>
+;<br>
+<br>
+On peut aussi utiliser la fonction time du bash. Par exemple, "time cat toto.txt" rend le temps &eacute;coul&eacute; &agrave; lister l'hypoth&eacute;tique fichier toto.txt. <br>
+<br>
+Ces fonctions ont l'avantage de s&eacute;parer le temps pass&eacute; dans le noyau et celui pass&eacute; dans l'application. Il n'y a pas que l'ordonnanceur qui prend du temps, un malloc ou un printf en prenne &eacute;galement. Il faut d'ailleurs savoir que le temps d'un malloc est quasiment le m&ecirc;me quelle que soit la taille de m&eacute;moire demand&eacute;e (avec un minimum de 16 octets). Donc, &agrave; utiliser le moins souvent possible ! <br>
+<br>
+Mais en fait, ces fonctions sont inutiles la plupart du temps. La r&eacute;solution temporelle de ces fonctions est bloqu&eacute;e &agrave; 10 ms. Impossible de descendre en dessous ! <br>
+Avec une r&eacute;solution de 10 ms et l'impossibilit&eacute; de lancer plusieurs fois la m&ecirc;me fonction, est-ce donc la fin du monde ? Non ! On va directement attaquer le compteur interne du core P6. Ce n'est &eacute;videmment pas portable mais cela concerne 95% du public. C'est un compteur 64 bits qui s'incr&eacute;mente &agrave; chaque impulsion d'horloge et qui d&eacute;marre au lancement de la machine. Il doit faire un tour complet en un mill&eacute;naire. <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>inline unsigned long long int GetTick()<br>
+<br>
+<br>
+ unsigned long long int x;<br>
+ /* __asm__ volatile (".byte 0x0f, 0x31" : "=A" (x));*/<br>
+ __asm__ volatile ("RDTSC" : "=A" (x));<br>
+ return x;<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+<br>
+On utilise ici une autre propri&eacute;t&eacute; non portable offerte par GCC, les long long. Ce sont en fait des nombres entiers sur 64 bits. On utilise ici un code assembleur &agrave; l'int&eacute;rieur du code C. RDTSC (Read Time-Stamp Counter) est le vrai mn&eacute;monique assembleur pour lire ce compteur. Si l'assembleur utilis&eacute; est trop vieux, on peut utiliser la directive .byte qui &eacute;crit directement la valeur binaire dans le code. Donc, 0f31 est le code de l'instruction RDTSC. <br>
+<br>
+L'instruction __asm__ de gcc est bien plus puissante que l'habituelle inclusion de code dans le fichier assembleur. Le "=A" (x) renseigne le compilateur sur les variables &agrave; manipuler. Ici, cela signifie que l'on utilise les registres du processeur de type A, le registre 64 bits (EDX:EAX). Le = signifie que l'on &eacute;crit dedans. (x) indique que l'on utilise la variable x. (Plus d'informations peuvent &ecirc;tre trouv&eacute;es dans la documentation de gcc dans C Extensions &gt;Extended Asm). <br>
+Cette fonction renvoie un nombre qui correspond au nombre d'impulsions d'horloge. Bien s&ucirc;r, le fait de r&eacute;cup&eacute;rer cette information co&ucirc;te un peu de temps puisqu'il faut bien sauvegarder EDX:EAX quelque part. Cela correspond &agrave; 32 cycles, ce qui est souvent compl&egrave;tement n&eacute;gligeable. Donc, avec une machine &agrave; 300 Mhz, en divisant par 300 000 000, on obtient le temps en secondes (n'oubliez pas de passer en float ;p). <br>
+<br>
+Mais on peut faire plus pr&eacute;cis en allant chercher les infos l&agrave; o&ugrave; elles sont : <br>
+<br>
+ $cat /proc/cpuinfo | grep cpu MHz<br>
+ cpu MHz : 300.691<br>
+<br>
+J'ai donc ici une fr&eacute;quence de 300 691 000 Hz. <br>
+<br>
+En fait, on peut aller encore plus loin. Intel a dispos&eacute; dans ces processeurs des compteurs d'&eacute;v&eacute;nements, 2 dans le P6 et 18 dans le Pentium 4. Il existe des dizaines d'&eacute;v&eacute;nements que l'on peut surveiller. Par exemple, on peut regarder le nombre de cycles o&ugrave; le processeur ne fait rien (&agrave; cause de d&eacute;pendances ou d'attente de donn&eacute;es), ou encore le taux de cache miss (voir un peu plus bas). <br>
+<br>
+Malheureusement, si on peut lire les compteurs en mode utilisateur, on doit &ecirc;tre en mode kernel pour dire quel &eacute;v&eacute;nement doit &ecirc;tre surveill&eacute;. </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Les instructions en question sont : RDMSR (Read Model Specific Counter), WRMSR (write Model Specific Counter) et RDPMC (read performance-monitoring counter). <br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>En fait, avec le kernel 2.4, on peut acc&eacute;der aux msr au travers de /dev/cpu/%d/msr. A vous de voir comment ! Il n'existe pas encore de documentation. Il n'y a pas de 'man msr', il faut lire les sources du noyau : 'locate msr' pour les trouver. <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><b><font size=2>Les arcanes des processeurs<br>
+</font></b></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Le core P6 dispose d'un pipeline de longueur 10, l'Athlon, 14, le Pentium 4, 20. On peut parler aussi des 14 &eacute;tages de l'UltraSparc III. Cela fait donc au moins 7 instructions en cours d'ex&eacute;cution &agrave; chaque instant pour le P6 (c'est le principe du pipeline : d&eacute;couper chaque t&acirc;che en morceau pour pouvoir augmenter la fr&eacute;quence d'horloge, car il y a moins de choses &agrave; faire entre 2 coups d'horloge ; c'est une sorte de parall&eacute;lisme car 7 (un peu moins que 10) instructions pour le P6 sont en cours d'ex&eacute;cution par pipeline, mais il faut 10 coups d'horloge pour finir une op&eacute;ration).<br>
+<br>
+Dans ces nouveaux processeurs, plusieurs instructions peuvent &ecirc;tre ex&eacute;cut&eacute;es en m&ecirc;me temps (5 instructions pour le P6 et jusqu'&agrave; 20 pour l'Itanium). <br>
+Le P6 dispose de 5 pipelines : 2 pour les unit&eacute;s enti&egrave;res dont un utilis&eacute; aussi pour les op&eacute;rations flottantes, 2 pour faire des stores (store address calculation unit avec un buffer de 12 entr&eacute;es et store data unit avec aussi un buffer de 12 entr&eacute;es ), un pour le load avec 16 load buffer. <br>
+<br>
+Donc, 7*5=35 instructions peuvent tourner au m&ecirc;me instant. A l'extr&ecirc;me, l'alpha 21264 peut ex&eacute;cuter jusqu'&agrave; 80 instructions simultan&eacute;ment ! Le probl&egrave;me consiste &agrave; remplir compl&egrave;tement et en permanence ce pipeline et &eacute;viter les insertions de "bulles" (pseudo-instructions dans le pipeline qui ne servent &agrave; rien). <br>
+<br>
+Dans les calculs, il faut consid&eacute;rer les d&eacute;pendances entre les instructions. Cela signifie qu'une instruction ne peut pas s'ex&eacute;cuter tant que l'instruction pr&eacute;c&eacute;dente ne soit termin&eacute;e. Par exemple, <br>
+<br>
+1) x=a+b<br>
+2) y=x*a<br>
+<br>
+Ici, les deux instructions ne peuvent &ecirc;tre ex&eacute;cut&eacute;es en parall&egrave;le, donc l'addition doit se finir avant de passer &agrave; la multiplication (car x doit &ecirc;tre calcul&eacute; avant). On parle de d&eacute;pendance vraie ou d&eacute;pendance de flot. Les autres d&eacute;pendances sont les antid&eacute;pendances (write after read) ou les d&eacute;pendances de sortie (write after write) qui peuvent &ecirc;tre &eacute;vit&eacute;es. Les vraies d&eacute;pendances sont les d&eacute;pendances dites RAW (read after write). Les d&eacute;pendances RAR (read after read) ne g&ecirc;nent pas vraiment. <br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+1) x = a + b <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+2) y = x * a<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+3) x = c + d<br>
+<br>
+Ici, il y a toujours une vraie d&eacute;pendance entre 1) et 2) sur x. Mais il y a une fausse d&eacute;pendance entre 2) et 3) sur x. En effet, dans 3), il y a l'utilisation de x qui sert de variable temporaire. Or, on pourrait utiliser une autre variable et casser cette d&eacute;pendance. <br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+1) x = a + b <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+2) y = x * a<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+3) x' = c + d<br>
+<br>
+Ainsi, 2) et 3) peuvent s'effectuer en parall&egrave;le. Heureusement, la plupart des processeurs sont l&agrave; pour acc&eacute;l&eacute;rer les vieux binaires. Ils sont donc capables de renommer x en x' et r&eacute;organiser les calculs s'il y a une fausse d&eacute;pendance. <br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+1) x = a + b <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+2) y = x * a<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>3) x' = c + d<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+4) w = e + f<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Ici, le processeur peut bouger la 3&egrave;me et la 4&egrave;me instruction entre 1) et 2). Alors, pourquoi s'ennuyer &agrave; y faire attention ? Simplement parce que la fen&ecirc;tre de travail est forc&eacute;ment limit&eacute;e. De plus, on peut souvent r&eacute;-&eacute;crire le programme pour &eacute;viter les vrais d&eacute;pendances. <br>
+<br>
+Au niveau du C, le fait de prendre un maximum de variables temporaires plut&ocirc;t que de les r&eacute;utiliser aide le compilateur &agrave; mieux optimiser. Car il est pour l'instant incapable de comprendre la s&eacute;mantique du programme. Par exemple : <br>
+<br>
+s = a + b + c + d<br>
+<br>
+correspond en fait &agrave; s = ((a + b) + c) + d , or s = (a + b) + (c + d) et est en r&eacute;alit&eacute; plus efficace car deux additions peuvent &ecirc;tre effectu&eacute;es en parall&egrave;le. <br>
+Et cela devient : <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>tmp1 = a+b<br>
+tmp2 = tmp1+c<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>s = tmp2+d<br>
+<br>
+versus <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>tmp1 = a+b || tmp2 = c + d<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>s = tmp1 + tmp2 <br>
+<br>
+|| signifie "s'ex&eacute;cute en parall&egrave;le avec". <br>
+<br>
+Les progr&egrave;s des compilateurs font que ces optimisations pourraient &ecirc;tre appliqu&eacute;es automatiquement. Pour faire cela, les compilateurs devraient savoir que l'addition est commutative (a+b=b+a), transitive ( (a+b)+c = a+(b+c) ) pour mettre en oeuvre la r&eacute;&eacute;criture. Mais, selon la norme IEEE, le compilateur n'a pas le droit de toucher &agrave; l'arithm&eacute;tique flottante &agrave; moins de le pr&eacute;ciser par une option (-ffast-math pour gcc) et... qu'il puisse faire quelque chose. Donc, tout ce qui touche aux flottants ne sera, a priori, jamais optimis&eacute; &agrave; cause des probl&egrave;mes d'arrondi. <br>
+<br>
+Voici un programme exemple, compil&eacute; avec les options pr&eacute;c&eacute;dentes, mais avec un '-S' au lieu du '-o t'. Ainsi, la compilation s'arr&ecirc;te au fichier assembleur. <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>gcc -mcpu=i686 -O3 -g -S test.c -fstrength-reduce -frerun-loop-opt -fexpensive-optimizations -fschedule-insns2<br>
+<br>
+-funroll-loops -fomit-frame-pointer -malign-double -fno-strict-aliasing -pipe -malign-loops=2 -jumps=2<br>
+-malign-functions=2 -DCPU=686 -ffast-math <br>
+<br>
+#include&lt;stdio.h&gt;<br>
+#include&lt;sched.h&gt;<br>
+<br>
+main()<br>
+<br>
+ int s;<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>int a,b,c,d;<br>
+ long long t1,t2;<br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>const struct sched_param *schedParam;<br>
+ sched_setscheduler(0,SCHED_FIFO,schedParam);<br>
+<br>
+ scanf("%i %i %i %i",&amp;a,&amp;b,&amp;c,&amp;d);<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>__asm__ volatile ("RDTSC" : "=A" (t1));<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>s = ((a+b)+(c+d)); <br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>__asm__ volatile ("RDTSC" : "=A" (t2));<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>printf("opt : %Ldn(%i)n",t2-t1,s);<br>
+<br>
+ scanf("%i %i %i %i",&amp;a,&amp;b,&amp;c,&amp;d);<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>__asm__ volatile ("RDTSC" : "=A" (t1));<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>s = a+b+c+d;<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>__asm__ volatile ("RDTSC" : "=A" (t2));<br>
+<br>
+ printf("Usuel : %Ldn(%i)n",t2-t1,s);<br>
+<br>
+<br>
+Les printf et les scanf assurent que l'optimiseur n'optimisera "pas trop", en enlevant les calculs qu'il juge inutiles car reli&eacute;s &agrave; aucune sortie. On remarque l'utilisation de %Ld dans le printf pour imprimer un long long. <br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>movl %eax,120(%esp)<br>
+ movl %edx,124(%esp)<br>
+ movl 140(%esp),%eax<br>
+ movl 132(%esp),%edx<br>
+ addl 128(%esp),%edx<br>
+ addl 136(%esp),%eax<br>
+ addl %eax,%edx<br>
+ movl %edx,100(%esp)<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>versus<br>
+<br>
+ movl 132(%esp),%esi<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>movl %eax,120(%esp)<br>
+ addl 128(%esp),%esi<br>
+ movl %edx,124(%esp)<br>
+ addl 136(%esp),%esi<br>
+ addl 140(%esp),%esi<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>On voit donc plus d'instructions dans le premier cas, mais l'ex&eacute;cution est en fait plus rapide ! 140(%esp) est une indirection vers la pile, donc le temps pass&eacute; dans les movl est pass&eacute; &eacute;galement dans les addl correspondants. On remarque aussi qu'il y a beaucoup moins de d&eacute;pendances vraies. Dans le deuxi&egrave;me cas, il y a une d&eacute;pendance entre presque chaque instruction (%esi), donc m&ecirc;me une ex&eacute;cution dans le d&eacute;sordre ne pourra pas acc&eacute;l&eacute;rer le code contrairement au premier cas. <br>
+Pour ex&eacute;cuter le programme, vous devez entrer des valeurs pour les variables. Pour 1 2 3 4 &eacute;crit deux fois, l'ex&eacute;cution du programme rend : <br>
+<br>
+Opt : 38<br>
+(10)<br>
+Usuel : 59<br>
+(10)<br>
+<br>
+Cela donne un avantage pour la version avec parenth&egrave;ses mais vous remarquerez que les chiffres changent &agrave; chaque lancement. De plus, si l'on augmente le nombre de variables, le nombre d'acc&egrave;s &agrave; la m&eacute;moire augmente (pour stocker les variables temporaires), car le x86 a un tout petit nombre de registres. On peut, par exemple, pour 8 variables, faire quelque chose comme ceci : s=(a+b)+(c+d)+(e+f)+(g+h). <br>
+Toujours pas convaincu ? On va voir ce que l'on appelle de la r&eacute;&eacute;criture de boucle. Par exemple, il s'agit simplement d'additionner un long vecteur. <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>int scatter1(int n, int A[n])<br>
+<br>
+ int i,ret=0;<br>
+<br>
+ for(i=0;i&lt;n;i++)<br>
+ ret +=A[i];<br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>return ret;<br>
+<br>
+Ce n'est pas compliqu&eacute;, hein ? Comme vous vous en doutez, on peut faire mieux : <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>int scatter2(int n, int A[n])<br>
+<br>
+ int i,ret=0;<br>
+ int tmp1=0,tmp2=0,tmp3=0,tmp4=0;<br>
+ for(i=0;i&lt;n;i+=4)<br>
+ <br>
+ tmp1 +=A[i];<br>
+ tmp2 +=A[i+1];<br>
+ tmp3 +=A[i+2];<br>
+ tmp4 +=A[i+3];<br>
+ <br>
+ ret = (tmp1+tmp2)+(tmp3+tmp4);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>return ret;<br>
+<br>
+<br>
+Donc, ma toute petite boucle vient d'&ecirc;tre &eacute;clat&eacute;e en quatre. Cela ressemble &agrave; comment faire simple quand on peut faire compliqu&eacute;. Et pourquoi quatre ? Bah, parce que ! En fait, par essais/erreurs, 4 a &eacute;t&eacute; &eacute;lu le meilleur chiffre. C'est un rapport entre le nombre d'instructions ex&eacute;cutables en parall&egrave;le, la profondeur du pipeline et les d&eacute;pendances associ&eacute;es, le nombre d'acc&egrave;s &agrave; la m&eacute;moire en attente cons&eacute;cutive, la latence des instructions et le rapport entre la vitesse du core (le c<!--- char 0x9c --->
+ur du processeur) et celle de la m&eacute;moire. <br>
+<br>
+Si les vecteurs sont trop petits, on peut perdre des performances. Mais on va voir plus loin comment faire mieux. <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><b><font size=2>Les sauts <br>
+</font></b></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Un autre probl&egrave;me pour garder le pipeline rempli provient des sauts dans le programme. <br>
+<br>
+Lorsqu'il y a une rupture du flot d'instructions, le contenu du pipeline doit &ecirc;tre vid&eacute; avant de commencer l'ex&eacute;cution des instructions en provenance d'une autre adresse. Certaines vieilles &eacute;tudes assuraient qu'il y avait un saut toutes les trois instructions en moyenne. Avec une vingtaine d'instructions minimum possibles en cours d'ex&eacute;cution, le processeur passerait son temps &agrave; ne rien faire. <br>
+<br>
+Heureusement, les processeurs essayent de pr&eacute;parer un &eacute;ventuel saut vers des adresses qu'ils croisent. Ils font de la pr&eacute;diction de branchement, ce qui assurent un cycle de p&eacute;nalit&eacute;, au pire, si la pr&eacute;diction est juste. Sinon, plus d'une dizaine de cycles peuvent &ecirc;tre perdus. <br>
+<br>
+Il faut donc minimiser l'utilisation de saut (if, la plupart du temps) car la taille des tables de pr&eacute;dictions est forcement limit&eacute;e. Des performances catastrophiques peuvent &ecirc;tre obtenues si la probabilit&eacute; de faire un saut ou non (on dit prendre un saut, on parle de taken or not taken en anglais) est de 50%. Dans ce cas, le syst&egrave;me va se tromper plus de 50% du temps. <br>
+<br>
+Il existe plusieurs m&eacute;thodes pour tenter de pr&eacute;dire un branchement. Une &eacute;tude rapide consid&egrave;re que dans le cas de boucle, 90 % du temps, le branchement est pris. Dans le cas d'une clause if, on ne peut pas savoir. De fait, une pr&eacute;diction qui donne toujours taken a raison 60-70% du temps. <br>
+<br>
+Mais si la p&eacute;nalit&eacute; est de 10 cycles, en cas d'erreur dans 30% des cas, 30% du code prend, grossi&egrave;rement, 10 fois plus de temps &agrave; s'ex&eacute;cuter que le reste, qui devient du m&ecirc;me co&ucirc;t presque n&eacute;gligeable en temps d'ex&eacute;cution par comparaison. <br>
+<br>
+La m&eacute;thode la plus courante utilise une fsm (finite state machine ou machine &agrave; &eacute;tat fini) &agrave; quatre &eacute;tats. </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Ceux-ci s'appellent : strong taken, taken, not taken, strong not taken. </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Imaginons que l'&eacute;tat initial soit taken ; selon la premi&egrave;re &eacute;tude, la fsm pr&eacute;dit que le branchement est pris. S'il l'est effectivement, elle passe en strong taken, sinon en not taken, et ainsi de suite. Chaque "bonne" pr&eacute;diction (deux de suite en fait) renforce la croyance du syst&egrave;me dans ses convictions. <br>
+ <br>
+On comprend bien ce qui se passe avec une boucle for ou while. La plupart du temps, la boucle est prise un certain nombre de fois avant de continuer. La pr&eacute;diction reste ainsi &agrave; taken. Par contre, si une clause 'if' est "rarement" effectu&eacute;e, elle est saut&eacute;e par d&eacute;faut. <br>
+<br>
+Dans les processeurs les plus avanc&eacute;s, il existe une hi&eacute;rarchie dans les tables qui conservent ces valeurs. La question est de savoir, lorsque l'on n'a plus de place, quelle ancienne valeur li&eacute;e &agrave; une adresse de saut doit &ecirc;tre remplac&eacute;e. <br>
+<br>
+Le P6 utilise encore un syst&egrave;me plus complexe avec quatre niveaux de profondeur au lieu de deux. La table (dite BTB) stocke 512 adresses. Une erreur co&ucirc;te en moyenne entre 10 et 15 cycles et au pire 26 cycles ! Intel utilise aussi un pr&eacute;dicat statique qui est utilis&eacute; lorsque le processeur voit le saut pour la premi&egrave;re fois. Le processeur pr&eacute;voit de prendre le saut s'il repart en arri&egrave;re car il s'agit certainement d'une boucle. Si le saut va vers l'avant, il pr&eacute;voit de ne pas le prendre consid&eacute;rant qu'il s'agit d'une clause if. <br>
+Il existe une nouvelle instruction dans les P6 qui permet d'&eacute;viter les vrais sauts. Il s'agit de l'instruction CMOV. Il s'agit de copier le contenu d'un registre dans un autre sous la condition de la valeur d'un 3i&egrave;me. L'avantage est de ne pas toucher au flux des instructions. Cette instruction peut &ecirc;tre utilis&eacute;e dans tous les cas o&ugrave; des r&eacute;sultats de calcul sont n&eacute;cessaires pour faire un choix. Souvent, la pr&eacute;diction de branchement est tr&egrave;s mauvaise sur ce genre de cas. Connaissant la p&eacute;nalit&eacute; due aux mauvaises pr&eacute;dictions, il vaut mieux faire quelques calculs en plus, puis faire un choix avec CMOV. <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><b><font size=2>L'influence des instructions du processeur <br>
+</font></b></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Par ailleurs, les instructions disponibles influent sur les performances que l'on peut obtenir. <br>
+<br>
+Par exemple, il est conseill&eacute; d'utiliser des entiers non sign&eacute;s pour les compteurs de boucles et les index des tableaux. Notamment, les divisions et le modulo non sign&eacute; sont plus rapides. La fameuse multiplication, ou division par deux, peut &ecirc;tre remplac&eacute;e par un shift uniquement en non sign&eacute;. <br>
+<br>
+A l'inverse, si vous voulez convertir un entier en flottant, il vaut que cela soit un entier sign&eacute; car il existe une instruction d&eacute;di&eacute;e, contrairement aux entiers non sign&eacute;s pour les codes x86. <br>
+<br>
+Il vaut mieux parfois faire certaines optimisations &agrave; la main plut&ocirc;t que de faire confiance au compilateur et &ecirc;tre s&ucirc;r des performances. Il s'agit entre autres des d&eacute;roulements des boucles. Toutes les boucles de moins d'une vingtaine d'it&eacute;rations m&eacute;ritent d'&ecirc;tre d&eacute;roul&eacute;es (cela correspond aux diff&eacute;rentes latences et p&eacute;nalit&eacute;s en cas de mauvaises pr&eacute;dictions). <br>
+<br>
+Il faut aussi r&eacute;duire au maximum le contenu interne des boucles. Cela para&icirc;t &eacute;vident puisque le contenu d'une boucle est fait pour &ecirc;tre r&eacute;p&eacute;t&eacute;. Mais on ne pense pas toujours qu'il vaut mieux sortir un if et dupliquer la boucle dans le code que de laisser le if &agrave; l'int&eacute;rieur. for() if()... else...  doit &ecirc;tre remplac&eacute; par : if()for()... elsefor()... <br>
+<br>
+Il vaut mieux &eacute;viter les divisions qui sont les instructions les plus lentes (18 cycles horloges en flottant 32 bits contre un pour une multiplication). On peut parfois les remplacer par des multiplications. <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>m =i /j /k;<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>m =i /(j * k); est plus rapide.<br>
+<br>
+Il vaut mieux extraire &agrave; la main les sous-expressions des calculs et utiliser des variables temporaires autant que possible. Cela &eacute;vite de refaire des calculs inutiles, surtout avec les variables flottantes o&ugrave; il est interdit de changer l'ordre des calculs &agrave; cause des probl&egrave;mes d'arrondis. Mais il ne faut pas non plus introduire plus de "choses &agrave; faire" qu'auparavant. En effet, l'acc&egrave;s &agrave; la m&eacute;moire peut &ecirc;tre plus co&ucirc;teux que de refaire une addition. <br>
+<br>
+Avec des nombres flottants :<br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>a1=b/c<br>
+ a2=d/c<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>En mieux :<br>
+<br>
+ t=1/c<br>
+ a1=b*t<br>
+ a2=d*t<br>
+<br>
+il vaut mieux d&eacute;clarer les variables dans l'ordre croissant de taille pour favoriser l'alignement 64 bits et &eacute;viter de futurs mauvais alignements et les p&eacute;nalit&eacute; associ&eacute;es (comme gcc aligne les donn&eacute;es, cela fera gagner de la place m&eacute;moire). Il faut mettre les doubles avant les int, qui doivent &ecirc;tre avant les short, etc. <br>
+<br>
+Lorsque l'on &eacute;crit un switch, les conditions sont test&eacute;es les unes apr&egrave;s les autres. Donc, il vaut mieux mettre la clause la plus probable en premier et ainsi de suite. <br>
+<br>
+On peut faire aussi ce genre de choses avec les clauses if. Cela se complique avec les optimisations du C. En effet, lors d'une op&eacute;ration bool&eacute;enne avec un || (OR), si la premi&egrave;re clause est vraie, quel que soit le r&eacute;sultat de la seconde, le r&eacute;sultat sera vrai. Il est donc inutile d'ex&eacute;cuter la deuxi&egrave;me clause. Il se passe la m&ecirc;me chose avec un &amp;&amp; (ET) si la premi&egrave;re expression est fausse. La premi&egrave;re clause doit donc &ecirc;tre la clause qui rend le r&eacute;sultat qui a le plus d'importance dans la d&eacute;cision (vrai avec un OU, faux avec un ET), ou qui prendra le moins de temps de calcul. <br>
+<br>
+Mais si on prend en compte la pr&eacute;diction de branchement, cela se complique encore un peu plus. A chaque ex&eacute;cution de clause correspond un saut et la pr&eacute;diction associ&eacute;e. Il faut donc utiliser au maximum des clauses faciles &agrave; pr&eacute;dire (revoir plus haut). S'il reste encore des clauses impossibles &agrave; pr&eacute;dire, il vaut mieux les mettre le plus loin possible dans le test du if. <br>
+<br>
+Pour l'instant, on a essay&eacute; de se passer des optimisations du compilateur. Mais il y a deux moyens de l'aider. D'abord, l'utilisation de 'const' pour qualifier les param&egrave;tres d'entr&eacute;e d'une fonction. Cela autorise plus d'optimisation. On peut aussi utiliser le pr&eacute;fixe 'static' devant les fonctions d'un m&ecirc;me fichier. Cela signifie que la fonction n'est visible que dans le fichier correspondant et cela permet de faire de "l'inlining agressif" (le compilateur copie/colle le code de la fonction l&agrave; o&ugrave; elle est appel&eacute;e). L'int&eacute;r&ecirc;t est de gagner le code d'appel des fonctions et de supprimer les p&eacute;nalit&eacute;s associ&eacute;es. Cela concerne toutes les petites fonctions. Ainsi, elles n'existent plus dans le binaire et ne peuvent pas &ecirc;tre appel&eacute;es par un autre objet (provenant d'un autre fichier, par exemple). <br>
+<br>
+Avant de continuer la description des processeurs, je vais terminer par un dernier conseil, qui me fait particuli&egrave;rement plaisir, car les conseils m'ont traumatis&eacute; quand j'&eacute;tais petit. Il concerne les pointeurs. Pour faire bref, supprimez-les ! En fait, les compilateurs ne savent pas trop comment optimiser les acc&egrave;s aux donn&eacute;es les utilisant. <br>
+<br>
+Par exemple, <br>
+<br>
+int a ;<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>int * p ;<br>
+....<br>
+p = &amp; a ;<br>
+...<br>
+f(a)<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>g(*p)<br>
+<br>
+Cela s'appelle le probl&egrave;me d'aliasing. La valeur contenue dans a est dot&eacute;e de deux noms. A moins de faire une &eacute;tude compl&egrave;te sur la vie du pointeur, le compilateur n'a pas d'autre choix que d'y acc&eacute;der en passant syst&eacute;matiquement par la m&eacute;moire, alors qu'il pourrait mettre la valeur dans un registre. <br>
+<br>
+D'une mani&egrave;re g&eacute;n&eacute;rale, un compilateur ne saura pas quoi faire d'un pointeur sans de gros calculs. Il vaut mieux essayer d'utiliser un tableau, il est beaucoup plus facile d'y extraire du parall&eacute;lisme. Il semble que gcc 3.0 g&egrave;re mieux le probl&egrave;me. <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><b><font size=2>Les acc&egrave;s m&eacute;moires <br>
+</font></b></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Le principal goulot d'&eacute;tranglement des processeurs actuels est la bande passante avec la m&eacute;moire. <br>
+<br>
+Un core P6 dispose de 3 d&eacute;codeurs, c'est-&agrave;-dire qu'il peut lire trois instructions en m&ecirc;me temps. Or, une instruction x86 fait entre 2*8 et 15*8 bits. Si l'on consid&egrave;re une valeur moyenne, 16 bits, un processeur &agrave; 1 Ghz a besoin de 3*2*1=6 Go/s de bande passante... Or, le bus syst&egrave;me &agrave; 133 Mhz propose une bande passante de 133*64/8=1,064 Go/s en cr&ecirc;te (cela n'est vrai que lors de lecture d'adresse cons&eacute;cutive (mode burst), un cycle r&eacute;ellement al&eacute;atoire (qui correspond &agrave; la latence plus le cycle d'un acc&egrave;s lui-m&ecirc;me) prend aujourd'hui autour de 50 ns, soit une bande passante de 20*64/8=160 Mo/s. D'ailleurs, si les RDRAM ont si mauvaise presse, c'est parce que leur latence tourne plut&ocirc;t autour de 60 ns.). <br>
+<br>
+En fait, je n'ai compt&eacute; que les acc&egrave;s pour le fetch ("pour aller chercher") des instructions. Or, si on regarde le code g&eacute;n&eacute;r&eacute; plus haut, il y a quasiment un acc&egrave;s m&eacute;moire (sur 32 bits) par instruction. Il faut donc 1*32/8= 4 Go/s en plus. Si on utilise des instructions MMX ou SSE, les donn&eacute;es qui transitent sont respectivement sur 64 et 128 bits. Il faut donc encore doubler, voire quadrupler le chiffre ! On arrive ainsi &agrave; 4*4+6 = 22Go/s dans le cas extr&ecirc;me... <br>
+<br>
+Le pauvre sous-syst&egrave;me m&eacute;moire ne peut fournir en burst que 1Go/s, voire maintenant 2Go/s avec les m&eacute;moires DDR-SDRAM. Vous comprenez mieux ainsi l'utilit&eacute; de la m&eacute;moire cache. <br>
+<br>
+Le premier niveau de m&eacute;moire cache doit donc absolument tourner &agrave; la m&ecirc;me vitesse que le processeur, sinon celui-ci ne pourra jamais aller &agrave; pleine vitesse. La quantit&eacute; de m&eacute;moire de ce cache L1 tourne autour de 64 Ko-128 Ko. Le cache L2, 256 Ko pour l'Athlon, est un peu plus lent. Il a besoin de quelques cycles pour &ecirc;tre acc&eacute;d&eacute;. De plus, il est "direct mapped". En gros, cela signifie que les donn&eacute;es ont un peu moins de chances de s'y trouver. <br>
+<br>
+Comment fonctionne une m&eacute;moire cache ? Un cache de 256 Ko dispose de 18 bits d'adresse (2^18/1024 = 256). On sait que les lignes de cache font 32 octets sur les P6. Les 32 octets s'adressent avec 5 bits (l'adresse est toujours relative &agrave; l'octet, il n'y a gu&egrave;re que les DSP qui font autrement). On peut voir les 32 octets comme le paquet de base. L'adresse des processeurs est en gros sur 32 bits (les X86 seraient pr&eacute;vus jusqu'&agrave; plus de 40 bits de m&eacute;moire physique, mais avec toujours uniquement 32 bits pour chaque processus). <br>
+<br>
+Si, dans le cache, on veut acc&eacute;der aux donn&eacute;es, on acc&egrave;de &agrave; la ligne ; il ne reste donc que 13 bits d'adressage. Lors d'un acc&egrave;s m&eacute;moire, l'adresse est d&eacute;coup&eacute;e en trois morceaux. Les lsb (least significant bit ou bit de poids faible; 7 bits) sont mis de c&ocirc;t&eacute; pour pouvoir choisir le bon mot dans une ligne. Le deuxi&egrave;me paquet (13 bits) acc&egrave;de directement au cache et &agrave; une m&eacute;moire de tag (de drapeaux ou d'informations). Les msb (most significant bit ou bit de poids fort), les 14 bits restants, sont compar&eacute;s avec la sortie de la m&eacute;moire tag. Si les valeurs sont identiques, cela signifie que le cache contient bien la donn&eacute;e recherch&eacute;e. Sinon, il faut acc&eacute;der &agrave; la m&eacute;moire principale. <br>
+Vous n'avez rien compris ? Essayez de comprendre le sch&eacute;ma avant de relire le paragraphe pr&eacute;c&eacute;dent, vous verrez, ce n'est pas si complexe. <br>
+<br>
+On se rend bien compte de la limite de la m&eacute;thode (si, si), puisque chaque adresse de la m&eacute;moire principale multiple de la taille du cache se refl&egrave;te dans la m&ecirc;me adresse de celui-ci. Dit autrement, une case m&eacute;moire ne se refl&egrave;te que dans une seule et unique case de la cache. On peut contourner le probl&egrave;me en mettant l'&eacute;quivalent de plusieurs caches en parall&egrave;le. S'il y en a quatre, on appelle cela des 4-ways set associative cache. Donc, il a quatre emplacements possibles pour chaque adresse m&eacute;moire. S'il y a un m&eacute;canisme pour chaque ligne, on dit que le cache est full associative. C'est rare d'en trouver ; plus le nombre de voix augmente et moins l'efficacit&eacute; augmente. 16-way est peut-&ecirc;tre ce que l'on trouve de mieux. <br>
+<br>
+Malheureusement, les caches multivoies ont beaucoup plus de contr&ocirc;le, notamment la m&eacute;moire de tag qui devient assez grosse. Donc, le cache L1 est souvent multivoie pour augmenter les chances de hits ; ce sont les m&eacute;moires les plus rapides. Pour le cache L2, on utilise la m&eacute;moire la plus dense possible, qui est 1-way pour limiter la taille de la m&eacute;moire de tag (tout en gardant un temps d'acc&egrave;s acceptable). Ici, la m&eacute;moire tag est de 14 Ko pour 256 Ko de m&eacute;moire. <br>
+ <br>
+Un cache miss signifie que la donn&eacute;e (ou l'instruction) ne se situe pas dans le cache et qu'il faut aller la chercher dans le niveau de cache sup&eacute;rieur ou dans la m&eacute;moire principale. La p&eacute;nalit&eacute; tourne alors autour de 150 cycles, o&ugrave; le processeur ne fait absolument rien s'il y a une d&eacute;pendance de flot.<br>
+<br>
+Il faut donc absolument rester en m&eacute;moire cache. Ces petites m&eacute;moires ultra-rapides n'ont de sens que si les programmes ex&eacute;cut&eacute;s respectent le concept de localit&eacute;. Cela signifie que la prochaine information que l'on va chercher est proche de la position de l'information en cours de traitement. Ainsi, lors d'un acc&egrave;s &agrave; la m&eacute;moire centrale, une lecture burst est effectu&eacute;e et au moins 32 octets (pour le P6, 64 pour l'Athlon) sont lus cons&eacute;cutivement pour remplir "une ligne de cache". Ainsi, &agrave; la prochaine lecture, on pense avoir plus de chance de trouver la donn&eacute;e suivante. L'utilisation de burst permet aussi de mieux utiliser les acc&egrave;s &agrave; la m&eacute;moire. <br>
+<br>
+Il existe aussi un autre petit cache constitu&eacute; de 12 "store buffer" (core P6) o&ugrave; les donn&eacute;es sont stock&eacute;es avant d'&ecirc;tre &eacute;crites vers la m&eacute;moire pour rendre la main beaucoup plus rapidement. C'est une sorte d'&eacute;criture asynchrone mais o&ugrave; l'ordre est pr&eacute;serv&eacute;. Ces buffers servent &agrave; masquer la latence de la m&eacute;moire. Pour gagner du temps, il faut toujours &eacute;viter d'avoir plus de 12 writes dans le m&ecirc;me bloc d'instructions. Dans le cas contraire, le cpu doit attendre l'&eacute;criture effective dans la m&eacute;moire. <br>
+<br>
+Mais attention, ce temps peut &ecirc;tre long. Cela d&eacute;pend du mode dans lequel fonctionne le cache : Write-thought and write-back. L'un &eacute;crit d'abord dans le cache qui retransmet effectivement dans la m&eacute;moire quand il doit &eacute;vincer une ligne de cache. Donc, le contenu de la SDRAM n'est pas coh&eacute;rent avec le contenu du cache. L'autre &eacute;crit directement dans la m&eacute;moire centrale. C'est lent mais la m&eacute;moire est coh&eacute;rente. <br>
+<br>
+Le strip-mining est une technique qui consiste &agrave; casser des boucles pour augmenter la localit&eacute; des donn&eacute;es. Imaginons que l'on manipule un grand tableau de N*M valeurs, int tab[n][m]. On sait que le d&eacute;placement d'une adresse se fait sur le dernier indice pour gcc (*(tab+i*n+j)=tab[i][j]). Mais il semble que cela ne soit pas le cas de tous les compilateurs. <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>for(k=0;k&amp;ltK;k++)<br>
+ for(j=0;j&lt;m;j++)<br>
+ for(i=0;i&lt;n;i++) <br>
+ <br>
+ ..<br>
+ tab[i][j]<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>..<br>
+ <br>
+<br>
+En imaginant que n et m soient assez grands, tab ne peut pas rentrer dans le cache en entier. Sachant qu'&agrave; chaque cache miss, une ligne de 32 octets est charg&eacute;e, il faut en profiter et travailler sur les donn&eacute;es align&eacute;es ! <br>
+<br>
+Il faut d&eacute;j&agrave; inverser les deux compteurs, pour que se soit J qui soit au plus profond de la boucle pour respecter au mieux l'alignement des donn&eacute;es. <br>
+<br>
+De plus, on parcourt K fois ce tableau. Or, &agrave; chaque fois, on pollue le cache (c'est-&agrave;-dire que l'on remplace des donn&eacute;es par d'autres que l'on ne va finalement pas r&eacute;utiliser ; bref, ici, le cache ne sert presque &agrave; rien). Il serait beaucoup plus int&eacute;ressant de travailler K fois sur un bout du tableau et passer au suivant. Pour cela, on doit r&eacute;&eacute;crire l'algorithme en rajoutant un niveau. <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>for(ii=0;ii&lt;m;ii+=II) <br>
+<br>
+ for(k=0;k&lt;K;k++)<br>
+ for(i=ii;i&lt;ii+II;i++)<br>
+ for(j=0;j&lt;n;j++) <br>
+ <br>
+ ..<br>
+ tab[i][j]<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>..<br>
+  <br>
+<br>
+On consid&egrave;re ici que II fait en sorte que les II*n &eacute;l&eacute;ments rentrent dans le cache, ainsi les trois boucles les plus profondes tourneront 90% du temps &agrave; l'int&eacute;rieur de celui-ci. <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><b><font size=2>Un exemple pratique <br>
+</font></b></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Je vous ai beaucoup parl&eacute;. Maintenant, passons &agrave; un cas beaucoup moins th&eacute;orique, o&ugrave; l'on voit tout l'int&eacute;r&ecirc;t de cet article. <br>
+<br>
+Un probl&egrave;me ultra classique est la multiplication de matrice. Habituellement, cela s'&eacute;crit : <br>
+<br>
+void mulMatrix1(int n,int A[n][n] ,int B[n][n],int C[n][n])<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+ int i,j,k;<br>
+ for(i=0; i&lt;n ;i=i+1)<br>
+ for(j=0; j&lt;n ;j=j+1)<br>
+ for(k=0; k&lt;n ;k=k+1) <br>
+ C[i][j] = C[i][j] + A[i][k]*B[k][j];<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+<br>
+L'ordre des trois boucles n'a pas l'air d'avoir d'importance. Or, on voit que i et j interviennent sur C et alternativement sur A, puis B. Ici, k est &agrave; l'int&eacute;rieur des boucles. On casse une d&eacute;pendance entre deux it&eacute;rations de boucles (puisque les C[i][j] sont des cases diff&eacute;rentes). Par contre, il faut aller chercher le contenu de deux cases m&eacute;moires. <br>
+<br>
+void mulMatrix2(const unsigned int n, const int A[n][n] , const int B[n][n],int C[n][n])<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+ register unsigned int i,j,k;<br>
+<br>
+ for(i=0; i&lt;n ;i=i+1)<br>
+ for(k=0; k&lt;n ;k=k+1) <br>
+ for(j=0; j&lt;n ;j=j+1)<br>
+ C[i][j] = C[i][j] + A[i][k]*B[k][j];<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+<br>
+Ici, j est &agrave; l'int&eacute;rieur des boucles. Il y a une d&eacute;pendance entre C[i][j], mais ici on acc&egrave;de au m&ecirc;me A[i][k]. De plus, B[k][j] court ainsi sur des adresses align&eacute;es. On peut compter aussi sur les write buffers pour r&eacute;cup&eacute;rer plus facilement les donn&eacute;es. <br>
+<br>
+void mulMatrix3(const unsigned int n, const int A[n][n], const int B[n][n],int C[n][n])<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+ register unsigned int i,j,k;<br>
+ register int tmp1,tmp6;<br>
+<br>
+ for(i=0; i&lt;n ;i=i+1)<br>
+ for(j=0; j&lt;n ;j=j+1)<br>
+ <br>
+ tmp1=0;<br>
+ tmp6 = C[i][j];<br>
+ for( k=0; k&lt;n ;k=k+1 ) <br>
+ tmp1 += A[i][k] * B[k][j];<br>
+ C[i][j] = tmp6+tmp1;<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+<br>
+<br>
+Ici, tout a &eacute;t&eacute; r&eacute;&eacute;crit pour casser les d&eacute;pendances le plus possible. On retarde au maximum tout acc&egrave;s &agrave; la m&eacute;moire. Mais, c'est surtout pour la forme : vous comprendrez en regardant les performances. <br>
+ <br>
+void mulMatrix4(const unsigned int n, const int A[n][n], const int B[n][n],int C[n][n])<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+ register int tmp6; <br>
+ register unsigned int i,j,k;<br>
+<br>
+ for(i=0;i&lt;n;i=i+1)<br>
+ for(k=0; k&lt;n ;k=k+1)<br>
+  <br>
+ tmp6 = A[i][k];<br>
+ for(j=0;j&lt;n;j=j+1)<br>
+ C[i][j] = C[i][j] + tmp6*B[k][j];<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2> <br>
+<br>
+<br>
+La m&ecirc;me chose, mais en utilisant l'autre optimisation d'ordre de boucle possible, qui est nettement plus int&eacute;ressante. Ici, les trois acc&egrave;s sont optimis&eacute;s : C[i][j] avec les write buffers, A[i][k] avec ce que l'on appelle un preload, et pour B[k][j], les donn&eacute;es sont utilis&eacute;es align&eacute;es. <br>
+<br>
+Comment faire mieux ? Avec le strip-minning ! </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Let's go ! <br>
+<br>
+void mulMatrix5(const unsigned int n, const int A[n][n], const int B[n][n],int C[n][n])<br>
+<br>
+ register int tmp6; <br>
+ register unsigned int i,j,k,ii,kk;<br>
+<br>
+ for(ii=0; ii&lt;n ;ii=ii+K)<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>for(kk=0; kk&lt;n ;kk=kk+K) <br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>for(i=ii;i&lt;ii+K;i=i+1)<br>
+ for(k=kk; k&lt;kk+K ;k=k+1)<br>
+ <br>
+ tmp6 = A[i][k];<br>
+ for(j=0;j&lt;n;j=j+1)<br>
+ C[i][j] = C[i][j] + tmp6*B[k][j]; <br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+<br>
+<br>
+Ici, on d&eacute;coupe i et k, on laisse j car on veut profiter au maximum de l'alignement des donn&eacute;es. Cela fonctionne bien uniquement si une ligne compl&egrave;te de la matrice rentre dans le cache. Sinon, on perdrait l'int&eacute;r&ecirc;t de ce d&eacute;coupage. <br>
+<br>
+Qu'est-ce qu'il reste &agrave; faire ? On a optimis&eacute; en cassant au maximum les d&eacute;pendances et en optimisant la gestion du cache. On peut encore essayer de faire mieux en "prefetchant" les donn&eacute;es et en d&eacute;roulant la boucle interne &agrave; la main. <br>
+<br>
+Le prefetch existe dans la plupart des processeurs r&eacute;cents. Tout se passe comme si une lecture de la m&eacute;moire &eacute;tait faite. Mais rien ne change dans le flot du programme. Alors, &agrave; quoi cela sert-il ? Comme d'habitude, &agrave; remplir les caches ! <br>
+<br>
+void mulMatrix11(const unsigned int n, const int A[n][n], const int B[n][n], int C[n][n])<br>
+<br>
+<br>
+ register int tmp6,tmp7,tmp8,tmp9;<br>
+ register int tmp10,tmp11,tmp12,tmp13;<br>
+ <br>
+ register unsigned int i,j,k,ii,jj,kk,jjj,kkk;<br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>for(ii=0; ii&lt;n ;ii=ii+K)<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>for(kk=0; kk&lt;n ;kk=kk+K) <br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>for(i=ii;i&lt;ii+K;i=i+1)<br>
+ <br>
+<br>
+ for(kkk=kk;kkk&lt;kk+K;kkk+=4)<br>
+ __asm__ __volatile__ ("prefetchnta 16(%0) " : : "S" (&amp;(A[i][kkk+4])) );<br>
+<br>
+ tmp6 = A[i][kkk];<br>
+ tmp7 = A[i][kkk+1];<br>
+ tmp8 = A[i][kkk+2];<br>
+ tmp9 = A[i][kkk+3];<br>
+<br>
+ for(j=0;j&lt;n;j=j+128)<br>
+ <br>
+ __asm__ __volatile__ ("prefetchnta 512(%0)" : : "D"(&amp;(B[kkk][j+128])));<br>
+ __asm__ __volatile__ ("prefetchnta 512(%0)" : : "S"(&amp;(B[kkk+1][j+128])));<br>
+ __asm__ __volatile__ ("prefetchnta 512(%0)" : : "D"(&amp;(B[kkk+2][j+128])));<br>
+ __asm__ __volatile__ ("prefetchnta 512(%0)" : : "S"(&amp;(B[kkk+3][j+128])));<br>
+<br>
+ for(jjj=j;jjj&lt;j+128;jjj+=2)<br>
+ C[i][jjj] += tmp6*B[kkk][jjj]+tmp7*B[kkk+1][jjj]<br>
+ + tmp8*B[kkk+2][jjj]+tmp9*B[kkk+3][jjj];<br>
+<br>
+ C[i][jjj+1] += tmp6*B[kkk][jjj+1]+tmp7*B[kkk+1][jjj+1]<br>
+ + tmp8*B[kkk+2][jjj+1]+tmp9*B[kkk+3][jjj+1];<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+ <br>
+ <br>
+ <br>
+<br>
+<br>
+Sur une distribution pas trop r&eacute;cente, il est possible que as (le programme d'assemblage avec gcc) ne reconnaisse pas ce mn&eacute;monique (sur une Mandrake 8.0, cela marche : gcc version 2.96). <br>
+<br>
+Le 128 qui tra&icirc;ne ne correspond &agrave; rien de pr&eacute;cis. En fait, c'est un savant m&eacute;lange entre le nombre d'octets n&eacute;cessaires au calcul qui suit (le memory stride, ms), le nombre de cycles pass&eacute;s dans le c<!--- char 0x9c --->
+ur de la boucle(nc). AMD donne la formule suivante pour calculer la distance &agrave; donner au prefetch : 200*ms/nc. Le 200 est d&eacute;pendant de l'impl&eacute;mentation du chip (ici, l'Athlon). Eh oui, la vie est mal faite parfois. Cela correspond, entre autre, &agrave; la vitesse de la m&eacute;moire en rapport avec la vitesse du core. <br>
+<br>
+Ici, pour faire des tests, on n'utilise que des matrices multiples de puissance de 2. C'est facile d'imaginer des petits calculs pr&eacute;liminaires pour pouvoir utiliser une taille de matrice quelconque. Ou encore, on peut couper le calcul en deux, avec une s&eacute;rie de boucles simples pour finir le calcul. <br>
+<br>
+Pour parler performances, sur ma machine d'une fr&eacute;quence de 4.5*66=300, j'obtiens une augmentation de 45 % de performance sur des "petites" matrices en comparant le pire et le meilleur algorithme. Sur les matrices qui ne rentrent pas dans le cache, j'obtiens 400 % d'augmentation de performance (voire *10 dans un cas bien pr&eacute;cis avec des matrices 512*512)... Qui dit mieux ? Je suppose qu'avec les nouveaux processeurs qui ont un rapport entre vitesse de core et vitesse de la m&eacute;moire encore plus grand, cela doit &ecirc;tre encore plus important (j'ai vu un x25 avec un Athlon 1.2Ghz...). Convaincu ? NON ! Et bien compilez maintenant... <br>
+<br>
+Sur notre exemple pr&eacute;c&eacute;dent, on peut &eacute;crire : <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>int scatter3(int n, int A[n])<br>
+<br>
+ int i,ii,ret=0;<br>
+ int tmp1=0,tmp2=0,tmp3=0,tmp4=0;<br>
+<br>
+ for(ii=0;ii&lt;n;ii=ii+32) <br>
+ __asm__ __volatile__ ("prefetcht0 128(%0)" : : "S"(&amp;(A[ii]))); <br>
+ for(i=ii;i&lt;ii+32;i+=4)<br>
+ <br>
+ tmp1 +=A[i];<br>
+ tmp2 +=A[i+1];<br>
+ tmp3 +=A[i+2];<br>
+ tmp4 +=A[i+3];<br>
+ <br>
+ <br>
+ ret = (tmp1+tmp2)+(tmp3+tmp4);<br>
+ return ret;<br>
+<br>
+<br>
+inline int scatter5(int n, int A[n])<br>
+<br>
+ unsigned int i,j;int ret=0;<br>
+ int tmp1=0,tmp2=0,tmp3=0,tmp4=0;<br>
+ for(i=0;i&lt;n;i+=4)<br>
+ <br>
+ __asm__ __volatile__ ("prefetchnta 256(%0)" : : "r"(&amp;(A[i]))); <br>
+ tmp1 +=A[i];<br>
+ tmp2 +=A[i+1];<br>
+ tmp3 +=A[i+2];<br>
+ tmp4 +=A[i+3];<br>
+ <br>
+ <br>
+ ret = (tmp1+tmp2)+(tmp3+tmp4);<br>
+ return ret;<br>
+<br>
+<br>
+inline int scatter1b(int n, int A[n])<br>
+<br>
+ int i,ii,ret=0;<br>
+ int tmp1=0,tmp2=0,tmp3=0,tmp4=0;<br>
+<br>
+ for(ii=0;ii&lt;n;ii=ii+16) <br>
+ __asm__ __volatile__ ("prefetchnta 64(%0)" : : "r"(&amp;(A[ii+16]))); <br>
+ for(i=ii;i&lt;ii+16;i+=1)<br>
+ <br>
+ tmp1 +=A[i];<br>
+ <br>
+ <br>
+ ret = (tmp1+tmp2)+(tmp3+tmp4);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>return ret;<br>
+<br>
+<br>
+On peut toujours &eacute;crire des versions diff&eacute;rentes du code. L'int&eacute;rieur de la boucle &eacute;tant tr&egrave;s petit, les "prefetch" n'ont pas vraiment le temps de s'effectuer avant la demande effective des donn&eacute;es. C'est pour cela que l'on rajoute un offset (128) pour aller "prefetcher" les 128/4=32 entiers plus loin. Le "prefetch" est asynchrone et on ne sait pas quand il sera effectivement termin&eacute;. Dans le cas o&ugrave; il ne serait pas fini, il occupe l'unit&eacute; de load pour rien. Pr&eacute;voir la bonne distance est tr&egrave;s difficile. Intel conseille d'&eacute;viter cette instruction si la donn&eacute;e rentre dans le cache. <br>
+<br>
+Selon la taille des matrices et le processeur (et le rapport entre vitesse du core et celle de la m&eacute;moire), l'algorithme optimal change. Celui qui semble &ecirc;tre assez constant est le 1b. Ici, on est en pr&eacute;sence d'un traitement 'memory bound' (oppos&eacute; &agrave; CPU bound). Cela signifie qu'il est compl&egrave;tement limit&eacute; par la bande passante m&eacute;moire, donc le temps pass&eacute; dans les calculs est n&eacute;gligeable devant l'attente des donn&eacute;es venant de la m&eacute;moire. <br>
+<br>
+Il existe 4 types de "prefetch" : prefetcht0, prefetcht1, prefetcht2 et prefetchnta. Les trois premiers d&eacute;pendent des caches vers lesquels doivent &ecirc;tre transf&eacute;r&eacute;es les donn&eacute;es (L1 et L2, uniquement L2). Avec le core P6, prefetcht1 et prefetcht2 sont identiques. Le dernier ne remplit que L1 et ne touche pas &agrave; L2, "pour minimiser la pollution du cache", sachant que le cache L2 contient aussi du code. Pour le P4, le prefetch ne concerne que le cache L2 (les instructions sont donc identiques). <br>
+<br>
+Pour vous convaincre de bannir &agrave; jamais les pointeurs de votre code, testez : <br>
+<br>
+void mulMatrix14(const unsigned int n, const int *A, const int *B, int *C)<br>
+<br>
+<br>
+ register int tmp6,tmp7,tmp8,tmp9,*p,*p2,*p3;<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>register int tmp10,tmp11,tmp12,tmp13;<br>
+ <br>
+ register unsigned int i,j,k,ii,jj,kk,jjj,kkk;<br>
+<br>
+ long long tickv,tickp;<br>
+<br>
+ for(ii=0; ii&lt;n ;ii=ii+K)<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>for(kk=0; kk&lt;n ;kk=kk+K) <br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>for(i=ii;i&lt;ii+K;i=i+1)<br>
+ <br>
+<br>
+ for(kkk=kk;kkk&lt;kk+K;kkk+=4)<br>
+<br>
+ p = (A+i*n+kkk); <br>
+ __asm__ __volatile__ ("prefetchnta 16(%0) " : : "S" ( (p+4) ));<br>
+<br>
+ tmp6 = *(p);<br>
+ tmp7 = *(p+1);<br>
+ tmp8 = *(p+2);<br>
+ tmp9 = *(p+3);<br>
+<br>
+ for(j=0;j&lt;n;j=j+128)<br>
+ <br>
+ p2=B+kkk*n+j+128;<br>
+ __asm__ __volatile__ ("prefetchnta 512(%0)" : : "D"(p2) );<br>
+ __asm__ __volatile__ ("prefetchnta 512(%0)" : : "S"(p2+n) );<br>
+ __asm__ __volatile__ ("prefetchnta 512(%0)" : : "D"(p2+2*n) );<br>
+ __asm__ __volatile__ ("prefetchnta 512(%0)" : : "S"(p2+3*n) );<br>
+<br>
+ for(jjj=j;jjj&lt;j+128;jjj+=2)<br>
+ p3=B+kkk*n+jjj;<br>
+ *(C+i*n+jjj) += tmp6**(p3)+tmp7**(p3+n)<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>+ tmp8**(p3+2*n)+tmp9**(p3+3*n);<br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>*(C+i*n+jjj+1) += tmp6**(p3+1)+tmp7**(p3+n+1)<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>+ tmp8**(p3+2*n+1)+tmp9**(p3+3*n+1);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+ <br>
+ <br>
+ <br>
+<br>
+<br>
+Malgr&eacute; les apparentes simplifications des calculs n&eacute;cessaires &agrave; l'acc&egrave;s en m&eacute;moire, j'obtiens une perte de 25 % des performances par rapport &agrave; la version optimale. <br>
+Nous venons de survoler la m&eacute;canique interne des processeurs en vue de mieux les programmer en C. J'esp&egrave;re ainsi que certaines applications pourront gagner en performance. <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><i><font size=2>Nicolas Boulay<br>
+</font></i></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Ing&eacute;nieur en Micro&eacute;lectronique<br>
+Membre du projet f-cpu <br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><b><font size=2>URL <br>
+</font></b></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+AMD :<br>
+http://www.amd.com/products/cpg/athlon/techdocs/index.html (le document sur l'optimisation est &agrave; lire absolument ; par contre, impossible d'avoir le document en entier avec les lecteurs de pdf disponible pour Linux (Ghostview, et m&ecirc;me Acroread !) &agrave; l'exception de xpdf)<br>
+<br>
+Intel :<br>
+http://developer.intel.com/design/PentiumIII/manuals/<br>
+<br>
+Sun : <br>
+http://www.sun.com/microelectronics/manuals/index.html <br>
+http://www.sun.com/sparc/UltraSPARC-III/index.html<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>IBM : <br>
+http://www-3.ibm.com/chips/techlib/techlib.nsf/productfamilies/PowerPC<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>Digital : <br>
+www.alphapowered.com<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>fcpu : <br>
+www.f-cpu.org<br>
+<br>
+<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><b><font size=2>Code du testeur <br>
+</font></b></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><i><font size=2>Tout le code est &eacute;videmment sous GPL. <br>
+</font></i></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>#include&lt;stdio.h&amp;lg;<br>
+#include&lt;sched.h&amp;lg;<br>
+#include&lt;stdlib.h&amp;lg;<br>
+#include &lt;sys/mman.h&amp;lg;<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>/*<br>
+CPUHZ doit &ecirc;tre r&eacute;cup&eacute;r&eacute; par :<br>
+ cat /proc/cpuinfo | grep cpu MHz<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>*/<br>
+#define CPUHZ 300689000<br>
+#define K 32<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>/*Pour v&eacute;rifier que l'on n'a pas fait de b&ecirc;tises*/<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>void affiche(int n, int S[n][n])<br>
+<br>
+ int tmp=0,i,j;<br>
+ for(i=0;i&lt;n;i=i+1)<br>
+ for(j=0;j&lt;n;j=j+1)<br>
+ tmp += S[i][j];<br>
+<br>
+ printf("(%d)",tmp);<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+<br>
+/*Pour &ecirc;tre &agrave; peu pr&egrave;s s&ucirc;r de vider les caches si size &gt; 1 Mo*/<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>void TrashCache(int * trash, int size)<br>
+<br>
+ int i;<br>
+ for(i=0;i&lt;size;i++)<br>
+ <br>
+ (*trash)++;<br>
+ <br>
+<br>
+<br>
+void result(int size , long long tick,int *C)<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+ /*<br>
+ Je compte les acc&egrave;s m&eacute;moire 'th&eacute;oriques' 2*n read + un write par case,<br>
+ une version +r&eacute;elle avec 2*n read et n write, le nombre de mops correspondant (n multiplication et n-1 addition par case ),<br>
+ et le rendement face au maximum th&eacute;orique du processeur.<br>
+ Si cela ne vous pla&icirc;t pas, faites votre propre tambouille.<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>*/<br>
+<br>
+ float flot = (size*size*(size*2+1)*4/(((float)(tick))/CPUHZ))/1000000;<br>
+ float flot2 = (size*size*size*3*4/(((float)(tick))/CPUHZ))/1000000;<br>
+ float mops = (size*size*(size+(size-1))/(((float)(tick))/CPUHZ))/1000000;<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>float fracThMops=100*1000000*(mops/(CPUHZ*1.5));/*rendement moyen 2 add/clk, 1 mul/clk mais il peut faire<br>
+UNE addition en m&ecirc;me temps que 1 mul*/<br>
+<br>
+ affiche(size,C);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>printf(" : %.2f Mo/s (%.2f Mo/s) - %.2f mops(%.0f%)n",flot,flot2,mops,fracThMops);<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+/*pour les scatter*/<br>
+</font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>void resultAdd(int size , long long tick )<br>
+<br>
+ float flot = (size*4/(((float)(tick))/CPUHZ))/1000000;<br>
+<br>
+ printf(" : %.2f Mo/sn",flot);<br>
+<br>
+<br>
+<br>
+int main()<br>
+<br>
+ unsigned int tmp1,vect;<br>
+ unsigned int i, j,ret;<br>
+ int *A,*B,*C,*trash;<br>
+ long long int t1,t2;<br>
+ float ref;<br>
+<br>
+ const struct sched_param *schedParam;<br>
+ sched_setscheduler(0,SCHED_FIFO,schedParam);<br>
+<br>
+ mlockall(MCL_CURRENT); /* to avoid swaping page to disk */ <br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>printf("Fr&eacute;quence de base utilis&eacute;e pour les calculs : %.1fMhzn",(float)CPUHZ/1000000);<br>
+ printf("Fr&eacute;quence d&eacute;finie par #define CPUHZn");<br>
+ printf("Pour l'avoir : more /proc/cpuinfo | grep cpu MHzn");<br>
+ printf("[fonction][%% en comparaison du 1er][v&eacute;rification]:nt[d&eacute;bit th&eacute;orique](d&eacute;bit 'r&eacute;elle') - [nb d'ops](rendement P3)n");<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>for (tmp1=128;tmp1 &lt; 1025;tmp1+=128 )<br>
+<br>
+ printf("matrice[%d][%d] (%.2f Ko)n",tmp1,tmp1,((float)(tmp1*tmp1*sizeof(int)))/1024);<br>
+<br>
+ A=(int*)malloc(sizeof(int[tmp1][tmp1]));<br>
+ B=(int*)malloc(sizeof(int[tmp1][tmp1]));<br>
+ C=(int*)malloc(sizeof(int[tmp1][tmp1]));<br>
+ <br>
+ if( A == NULL || B == NULL || C == NULL )<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2> printf("ERR: Plus de m&eacute;moiren");exit(0);<br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>memset((A),0,sizeof(int[tmp1][tmp1]));<br>
+ memset((B),0,sizeof(int[tmp1][tmp1]));<br>
+ memset((C),0,sizeof(int[tmp1][tmp1]));<br>
+<br>
+ for(i=0;i&lt;tmp1;i=i+1)<br>
+ <br>
+ for(j=0;j&lt;tmp1;j=j+1)<br>
+ *(A+i*tmp1+j)=i+2*j;<br>
+ <br>
+<br>
+ for(i=0;i&lt;tmp1;i=i+1)<br>
+ for(j=0;j&lt;tmp1;j=j+1)<br>
+ <br>
+ *(B+i*tmp1+j)=i+3*j;<br>
+ <br>
+<br>
+ trash=(int*)malloc(sizeof(int)*1000000);<br>
+ TrashCache(trash,1000000);<br>
+<br>
+ t1 = GetTick();<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>mulMatrix1(tmp1,A,B,C);<br>
+ t2 = GetTick();<br>
+ printf("mulMatrix1 (+%.1f%)t",((ref-(t2-t1))*100)/(t2-t1));<br>
+ result(tmp1,t2-t1,C); <br>
+ ref = t2-t1;<br>
+ TrashCache(trash,1000000); <br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>memset((C),0,sizeof(int[tmp1][tmp1]));<br>
+<br>
+ t1 = GetTick();<br>
+ mulMatrix2(tmp1,A,B,C);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t2 = GetTick();<br>
+ printf("mulMatrix2(futur ref) (+%.1f%)t",((ref-(t2-t1))*100)/(t2-t1));<br>
+ result(tmp1,t2-t1,C); /*l'affichage*/<br>
+ TrashCache(trash,1000000); /*le zigouillage de cache*/<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>memset((C),0,sizeof(int[tmp1][tmp1])); /*reset de C*/<br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>ref = t2-t1; /*on est gentil : algo simple le - con (d&eacute;j&agrave; x2 en perf)*/<br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t1 = GetTick();<br>
+ mulMatrix3(tmp1,A,B,C);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t2 = GetTick();<br>
+ printf("mulMatrix3 (+%.1f%)t",((ref-(t2-t1))*100)/(t2-t1));<br>
+ result(tmp1,t2-t1,C); /*l'affichage*/<br>
+ TrashCache(trash,1000000); /*le zigouillage de cache*/<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>memset((C),0,sizeof(int[tmp1][tmp1])); /*reset de C*/<br>
+<br>
+ t1 = GetTick();<br>
+ mulMatrix4(tmp1,A,B,C);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t2 = GetTick();<br>
+ printf("mulMatrix4 (+%.1f%)t",((ref-(t2-t1))*100)/(t2-t1));<br>
+ result(tmp1,t2-t1,C); /*l'affichage*/<br>
+ TrashCache(trash,1000000); /*le zigouillage de cache*/<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>memset((C),0,sizeof(int[tmp1][tmp1])); /*reset de C*/<br>
+<br>
+ t1 = GetTick();<br>
+ mulMatrix5(tmp1,A,B,C);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t2 = GetTick();<br>
+ printf("mulMatrix5 (+%.1f%)t",((ref-(t2-t1))*100)/(t2-t1));<br>
+ result(tmp1,t2-t1,C); /*l'affichage*/<br>
+ TrashCache(trash,1000000); /*le zigouillage de cache*/<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>memset((C),0,sizeof(int[tmp1][tmp1])); /*reset de C*/<br>
+<br>
+ t1 = GetTick();<br>
+ mulMatrix11(tmp1,A,B,C);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t2 = GetTick();<br>
+ printf("mulMatrix11 (+%.1f%)t",((ref-(t2-t1))*100)/(t2-t1));<br>
+ result(tmp1,t2-t1,C); /*l'affichage*/<br>
+ TrashCache(trash,1000000); /*le zigouillage de cache*/<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>memset((C),0,sizeof(int[tmp1][tmp1])); /*reset de C*/<br>
+<br>
+ t1 = GetTick();<br>
+ mulMatrix11p(tmp1,A,B,C);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t2 = GetTick();<br>
+ printf("mulMatrix11p (+%.1f%)t",((ref-(t2-t1))*100)/(t2-t1));<br>
+ result(tmp1,t2-t1,C); /*l'affichage*/<br>
+ TrashCache(trash,1000000); /*le zigouillage de cache*/<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>memset((C),0,sizeof(int[tmp1][tmp1])); /*reset de C*/<br>
+<br>
+ free(A);<br>
+ vect =1024*tmp1;<br>
+ A=(int*)malloc(sizeof(int[vect]));<br>
+<br>
+ printf("vecteur[%d] (%.2f ko)n",vect,(((float)vect*sizeof(int)))/1024);<br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>if(A==0)<br>
+ <br>
+ perror("Pas assez de m&eacute;moire !n");<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>exit(0);<br>
+ <br>
+<br>
+ for(i=0;i&lt;vect;i++)<br>
+ <br>
+ (*(A+i))=i;<br>
+ <br>
+<br>
+ t1 = GetTick();<br>
+ ret=scatter1(vect,A);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t2 = GetTick();<br>
+ printf("scatter1 (00%)t(%d)t",ret); /*De quoi on cause*/<br>
+ resultAdd(vect,t2-t1);/*l'affichage*/<br>
+ TrashCache(trash,1000000); /*le zigouillage de cache*/<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>ref =t2-t1;<br>
+<br>
+ t1 = GetTick();<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>ret=scatter1b(vect,A);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t2 = GetTick();<br>
+ printf("scatter1b(+%.1f%)t(%d)t",((ref-(t2-t1))*100)/(t2-t1),ret);<br>
+ resultAdd(vect,t2-t1);/*l'affichage*/<br>
+ TrashCache(trash,1000000); /*le zigouillage de cache*/<br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t1 = GetTick();<br>
+ ret=scatter2(vect,A);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t2 = GetTick();<br>
+ printf("scatter2 (+%.1f%)t(%d)t",((ref-(t2-t1))*100)/(t2-t1),ret);<br>
+ resultAdd(vect,t2-t1);/*l'affichage*/<br>
+ TrashCache(trash,1000000); /*le zigouillage de cache*/<br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t1 = GetTick();<br>
+ ret=scatter3(vect,A);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t2 = GetTick();<br>
+ printf("scatter3 (+%.1f%)t(%d)t",((ref-(t2-t1))*100)/(t2-t1),ret);<br>
+ resultAdd(vect,t2-t1);/*l'affichage*/<br>
+ TrashCache(trash,1000000); /*le zigouillage de cache*/<br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t1 = GetTick();<br>
+ ret=scatter4(vect,A);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t2 = GetTick();<br>
+ printf("scatter4 (+%.1f%)t(%d)t",((ref-(t2-t1))*100)/(t2-t1),ret);<br>
+ resultAdd(vect,t2-t1);/*l'affichage*/<br>
+ TrashCache(trash,1000000); /*le zigouillage de cache*/<br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t1 = GetTick();<br>
+ ret=scatter5(vect,A);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>t2 = GetTick();<br>
+ printf("scatter5 (+%.1f%)t(%d)t",((ref-(t2-t1))*100)/(t2-t1),ret);<br>
+ resultAdd(vect,t2-t1);/*l'affichage*/<br>
+ TrashCache(trash,1000000); /*le zigouillage de cache*/<br>
+<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2>free(A);free(B);free(C);free(trash);<br>
+ </font></font></font><font face="Times"><font size=3></font></font><font face="Times"><font size=3><font size=2><br>
+ munlockall();<br>
+ return 0;<br>
+<br>
+</font></font></font><font face="Times"><font size=3></font></font></body>
+</html>

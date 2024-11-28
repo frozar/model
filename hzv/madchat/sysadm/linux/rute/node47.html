@@ -1,0 +1,1347 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 99.2beta8 (1.46)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>44. UNIX Security</TITLE>
+<META NAME="description" CONTENT="44. UNIX Security">
+<META NAME="keywords" CONTENT="rute">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v99.2beta8">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="rute.css">
+
+<LINK REL="next" HREF="node48.html">
+<LINK REL="previous" HREF="node46.html">
+<LINK REL="up" HREF="rute.html">
+<LINK REL="next" HREF="node48.html">
+</HEAD>
+
+<BODY BGCOLOR=#FFFFFF >
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD align=left bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-purchase.html"><FONT COLOR=white>Purchase</FONT></A>&nbsp;
+</FONT>
+</TD><TD align=center bgcolor="#000000">
+<FONT COLOR=white>
+Copyright&nbsp;&#169;&nbsp;2002&nbsp;Paul Sheer. <A HREF="copying.html"><FONT COLOR=white>Click here for copying permissions.</FONT></A>
+</FONT>
+</TD><TD align=right bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-home.html"><FONT COLOR=white>Home</FONT></A>&nbsp;
+</FONT>
+</TD></TR>
+<TR><TD colspan=2 align=left bgcolor="#ECEBF4">
+<IMG SRC="va-btn-small-light-60.png">
+</TD><TD align=right bgcolor="#ECEBF4">
+<IMG SRC="sflogo2-steel-60.png">
+</TD></TR>
+</TABLE><BR>
+
+<!--Navigation Panel-->
+<A NAME="tex2html2903"
+  HREF="node48.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2899"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2893"
+  HREF="node46.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2901"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2904"
+  HREF="node48.html">A. Lecture Schedule</A>
+<B> Up:</B> <A NAME="tex2html2900"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2894"
+  HREF="node46.html">43. The X Window</A>
+ &nbsp <B>  <A NAME="tex2html2902"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html2905"
+  HREF="#SECTION004710000000000000000">44.1 Common Attacks</A>
+<UL>
+<LI><A NAME="tex2html2906"
+  HREF="#SECTION004711000000000000000">44.1.1 Buffer overflow attacks</A>
+<LI><A NAME="tex2html2907"
+  HREF="#SECTION004712000000000000000">44.1.2 Setuid programs</A>
+<LI><A NAME="tex2html2908"
+  HREF="#SECTION004713000000000000000">44.1.3 Network client programs</A>
+<LI><A NAME="tex2html2909"
+  HREF="#SECTION004714000000000000000">44.1.4 <TT>
+<FONT COLOR="#0000ff">/tmp</FONT></TT> file vulnerability</A>
+<LI><A NAME="tex2html2910"
+  HREF="#SECTION004715000000000000000">44.1.5 Permission problems</A>
+<LI><A NAME="tex2html2911"
+  HREF="#SECTION004716000000000000000">44.1.6 Environment variables</A>
+<LI><A NAME="tex2html2912"
+  HREF="#SECTION004717000000000000000">44.1.7 Password sniffing</A>
+<LI><A NAME="tex2html2913"
+  HREF="#SECTION004718000000000000000">44.1.8 Password cracking</A>
+<LI><A NAME="tex2html2914"
+  HREF="#SECTION004719000000000000000">44.1.9 Denial of service attacks</A>
+</UL>
+<LI><A NAME="tex2html2915"
+  HREF="#SECTION004720000000000000000">44.2 Other Types of Attack</A>
+<LI><A NAME="tex2html2916"
+  HREF="#SECTION004730000000000000000">44.3 Counter Measures</A>
+<UL>
+<LI><A NAME="tex2html2917"
+  HREF="#SECTION004731000000000000000">44.3.1 Removing known risks: outdated packages</A>
+<LI><A NAME="tex2html2918"
+  HREF="#SECTION004732000000000000000">44.3.2 Removing known risks: compromised packages</A>
+<LI><A NAME="tex2html2919"
+  HREF="#SECTION004733000000000000000">44.3.3 Removing known risks: permissions</A>
+<LI><A NAME="tex2html2920"
+  HREF="#SECTION004734000000000000000">44.3.4 Password management</A>
+<LI><A NAME="tex2html2921"
+  HREF="#SECTION004735000000000000000">44.3.5 Disabling inherently insecure services</A>
+<LI><A NAME="tex2html2922"
+  HREF="#SECTION004736000000000000000">44.3.6 Removing potential risks: network</A>
+<LI><A NAME="tex2html2923"
+  HREF="#SECTION004737000000000000000">44.3.7 Removing potential risks: setuid programs</A>
+<LI><A NAME="tex2html2924"
+  HREF="#SECTION004738000000000000000">44.3.8 Making life difficult</A>
+<LI><A NAME="tex2html2925"
+  HREF="#SECTION004739000000000000000">44.3.9 Custom security paradigms</A>
+<LI><A NAME="tex2html2926"
+  HREF="#SECTION0047310000000000000000">44.3.10 Proactive cunning</A>
+</UL>
+<LI><A NAME="tex2html2927"
+  HREF="#SECTION004740000000000000000">44.4 Important Reading</A>
+<LI><A NAME="tex2html2928"
+  HREF="#SECTION004750000000000000000">44.5 Security Quick-Quiz</A>
+<LI><A NAME="tex2html2929"
+  HREF="#SECTION004760000000000000000">44.6 Security Auditing</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION004700000000000000000">
+44. U<SMALL>NIX</SMALL> Security</A>
+</H1>
+
+<P>
+<A NAME="chap:security"></A>
+<P>
+This is probably the most important chapter of this
+book.<FONT COLOR="#ffa500">(footnote follows)</FONT> <FONT COLOR="#ffa500">[Thanks to Ryan Rubin for reviewing this chapter.]</FONT>
+<P>
+L<SMALL>INUX</SMALL> has been touted as both the most secure and
+insecure of all operating systems. The truth is both. Take no heed of
+advice from the L<SMALL>INUX</SMALL> community, and your server <I>will</I> be
+hacked eventually. Follow a few simple precautions, and it will be
+safe for years without much maintenance.
+
+<P>
+The attitude of most novice administrators is ``Since the
+U<SMALL>NIX</SMALL> system is so large and complex and since there are so many
+millions of them on the Internet,
+it is unlikely that <I>my</I> machine
+will get hacked.'' Of course, it won't necessarily be a person
+<I>targeting</I> your organization that is the problem. It could be a
+person who has written an automatic scanner that tries to hack every
+computer in your city. It could also be a person who is not an expert
+in hacking at all, but who has merely downloaded a small utility to do it
+for him. Many seasoned experts write such utilities for public
+distribution, while so-called <I>script kiddies</I> (because the
+means to execute a script is all the expertise needed) use these to
+do real damage. <FONT COLOR="#ffa500">[The word <I>hack</I> means gaining
+unauthorized access to a computer. However, programmers
+sometimes use the term to refer to enthusiastic work
+of any kind. Here we refer to the malicious definition.]</FONT>
+<P>
+In this chapter you will get an idea of the kinds of ways a U<SMALL>NIX</SMALL>
+system gets hacked. Then you will know what to be wary of, and how
+you can minimize risk.
+
+<P>
+
+<H1><A NAME="SECTION004710000000000000000">
+44.1 Common Attacks</A>
+</H1>
+
+<P>
+I personally divide attacks into two types: attacks that can be
+attempted by a user on the system, and network attacks that
+come from outside of a system. If a server is, say, only used for mail
+and web, shell logins may not be allowed <I>at all</I>; hence, the
+former type of security breach is of less concern. Here are some of
+the ways security is compromised, just to give an idea of what U<SMALL>NIX</SMALL>
+security is about. In some cases, I indicate when it is of
+more concern to multiuser systems.
+
+<P>
+Note also that attacks from users become an issue when a
+remote attack succeeds and a hacker
+gains user privileges to your system
+(even as a <TT>
+<FONT COLOR="#0000ff">nobody</FONT></TT> user). This is an issue even if you do not host
+logins.
+
+<P>
+
+<H2><A NAME="SECTION004711000000000000000">
+44.1.1 Buffer overflow attacks</A>
+</H2>
+
+<P>
+Consider the following <B>C</B> program. If you don't understand <B>C</B> that well, it
+doesn't matter--it's the concept that is important. (Before trying this
+example, you should unplug your computer from the network.)
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>#include&nbsp;&#060;stdio.h&#062;</code><br>
+<code>&nbsp;</code><br>
+<code>void&nbsp;do_echo&nbsp;(void)</code><br>
+<code>{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;char&nbsp;buf[256]&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;gets&nbsp;(buf)&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;printf&nbsp;("%s",&nbsp;buf)&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;fflush&nbsp;(stdout)&#059;</code><br>
+<code>}</code><br>
+<code>&nbsp;</code><br>
+<code>int&nbsp;main&nbsp;(int&nbsp;argc,&nbsp;char&nbsp;**argv)</code><br>
+<code>{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(&#059;&#059;)&nbsp;{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;do_echo&nbsp;()&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;}</code><br>
+<code>}</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+You can compile this program with <TT>
+<FONT COLOR="#0000ff">gcc -o /usr/local/sbin/myechod myechod.c</FONT></TT>. Then,
+make a system service out of it as follows: For <TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT>, create
+file <TT>
+<FONT COLOR="#0000ff">/etc/xinetd.d/myechod</FONT></TT> containing:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>service&nbsp;myechod</code><br>
+<code>{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;flags&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;REUSE</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;socket_type&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;stream&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;wait&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;no</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;user&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;root</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;server&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;/usr/local/sbin/myechod</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;log_on_failure&nbsp;&nbsp;+=&nbsp;USERID</code><br>
+<code>}</code><br>
+</FONT></TD></TR></TABLE><P>
+while for <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> add the following line
+to your <TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT> file:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>myechod&nbsp;stream&nbsp;&nbsp;tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nowait&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;/usr/local/sbin/myechod</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Of course, the service <TT>
+<FONT COLOR="#0000ff">myechod</FONT></TT> does not exist.
+Add the following line to your <TT>
+<FONT COLOR="#0000ff">/etc/services</FONT></TT> file:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>myechod&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;400/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;Temporary&nbsp;demo&nbsp;service</code><br>
+</FONT></TD></TR></TABLE><P>
+and then restart <TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT> (or <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT>)
+as usual.
+
+<P>
+You can now run <TT>
+<FONT COLOR="#0000ff">netstat -na</FONT></TT>. You should see a
+line like this somewhere in the output:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;0.0.0.0:400&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0.0.0:*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;LISTEN</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+You can now run <TT>
+<FONT COLOR="#0000ff">telnet localhost 400</FONT></TT>
+and type away happily. As you can see, the <TT>
+<FONT COLOR="#0000ff">myechod</FONT></TT> service
+simply prints lines back to you.
+
+<P>
+Someone reading the code will realize that typing more than
+256 characters will write into uncharted memory of the program. How can
+they use this effect to <I>cause the program to behave outside of its
+design</I>? The answer is simple. Should they be able to write processor instructions
+into an area of memory that may get executed later, they can
+cause the program to do anything at all. The process runs with <TT>
+<FONT COLOR="#0000ff">root</FONT></TT>
+privileges, so a few instructions sent to the kernel could, for example,
+cause the <TT>
+<FONT COLOR="#0000ff">passwd</FONT></TT> file to be truncated, or the file system superblock
+to be erased. A particular technique that works on a particular program is
+known as an <I>exploit</I> for a vulnerability. In general, an attack of
+this type is known as a <I>buffer overflow attack</I>.
+
+<P>
+To prevent against such attacks is easy when you are writing new programs.
+Simply make sure that any incoming data is treated as being dangerous. In
+the above case, the <TT>
+<FONT COLOR="#0000ff">fgets</FONT></TT> function should preferably be used, since it limits the
+number of characters that could be written to the buffer. There are, however,
+many functions that behave in such a dangerous way: even the
+<TT>
+<FONT COLOR="#0000ff">strcpy</FONT></TT> function writes up to a null character that may not be present;
+<TT>
+<FONT COLOR="#0000ff">sprintf</FONT></TT> writes a format string that could be longer than the buffer.
+<TT>
+<FONT COLOR="#0000ff">getwd</FONT></TT> is another function that also does no bound checking.
+
+<P>
+However, when programs grow long and complicated, it becomes difficult to
+analyze where there may be loopholes that could be exploited indirectly.
+A program is a legal contract with an impartial jury.
+
+<P>
+
+<H2><A NAME="SECTION004712000000000000000">
+44.1.2 Setuid programs</A>
+</H2>
+
+<P>
+A program like <TT>
+<FONT COLOR="#0000ff">su</FONT></TT> must be
+<I>setuid</I> (see Chapter <A HREF="node17.html#chap:permmodtimes">14</A>).
+Such a program has to run with <TT>
+<FONT COLOR="#0000ff">root</FONT></TT> privileges in order to
+switch UIDs to another user. The onus is, however, on <TT>
+<FONT COLOR="#0000ff">su</FONT></TT> to
+refuse privileges to anyone who isn't trusted. Hence, <TT>
+<FONT COLOR="#0000ff">su</FONT></TT>
+requests a password and checks it against the <TT>
+<FONT COLOR="#0000ff">passwd</FONT></TT> file
+before doing anything.
+
+<P>
+Once again, the logic of the program has to hold up to ensure security,
+as well as to provide insurance against buffer overflow attacks. Should
+<TT>
+<FONT COLOR="#0000ff">su</FONT></TT> have a flaw in the authentication
+logic, it would enable someone to
+change to a UID that they were not privileged to hold.
+
+<P>
+Setuid programs should hence be considered with the utmost suspicion.
+Most setuid programs try be small and simple, to make it easy to verify the
+security of their logic. A vulnerability is more likely to be found in any setuid
+program that is large and complex.
+
+<P>
+(Of slightly more concern in systems hosting many
+untrusted user logins.)
+
+<P>
+
+<H2><A NAME="SECTION004713000000000000000">
+44.1.3 Network client programs</A>
+</H2>
+
+<P>
+Consider when your FTP client connects to a remote untrusted site. If
+the site server returns a response that the FTP client cannot handle
+(say, a response that is too long--a buffer overflow), it could allow
+malicious code to be executed by the FTP client on behalf of the server.
+
+<P>
+Hence, it is quite possible to exploit a security hole in a client
+program by just waiting for that program to connect to your site.
+
+<P>
+(Mostly a concern in systems that host user logins.)
+
+<P>
+
+<H2><A NAME="SECTION004714000000000000000">
+44.1.4 <TT>
+<FONT COLOR="#0000ff">/tmp</FONT></TT> file vulnerability</A>
+</H2>
+
+<P>
+If a program creates a temporary file in your <TT>
+<FONT COLOR="#0000ff">/tmp/</FONT></TT> directory
+and it is possible to predict the name of the file it is going to create,
+then it may be possible to create that file in advance or quickly
+modify it without the program's knowledge. Programs that create
+temporary files in a predictable fashion or those that do not set
+correct permissions (with exclusive access) to temporary files are
+liable to be exploited. For instance, if a program running as superuser
+truncates a file <TT>
+<FONT COLOR="#0000ff">/tmp/9260517.TMP</FONT></TT> and it was possible to
+predict that file name in advance, then a hacker could create a symlink
+to <TT>
+<FONT COLOR="#0000ff">/etc/passwd</FONT></TT> of the same name,
+resulting in the superuser program actually truncating the
+<TT>
+<FONT COLOR="#0000ff">passwd</FONT></TT> file.
+
+<P>
+(Of slightly more concern in systems that host many
+untrusted user logins.)
+
+<P>
+
+<H2><A NAME="SECTION004715000000000000000">
+44.1.5 Permission problems</A>
+</H2>
+
+<P>
+It is easy to see that a directory with permissions
+<TT>
+<FONT COLOR="#0000ff">660</FONT></TT> and ownerships
+<TT>
+<FONT COLOR="#0000ff">root:admin</FONT></TT> cannot be accessed by user <TT>
+<FONT COLOR="#0000ff">jsmith</FONT></TT> if he is outside
+of the <TT>
+<FONT COLOR="#0000ff">admin</FONT></TT> group. Not so easy to see is when you have thousands
+of directories and hundreds of users and groups. Who can access what, when,
+and why becomes complicated and often requires scripts to be written to do
+permission tests and sets. Even a badly set <TT>
+<FONT COLOR="#0000ff">/dev/tty*</FONT></TT> device can
+cause a user's terminal connection to become vulnerable.
+
+<P>
+(Of slightly more a concern in systems that host many untrusted user logins.)
+
+<P>
+
+<H2><A NAME="SECTION004716000000000000000">
+44.1.6 Environment variables</A>
+</H2>
+
+<P>
+There are lots of ways of creating and reading environment
+variables to
+either exploit a vulnerability or obtain some information that will
+compromise security. Environment variables should never hold secret
+information like passwords.
+
+<P>
+On the other hand, when handling environment variables, programs
+should consider the data they contain to be potentially malicious and
+do proper bounds checking and verification of their contents.
+
+<P>
+(Of more concern in systems that host many untrusted user logins.)
+
+<P>
+
+<H2><A NAME="SECTION004717000000000000000">
+44.1.7 Password sniffing</A>
+</H2>
+
+<P>
+When <TT>
+<FONT COLOR="#0000ff">telnet</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">ftp</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">rlogin</FONT></TT>, or in fact any program at
+all that authenticates over the network without
+encryption is used, the password is
+transmitted over the network in <I>plain text</I>,
+that is, human-readable form.
+These programs are all common network utilities that old U<SMALL>NIX</SMALL> hands were accustomed to
+using. The sad fact is that what is being transmitted can easily be read off
+the wire with the most elementary tools (see <TT>
+<FONT COLOR="#0000ff">tcpdump</FONT></TT> on page
+<A HREF="node29.html#page:tcpsession"><IMG  ALIGN="BOTTOM" BORDER="1" ALT="[*]" SRC="crossref.png"></A>). None of these services should be exposed
+to the Internet. Use within a local LAN is safe, provided the LAN is
+firewalled, and your local users are trusted.
+
+<P>
+
+<H2><A NAME="SECTION004718000000000000000">
+44.1.8 Password cracking</A>
+</H2>
+
+<P>
+This concept is discussed in Section <A HREF="node14.html#sec:shadowpasfiletcsh">11.3</A>.
+
+<P>
+
+<H2><A NAME="SECTION004719000000000000000">
+44.1.9 Denial of service attacks</A>
+</H2>
+
+<P>
+A denial of service (DoS) attack is one
+which does not compromise the system
+but prevents other users from using a service legitimately. It can
+involve repetitively loading a service to the point that no one else
+can use it. In each particular case, logs or TCP traffic dumps might
+reveal the point of origin. You might then be able to deny access with
+a firewall rule. There are many types of DoS attacks that can be
+difficult or impossible to protect against.
+
+<P>
+
+<H1><A NAME="SECTION004720000000000000000">
+44.2 Other Types of Attack</A>
+</H1>
+
+<P>
+The preceding lists are far from exhaustive. It never ceases to amaze me how
+new loopholes are discovered in program logic.
+Not all of these exploits can
+be classified; indeed, it is precisely because new and innovative ways of
+hacking systems are always being found, that security needs constant
+attention.
+
+<P>
+
+<H1><A NAME="SECTION004730000000000000000">
+44.3 Counter Measures</A>
+</H1>
+
+<P>
+Security first involves removing known risks, then removing potential
+risks, then (possibly) making life difficult for a hacker, then using
+custom U<SMALL>NIX</SMALL> security paradigms, and finally being proactively cunning
+in thwarting hack attempts.
+
+<P>
+
+<H2><A NAME="SECTION004731000000000000000">
+44.3.1 Removing known risks: outdated packages</A>
+</H2>
+
+<P>
+It is especially sad to see naive administrators install packages that
+are <I>well known</I> to be vulnerable
+and for which ``script kiddy''
+exploits are readily available on the Internet.
+
+<P>
+If a security hole is discovered,
+the package will usually be updated
+by the distribution vendor or the author. The
+<EM><TT>
+<FONT COLOR="#0000ff">bugtraq</FONT></TT></EM> <I>&lt;<TT><A NAME="tex2html79"
+  HREF="http://www.securityfocus.com/forums/bugtraq/intro.html">http://www.securityfocus.com/forums/bugtraq/intro.html</A></TT>&gt;</I>
+mailing list announces the latest exploits and has many
+thousands of subscribers worldwide. You should get on this mailing
+list to be aware of new discoveries. <EM>The Linux
+Weekly News</EM> <I>&lt;<TT><A NAME="tex2html80"
+  HREF="http://lwn.net/">http://lwn.net/</A></TT>&gt;</I> is a possible source for security
+announcements if you
+only want to read once a week. You can then download and
+install the binary or source distribution provided for that package.
+Watching security announcements is critical. <FONT COLOR="#ffa500">[I often ask
+``administrators'' if they have upgraded the <I>xxx</I> service and
+get the response, that either they are not sure if they need it, do not
+believe it is vulnerable, do not know if it is running, where to get a
+current package, or even how to perform the upgrade; as if their
+ignorance absolves them of their responsibility. If the janitor were to
+duct-tape your safe keys to a window pane, would you fire him?]</FONT>
+<P>
+This goes equally for new systems that you install: never install
+outdated packages. Some vendors
+ship updates to their older distributions.
+This means that you can install from an old distribution and then
+upgrade all your packages from an ``update''
+package list. Your packages would be then as secure as
+the packages of the distribution that
+has the highest version number. For instance, you can install RedHat 6.2 from a
+6-month-old CD, then download a list of RedHat 6.2 ``update'' packages. Alternatively,
+you can install the latest RedHat version 7.<I>?</I> which has a completely different
+set of packages. On the other hand, some other vendors may
+``no longer support'' an older distribution, meaning that those packages will
+never be updated. In this case, you should be sure to install or upgrade with
+the vendor's most current distribution or manually recompile vulnerable
+packages by yourself.
+
+<P>
+Over and above this, remember that vendors are sometimes slow to respond
+to security alerts. Hence, trust the free software
+community's alerts over anything vendors may fail to tell you.
+
+<P>
+Alternatively, if you discover that a service is insecure, you may just want
+to disable it (or better still, uninstall it) if it's not really needed.
+
+<P>
+
+<H2><A NAME="SECTION004732000000000000000">
+44.3.2 Removing known risks: compromised packages</A>
+</H2>
+
+<P>
+<A NAME="sec:knownriskpack"></A>
+<P>
+Packages that are modified by a hacker can allow him a back door
+into your system: so called <I>Trojans</I>.
+Use the package verification
+commands discussed in Section <A HREF="node27.html#sec:packageveri">24.2.6</A> to check package
+integrity.
+
+<P>
+
+<H2><A NAME="SECTION004733000000000000000">
+44.3.3 Removing known risks: permissions</A>
+</H2>
+
+<P>
+<A NAME="page:knownrisksscripts"></A>
+<P>
+It is easy to locate world-writable files.
+There should be only a few in the <TT>
+<FONT COLOR="#0000ff">/dev</FONT></TT> and
+<TT>
+<FONT COLOR="#0000ff">/tmp</FONT></TT> directories:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>find&nbsp;/&nbsp;-perm&nbsp;-2&nbsp;!&nbsp;-type&nbsp;l&nbsp;-ls</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Files without any owner are an indication of mismanagement or compromise
+of your system. Use the <TT>
+<FONT COLOR="#0000ff">find</FONT></TT> command with
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>find&nbsp;/&nbsp;-nouser&nbsp;-o&nbsp;-nogroup&nbsp;-ls</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H2><A NAME="SECTION004734000000000000000">
+44.3.4 Password management</A>
+</H2>
+
+<P>
+<A NAME="sec:passwdmanage"></A>
+<P>
+It is obvious that variety in user passwords is more secure.
+It is a good idea to rather not let novice users choose their
+own passwords. Create a randomizing program to generate
+completely arbitrary 8 character passwords for them.
+You should also use the <TT>
+<FONT COLOR="#0000ff">pwconv</FONT></TT> utility from the
+<TT>
+<FONT COLOR="#0000ff">shadow-utils</FONT></TT> package to create the shadow password
+files (explained in Section <A HREF="node14.html#sec:shadowpasfiletcsh">11.3</A>).
+See <TT>
+<FONT COLOR="#0000ff">pwconv</FONT></TT>(8) for information.
+
+<P>
+
+<H2><A NAME="SECTION004735000000000000000">
+44.3.5 Disabling inherently insecure services</A>
+</H2>
+
+<P>
+Services that are inherently insecure are those that allow the
+password to be
+sniffed over the Internet or provide no proper authentication to begin with.
+Any service that does not encrypt traffic should not be used for
+authentication over the Internet. These are
+<TT>
+<FONT COLOR="#0000ff">ftp</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">telnet</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">rlogin</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">uucp</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">imap</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">pop3</FONT></TT>, and
+any service that does not use encryption
+and yet authenticates with a password.
+
+<P>
+Instead, you should use <TT>
+<FONT COLOR="#0000ff">ssh</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">scp</FONT></TT>.
+There are secure versions of POP and IMAP
+(SPOP3 and SIMAP),
+but you may not be able to find good client programs.
+If you really <I>have</I> to use a service,
+you should limit the networks that are allowed to connect to it, as described
+on page <A HREF="node32.html#page:hostallow"><IMG  ALIGN="BOTTOM" BORDER="1" ALT="[*]" SRC="crossref.png"></A> and <A HREF="node32.html#page:xhostallow"><IMG  ALIGN="BOTTOM" BORDER="1" ALT="[*]" SRC="crossref.png"></A>.
+
+<P>
+Old U<SMALL>NIX</SMALL> hands are notorious for exporting NFS shares
+(<TT>
+<FONT COLOR="#0000ff">/etc/exports</FONT></TT>) that are readable
+(and writable) from the Internet. The
+group of functions to do Sun Microsystems' port mapping and NFS--the
+<TT>
+<FONT COLOR="#0000ff">nfs-utils</FONT></TT> (<TT>
+<FONT COLOR="#0000ff">rpc.</FONT></TT>...) and
+<TT>
+<FONT COLOR="#0000ff">portmap</FONT></TT> packages--don't
+give me a warm, fuzzy feeling. Don't use these on machines exposed to the
+Internet.
+
+<P>
+
+<H2><A NAME="SECTION004736000000000000000">
+44.3.6 Removing potential risks: network</A>
+</H2>
+
+<P>
+Install <TT>
+<FONT COLOR="#0000ff">libsafe</FONT></TT>.
+This is a library that wraps all those vulnerable
+<B>C</B> functions discussed above, thus testing for a buffer overflow attempt
+with each call. It is trivial to install, and sends email to the administrator upon
+hack attempts. Go to <I><TT><A NAME="tex2html81"
+  HREF="http://www.avayalabs.com/project/libsafe/index.html">http://www.avayalabs.com/project/libsafe/index.html</A></TT></I>
+for more information, or send email to <TT>
+<FONT COLOR="#0000ff">libsafe@research.avayalabs.com</FONT></TT>. The
+<TT>
+<FONT COLOR="#0000ff">libsafe</FONT></TT> library effectively
+solves 90% of the buffer overflow problem. There is a <I>very</I> slight
+performance penalty, however.
+
+<P>
+Disable all services that you are not using. Then, try to evaluate whether the
+remaining services are really needed. For instance, do you <I>really</I>
+need IMAP or would POP3 suffice? IMAP has had a lot more security alerts
+than POP3 because it is a much more complex service. Is the risk worth it?
+
+<P>
+<TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT> (or <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT>)
+runs numerous services, of which only a
+few are needed. You should trim your <TT>
+<FONT COLOR="#0000ff">/etc/xinetd.d</FONT></TT> directory (or
+<TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT> file) to a minimum. For <TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT>, you can add the
+line <TT>
+<FONT COLOR="#0000ff">disable&nbsp;=&nbsp;yes</FONT></TT> to the relevant file. Only one or two files should
+be enabled. Alternatively, your <TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT> should have only a
+few lines in it. A real-life example is:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ftp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;stream&nbsp;&nbsp;tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nowait&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;&nbsp;in.ftpd&nbsp;-l&nbsp;-a</code><br>
+<code>pop-3&nbsp;&nbsp;&nbsp;stream&nbsp;&nbsp;tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nowait&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;&nbsp;ipop3d</code><br>
+<code>imap&nbsp;&nbsp;&nbsp;&nbsp;stream&nbsp;&nbsp;tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nowait&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;&nbsp;imapd</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+This advice should be taken quite literally. The rule of
+thumb is that if you don't know what a service does, you
+should disable it. See also Section <A HREF="node32.html#sec:inetdsec">29.6</A>.
+
+<P>
+In the above real-life case, the services were additionally limited to permit
+only certain networks to connect (see page <A HREF="node32.html#page:hostallow"><IMG  ALIGN="BOTTOM" BORDER="1" ALT="[*]" SRC="crossref.png"></A> and
+<A HREF="node32.html#page:xhostallow"><IMG  ALIGN="BOTTOM" BORDER="1" ALT="[*]" SRC="crossref.png"></A>).
+
+<P>
+<TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT> (or <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT>) is not the only problem. There are many
+other problematic services. Entering <TT>
+<FONT COLOR="#0000ff">netstat -nlp</FONT></TT>
+gives initial output, like
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red size="-1">
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue size="-1">
+<code>(Not&nbsp;all&nbsp;processes&nbsp;could&nbsp;be&nbsp;identified,&nbsp;non-owned&nbsp;process&nbsp;info</code><br>
+<code>&nbsp;will&nbsp;not&nbsp;be&nbsp;shown,&nbsp;you&nbsp;would&nbsp;have&nbsp;to&nbsp;be&nbsp;root&nbsp;to&nbsp;see&nbsp;it&nbsp;all.)</code><br>
+<code>Active&nbsp;Internet&nbsp;connections&nbsp;(only&nbsp;servers)</code><br>
+<code>Proto&nbsp;Recv-Q&nbsp;Send-Q&nbsp;Local&nbsp;Address&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Foreign&nbsp;Address&nbsp;&nbsp;&nbsp;State&nbsp;&nbsp;&nbsp;&nbsp;PID/Program&nbsp;name</code><br>
+<code>tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;0.0.0.0:25&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0.0.0:*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;LISTEN&nbsp;&nbsp;&nbsp;2043/exim</code><br>
+<code>tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;0.0.0.0:400&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0.0.0:*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;LISTEN&nbsp;&nbsp;&nbsp;32582/xinetd</code><br>
+<code>tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;0.0.0.0:21&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0.0.0:*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;LISTEN&nbsp;&nbsp;&nbsp;32582/xinetd</code><br>
+<code>tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;172.23.80.52:53&nbsp;&nbsp;&nbsp;0.0.0.0:*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;LISTEN&nbsp;&nbsp;&nbsp;30604/named</code><br>
+<code>tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;127.0.0.1:53&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0.0.0:*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;LISTEN&nbsp;&nbsp;&nbsp;30604/named</code><br>
+<code>tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;0.0.0.0:6000&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0.0.0:*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;LISTEN&nbsp;&nbsp;&nbsp;583/X</code><br>
+<code>tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;0.0.0.0:515&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0.0.0:*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;LISTEN&nbsp;&nbsp;&nbsp;446/</code><br>
+<code>tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;0.0.0.0:22&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0.0.0:*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;LISTEN&nbsp;&nbsp;&nbsp;424/sshd</code><br>
+<code>udp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;0.0.0.0:1045&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0.0.0:*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;30604/named</code><br>
+<code>udp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;172.23.80.52:53&nbsp;&nbsp;&nbsp;0.0.0.0:*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;30604/named</code><br>
+<code>udp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;127.0.0.1:53&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0.0.0:*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;30604/named</code><br>
+<code>raw&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;0.0.0.0:1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0.0.0:*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-</code><br>
+<code>raw&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;0.0.0.0:6&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0.0.0:*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-</code><br>
+</FONT></TD></TR></TABLE><P>
+but doesn't show that PID
+<TT>
+<FONT COLOR="#0000ff">446</FONT></TT> is actually <TT>
+<FONT COLOR="#0000ff">lpd</FONT></TT>. For that
+information just type <TT>
+<FONT COLOR="#0000ff">ls&nbsp;-al&nbsp;/proc/446/</FONT></TT>.
+
+<P>
+You can see that ten services are actually open: <TT>
+<FONT COLOR="#0000ff">1</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">6</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">21</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">22</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">25</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">53</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">400</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">515</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">1045</FONT></TT>, and <TT>
+<FONT COLOR="#0000ff">6000</FONT></TT>. <TT>
+<FONT COLOR="#0000ff">1</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">6</FONT></TT> are kernel ports, and
+<TT>
+<FONT COLOR="#0000ff">21</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">400</FONT></TT> are FTP and our echo daemon, respectively.
+Such a large number of open ports provides ample opportunity for attack.
+
+<P>
+At this point, you should go through each of these services and
+<B>(1)</B>, decide whether you really need them. Then <B>(2)</B>, make sure
+you have the latest version; finally <B>(3)</B>, consult the packages
+documentation so that you can limit the networks that are allowed to connect
+to those services.
+
+<P>
+It is interesting that people are wont to make assumptions about
+packages to the tune of ``This service is so popular it can't possibly be
+vulnerable.'' The exact opposite is, in fact, true: The more obscure and
+esoteric a service is, the less likely that someone has taken the trouble to
+find a vulnerability. In the case of <TT>
+<FONT COLOR="#0000ff">named</FONT></TT>
+(i.e., <TT>
+<FONT COLOR="#0000ff">bind</FONT></TT>), a number of most serious
+vulnerabilities were made public as regards every Bind release prior to 9.
+Hence, upgrading to the latest version (9.1 at the time of writing) from source
+was prudent for all the machines I administered (a most-time consuming
+process).
+
+<P>
+
+<H2><A NAME="SECTION004737000000000000000">
+44.3.7 Removing potential risks: setuid programs</A>
+</H2>
+
+<P>
+It is easy to find all the setuid programs on your system:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>find&nbsp;/&nbsp;-type&nbsp;f&nbsp;-perm&nbsp;+6000&nbsp;-ls</code><br>
+</FONT></TD></TR></TABLE><P>
+Disabling them is just as easy:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>chmod&nbsp;-s&nbsp;/bin/ping</code><br>
+</FONT></TD></TR></TABLE><P>
+There is nothing wrong with the decision that
+ordinary users are <I>not</I> allowed to use
+even the <TT>
+<FONT COLOR="#0000ff">ping</FONT></TT> command. If you do allow any
+shell logins on your system, then you should
+remove setuid permissions from all shell commands.
+
+<P>
+
+<H2><A NAME="SECTION004738000000000000000">
+44.3.8 Making life difficult</A>
+</H2>
+
+<P>
+There is much that you can do that is not ``security'' <I>per se</I> but that
+will make life considerably more difficult for a hacker, and certainly impossible
+for a stock standard attack, even if your system is vulnerable. A hack attempt
+often relies on a system being configured a certain way. Making your system
+different from the standard can go a long way.
+
+<P>
+<DL>
+<DT><STRONG>Read-only partitions:</STRONG></DT>
+<DD>It is allowable
+to mount your <TT>
+<FONT COLOR="#0000ff">/usr</FONT></TT> partition
+(and critical top-level directories like <TT>
+<FONT COLOR="#0000ff">/bin</FONT></TT>)
+read-only since these are, by definition, static data. Of course, anyone with root
+access can remount it as writable, but a generic attack script may not know this.
+Some SCSI disks can be configured as read-only by using dip switches (or so I hear).
+The <TT>
+<FONT COLOR="#0000ff">/usr</FONT></TT> partition can be made from an ISO 9660 partition
+(CD-ROM file system) which is read-only by design. You can also mount your CD-ROM
+as a <TT>
+<FONT COLOR="#0000ff">/usr</FONT></TT> partition:
+access will be slow, but completely unmodifiable. Finally, you can manually modify
+your kernel code to fail write-mount attempts on <TT>
+<FONT COLOR="#0000ff">/usr</FONT></TT>.
+</DD>
+<DT><STRONG>Read-only attributes:</STRONG></DT>
+<DD>L<SMALL>INUX</SMALL> has additional file attributes to make a
+file unmodifiable over and above the usual permissions. These attributes are controlled by the
+commands <TT>
+<FONT COLOR="#0000ff">chattr</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">lsattr</FONT></TT>. You can make a log file
+<TT>
+<FONT COLOR="#0000ff">a</FONT></TT>ppend-only with
+<TT>
+<FONT COLOR="#0000ff">chatter&nbsp;+a&nbsp;/var/log/messages&nbsp;/var/log/syslog</FONT></TT> or make files
+<TT>
+<FONT COLOR="#0000ff">i</FONT></TT>mmutable
+with, <TT>
+<FONT COLOR="#0000ff">chatter&nbsp;+i&nbsp;/bin/login</FONT></TT>: both actions are a good idea. The command
+</DD>
+</DL>
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>chattr&nbsp;-R&nbsp;+i&nbsp;/bin&nbsp;/boot&nbsp;/lib&nbsp;/sbin&nbsp;/usr</code><br>
+</FONT></TD></TR></TABLE><P>
+<DL>
+<DT></DT>
+<DD>is a better idea still. Of course,
+anyone with superuser privileges can switch them back.
+</DD>
+<DT><STRONG>Periodic system monitoring:</STRONG></DT>
+<DD>It is useful to write your own <TT>
+<FONT COLOR="#0000ff">crond</FONT></TT> scripts
+to check whether files have changed. the scripts can check for new setuid programs, permissions, or
+changes to binary files; or you can reset permissions to what you think is secure. Just remember
+that <TT>
+<FONT COLOR="#0000ff">cron</FONT></TT> programs can be modified by anyone who hacks into the system. A simple
+command
+</DD>
+</DL>
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>find&nbsp;/&nbsp;-mtime&nbsp;2&nbsp;-o&nbsp;-ctime&nbsp;2</code><br>
+</FONT></TD></TR></TABLE><P>
+<DL>
+<DT></DT>
+<DD>searches for all files that have been modified in the last two days.
+</DD>
+<DT><STRONG>Nonstandard packages:</STRONG></DT>
+<DD>If you notice many security alerts for a package,
+switch to a different one. There are alternatives to <TT>
+<FONT COLOR="#0000ff">bind</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">wu-ftpd</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">sendmail</FONT></TT> (as covered in Chapter <A HREF="node33.html#chap:eximsendmail">30</A>), and almost every
+service you can think of. You can also try installing an uncommon or security-specialized
+distribution. Switching entirely to FreeBSD is also one way of reducing your
+risk considerably. <FONT COLOR="#ffa500">[This is not a joke.]</FONT>
+</DD>
+<DT><STRONG>Nonstandard messages:</STRONG></DT>
+<DD>Many services provide banners and informational
+messages which give away the version of your software. For example,
+mail servers have default <TT>
+<FONT COLOR="#0000ff">HELO</FONT></TT> responses to advertise themselves;
+and login and FTP banners often display the operating system you are running.
+These messages should be customized to provide less information on which to base an attack.
+You can begin by editing <TT>
+<FONT COLOR="#0000ff">/etc/motd</FONT></TT>.
+</DD>
+<DT><STRONG>Minimal kernels:</STRONG></DT>
+<DD>Its easy to compile your kernel without module
+support, with an absolutely minimal set of features. Loading of
+Trojan modules has been a source of insecurity in the past.
+Such a kernel can only make you safer.
+</DD>
+<DT><STRONG>Non-Intel architecture:</STRONG></DT>
+<DD>Hackers need to learn assembly language
+to exploit many vulnerabilities. The most common assembly language is
+that of Intel 80<I>?</I>86 processors.
+Using a non-Intel platform adds that extra bit of obscurity.
+</DD>
+<DT><STRONG>Removing fingerprints:</STRONG></DT>
+<DD>Your system identifies itself to 
+</DD>
+<DT><STRONG>OpenWall project:</STRONG></DT>
+<DD>This has a kernel patch that makes the stack
+of a process non-executable (which will thwart most kinds of buffer overflow
+attempts) and does some other cute things with the <TT>
+<FONT COLOR="#0000ff">/tmp</FONT></TT> directory
+and process I/O.
+</DD>
+</DL>
+
+<P>
+
+<H2><A NAME="SECTION004739000000000000000">
+44.3.9 Custom security paradigms</A>
+</H2>
+
+<P>
+Hackers have limited resources. Take oneupmanship away and security is
+about the cost of hacking a system versus the reward of success. If you feel
+the machine you administer is bordering on this category then you need to start
+billing far more for your hours and doing things like those described below.
+It <I>is</I> possible to go to lengths that will make a L<SMALL>INUX</SMALL> system secure
+against a large government's defense budget.
+
+<P>
+<DL>
+<DT><STRONG>Capabilities:</STRONG></DT>
+<DD>This is a system of security that gives limited
+kinds of superuser access to programs that would normally need to be full-blown
+setuid <TT>
+<FONT COLOR="#0000ff">root</FONT></TT> executables. Think: Most processes
+that run with <TT>
+<FONT COLOR="#0000ff">root</FONT></TT> (setuid) privileges do so because of the need to access
+only a single privileged function. For instance, the <TT>
+<FONT COLOR="#0000ff">ping</FONT></TT> program
+does not need <I>complete</I> superuser privileges (run <TT>
+<FONT COLOR="#0000ff">ls&nbsp;-l&nbsp;/bin/ping</FONT></TT>
+and note the setuid bit). Capabilities are a fine-grained set of privileges
+that say that a process can do particular things that an ordinary
+user can't, <I>without</I> ever having full <TT>
+<FONT COLOR="#0000ff">root</FONT></TT> access. In the
+case of <TT>
+<FONT COLOR="#0000ff">ping</FONT></TT>, its capability would be certain networking access that
+only <TT>
+<FONT COLOR="#0000ff">root</FONT></TT> is normally allowed to do.
+</DD>
+<DT><STRONG>Access control lists:</STRONG></DT>
+<DD>These lists extend the simple ``user/group/other''
+permissions of U<SMALL>NIX</SMALL> files to allow arbitrary lists of users to access
+particular files. This really does nothing for network security but is
+useful if you have many users on the system and you would like to
+restrict them in odd ways. (ACL is a little
+out of place in this list.)
+</DD>
+<DT><STRONG>DTE:</STRONG></DT>
+<DD><I>Domain and Type Enforcement</I> works like this: When
+a program is executed, it is categorized and only allowed to do certain
+things even if it is running as root. These limitations are extended to
+child processes that it may execute. This is <I>real</I> security;
+there are kernel patches to do this. The National Security Agency
+(of the U.S.) (NSA) actually has a L<SMALL>INUX</SMALL> distribution built around DTE.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">medusa</FONT></TT>:</STRONG></DT>
+<DD>This is a security system that causes the kernel to
+query a user daemon before letting any process on the system do anything.
+It is the most ubiquitous security system out because it is entirely
+configurable--you can make the user daemon restrict anything however
+you like.
+</DD>
+<DT><STRONG>VXE:</STRONG></DT>
+<DD><I>Virtual eXecuting Environment</I> dictates that a program
+executes in its own protected space while VXE executes a Lisp program to
+check whether a system call is allowed. This is effectively a lot like
+<TT>
+<FONT COLOR="#0000ff">medusa</FONT></TT>.
+</DD>
+<DT><STRONG>MAC:</STRONG></DT>
+<DD><I>Mandatory Access Controls</I>. This is also about
+virtual environments for processes. MAC is a POSIX standard.
+</DD>
+<DT><STRONG>RSBAC and RBAC:</STRONG></DT>
+<DD><I>Rule-Set-Based Access Controls</I> and
+<I>Role-Based Access Controls</I>. These look like a combination
+of some of the above.
+</DD>
+<DT><STRONG>LIDS:</STRONG></DT>
+<DD><I>Linux Intrusion Detection System</I> does some meager
+preventive measures to restrict module loading, file modifications,
+and process information.
+</DD>
+</DL>
+
+<P>
+Kernel patches exist to do all of the above. Many of these projects are well
+out of the test phase but are not in the mainstream kernel, possibly because
+developers are not sure of the most enduring approach to U<SMALL>NIX</SMALL> security.
+They all have one thing in common: double-checking what a privileged
+process does, which can only be a good thing.
+
+<P>
+
+<H2><A NAME="SECTION0047310000000000000000">
+44.3.10 Proactive cunning</A>
+</H2>
+
+<P>
+Proactive cunning means attack monitoring and reaction, and
+intrusion monitoring and reaction. Utilities that do this come under a
+general class called
+<I>network intrusion detection</I> software. The
+idea that one might detect and react to a hacker has an emotional
+appeal, but it automatically implies that your system is insecure to
+begin with--which is probably true, considering the rate at
+which new vulnerabilities are being reported. I am weary of so-called
+intrusion detection systems that administrators implement
+even before the most elementary of security measures. Really, one
+must implement all of the above security measures before thinking
+about intrusion monitoring.
+
+<P>
+To picture the most basic form of monitoring, consider this: To hack a
+system, one usually needs to test for open services. To do this, one tries to
+connect to every port on the system to see which are open. This is known as
+a <I>port scan</I>. There are simple tools to detect a port scan, which will
+then start a firewall rule that will deny further access from the offending host
+although this can work against you if the hacker has spoofed your own IP
+address.
+More importantly, the tools will report the IP address from which the attack arose.
+A reverse lookup will give the domain name, and then a <TT>
+<FONT COLOR="#0000ff">whois</FONT></TT> query
+on the appropriate authoritative DNS registration site will reveal the
+physical address and telephone number of the domain owner.
+
+<P>
+Port scan monitoring is the most elementary form of monitoring and reaction.
+From there up, you can find innumerable bizarre tools to try and read into all
+sorts of network and process activity. I leave this to your own research,
+although you might want to start with the
+<EM>Snort traffic scanner</EM> <I>&lt;<TT><A NAME="tex2html82"
+  HREF="http://www.snort.org/">http://www.snort.org/</A></TT>&gt;</I>,
+the <EM>Tripwire intrusion detection system</EM> <I>&lt;<TT><A NAME="tex2html83"
+  HREF="http://www.tripwiresecurity.com/">http://www.tripwiresecurity.com/</A></TT>&gt;</I>,
+and <EM>IDSA</EM> <I>&lt;<TT><A NAME="tex2html84"
+  HREF="http://jade.cs.uct.ac.za/idsa/">http://jade.cs.uct.ac.za/idsa/</A></TT>&gt;</I>.
+
+<P>
+A point to such monitoring is also as a deterrent to hackers. A network should
+be able to find the origins of an attack and thereby trace the attacker.
+The threat of discovery makes hacking a far less attractive pastime,
+and you should look into the legal recourse you may have against people who
+try to compromise your system.
+
+<P>
+
+<H1><A NAME="SECTION004740000000000000000">
+44.4 Important Reading</A>
+</H1>
+
+<P>
+The preceding is a practical guide. It gets much more interesting than this. A
+place to start is the <TT>
+<FONT COLOR="#0000ff">comp.os.linux.security</FONT></TT> FAQ. This FAQ gives the
+most important U<SMALL>NIX</SMALL> security references available on the net. You can
+download it from <I><TT><A NAME="tex2html85"
+  HREF="http://www.memeticcandiru.com/colsfaq.html">http://www.memeticcandiru.com/colsfaq.html</A></TT></I>,
+<I><TT><A NAME="tex2html86"
+  HREF="http://www.linuxsecurity.com/docs/colsfaq.html">http://www.linuxsecurity.com/docs/colsfaq.html</A></TT></I> or
+<I><TT><A NAME="tex2html87"
+  HREF="http://www.geocities.com/swan_daniel/colsfaq.html">http://www.geocities.com/swan_daniel/colsfaq.html</A></TT></I>. The
+<EM>Linux Security</EM> <I>&lt;<TT><A NAME="tex2html88"
+  HREF="http://www.linuxsecurity.com/">http://www.linuxsecurity.com/</A></TT>&gt;</I> web page also
+has a security quick reference card that summarizes most everything you need
+to know in two pages.
+
+<P>
+
+<H1><A NAME="SECTION004750000000000000000">
+44.5 Security Quick-Quiz</A>
+</H1>
+
+<P>
+
+<UL>
+<LI><I>How many security reports have you read?</I>
+</LI>
+<LI><I>How many packages have you upgraded because of vulnerabilities?</I>
+</LI>
+<LI><I>How many services have you disabled because you were unsure of their security?</I>
+</LI>
+<LI><I>How many access limit rules do you have in your <TT>
+<FONT COLOR="#0000ff">hosts.</FONT></TT><I>*</I>/<TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT> services?</I>
+</LI>
+</UL>
+<P>
+If your answer to any of these questions is fewer than 5, you
+are not being conscientious about security.
+
+<P>
+
+<H1><A NAME="SECTION004760000000000000000">
+44.6 Security Auditing</A>
+</H1>
+
+<P>
+This chapter is mostly concerned with securing your own L<SMALL>INUX</SMALL>
+server. However, if you have a large network, <I>security auditing</I> is
+a more extensive evaluation of your systems' vulnerabilities. Security auditing
+becomes an involved procedure when multiple administrators maintain many different
+platforms across a network. There are companies that specialize in this work:
+Any network that does not dedicate an enlightened staff member should budget
+generously for their services.
+
+<P>
+Auditing your network might involve the following:
+
+<P>
+
+<UL>
+<LI>Doing penetration testing of firewalls.
+</LI>
+<LI>Port scanning.
+</LI>
+<LI>Installing intrusion detection software.
+</LI>
+<LI>Analyzing and reporting on Internet attack paths.
+</LI>
+<LI>Evaluating service access within your local LAN.
+</LI>
+<LI>Tracking your administrators' maintenance activities.
+</LI>
+<LI>Trying password cracking on all authentication services.
+</LI>
+<LI>Monitoring the activity of legitimate user accounts.
+</LI>
+</UL>
+<P>
+
+<P>
+<DIV ALIGN="CENTER">
+
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD bgcolor="#FFE0FF">
+Network attacks cost companies billions of dollars
+each year in service downtime and repair. Failing to
+pay attention to security is a false economy.
+
+</TD></TR>
+</TABLE>
+
+</DIV>
+
+<P>
+
+<P>
+
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html2903"
+  HREF="node48.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2899"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2893"
+  HREF="node46.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2901"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2904"
+  HREF="node48.html">A. Lecture Schedule</A>
+<B> Up:</B> <A NAME="tex2html2900"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2894"
+  HREF="node46.html">43. The X Window</A>
+ &nbsp <B>  <A NAME="tex2html2902"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+
+</BODY>
+</HTML>

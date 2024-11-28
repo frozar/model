@@ -1,0 +1,1036 @@
+<HTML>
+<HEAD>
+<TITLE>Intro au Sniffing --Medgi</TITLE>
+</HEAD>
+<link rel="StyleSheet" type="text/css" href="style.css">
+<BODY BGCOLOR="#ffffff">
+<PRE>
+                                                        
+
+                                                 .*<FONT COLOR="#9999ff">&quot;~~~(     Petite introduction au sniffing    )~~~&quot;</FONT>*.
+                                                ,                                                      ,
+                                         =======+======================================================+=======
+                                         [ medgi@kernelhacking.net - v1.0 (6Ko) - <FONT COLOR="#0000ff"><STRONG>for</STRONG></FONT> CounterStrike Magazine ]
+                                         ======================================================================
+
+
+
+
+[ 1 ] Introduction
+[ 2 ] Fonctionnement du r&eacute;seau
+        [ 2.1 ] Transfer Control Protocol (TCP)
+        [ 2.2 ] Le niveau Ethernet
+        [ 2.3 ] La transmission des donn&eacute;es sur un LAN
+[ 3 ] Sniffer un r&eacute;seau Ethernet
+        [ 3.1 ] Notions de sniffing
+        [ 3.2 ] L<FONT COLOR="#ff9900"><STRONG>'outil tcpdump</STRONG></FONT>
+           [ 3.2.1 ] Notions de base
+           [ 3.2.2 ] Format d<FONT COLOR="#ff9900"><STRONG>'output</STRONG></FONT>
+           [ 3.2.3 ] Les expressions de base
+        [ 3.3 ] Filtrage avanc&eacute; (filtres BPF)
+[ 4 ] Programmer son sniffer avec la libpcap
+        [ 4.1 ] Introduction a la libpcap
+        [ 4.2 ] Explication du code
+[ 5 ] D&eacute;tecter un sniffer &amp; se prot&eacute;ger
+[ 6 ] Ressources
+[ 7 ] Conclusion
+
+
+[ A ] Annexe A : psyrus.c [ packet sniffer code ]
+
+
+
+
+
+[ 1 ] Introduction :
+
+
+Les sniffers font partis des outils les plus anciens du r&eacute;seau. En effet, ils &eacute;tait &agrave; l<FONT COLOR="#ff9900"><STRONG>'origine utilis&eacute;es par les administrateurs </STRONG></FONT>
+d<FONT COLOR="#ff9900"><STRONG>'un r&eacute;seau pour surveiller le traffic qui y transitait. Cependant ces outils ont vite &eacute;t&eacute; utilis&eacute; par les hackers dans le m&ecirc;me but,</STRONG></FONT>
+mais &agrave; des fins diff&eacute;rentes. Ainsi lorsque qu<FONT COLOR="#ff9900"><STRONG>'un hacker r&eacute;alise une intrusion, tr&egrave;s souvent il placera un sniffer, pour lui aussi </STRONG></FONT>
+surveiller le r&eacute;seau dont il vient d<FONT COLOR="#650099"><STRONG>'obtenir l'</STRONG></FONT>acces.
+
+Un sniffer est en fait un petit programme qui permet comme nous venons de le voir, <FONT COLOR="#9999ff">&quot;d'&eacute;couter&quot;</FONT> le traffic d<FONT COLOR="#ff9900"><STRONG>'un r&eacute;seau. Cela pourrait</STRONG></FONT>
+&ecirc;tre compar&eacute; aux autorit&eacute;es d<FONT COLOR="#ff9900"><STRONG>'un gouvernement qui mettent sur &eacute;coute le r&eacute;seau t&eacute;l&eacute;phonique : ils peuvent ainsi savoir qui communique</STRONG></FONT>
+avec qui, et m&ecirc;me ce que deux personnes se disent. Bien que le terme sniffer soit aujourd<FONT COLOR="#650099"><STRONG>'hui employ&eacute; tr&egrave;s fr&eacute;quemment, il s'</STRONG></FONT>agit
+&agrave; la base du nom d<FONT COLOR="#650099"><STRONG>'un programme de l'</STRONG></FONT>entreprise <FONT COLOR="#650099"><STRONG>'Network Associates'</STRONG></FONT> (<FONT COLOR="#9999ff">&quot;Sniffer Network Analyzer&quot;</FONT>). 
+
+Cet article n<FONT COLOR="#650099"><STRONG>'as pas la pr&eacute;tention d'</STRONG></FONT>expliquer tout le fonctionnement du sniffing, et des diff&eacute;rentes m&eacute;thodes d<FONT COLOR="#ff9900"><STRONG>'attaque que cela</STRONG></FONT>
+entraine, et encore moins d<FONT COLOR="#ff9900"><STRONG>'expliquer en d&eacute;tail le fonctionnement du r&eacute;seau et son ensemble de protocoles, mais tout simplement de</STRONG></FONT>
+vous expliquer au mieux le sniffing. Ainsi il existe s&ucirc;rement d<FONT COLOR="#ff9900"><STRONG>'autres aspects du sniffing qui ne seront pas trait&eacute; ici, mais cet</STRONG></FONT>
+article essaiera tout de m&ecirc;me d<FONT COLOR="#ff9900"><STRONG>'&ecirc;tre le plus complet possible.</STRONG></FONT>
+
+Ainsi nous expliquerons tout d<FONT COLOR="#ff9900"><STRONG>'abord quelques notions de base sur le fonctionnement du r&eacute;seau, qui vous seront n&eacute;c&eacute;ssaire &agrave; la bonne</STRONG></FONT>
+compr&eacute;hension de cet article, puis nous etudierons le sniffing &agrave; proprement parler (avec l<FONT COLOR="#ff9900"><STRONG>'outil tcpdump). Nous verrons ensuite comment</STRONG></FONT>
+programmer son propre sniffer, gr&acirc;ce &agrave; la libpcap. Enfin nous &eacute;tudierons les diff&eacute;rentes techniques d<FONT COLOR="#ff9900"><STRONG>'attaques possibles bas&eacute; sur</STRONG></FONT>
+le sniff, ainsi que les moyens de s<FONT COLOR="#ff9900"><STRONG>'en prot&eacute;ger.</STRONG></FONT>
+
+
+
+
+[ 2 ] Fonctionnement du r&eacute;seau :
+
+
+Lorque deux stations &eacute;changent des donn&eacute;es sur le r&eacute;seu, celui ci fais appel &agrave; plusieurs protocoles. Il est n&eacute;cessaire de bien comprendre
+le fonctionnement de ces diff&eacute;rents protocoles. Voici donc un court r&eacute;sum&eacute; qui vous aidera peut &ecirc;tre. Pour plus d<FONT COLOR="#ff9900"><STRONG>'informations vous pouvez</STRONG></FONT>
+vous r&eacute;ferrer aux RFC suivant :
+
+
+        * Transfer Control Potocol (TCP)        http:<FONT COLOR="#009900"><EM>//RFC.net/rfc793.html</EM></FONT>
+        * Internet Protocol (IP)                http:<FONT COLOR="#009900"><EM>//RFC.net/rfc791.html</EM></FONT>
+        * Adresse Resolution Protocol (ARP)     http:<FONT COLOR="#009900"><EM>//RFC.net/rfc826.html</EM></FONT>
+
+
+Pour plus d<FONT COLOR="#650099"><STRONG>'informations sur les diff&eacute;rentes documentation sur le r&eacute;seau qu'</STRONG></FONT>il serait utile de consulter, vous pouvez vous rendre &agrave; la
+section ressource.
+
+
+        [ 2.1 ] Transfer Control Protocol (TCP) :
+
+
+        Le protocol TCP &agrave; comme but de r&eacute;cup&eacute;rer les donn&eacute;es et de les fragmenter en plusieures datagrammes pour faciliter leur
+        transfert. Il doit aussi r&eacute;assembler &agrave; l<FONT COLOR="#650099"><STRONG>'arriv&eacute;e les donn&eacute;es qu'</STRONG></FONT>il &agrave; fragment&eacute; ainsi que les remettre dans le bon ordre.
+        Enfin il doit s<FONT COLOR="#650099"><STRONG>'occuper de la r&eacute;&eacute;mission des donn&eacute;es qui ont &eacute;t&eacute; perdues. Voici donc le sch&eacute;ma d'</STRONG></FONT>une en t&ecirc;te TCP, qui sera
+        brievement comment&eacute;e :
+
+
+                        0   2   4   6   8   10  12  14  16  18  20  22  24  26  28  30  32
+                        +-------------------------------+-------------------------------+
+                        |         PORT SOURCE           |       PORT DESTINATION        |
+                        +-------------------------------+-------------------------------+
+                        |                       NUMERO DE SEQUENCE                      |
+                        +---------------------------------------------------------------+
+                        |                       ACCUSE DE RECEPTION                     |
+                        +-------+-----------+-----------+-------------------------------+
+                        | DATA  |           |U|A|P|R|S|F|                               |
+                        |OFFSET |  RESERVE  |R|C|S|S|Y|I|            FENETRE            |
+                        |       |           |G|K|H|T|N|N|                               |
+                        +-------------------+-----------+-------------------------------+
+                        |         CHECKSUM TCP          |   POINTEUR DONNEES URGENTES   |       
+                        +-------------------------------+-------------------------------+
+                        |           OPTIONS             |           PADDING             |
+                        +-------------------------------+-------------------------------+
+                        |                            DONNEES                            |
+                        +---------------------------------------------------------------+
+
+
+        * PORT SOURCE        :  Il s<FONT COLOR="#650099"><STRONG>'agit du port TCP de l'</STRONG></FONT>emetteur. Chaque transfert TCP est effectu&eacute; sur un port de votre machine.
+        * PORT DESTINATION   :  C<FONT COLOR="#ff9900"><STRONG>'est le port TCP du recepteur. De meme, un port est ouvert sur la machine cible.</STRONG></FONT>
+        * NUMERO DE SEQUENCE :  A chaque octet envoy&eacute; est attribu&eacute; un num&eacute;ro de s&eacute;quence. Ce num&eacute;ro correspond au premier num&eacute;ro de l<FONT COLOR="#ff9900"><STRONG>'octet</STRONG></FONT>
+                                envoy&eacute; (sauf si le flag SYN est marqu&eacute;). Si le flag SYN est marqu&eacute;, ce num&eacute;ro correspond au num&eacute;ro de
+                                s&eacute;quence initial (ISN), et le premier octet &agrave; pour num&eacute;ro ISN+1.
+        * ACCUSE DE RECEPTION:  Ce champ contient le num&eacute;ro du prochain octet que le recepteur va recevoir. Il s<FONT COLOR="#650099"><STRONG>'agit d'</STRONG></FONT>une v&eacute;rification
+                                pour les octets qui arrivent. 
+        * DATA OFFSET        :  Donne la longueure de l<FONT COLOR="#ff9900"><STRONG>'entete en nombre de mots de 32 bits.</STRONG></FONT>
+        * RESERVE            :  Espace reserv&eacute; pour un usage futur. Aucun int&eacute;ret pour nous :)
+        * LES FLAGS          :  URG -&gt; Flag pour les donn&eacute;es urgentes. Vaut 1 s<FONT COLOR="#ff9900"><STRONG>'il est activ&eacute;.</STRONG></FONT>
+                                ACK -&gt; Accus&eacute; de reception. Vaut 1 si celui ci est correct, mais peu prendre d<FONT COLOR="#ff9900"><STRONG>'autres valeures.</STRONG></FONT>
+                                PSH -&gt; Flag pour la fonction PUSH.
+                                RST -&gt; R&eacute;initialisation de la connexion.
+                                SYN -&gt; Synchronisation des num&eacute;ros de s&eacute;quence (utilis&eacute; pour une connexion). Exemples :
+                                         SYN = 1 &amp; ACK = 0 correspond &agrave; une demande de connexion
+                                         SYN = 1 &amp; ACK = 1 correspond &agrave; une confirmation de connexion
+                                FIN -&gt; Fin de transmission.
+        * FENETRE            :  Nombre d<FONT COLOR="#ff9900"><STRONG>'octets que le recepteur est capable de recevoir.</STRONG></FONT>
+        * CHECKSUM TCP       :  Op&eacute;ration de controle servant &agrave; v&eacute;rifier qu<FONT COLOR="#650099"><STRONG>'aucun datagramme TCP n'</STRONG></FONT>as &eacute;t&eacute; perdu pendant le transfert des
+                                donn&eacute;es.
+        * POINTEUR DONNEE URG:  Indique la position d<FONT COLOR="#ff9900"><STRONG>'une donn&eacute;e urgente (si le flag URG est marqu&eacute;), en donnant son d&eacute;calage par rapport</STRONG></FONT>
+                                au num&eacute;ro de s&eacute;quence.
+        * OPTIONS            :  Diff&eacute;rentes options. Aucun int&eacute;r&ecirc;t pour nous :)
+        * PADDING            :  les octets de cette zone termine l<FONT COLOR="#ff9900"><STRONG>'ent&ecirc;te TCP (bourrage).</STRONG></FONT>
+        * DONNEES            :  Les donn&eacute;es que votre machine d&eacute;sire transmettre &agrave; une machine distante.
+
+
+        Il faut savoir qu<FONT COLOR="#650099"><STRONG>'une connexion TCP s'</STRONG></FONT>effectue en trois &eacute;tapes. Tout d<FONT COLOR="#ff9900"><STRONG>'abord le client envoie une premiere trame au serveur,</STRONG></FONT>
+        dans laquelle le flag SYN vaut 1 et les autres flags valent 0. Ensuite le serveur envoie une trame de confirmation au client,
+        dans laquelle le flag ACK vaut maintenant 1, et le flag SYN vaut toujours 1. Enfin le client &eacute;tablit la connexion en envoyant
+        lui aussi une confirmation : SYN=0 et ACK=1. Ainsi une connexion TCP peut se r&eacute;sumer &agrave; ce petit sch&eacute;ma :
+
+
+                CLIENT  (SYN=1 &amp; ACK=0) --&gt; SERVEUR
+                SERVEUR (SYN=1 &amp; ACK=1) --&gt; CLIENT
+                CLIENT  (SYN=0 &amp; ACK=1) --&gt; SERVEUR
+                <FONT COLOR="#009900"><EM>/* connexion &eacute;tablie ... */</EM></FONT>
+
+
+        Je pense que ce petit r&eacute;sum&eacute; suffira pour mieux comprendre les raisonnements expliqu&eacute;s plus loin. Pour plus d<FONT COLOR="#ff9900"><STRONG>'information</STRONG></FONT>
+        lisez le RFC correspondant (Transfer Control Protocol : http:<FONT COLOR="#009900"><EM>//RFC.net/rfc793.html).</EM></FONT>
+
+
+
+
+        [ 2.2 ] Le niveau Ethernet :
+
+
+        Un reseau local, contrairement &agrave; ce que l<FONT COLOR="#650099"><STRONG>'on pourrait penser n'</STRONG></FONT>est pas forc&eacute;ment un r&eacute;seau o&ugrave; toutes les machines sont
+        PHYSIQUEMENT reli&eacute;es entre elles. En effet le terme <FONT COLOR="#650099"><STRONG>'r&eacute;seau local'</STRONG></FONT> d&eacute;signe un r&eacute;seau qui partage le meme brin Ethernet
+        (c<FONT COLOR="#650099"><STRONG>'est par exemple le cas des r&eacute;seaux cabl&eacute;s). Il faut savoir qu'</STRONG></FONT>il existe d<FONT COLOR="#ff9900"><STRONG>'autres types de r&eacute;seau local tel que le</STRONG></FONT>
+        <FONT COLOR="#650099"><STRONG>'Token Ring'</STRONG></FONT> ou le <FONT COLOR="#650099"><STRONG>'FDDI'</STRONG></FONT>, que nous n<FONT COLOR="#ff9900"><STRONG>'aborderons pas dans cet article. Les r&eacute;seaux locaux (LAN) utilisant Ethernet, </STRONG></FONT>
+        utilisent un type d<FONT COLOR="#650099"><STRONG>'adr&eacute;ssage sp&eacute;cifique : l'</STRONG></FONT>adressage MAC (Media Access Control).
+
+        Le principe est simple : sur un r&eacute;seau de type Ethernet, tout les ordinateurs sont connect&eacute; sur le m&ecirc;me brin, et donc
+        les donn&eacute;es qui transitent sur le r&eacute;seau passent par toutes les machines. Ainsi pour des raisons logique, les donn&eacute;es ne
+        doivent &ecirc;tre vues que par la machine &agrave; qui elle sont destin&eacute;es. C<FONT COLOR="#650099"><STRONG>'est l&agrave; qu'</STRONG></FONT>intervient l<FONT COLOR="#ff9900"><STRONG>'adressage MAC.</STRONG></FONT>
+
+        En effet chaque machine du r&eacute;seau poss&egrave;de une adresse MAC sp&eacute;cifique qui est inscrite dans sa carte r&eacute;seau. Cette adresse
+        est fix&eacute; par le constructeur de la carte. Elle est UNIQUE et ne peut &ecirc;tre modifi&eacute;e. L<FONT COLOR="#ff9900"><STRONG>'adresse MAC est un nombre de 48</STRONG></FONT>
+        bits : les 24 premiers bits servent &agrave; identifier le vendeur de la carte, tandis que les 24 derniers bits sont un num&eacute;ro
+        de s&eacute;rie assign&eacute; par le revendeur. Ce num&eacute;ro de s&eacute;rie s<FONT COLOR="#ff9900"><STRONG>'appelle le OUI (Organizationally Unique Identifier), et il</STRONG></FONT>
+        garantit que deux cartes r&eacute;seau Ethernet ne n<FONT COLOR="#ff9900"><STRONG>'ont pas la meme adresse MAC. </STRONG></FONT>
+
+        Pour trouver votre adresse MAC rien de plus simple. Tapez dans un xterm la ligne <FONT COLOR="#650099"><STRONG>'ifconfig eth0'</STRONG></FONT> (eth0 d&eacute;signant le
+        p&eacute;riph&eacute;rique correspondant &agrave; votre carte r&eacute;seau) :
+
+
+                [root@subkulture medgi]<FONT COLOR="#ff9900"># ifconfig eth0</FONT>
+                eth0      Lien encap:Ethernet  HWaddr 08:00:17:0A:36:3E
+                          inet adr:xxx.xx.xx.xx  Bcast:xxx.xx.xx.xxx  Masque:xxx.xxx.xxx.x
+                          UP BROADCAST RUNNING MULTICAST  MTU:1500 Metric:1
+                          Paquets Re&ccedil;us:33285 erreurs:0 jet&eacute;s:0 d&eacute;bordements:0 trames:0
+                          Paquets transmis:41950 erreurs:0 jet&eacute;s:0 d&eacute;bordements:0 carrier:0
+                          collisions:0 lg file transmission:100
+                          Interruption:11 Adresse de base:0xcc00
+
+                [root@subkulture medgi]<FONT COLOR="#ff9900">#</FONT>
+
+
+        J<FONT COLOR="#650099"><STRONG>'ai masqu&eacute; ici les adresse IP correspondant &agrave; mon r&eacute;seau par des '</STRONG></FONT>xxx.xxx.xxx.xx<FONT COLOR="#ff9900"><STRONG>' (aucun int&eacute;ret de vous les montrer alors</STRONG></FONT>
+        pourquoi les laisser :). L<FONT COLOR="#650099"><STRONG>'adresse MAC correspond au champ intitul&eacute; '</STRONG></FONT>HWaddr<FONT COLOR="#ff9900"><STRONG>', &agrave; savoir : &quot;08:00:17:0A:36:3E&quot;. Elle est</STRONG></FONT>
+        introduite dans l<FONT COLOR="#ff9900"><STRONG>'entete Ethernet. Voici un sch&eacute;ma repr&eacute;sentant cette entete : </STRONG></FONT>
+
+
+                 0   2   4   6   8   10  12  14  16  18  20  22  24 26  28  30  32
+                 +-------------------------------+-------------------------------+
+                 |      Addresse Ethernet de Destination (32 premiers bits)      |
+                 +-------------------------------+-------------------------------+
+                 |    AED* (16 derniers bits)    |    AES* (16 premiers bits)    |
+                 +-------------------------------+-------------------------------+
+                 |          Adresse Ethernet Source (32 derniers bits)           |
+                 +---------------------------------------------------------------+
+                 |                                                               |
+                 |    <FONT COLOR="#ff9900">#                                                     #    |</FONT>
+                 |    <FONT COLOR="#ff9900"># Entete IP, puis entete TCP, et enfin vos donn&eacute;es... #    |</FONT>
+                 |    <FONT COLOR="#ff9900">#                                                     #    |</FONT>
+                 |    <FONT COLOR="#ff9900">#                 fin de vos donn&eacute;es                  #    |</FONT>
+                 |    <FONT COLOR="#ff9900">#                                                     #    |</FONT>
+                 |                                                               |
+                 +---------------------------------------------------------------+
+                 |                       CHECKSUM ETHERNET                       |
+                 +---------------------------------------------------------------+
+
+
+        Quelques petites explications. AED signifie <FONT COLOR="#650099"><STRONG>'Adresse Ethernet de Destination'</STRONG></FONT> et AES <FONT COLOR="#650099"><STRONG>'Adresse Ethernet Source'</STRONG></FONT> (j<FONT COLOR="#ff9900"><STRONG>'ai abr&eacute;g&eacute;</STRONG></FONT>
+        pour une question de place dans le sch&eacute;ma :). Ces adresses Ethernet sont en fait les adresses MAC. Nous avons vu plus haut
+        qu<FONT COLOR="#650099"><STRONG>'une adresse MAC avait une taille de 48bits, or la taille d'</STRONG></FONT>une ent&ecirc;te est de 32bits. Ainsi les adresses MAC doivent &ecirc;tre
+        d&eacute;coup&eacute; pour rentrer dans l<FONT COLOR="#ff9900"><STRONG>'ent&ecirc;te : nous avons donc deux champs de 32bits et deux champs de 16 bits :</STRONG></FONT>
+
+
+                Adresse Ethernet de Destination = 32 + 16 = 48 bits ------+
+                                                                          |----&gt; Les Adresses MAC font bien 48 bits.
+                Adresse Ethernet Source         = 32 + 16 = 48 bits  -----+
+
+
+        Dans cette entete Ethernet se trouve l<FONT COLOR="#650099"><STRONG>'entete IP. Celle ci sers &agrave; '</STRONG></FONT>guider<FONT COLOR="#ff9900"><STRONG>' les datagrammes TCP &agrave; travers le r&eacute;seau, en </STRONG></FONT>
+        fournissant les informations n&eacute;c&eacute;ssaires aux routeurs. L<FONT COLOR="#650099"><STRONG>'entete IP encapsule l'</STRONG></FONT>entete TCP, mais n<FONT COLOR="#ff9900"><STRONG>'intervient pas sur cette</STRONG></FONT>
+        derniere. Pour plus d<FONT COLOR="#ff9900"><STRONG>'informations, veuiller consulter les RFC correspondants ou encore lire un livre sur le fonctionnement</STRONG></FONT>
+        des protocoles TCP/IP.
+
+        A la fin de l<FONT COLOR="#650099"><STRONG>'entete Ethernet se trouve le checksum qui comme dans les autres entete, sers &agrave; v&eacute;rifier l'</STRONG></FONT>int&eacute;grit&eacute; des donn&eacute;es
+        qui ont &eacute;t&eacute; transmises. Maintenant que vous comprennez les bases de fonctionnement d<FONT COLOR="#ff9900"><STRONG>'Ethernet, nous allons pouvoir utiliser</STRONG></FONT>
+        un petit exemple expliquant la transmission des donn&eacute;es.
+
+
+
+
+        [ 2.3 ] La transmission des donn&eacute;es sur un LAN :
+
+
+        Nous allons maintenant expliquer comment fonctionne la transmission des donn&eacute;es sur un LAN. Par exemple, imaginons
+        que l<FONT COLOR="#650099"><STRONG>'host X, ne faisant pas partit du LAN, d&eacute;sire envoyer des donn&eacute;es &agrave; l'</STRONG></FONT>host E. Voici les &eacute;tapes de la transmission :
+
+        Tout d<FONT COLOR="#ff9900"><STRONG>'abord les donn&eacute;es sont fragment&eacute;es en plusieurs datagrammes gr&acirc;ce &agrave; TCP. Ces datagrammes comporte un header TCP</STRONG></FONT>
+        comme nous l<FONT COLOR="#650099"><STRONG>'avons vu plus haut. Il sont ensuite transmis &agrave; IP qui rajoute un header IP (contenant l'</STRONG></FONT>adresse IP source
+        ainsi que l<FONT COLOR="#ff9900"><STRONG>'adresse IP de destination). Enfin, Ethernet rajoute son header sur le datagramme obtenu. Nous obtenons</STRONG></FONT>
+        donc un packet de la forme (en r&eacute;sum&eacute;) :
+
+
+                +---    HEADER ETHERNET + HEADER IP + HEADER TCP +  DONNEES + CHECKSUM ETHERNET    ---+
+
+
+        Ces packet transitent donc sur le r&eacute;seau. Cependant il est &eacute;vident qu<FONT COLOR="#650099"><STRONG>'il leur faut arriver sur la bonne machine. C'</STRONG></FONT>est la
+        qu<FONT COLOR="#650099"><STRONG>'intervient le protocole ARP. Bien que ce n'</STRONG></FONT>est pas la seule fonctionalit&eacute;e de ce protocole, ARP permet de faire la
+        relation entres les adresse MAC et les adresses IP, et donc c<FONT COLOR="#ff9900"><STRONG>'est gr&acirc;ce &agrave; ARP que le packet sera rout&eacute; correctement</STRONG></FONT>
+        vers la bonne machine.
+
+        Ainsi notre packet arrive sur le r&eacute;seau local. Nous avons par exemple 8 machines diff&eacute;rentes :
+
+
+                  A  ---------&gt;  10.0.0.1 (routeur)             E  ----------&gt; 10.0.0.5 (machine)
+                  B  ---------&gt;  10.0.0.2 (machine)             F  ----------&gt; 10.0.0.6 (machine)
+                  C  ---------&gt;  10.0.0.3 (machine)             G  ----------&gt; 10.0.0.7 (machine)
+                  D  ---------&gt;  10.0.0.4 (machine)             H  ----------&gt; 10.0.0.8 (machine)
+
+
+        Les donn&eacute;es envoy&eacute;es par <FONT COLOR="#650099"><STRONG>'X'</STRONG></FONT> arrivent au routeur <FONT COLOR="#650099"><STRONG>'A'</STRONG></FONT> utilise alors ARP pour d&eacute;terminer &agrave; quelle machine le packet est destin&eacute;.
+        Pour ce faire il fera une requete en broadcast pour d&eacute;terminer qui poss&egrave;de l<FONT COLOR="#ff9900"><STRONG>'IP (10.0.0.5). Cette IP appartient &agrave; la machine</STRONG></FONT>
+        <FONT COLOR="#650099"><STRONG>'E'</STRONG></FONT>, et donc pour sp&eacute;cifier au routeur que c<FONT COLOR="#650099"><STRONG>'est bien son IP, '</STRONG></FONT>E<FONT COLOR="#ff9900"><STRONG>' enverra au routeur son adresse MAC. Le routeur d&eacute;terminera</STRONG></FONT>
+        alors quels packets il devra transmettre &agrave; <FONT COLOR="#650099"><STRONG>'E'</STRONG></FONT> en comparant l<FONT COLOR="#650099"><STRONG>'adresse MAC de '</STRONG></FONT>E<FONT COLOR="#ff9900"><STRONG>' avec les adresses MAC contenues dans les</STRONG></FONT>
+        entetes Ethernet.
+
+        C<FONT COLOR="#ff9900"><STRONG>'est maintenant que vous allez comprendre le rapport entre tout &ccedil;a et le sniffing (enfin !) : les packets vont donc etre</STRONG></FONT>
+        transf&eacute;r&eacute;s du routeur jusqu<FONT COLOR="#650099"><STRONG>'&agrave; '</STRONG></FONT>E<FONT COLOR="#650099"><STRONG>'. Pour ce faire ils vont transiter sur chaque machine, qui ananlysera l'</STRONG></FONT>adresse MAC contenu
+        dans les header Ethernet du packet, avec l<FONT COLOR="#ff9900"><STRONG>'adresse MAC contenu sur la carte r&eacute;seau. Comme les packets ne leur seront pas</STRONG></FONT>
+        destin&eacute;s, il seront redirig&eacute;s vers la machine suivante, jusqu&agrave; qu<FONT COLOR="#650099"><STRONG>'ils arrivent &agrave; '</STRONG></FONT>E<FONT COLOR="#ff9900"><STRONG>'.</STRONG></FONT>
+
+
+
+[ 3 ] Sniffer un r&eacute;seau Ethernet :
+
+
+Maintenant que nous avons vu la partie <FONT COLOR="#650099"><STRONG>'th&eacute;orique'</STRONG></FONT>, vous devez &ecirc;tre en mesure de comprendre avec plus de facilit&eacute;e comment fonctionne
+un sniffer, et l<FONT COLOR="#650099"><STRONG>'int&eacute;r&ecirc;t qu'</STRONG></FONT>un tel outil pr&eacute;sente, autant dans le but de surveiller son r&eacute;seau, que d<FONT COLOR="#ff9900"><STRONG>'attaquer un r&eacute;seau. Voici donc</STRONG></FONT>
+quelques notions utilies sur le sniffing, qui seront mises en pratique plus loin gr&acirc;ce &agrave; l<FONT COLOR="#650099"><STRONG>'outil '</STRONG></FONT>tcpdump<FONT COLOR="#ff9900"><STRONG>'.</STRONG></FONT>
+
+
+        [ 3.1 ] Notions de sniffing :
+
+
+        Comme nous l<FONT COLOR="#650099"><STRONG>'avons vaguement expliqu&eacute; en introduction, le sniffing permet de surveiller le traffic d'</STRONG></FONT>un r&eacute;seau. Cependant
+        par d&eacute;faut il n<FONT COLOR="#650099"><STRONG>'est possible que de sniffer que les packets dont l'</STRONG></FONT>adresse fournit dans l<FONT COLOR="#ff9900"><STRONG>'entete Ethernet correspond &agrave;</STRONG></FONT>
+        votre adresse MAC, ou plus clairement que les packets qui vous sont destin&eacute;. Dans ce cas la le sniffing ne pr&eacute;sente aucun
+        int&eacute;r&ecirc;t, tant pour l<FONT COLOR="#ff9900"><STRONG>'administrateur systeme, que pour le hackers. En effet par d&eacute;faut, les packets qui ne sont pas destin&eacute;s</STRONG></FONT>
+        &agrave; votre machine sont tout simplement ignor&eacute;s.
+
+        Ainsi pour pouvoir sniffer tout les packets qui transitent par votre carte r&eacute;seau, celle ci doit avoir le mode promiscious
+        d<FONT COLOR="#650099"><STRONG>'activ&eacute;. Ce mode permet d'</STRONG></FONT>accepter tous les packets, m&ecirc;me ceux qui ne sont pas destin&eacute;s &agrave; votre carte r&eacute;seau. Vous pouvez
+        activer le mode promiscious en console grace &agrave; la commande ifconfig (man ifconfig). Lorsque vous utilisez un sniffer, celui
+        ci mets automatiquement la carte en mode promiscious.
+
+        Il faut savoir aussi que le sniffing ne peut se faire que sur des machines reli&eacute;es sur le m&ecirc;me brin Ethernet. En effet comme
+        nous l<FONT COLOR="#ff9900"><STRONG>'avons vu plus haut, les packets traversent le sous r&eacute;seau et passe par chaque carte r&eacute;seau. Il est ainsi logique que</STRONG></FONT>
+        si le sniffer est bas&eacute; sur une machine qui n<FONT COLOR="#650099"><STRONG>'as rien &agrave; voir avec le r&eacute;seau, il n'</STRONG></FONT>est pas possible de sniffer ce m&ecirc;me r&eacute;seau.
+        UNe comparaison simpliste pourrait &ecirc;tre la suivante :
+
+
+        Deux personnes &eacute;change une conversation t&eacute;l&eacute;phonique en Europe. Le phreaker d&eacute;sire mettre sur &eacute;coute un des deux t&eacute;l&eacute;phones,
+        cependant il est situ&eacute; au Japon. Il lui est donc impossible d<FONT COLOR="#ff9900"><STRONG>'&eacute;couter ce que disent les deux personnes, car pour cela, il</STRONG></FONT>
+        faudrait qu<FONT COLOR="#ff9900"><STRONG>'il manipule une partie du r&eacute;seau t&eacute;l&eacute;phonique europ&eacute;en. Il en va de m&ecirc;me pour le sniffing : pour sniffer un</STRONG></FONT>
+        &eacute;change de donn&eacute;es entre deux machine, il faut que ces donn&eacute;es transitent par une machine sur laquelle est bas&eacute;e un sniffer,
+        c<FONT COLOR="#650099"><STRONG>'est &agrave; dire que le sniffer est bas&eacute; sur un (voir le m&ecirc;me) r&eacute;seau Ethernet que l'</STRONG></FONT>une des deux machines utilise.
+
+        En effet, si les deux machines qui communiquent ne sont pas bas&eacute;es sur le m&ecirc;me r&eacute;seau Ethernet, cela ne pose pas de probl&egrave;me,
+        puisque le sniffer aura la possibilit&eacute; d<FONT COLOR="#650099"><STRONG>'&ecirc;tre bas&eacute; sur l'</STRONG></FONT>un des deux r&eacute;seaux. Cependant comme nous venons de le voir, cela
+        NE PEUT marcher si le sniffer n<FONT COLOR="#ff9900"><STRONG>'est situ&eacute; sur aucun des deux LAN.</STRONG></FONT>
+
+
+        Dans les parties suivantes nous allons d&eacute;tailler des m&eacute;thodes de sniffing pour les r&eacute;seaux cables &amp; xDSL. Il faut savoir
+        qu<FONT COLOR="#ff9900"><STRONG>'il est tout aussi possible de sniffer sur un r&eacute;seau utilisant une connexion ppp (point-per-point). Seulement nous</STRONG></FONT>
+        n<FONT COLOR="#650099"><STRONG>'expliquerons pas les variations avec un r&eacute;seau cabl&eacute;, pour deux raisons : tout d'</STRONG></FONT>abord parce que les connexions ppp se
+        font de plus en plus rares, et surtout car les variations ne sont que tr&egrave;s minimes. 
+
+        Nous allons maintenant pouvoir passer &agrave; la pratique, gr&agrave;ce &agrave; l<FONT COLOR="#ff9900"><STRONG>'outil tcpdump :). </STRONG></FONT>
+
+
+        [ 3.2 ] L<FONT COLOR="#ff9900"><STRONG>'outil tcpdump :</STRONG></FONT>
+
+
+           [ 3.2.1 ] Notions de base :
+
+
+           Tcpdump est l<FONT COLOR="#ff9900"><STRONG>'un des sniffer les plus connus et aussi des plus r&eacute;put&eacute;s. La version actuelle (TCPDUMP version 3.6.2) utilise</STRONG></FONT>
+           la libpcap, une librairie comportant de nombreuse fonctions facilitant le sniffing. Tous deux sont disponibles sur le site
+           officiel : http:<FONT COLOR="#009900"><EM>//www.tcpdump.org. Pour comprendre les paragraphes suivant, vous devez avoir TCPDUMP d'install&eacute; sur votre</EM></FONT>
+           distribution. Si ce n<FONT COLOR="#ff9900"><STRONG>'est pas d&eacute;ja fait, aller le chercher maintenant :).</STRONG></FONT>
+
+           Avant de rentrer plus dans les d&eacute;tails, nous allons tout d<FONT COLOR="#650099"><STRONG>'abord tester tcpdump d'</STRONG></FONT>une fa&ccedil;on basique, pour satisfaire votre
+           curiosit&eacute;, et enfin voir quels sont les output d<FONT COLOR="#650099"><STRONG>'un sniffer (vous devez &ecirc;tre root pour le lancer, &eacute;tant donn&eacute; qu'</STRONG></FONT>un sniffer
+           utilise les socks raw).
+
+
+                   [root@subkulture medgi]<FONT COLOR="#ff9900"># tcpdump</FONT>
+                   tcpdump: listening on eth0
+                   01:55:25.976002 subkulture.b0x.33126 &gt; dns1.isp.fr.domain:  30309+[|domain] (DF)
+                   01:55:26.056002 dns1.isp.fr.domain &gt; subkulture.b0x.33126:  30309[|domain]
+                   01:55:26.056002 subkulture.b0x.33126 &gt; dns1.isp.fr.domain:  30310+[|domain] (DF)
+
+                   ^C
+
+                   3 packets received by filter
+                   0 packets dropped by kernel
+                   [root@subkulture medgi]<FONT COLOR="#ff9900">#</FONT>
+
+
+           Ainsi lorsque nous ne sp&eacute;cifions aucun argument, TCPDUMP se contente de nous montrer les transferts de donn&eacute;es effectu&eacute;s
+           entre notre machine et le serveur distant (ici le routeur). J<FONT COLOR="#ff9900"><STRONG>'ai une fois de plus modifi&eacute; mon adresse IP ainsi que celle</STRONG></FONT>
+           du routeur, car une fois de plus vous n<FONT COLOR="#ff9900"><STRONG>'avez pas besoin de les connaitre pour comprendre cet article.</STRONG></FONT>
+
+           On voit dans ce court example qu<FONT COLOR="#650099"><STRONG>'il y a communication entre l'</STRONG></FONT>hote <FONT COLOR="#650099"><STRONG>'subkulture.b0x'</STRONG></FONT> et <FONT COLOR="#650099"><STRONG>'dns1.isp.fr'</STRONG></FONT>. La communication
+           utilise le port 33126 (TCP) pour la machine <FONT COLOR="#650099"><STRONG>'subkulture.b0x'</STRONG></FONT>, et le port r&eacute;serv&eacute; <FONT COLOR="#650099"><STRONG>'domain'</STRONG></FONT> pour <FONT COLOR="#650099"><STRONG>'dns1.isp.fr'</STRONG></FONT>.
+
+           Nous allons avant de poursuivre plus en d&eacute;tail, &eacute;xaminer les options les plus courantes de tcpdump. La partie qui suit
+           est largement inspir&eacute; du man page, avec quelques explications en plus.
+
+                +---------------------- OPTIONS DE TCPDUMP :
+
+                -i [interface]          Permet de sp&eacute;cifier l<FONT COLOR="#ff9900"><STRONG>'interface r&eacute;seau &agrave; utiliser. Tcpdump est capable de choisir automatiquement </STRONG></FONT>
+                                        l<FONT COLOR="#650099"><STRONG>'interface &agrave; sniffer, cependant il est possible d'</STRONG></FONT>en poss&eacute;der plusieurs. Nous pouvons donc choisir
+                                        entre toutes ces interfaces. Exemple :
+
+                                        [root@subkulture medgi]<FONT COLOR="#ff9900"># tcpdump -i eth0</FONT>
+                                        tcpdump: listening on eth0
+
+                                        (...)
+
+                -c [X]                  Quitte apres avoir recu X packets.
+
+                -l                      Permet de stocker les output dans un buffer. De ce fait il est alors possible d<FONT COLOR="#ff9900"><STRONG>'afficher le</STRONG></FONT>
+                                        r&eacute;sultat du sniff et en m&ecirc;me temps le stocker dans un fichier. Exemple :
+                                        
+                                        [root@subkulture medgi]<FONT COLOR="#ff9900"># tcpdump -i eth0 -l | tee [file]</FONT>
+                                        tcpdump: listening on eth0
+
+                                        (...)
+
+                -n                      Permet de ne pas convertir les adresses et les ports. Exemple d<FONT COLOR="#650099"><STRONG>'output avec l'</STRONG></FONT>option -n :
+
+                                        01:29:54.646002 195.87.28.5.46136 &gt; 194.117.194.120.6667: . ack 84 win 62780 (DF)
+
+                -p                      Desactive le mode <FONT COLOR="#650099"><STRONG>'promiscious'</STRONG></FONT> activ&eacute; par d&eacute;faut avec tcpdump. Permet ainsi de ne voir que les
+                                        donn&eacute;es que nous &eacute;mettons/recevons, et non pas  les packets qui transitent par notre interface
+                                        r&eacute;seau. 
+
+                -s [byte_length]        Permet de ne sniffer que le nombre de byte sp&eacute;cifi&eacute;. Ainsi si l<FONT COLOR="#ff9900"><STRONG>'on sp&eacute;cifie la valeure 32, seule</STRONG></FONT>
+                                        le header Ethernet sera sniff&eacute;. TCPDUMP rajoute en fin de ligne [|protocole] qui indique &agrave; quel
+                                        endroit ont &eacute;t&eacute; splitt&eacute; les donn&eacute;es (ie: [|ether]). Si l<FONT COLOR="#650099"><STRONG>'on sp&eacute;cifie comme valeure '</STRONG></FONT>0<FONT COLOR="#ff9900"><STRONG>', la</STRONG></FONT>
+                                        totalit&eacute;e du packet sera captur&eacute;e. 
+
+                -t                      Permet de ne pas afficher le <FONT COLOR="#650099"><STRONG>'timestamp'</STRONG></FONT>. Ceci facilite la lecture, car sauf exception, le
+                                        timestamp encombre l<FONT COLOR="#ff9900"><STRONG>'affichage sans int&eacute;r&ecirc;t. </STRONG></FONT>
+
+                -w [fichier]            Sauvegarde le sniff dans le fichier que vous sp&eacute;cifiez. Utile lorsque l<FONT COLOR="#ff9900"><STRONG>'on d&eacute;sire analyser les</STRONG></FONT>
+                                        r&eacute;sultat plus tard et ne pas encombrer l<FONT COLOR="#ff9900"><STRONG>'affichage. </STRONG></FONT>
+
+                -X                      Affiche les packets en hexadecimal, mais aussi en ascii. Cela permet de voir le contenu des
+                                        packet dans un format &agrave; peu pres lisible (-x n<FONT COLOR="#650099"><STRONG>'affiche que l'</STRONG></FONT>hexad&eacute;cimal).
+
+                +---------------------+
+
+
+           Les options qui viennent d<FONT COLOR="#ff9900"><STRONG>'&ecirc;tre &eacute;num&eacute;r&eacute;es ne sont pas TOUTES les options de tcpdump, mais seulement les options les plus</STRONG></FONT>
+           utiles. Nous allons maintenant &eacute;tudier le format d<FONT COLOR="#ff9900"><STRONG>'output de TCPDUMP, que vous devez comprendre si vous voulez tirer un</STRONG></FONT>
+           quelcquonque int&eacute;r&ecirc;t d<FONT COLOR="#ff9900"><STRONG>'un r&eacute;sultat de sniffing. </STRONG></FONT>
+
+
+
+           [ 3.2.2 ] Format d<FONT COLOR="#ff9900"><STRONG>'output de TCPDUMP :</STRONG></FONT>
+
+
+           Le format d<FONT COLOR="#650099"><STRONG>'output de TCPDUMP d&eacute;pend du protocole que l'</STRONG></FONT>on sniff. Dans notre article, nous ne parlons que du protocole
+           TCP (le plus commun&eacute;ment utilis&eacute;). Ainsi si vous voulez en savoir plus sur le format d<FONT COLOR="#ff9900"><STRONG>'output des autres protocoles,</STRONG></FONT>
+           consultez les manpages. Voici donc le format standard concernant le protocole TCP : 
+
+
+                source &gt; destination: flags numseq-data ack fenetre urgent options
+
+
+                ***     Source et destination correspondent respectivement au adresses IP et port de la machine source et de
+                        la machine cible. Par exemple nous pourrions avoir pour le champ source un output de ce genre :
+                        195.87.25.63.46342 qui signifie que la machine source &agrave; pour adresse ip 195.87.25.63 et que le port qu<FONT COLOR="#ff9900"><STRONG>'elle</STRONG></FONT>
+                        utilise pour recevoir les donn&eacute;es de la machine cible est le port 46342.
+
+                ***     Flags indique les flags contenu dans le packet : S (SYN), F (FIN), P (PSH), R (RST) ou encore <FONT COLOR="#650099"><STRONG>'.'</STRONG></FONT> si il n<FONT COLOR="#ff9900"><STRONG>'y</STRONG></FONT>
+                        a aucun flags de sp&eacute;cifi&eacute;. Leur utilit&eacute;e &agrave; &eacute;t&eacute; d&eacute;crite plus haut.
+
+                ***     Numseq-data indique le num&eacute;ro de s&eacute;quence initial et final du packet ainsi que ca taille en octet. Le format
+                        est le suivant : <FONT COLOR="#000000"><STRONG>ISN:SN</STRONG></FONT>(taille). Celui ci permet de suivre l<FONT COLOR="#ff9900"><STRONG>'ordre des donn&eacute;es. </STRONG></FONT>
+
+                ***     Ack sp&eacute;cifie le num&eacute;ro d<FONT COLOR="#650099"><STRONG>'acknowledgement du packet. Ce num&eacute;ro, comme nous l'</STRONG></FONT>avons vu plus haut sers &agrave; v&eacute;rifier
+                        que le packet &agrave; &eacute;t&eacute; recu correctement. Il s<FONT COLOR="#ff9900"><STRONG>'incr&eacute;mente de 1 &agrave; chaque fois. </STRONG></FONT>
+
+                ***     Fenetre est une option de l<FONT COLOR="#650099"><STRONG>'entete TCP, qui permet d'</STRONG></FONT>ajuster le flux au d&eacute;bit et &agrave; la m&eacute;moire disponible, et
+                        ceci en indiquant la taille maximale support&eacute;e.
+
+                ***     Urgent est aussi une option du header TCP, qui permet de sp&eacute;cifier un pointeur de donn&eacute;es urgentes. Relire
+                        le RFC 793 (TCP) pour plus de d&eacute;tails.
+
+                ***     Le champ option permet de sp&eacute;cifier diff&eacute;rentes options tel que les flags IP par exemple.
+
+
+           Nous allons maintenant &eacute;tudier une r&eacute;sultat de sniff par tcpdump, dans le but de vous faire comprendre plus clairement
+           le format d<FONT COLOR="#ff9900"><STRONG>'affichage :</STRONG></FONT>
+
+
+                [root@subkulture medgi]<FONT COLOR="#ff9900"># tcpdump -t</FONT>
+                tcpdump: listening on eth0
+                medgi.isp.net.46136 &gt; paris.fr.eu.undernet.org.ircd: P <FONT COLOR="#000000"><STRONG>1:47</STRONG></FONT>(46) ack 84 win 62780 (DF)
+                paris.fr.eu.undernet.org.ircd &gt; medgi.isp.net.46136: . ack 47 win 2874 (DF)
+
+                ^C
+                2 packets received by filter
+                0 packets dropped by kernel
+                [root@subkulture medgi]<FONT COLOR="#ff9900">#</FONT>
+
+
+           Nous voyons ici que l<FONT COLOR="#ff9900"><STRONG>'host medgi.isp.net utilise le port 46136 pour communiquer avec le serveur irc paris.fr.eu.undernet.org</STRONG></FONT>
+           (port 6667). Celui ci insere le flag PUSH (P : PSH) dans le header TCP. Le num&eacute;ro de sequence des donn&eacute;es indique que le
+           num&eacute;ro de s&eacute;quence initial (ISN) est 1, et que le num&eacute;ro de s&eacute;quence actuel (SN) est 47. La taille du packet est de 46 octets,
+           comme indiqu&eacute; entre parenth&egrave;ses. Le num&eacute;ro d<FONT COLOR="#ff9900"><STRONG>'acknoledgement est 84 et la taille de la fenetre est 62780. Il y &agrave; la une option </STRONG></FONT>
+           (DF) qui correspond au flag IP Don<FONT COLOR="#ff9900"><STRONG>'t Fragment.</STRONG></FONT>
+
+           Vous pouvez maintenant utiliser les diff&eacute;rentes options de bases &eacute;num&eacute;r&eacute;es ci dessus dans le but de mieux conna&icirc;tre les
+           diff&eacute;rents format d<FONT COLOR="#650099"><STRONG>'output possible. Selon moi, l'</STRONG></FONT>une des plus int&eacute;ressante est l<FONT COLOR="#ff9900"><STRONG>'option -X, car elle permet de voir dans</STRONG></FONT>
+           un format &agrave; peu pr&egrave;s lisible les donn&eacute;es contenues dans les packets TCP :
+
+
+                [root@subkulture medgi]<FONT COLOR="#ff9900"># tcpdump -t -s 0 -X</FONT>
+                tcpdump: listening on eth0
+                medgi.isp.net.46955 &gt; paris.fr.eu.undernet.org.ircd: P <FONT COLOR="#000000"><STRONG>40:80</STRONG></FONT>(40) ack 1 win 62464 (DF)
+                0x0000   4500 0050 5a50 4000 4006 3096 d45f 573e    E..PZP@.@.0.._W&gt;
+                0x0010   811b 0309 b76b 1a0b 65a1 7640 1749 6cd1    .....k..e.v@.Il.
+                0x0020   5018 f400 1d3e 0000 5052 4956 4d53 4720    P....&gt;..PRIVMSG.
+                0x0030   2373 7562 6b75 6c74 7572 6520 3a73 6e69    <FONT COLOR="#ff9900">#subkulture.:sni</FONT>
+                0x0040   6666 696e 6720 7230 306c 7a20 3a29 0d0a    ffing.r00lz.:)..
+
+                (...)
+                ^C
+
+                12 packets received by filter
+                0 packets dropped by kernel
+                [root@subkulture medgi]<FONT COLOR="#ff9900">#</FONT>
+
+
+           En analysant ce r&eacute;sultat on peu d&eacute;duire qu<FONT COLOR="#ff9900"><STRONG>'il y a une connexion TCP entre medgi.isp.net (port 46955) et paris.fr.eu.undernet.org</STRONG></FONT>
+           (port 6667). L<FONT COLOR="#650099"><STRONG>'host medgi.isp.net envoie un packet avec le flag PSH dont l'</STRONG></FONT>ISN est 40, le SN est 80 et la taille est de 40 octets.
+           Le num&eacute;ro d<FONT COLOR="#ff9900"><STRONG>'acknowledgement est 1 et la taille de la fen&ecirc;tre est 62464. En analysant la partie ascii, on peut en d&eacute;duire que la </STRONG></FONT>
+           personne qui &agrave; envoy&eacute; ce packet vient d<FONT COLOR="#ff9900"><STRONG>'envoyer un message sur IRC tel que celui ci : </STRONG></FONT>
+
+
+                [<FONT COLOR="#ff9900">#subkulture] sniffing r00lz :)</FONT>
+
+
+           A moins que vous ne pr&eacute;feriez analyser l<FONT COLOR="#650099"><STRONG>'hexad&eacute;cimal, je vous sugg&egrave;re tout de m&ecirc;me l'</STRONG></FONT>ascii, qui est nettement plus lisible :).
+           Maintenant que vous connaissez les bases. Nous allons voir les options de filtrage avanc&eacute; qu<FONT COLOR="#ff9900"><STRONG>'offre tcpdump.</STRONG></FONT>
+
+
+
+           [ 3.2.3 ] Les expressions :
+
+
+
+           Nous allons &eacute;tudier ici les expressions de TCPDUMP. Vous vous demander s&ucirc;rement de quoi il s<FONT COLOR="#650099"><STRONG>'agit, et bien c'</STRONG></FONT>est tout simple.
+           En fait les expressions permettent de passer &agrave; tcpdump des arguments plus pr&eacute;cis, c<FONT COLOR="#ff9900"><STRONG>'est &agrave; dire de choisir les packets que</STRONG></FONT>
+           nous allons lire. Une expression est constitu&eacute;e de une voire plusieures primitives. Une primitive est constitu&eacute;e d<FONT COLOR="#ff9900"><STRONG>'un</STRONG></FONT>
+           identifiant, suivie d<FONT COLOR="#650099"><STRONG>'une valeure num&eacute;rique ou alphanum&eacute;rique. Voici donc les quatres types d'</STRONG></FONT>identifiant que vous aller
+           pouvoir utiliser :
+
+
+                TYPE : Peut &ecirc;tre <FONT COLOR="#650099"><STRONG>'host'</STRONG></FONT>, <FONT COLOR="#650099"><STRONG>'net'</STRONG></FONT> ou encore <FONT COLOR="#650099"><STRONG>'port'</STRONG></FONT>. Host est le type par d&eacute;faut, et comme son nom l<FONT COLOR="#ff9900"><STRONG>'indique il d&eacute;finit</STRONG></FONT>
+                       un host :). Par exemple nous pouvons utiliser l<FONT COLOR="#650099"><STRONG>'expression '</STRONG></FONT>host medgi.isp.net<FONT COLOR="#650099"><STRONG>' pour sp&eacute;cifier d'</STRONG></FONT>afficher que
+                       les packets dont l<FONT COLOR="#650099"><STRONG>'host est medgi.isp.net. De meme net correspond &agrave; network. Exemple : '</STRONG></FONT>net 156.54<FONT COLOR="#ff9900"><STRONG>' pour </STRONG></FONT>
+                       sp&eacute;cifier le network 156.54. Enfin port permet de sp&eacute;cifier un type de port sp&eacute;cial, comme par exemple le port
+                       d<FONT COLOR="#650099"><STRONG>'un httpd. Ainsi nous aurions l'</STRONG></FONT>expression <FONT COLOR="#650099"><STRONG>'port 80'</STRONG></FONT>.
+
+                DIR  : Attributs possible : src, dst, src or dst, src and dst. Permets d<FONT COLOR="#ff9900"><STRONG>'attribuer une r&egrave;gle concernant les packet &agrave;</STRONG></FONT>
+                       filtrer. Vous pouvez ainsi pour l<FONT COLOR="#650099"><STRONG>'host '</STRONG></FONT>medgi.isp.net<FONT COLOR="#ff9900"><STRONG>' choisir les packet suivants : </STRONG></FONT>
+
+                                * src medgi.isp.net        : Packet dont la source est medgi.isp.net.
+                                * dst medgi.isp.net        : Packet dont la destination est medgi.isp.net.
+                                * src or dst medgi.isp.net : Packet dont la source OU la destination est medgi.isp.net.
+                                * src and dst isp.net      : Packet dont la source ET la destination est bas&eacute; sur isp.net.
+
+                       Vous pouvez bien entendu combiner ces primitives avec d<FONT COLOR="#ff9900"><STRONG>'autre primitives que nous avons vu plus haut.</STRONG></FONT>
+
+                PROTO: Permet de restreindre les packets &agrave; un certain protocole. Les protocols support&eacute;s sont ether (Ethernet),
+                       fddi (alias d<FONT COLOR="#650099"><STRONG>'Ethernet), tr (alias d'</STRONG></FONT>Ethernet), ip (Internet Protocol), ip6 (IPv6), arp (Address Resolution
+                       Protocol), rarp, decnet, tcp (Transfert Control Protocol), udp. A ces primitives vous pouvez combiner des 
+                       <FONT COLOR="#650099"><STRONG>'link word'</STRONG></FONT> tel que || (or), &amp;&amp; (and), ! (not). Voici une liste de primitives que vous pouvez utiliser. Cet
+                       extrait n<FONT COLOR="#ff9900"><STRONG>'est que la traduction du man page de TCPDUMP (avec des compl&eacute;ments en plus) :</STRONG></FONT>
+
+
+                      <FONT COLOR="#009900"><EM>/**************************           Debut de la traduction du man page de tcpdump **************************/</EM></FONT>
+
+                      dst host [host]
+                      True si le champ de destination du packet IPv4/IPv6 est [host], qui peut &ecirc;tre soit une addresse IP, soit un
+                      nom de domaine.
+
+                      src host [host]
+                      True si le champ source du packet IPv4/IPv6 est [host]. Meme principe que plus haut.
+
+                      host [host]
+                      True si le l<FONT COLOR="#ff9900"><STRONG>'adresse IPv4/IPv6 source ou destination du packet correspond &agrave; [host]. Chaque expressions suivante de</STRONG></FONT>
+                      l<FONT COLOR="#650099"><STRONG>'host peuvent utilis&eacute;e avec les mots cl&eacute;s '</STRONG></FONT>ip, arp, rarp, or ip6<FONT COLOR="#ff9900"><STRONG>' comme &quot;ip host [host]&quot; qui est &eacute;quivalent &agrave;</STRONG></FONT>
+                      <FONT COLOR="#9999ff">&quot;ether proto \ip and host [host]&quot;</FONT>. SI [host] est un nom avec plusieures adresse IP, chaque adresse va &ecirc;tre v&eacute;rifi&eacute;e.
+
+                      ether dst [ehost]
+                      True si l<FONT COLOR="#650099"><STRONG>'adresse Ethernet de destination correspond &agrave; l'</STRONG></FONT>adresse [ehost]. [Ehost] peut &ecirc;tre un nom tir&eacute; de /etc/ethers
+                      ou encore un nombre (allez voir <FONT COLOR="#000000"><STRONG>ethers</STRONG></FONT>(3N) pour les formats num&eacute;riques). 
+
+                      ether src [ehost]
+                      True si l<FONT COLOR="#ff9900"><STRONG>'adresse Ethernet source est [ehost]. </STRONG></FONT>
+
+                      ether host [ehost]
+                      True si l<FONT COLOR="#ff9900"><STRONG>'adresse Ethernet source ou destination correspond &agrave; [ehost].</STRONG></FONT>
+
+                      gateway [host]
+                      True si le packet utilise host comme une passerelle. Exemple : l<FONT COLOR="#ff9900"><STRONG>'adresse Ethernet source (ou de destination) &eacute;tait</STRONG></FONT>
+                      [host] mais ni l<FONT COLOR="#650099"><STRONG>'adresse IP source ni l'</STRONG></FONT>adresse IP de destination n<FONT COLOR="#ff9900"><STRONG>'&eacute;tait [host]. [Host] doit &ecirc;tre un nom et doit</STRONG></FONT>
+                      &ecirc;tre trouv&eacute; dans /etc/hosts et /etc/ethers ( Une expression equivalente est <FONT COLOR="#9999ff">&quot;ether host [ehost] and not host [host]&quot;</FONT>.
+                      qui peut &ecirc;tre utilis&eacute; &agrave; la fois avec des noms et des nombres pour [host] / [ehost]). Cette syntaxe ne marche pas avec
+                      la configuration IPv6 activ&eacute;e pour le moment.
+
+                      dst net [net]
+                      True si le packet IPv4/IPv6 &agrave; dans son champ destination un num&eacute;ro de r&eacute;seau de [net]. Comme ce n<FONT COLOR="#ff9900"><STRONG>'est pas tr&egrave;s clair,</STRONG></FONT>
+                      voici un petit exemple : <FONT COLOR="#650099"><STRONG>'dst net 128.6'</STRONG></FONT> sera juste si le champ destination du packet aura une adresse telle que
+                      128.6.35.2. [Net] peut &ecirc;tre &agrave; la fois un nom de /etc/networks ou une adresse r&eacute;seau (allez voir <FONT COLOR="#000000"><STRONG>networks</STRONG></FONT>(4) pour
+                      plus de d&eacute;tails).
+
+                      src net [net]
+                      Meme raisonnement que plus haut, mais avec le champ source correspondant &agrave; [net], et non plus le champ destination.
+
+                      net [net]
+                      True si l<FONT COLOR="#ff9900"><STRONG>'adresse source ou destination du packet IPv4/IPv6 &agrave; une adresse r&eacute;seau correspondant &agrave; [net]. </STRONG></FONT>
+
+                      net [net] mask [mask]
+                      True si l<FONT COLOR="#ff9900"><STRONG>'adresse IP correspond &agrave; [net] avec le masque r&eacute;seau sp&eacute;cifi&eacute; ([mask]). Il est possible de rajouter src ou</STRONG></FONT>
+                      dst pour lus de pr&eacute;cision. NOTE : cette syntaxe n<FONT COLOR="#ff9900"><STRONG>'est pas valide pour les r&eacute;seau utilisant IPv6.</STRONG></FONT>
+
+                      dst port [port]
+                      True si le packet est un packet ip/tcp, ip/udp ou ip6/udp et a un port de destination de valeure [port]. Le [port]
+                      peut &ecirc;tre un nombre ou un nom utilis&eacute; dans /etc/services (voir <FONT COLOR="#000000"><STRONG>tcp</STRONG></FONT>(4P) et <FONT COLOR="#000000"><STRONG>udpo</STRONG></FONT>(4P)). Si un nom est utilis&eacute;, &agrave; la fois
+                      le num&eacute;ro de port et le protocole sont v&eacute;rifi&eacute;s. Si un nom ou un num&eacute;ro ambigue est utilis&eacute;, seul le num&eacute;ro de port est
+                      v&eacute;rifi&eacute; (exemple: <FONT COLOR="#650099"><STRONG>'dst port 513'</STRONG></FONT> affichera &agrave; la fois le traffique de tcp/login et le traffique de udp/who, et le port
+                      domaine affichera &agrave; la fois le traffique de tcp/domain et udp/domain).
+
+                      src port [port]
+                      True si le packet &agrave; la valeure de [port] comme port source.
+
+                      port [port] 
+                      True si le port source ou de destination correspond &agrave; [port]. Chacune des expressions vues plus haut peuvent &ecirc;tre
+                      utilis&eacute; avec les mots cl&eacute;s, tcp ou udp, comme dans : <FONT COLOR="#650099"><STRONG>'tcp src port [port]'</STRONG></FONT>, qui affichera que les packets TCP dont
+                      le port source est [port].
+
+                      less [length]
+                      True si le packet &agrave; une longueure inf&eacute;rieure ou &eacute;gale &agrave; [length]. Ceci est &eacute;quivalent &agrave; len &lt;= [length].
+
+                      greater [length]
+                      True si le packet &agrave; une longueure sup&eacute;rieure ou &eacute;gale &agrave; [length]. Ceci est &eacute;quivalent &agrave;  len &gt;= [length].
+
+                      ip proto [protocol]
+                      True si le packet est un packet IP (voir <FONT COLOR="#000000"><STRONG>ip</STRONG></FONT>(4P)) avec le type de protocole [protocol]. Celui ci peut &ecirc;tre un nombre
+                      ou un des noms suivants : icmp, icmp6, igmp, igrp, pim, ah, esp, udp ou tcp. Remarquez que les identifiants tcp, udp
+                      et icmp sont aussi des mots cl&eacute;s, et doivent ainsi &ecirc;tre echapp&eacute;s par un backslash (\). 
+
+                      ip6 proto [protocol]
+                      True si le packet est un packet IPv6 de type de protocole [protocol].
+
+                      ether broadcast
+                      True si le packet est un packet Ethernet <FONT COLOR="#650099"><STRONG>'broadcast'</STRONG></FONT>. Le mots cl&eacute;s <FONT COLOR="#650099"><STRONG>'ether'</STRONG></FONT> est optionnel.
+
+                      ip broadcast
+                      True si le packet est un packet IP broadcast. Cela v&eacute;rifie pour les conventions broadcast <FONT COLOR="#650099"><STRONG>'all-zeroes'</STRONG></FONT> et <FONT COLOR="#650099"><STRONG>'all-ones'</STRONG></FONT>,
+                      et v&eacute;rifie le masque de sous r&eacute;seau.
+
+                      ether multicast
+                      True si le packet est un packet Ethernet multicast. Le mot cl&eacute; <FONT COLOR="#650099"><STRONG>'ether'</STRONG></FONT> est optionnel. Il s<FONT COLOR="#650099"><STRONG>'agit d'</STRONG></FONT>une &eacute;criture
+                      abr&eacute;g&eacute;e pour <FONT COLOR="#650099"><STRONG>'ether[0] &amp; 1 != 0'</STRONG></FONT>.
+
+                      ip multicast
+                      True si le packet est un packet IP multicast. ip6 multicast True si le packet est un packet IPv6 multicast.
+
+                      ip, ip6, arp, rarp, atalk, aarp, decnet, iso   
+                      Abreviations pour ether proto [p], ou [p] est un des protocoles d&eacute;crit plus haut. 
+
+                      tcp, udp, icmp
+                      Abr&eacute;viations pour ip proto [p], o&ugrave; [p] correspond &agrave; l<FONT COLOR="#ff9900"><STRONG>'un des protocoles list&eacute; plus haut.</STRONG></FONT>
+
+                      iso proto [protocol]
+                      True si le packet est un packet OSI de type [protocol]. [Protocol] peut &ecirc;tre un nombre ou un des noms
+                      suivant : cnlp, esis ou isis. 
+
+                      clnp, esis, isis
+                      Abr&eacute;viation pour <FONT COLOR="#650099"><STRONG>'iso proto [p]'</STRONG></FONT>, o&ugrave; [p] correspond &agrave; l<FONT COLOR="#ff9900"><STRONG>'un des protocoles list&eacute;s plus haut. Note: tcpdump</STRONG></FONT>
+                      ne parse pas entierement ces protocoles.
+
+                      (expr) [relop] (expr)
+                      Permet de v&eacute;rifier la relation entre deux expressions. [Relop] peut &ecirc;tre l<FONT COLOR="#ff9900"><STRONG>'un des comparateur suivant :</STRONG></FONT>
+                      &gt;, &lt;, &gt;=, &lt;=, =, != et (expr) est une expression arithm&eacute;tique compos&eacute;e de constantes entieres (exprim&eacute;es
+                      dans la syntaxe standard C), d<FONT COLOR="#650099"><STRONG>'op&eacute;rateurs bianaires normaux (+, -, *, /, &amp;, |), d'</STRONG></FONT>un op&eacute;rateur de longueure,
+                      et un moyen d<FONT COLOR="#ff9900"><STRONG>' acces sp&eacute;cial aux donn&eacute;es du packet. Pour acc&eacute;der aux donn&eacute;e contenues dans le packet, utilisez</STRONG></FONT>
+                      la syntaxe suivante :
+
+                          proto [ expr : size ]
+
+                     Proto est un des protocoles suivant : ether, fddi, tr, ip, arp, rarp, tcp, udp, icmp ou ip6, et indique la couche
+                     du protocole pour les op&eacute;rations de l<FONT COLOR="#ff9900"><STRONG>'index. Remarquez que  tcp, udp et les autres types de protocoles de couche</STRONG></FONT>
+                     sup&eacute;rieure ne s<FONT COLOR="#650099"><STRONG>'applique qu'</STRONG></FONT>avec IPv4, et non pas IPv6. L<FONT COLOR="#ff9900"><STRONG>'offset byte, relatif &agrave; la couche protocole indiqu&eacute;e est</STRONG></FONT>
+                     donn&eacute;e par (expr). La taille est optionnelle et indique le nombre de bytes dans le champ interess&eacute;; il peut &ecirc;tre
+                     un, deux, ou quatre, et par d&eacute;faut un. L<FONT COLOR="#650099"><STRONG>'op&eacute;rateur de longueure, indiqu&eacute; par le mot cl&eacute; '</STRONG></FONT>len<FONT COLOR="#ff9900"><STRONG>', donne la longueure</STRONG></FONT>
+                     du packet.
+
+                     Par exemple, <FONT COLOR="#650099"><STRONG>'ether[0] &amp; 1 !=0'</STRONG></FONT> sniff tout les traffic multicasts. L<FONT COLOR="#650099"><STRONG>'expression '</STRONG></FONT>ip[0] &amp; 0xf !=5<FONT COLOR="#ff9900"><STRONG>' sniff tout</STRONG></FONT>
+                     les packets IP avec des option,s. L<FONT COLOR="#650099"><STRONG>'expression '</STRONG></FONT>ip[6:2] &amp; 0x1fff = 0<FONT COLOR="#ff9900"><STRONG>' sniff seulement les datagrammes qui ne</STRONG></FONT>
+                     sont pas fragment&eacute; et le fragment 0 des datagrammes fragment&eacute;s. 
+
+                     Il faut savoir que tcp[0] signifie toujours le premier byte d<FONT COLOR="#650099"><STRONG>'un header TCP, et jamais le premier byte d'</STRONG></FONT>un
+                     fragment intervenant.
+
+
+                <FONT COLOR="#009900"><EM>/****************************           Fin de la traduction du man page de tcpdump  **************************/</EM></FONT>
+
+
+
+        [ 3.3 ] Filtrage avanc&eacute; (filtres BPF) :
+
+
+        Les expressions que nous avons vu plus haut sont extraite du manpage de TCPDUMP. J<FONT COLOR="#ff9900"><STRONG>'ai volontairement omis certaines de ces</STRONG></FONT>
+        expressions, qui par exemple ne fonctionne que sur les systemes ULTRIX, car d<FONT COLOR="#650099"><STRONG>'une part personne n'</STRONG></FONT>utilise ce type de syst&egrave;me,
+        et d<FONT COLOR="#ff9900"><STRONG>'autre part, je ne suis m&ecirc;me pas sur que ce type de syst&egrave;me existe encore :) !</STRONG></FONT>
+
+        Comme vous pouvez le constater, ces options permettent de sniffer les packets avec un tres grande pr&eacute;cision, puisque nous
+        pouvons utiliser des filtres. Ainsi voyons quelque exemples. Tout d<FONT COLOR="#ff9900"><STRONG>'abord si nous voulons voir toutes les packets qui se</STRONG></FONT>
+        connectent sur notre serveur HTTPD, puis analyser ces packets en temps r&eacute;el, nous aurions alors ceci :
+
+
+                [root@subkulture medgi]<FONT COLOR="#ff9900"># tcpdump -s 0 -i eth0 -X dst port 80  &amp;&amp; dst host medgi.httpd.server</FONT>
+                tcpdump: listening on eth0
+
+                (...)
+                0x0010   d45f 0706 0050 0d02 18b4 b513 7e38 6166   ._...P......~8af
+                0x0020   5018 16d0 5ed8 0000 4854 5450 2f31 2e31   P...^...HTTP/1.1
+                0x0030   2034 3034 204e 6f74 2046 6f75 6e64 0d0a   .404.Not.Found..
+                0x0040   4461 7465 3a20 5468 752c 2032 3020 5365   Date:.Thu,.20.Se
+                0x0050   7020 3230 3031 2031 383a 3431 3a30 3720   p.2001.18:41:07.
+                0x0060   474d 540d 0a53 6572 7665 723a 2041 7061   GMT..Server:.Apa
+                0x0070   6368 650d 0a43 6f6e 6e65 6374 696f 6e3a   che..Connection:
+                0x0080   2063 6c6f 7365 0d0a 436f 6e74 656e 742d   .close..Content-
+                0x0090   5479 7065 3a20 7465 7874 2f68 746d 6c3b   Type:.text/html;
+                0x00a0   2063 6861 7273 6574 3d69 736f 2d38 3835   .charset=iso-885
+                0x00b0   392d 310d 0a0d 0a3c 2144 4f43 5459 5045   9-1....&lt;!DOCTYPE
+                0x00c0   2048 544d 4c20 5055 424c 4943 2022 2d2f   .HTML.PUBLIC.<FONT COLOR="#ff9900"><STRONG>&quot;-/</STRONG></FONT>
+                0x00d0   2f49 4554 462f 2f44 5444 2048 544d 4c20   /IETF<FONT COLOR="#009900"><EM>//DTD.HTML.</EM></FONT>
+                0x00e0   322e 302f 2f45 4e22 3e0a 3c48 544d 4c3e   2.0<FONT COLOR="#009900"><EM>//EN&quot;&gt;.&lt;HTML&gt;</EM></FONT>
+                0x00f0   3c48 4541 443e 0a3c 5449 544c 453e 3430   &lt;HEAD&gt;.&lt;TITLE&gt;40
+                0x0100   3420 4e6f 7420 466f 756e 643c 2f54 4954   4.Not.Found&lt;/TIT
+                0x0110   4c45 3e0a 3c2f 4845 4144 3e3c 424f 4459   LE&gt;.&lt;/HEAD&gt;&lt;BODY
+                0x0120   3e0a 3c48 313e 4e6f 7420 466f 756e 643c   &gt;.&lt;H1&gt;Not.Found&lt;
+                0x0130   2f48 313e 0a54 6865 2072 6571 7565 7374   /H1&gt;.The.request
+                0x0140   6564 2055 524c 202f 7363 7269 7074 732f   ed.URL./scripts/
+                0x0150   2e2e 2532 662e 2e2f 7769 6e6e 742f 7379   ..%2f../winnt/sy
+                0x0160   7374 656d 3332 2f63 6d64 2e65 7865 2077   stem32/cmd.exe.w
+                0x0170   6173 206e 6f74 2066 6f75 6e64 206f 6e20   as.not.found.on.
+                0x0180   7468 6973 2073 6572 7665 722e 3c50 3e0a   this.server.&lt;P&gt;.
+                0x0190   3c2f 424f 4459 3e3c 2f48 544d 4c3e 0a     &lt;/BODY&gt;&lt;/HTML&gt;.
+                (...)
+
+
+        Comme vous pouvez le constater, on peut clairement voire qu<FONT COLOR="#ff9900"><STRONG>'une machine &agrave; tenter une requete telle que </STRONG></FONT>
+        <FONT COLOR="#9999ff">&quot;/scripts/..%2f../winnt/system32/cmd.exe&quot;</FONT>, et qui n<FONT COLOR="#ff9900"><STRONG>'as pas aboutit. Nous voyons donc ici le code HTML que renvoie Apache au</STRONG></FONT>
+        client (erreur 404). Ainsi vous pouvez constater qu<FONT COLOR="#650099"><STRONG>'un sniffer peut s'</STRONG></FONT>av&eacute;rer tr&egrave;s utile pour un administrateur puisqu<FONT COLOR="#ff9900"><STRONG>'il permet</STRONG></FONT>
+        de remarquer que son httpd est en train de subir un scan de failels CGI (*cmd.exe*). C<FONT COLOR="#650099"><STRONG>'est d'</STRONG></FONT>ailleurs sur le sniffing de packet
+        que sont bas&eacute;s les Network Intrusion Detection System (NIDS), dont nous &eacute;tudierons le principe plus loin.
+
+        Un autre filtrage qui peut s<FONT COLOR="#ff9900"><STRONG>'av&eacute;rer int&eacute;ressant, est de rep&eacute;rer les FLAGS des trames TCP. Ainsi nous pouvons ais&eacute;ment d&eacute;terminer</STRONG></FONT>
+        les d&eacute;but de connexion (SYN), les fin de connexion (FIN), ou autres ... Voici les expressions correspondantes :
+
+
+                SYN     --&gt; <FONT COLOR="#650099"><STRONG>'dst port 80 and tcp[13] &amp; 2 != 0'</STRONG></FONT>  : Permet de sniffer sur le port destination 80 (http) le treizieme octet
+                             du header TCP. Le flag SYN est le deuxieme bit du treizieme octet (2 != 0 indique que le flag est marqu&eacute; si
+                             TRUE).
+                ACK     --&gt; <FONT COLOR="#650099"><STRONG>'dst port 80 and tcp[13] &amp; 16 != 0'</STRONG></FONT> : Permet de v&eacute;rifier la pr&eacute;sence du flag ACK. Meme raisonnement que plus haut
+                FIN     --&gt; <FONT COLOR="#650099"><STRONG>'dst port 80 and tcp[13] &amp; 16 != 0'</STRONG></FONT> : Permet de voir si le flag FIN est marqu&eacute;. 
+                RST     --&gt; <FONT COLOR="#650099"><STRONG>'dst port 80 and tcp[13] &amp; 4 != 0'</STRONG></FONT>  : Idem mais avec le flag RST. 
+                PSH     --&gt; <FONT COLOR="#650099"><STRONG>'dst port 80 and tcp[13] &amp; 8 != 0'</STRONG></FONT>  : Idem mais avec le flag PSH.
+                URG     --&gt; <FONT COLOR="#650099"><STRONG>'dst port 80 and tcp[13] &amp; 32 != 0'</STRONG></FONT> : Idem mais avec le flag URG.
+
+
+        De meme, il est aussi possible de v&eacute;rifier la pr&eacute;sence de plusieurs flag en m&ecirc;me temps en combinant plusieures expressions. Par
+        exemple pour v&eacute;rifier que les flags SYN et ACK sont pr&eacute;sent tout les deux, nous pourrions utiliser un filtre BPF tel que :
+        <FONT COLOR="#650099"><STRONG>'dst port 80 and tcp[13] &amp; 2 !=0 and tcp[13] &amp; 16 !=0'</STRONG></FONT>. Vous pouvez ainsi cr&eacute;er une multitude de combinaisons pour filtrer avec
+        une grande pr&eacute;cision les header tcp. Comme nous l<FONT COLOR="#650099"><STRONG>'avons vu un peu plus haut, vous pouvez intervenir directement sur d'</STRONG></FONT>autres
+        packets, tels que IP ou encore Ethernet. 
+
+        Imaginons par exemple qu<FONT COLOR="#650099"><STRONG>'un administrateur veut v&eacute;rifier si sa machine est en train de se faire smurfer (en g&eacute;n&eacute;ral il n'</STRONG></FONT>a pas
+        le temps mais c<FONT COLOR="#650099"><STRONG>'est pour l'</STRONG></FONT>exemple :P). Bref, il lui suffira de filtrer les packets IP, sachant que l<FONT COLOR="#ff9900"><STRONG>'adresse de destination est</STRONG></FONT>
+        de type <FONT COLOR="#650099"><STRONG>'broadcast'</STRONG></FONT>. Ainsi il utilisera une expression telle que : <FONT COLOR="#650099"><STRONG>'ip[19] = 255 or ip[19] = 0'</STRONG></FONT>. 
+
+        Bref je ne vais pas rentrer plus dans les d&eacute;tails, mais sachez que vous pouvez combiner toutes les options que nous avons vu plus
+        haut. Le tout est de savoir le position des diff&eacute;rentes options que vous cherchez. Pour cela, n<FONT COLOR="#ff9900"><STRONG>'h&eacute;sitez pas &agrave; lire les RFC :).</STRONG></FONT>
+
+
+
+[ 4 ] Programmer son sniffer avec la libpcap :
+
+
+A ce stade la, vous devriez commencer &agrave; comprendre &agrave; quoi sers le sniffing, et &agrave; savoir vous servir d<FONT COLOR="#ff9900"><STRONG>'une mani&egrave;re efficace de tcpdump.</STRONG></FONT>
+Ainsi, je vous propose de coder un *tout* petit sniffer en C bas&eacute; sur la libpcap. Certes nous aurions pu le coder en Raw Socket, mais
+si une library de capture de packet &agrave; &eacute;t&eacute; devellopp&eacute;e, ce n<FONT COLOR="#650099"><STRONG>'est pas pour que nous ne l'</STRONG></FONT>utilisions pas ! 
+
+
+        [ 4.1 ] Introduction &agrave; la libpcap :
+
+
+        La libcap est (comme je viens de le dire juste au dessus) une library de fonction qui sert d<FONT COLOR="#ff9900"><STRONG>'interface &agrave; la capture de packets.</STRONG></FONT>
+        Elle permet de sniffer les r&eacute;seau et d<FONT COLOR="#ff9900"><STRONG>'utiliser diff&eacute;rents filtres qui sont bas&eacute;s sur le Berkeley Packet Filter (BPF). Vous</STRONG></FONT>
+        pouvez t&eacute;l&eacute;charger la derniere version sur le site de TCPDUMP : http:<FONT COLOR="#009900"><EM>//www.tcpdump.org. Il faut maintenant l'installer. Pour</EM></FONT>
+        ce faire rien de plus simple : 
+
+
+                [medgi@subkulture medgi]$ tar -xvzf libpcap.tar.gz ; cd libpcap
+                [medgi@subkulture medgi]$ ./configure
+                [medgi@subkulture medgi]$ su
+                Password:
+                [root@subkulture medgi]<FONT COLOR="#ff9900"># make ; make install</FONT>
+
+
+        Ce n<FONT COLOR="#650099"><STRONG>'&eacute;tait pas bien difficile comme vous pouvez le constater. Pour connaitre les diff&eacute;rentes fonctions, il n'</STRONG></FONT>y &agrave; qu<FONT COLOR="#ff9900"><STRONG>'une solution :</STRONG></FONT>
+        lire les man pages (man pcap). Il est &agrave; noter qu<FONT COLOR="#650099"><STRONG>'il est indispensable d'</STRONG></FONT>inclure la library en haut de votre code.
+
+
+        [ 4.2 ] Explication du code :
+
+
+        Nous allons coder ce *tout* petit sniffer &eacute;tape par &eacute;tape. Tout d<FONT COLOR="#ff9900"><STRONG>'abord, il nous faut sp&eacute;cifier les biblioth&egrave;ques de fonctions</STRONG></FONT>
+        que nous souhaitons utiliser dans notre programme. Les voici donc : 
+
+
+                <FONT COLOR="#ff9900">#include &lt;stdio.h&gt;                      /* Pour les entrees et sortit standard           */</FONT>
+                <FONT COLOR="#ff9900">#include &lt;string.h&gt;                     /* Pour les fonctions de manipulation de chaines */</FONT>
+                <FONT COLOR="#ff9900">#include &lt;unistd.h&gt;                     /* Pour la gestions des arguments (getopt())     */</FONT>
+                <FONT COLOR="#ff9900">#include &lt;pcap.h&gt;                       /* Pour utiliser la libpcap bien sur :)          */</FONT>
+                <FONT COLOR="#ff9900">#include &lt;signal.h&gt;                     /* Pour intercepter le SIGINT                    */</FONT>
+                <FONT COLOR="#ff9900">#include &lt;stdarg.h&gt;                     /* Pour la gestion des arguments (bis)           */</FONT>
+
+
+        Definissons maintenant deux chaines de caracteres constantes qui serviront pour l<FONT COLOR="#ff9900"><STRONG>'aide et la version :</STRONG></FONT>
+
+
+                <FONT COLOR="#ff9900">#define VERSION &quot;Psyrus v.ALPHA http://subkulture.unixlover.com&quot;</FONT>
+                <FONT COLOR="#ff9900">#define NAME &quot;Psyrus v.ALPHA&quot;</FONT>
+
+
+        Maintenant, sp&eacute;cifions les fonctions que nous allons utiliser dans notre code. DisplayHelp sers &agrave; afficher l<FONT COLOR="#ff9900"><STRONG>'aide et GetSignal</STRONG></FONT>
+        &agrave; recevoir un signal d<FONT COLOR="#ff9900"><STRONG>'int&eacute;rruption (^C) : </STRONG></FONT>
+
+
+                <FONT COLOR="#ff0000">void</FONT> <FONT COLOR="#000000"><STRONG>DisplayHelp</STRONG></FONT>(<FONT COLOR="#ff0000">char</FONT> *version);
+                <FONT COLOR="#ff0000">void</FONT> <FONT COLOR="#000000"><STRONG>GetSignal</STRONG></FONT>(<FONT COLOR="#ff0000">int</FONT> signal);
+
+
+        Ensuite, il faut d&eacute;finir toutes nos variables. Dans ce code seule le descripteur de type pcap_t sera d&eacute;finit en tant que variable
+        globale. Les autres ne seront que des variables locales contenues dans la fonction main : 
+
+                pcap_t *peer;                                   <FONT COLOR="#009900"><EM>/* Le descripteur pour pcap_open_live()            */</EM></FONT>
+
+                <FONT COLOR="#ff0000">int</FONT> <FONT COLOR="#000000"><STRONG>main</STRONG></FONT>(<FONT COLOR="#ff0000">int</FONT> argc, <FONT COLOR="#ff0000">char</FONT> *argv[]) {
+
+                 <FONT COLOR="#ff0000">int</FONT> option;                                    <FONT COLOR="#009900"><EM>/* Descripteur pour utiliser getopt()              */</EM></FONT>
+                 <FONT COLOR="#ff0000">int</FONT> pmode;                                     <FONT COLOR="#009900"><EM>/* Variable pour le mode promiscious               */</EM></FONT>
+                 <FONT COLOR="#ff0000">int</FONT> i;                                         <FONT COLOR="#009900"><EM>/* Pour la boucle permettant de lire les packets   */</EM></FONT>
+
+                 <FONT COLOR="#ff0000">char</FONT> *opt_list = <FONT COLOR="#9999ff">&quot;i:phv&quot;</FONT>;                      <FONT COLOR="#009900"><EM>/* Liste des options disponibles                   */</EM></FONT>
+                 <FONT COLOR="#ff0000">char</FONT> errbuf[PCAP_ERRBUF_SIZE];                 <FONT COLOR="#009900"><EM>/* Buffer pour les erreures de PCAP                */</EM></FONT>
+                 <FONT COLOR="#ff0000">char</FONT> *device = <FONT COLOR="#650099"><STRONG>NULL</STRONG></FONT>;                           <FONT COLOR="#009900"><EM>/* Char contenant la carte reseau &agrave; utiliser       */</EM></FONT>
+
+                 <FONT COLOR="#ff0000">struct</FONT> pcap_pkthdr usefull;                    <FONT COLOR="#009900"><EM>/* Ne nous sers que pour la fonction pcap_next()   */</EM></FONT>
+                 u_char *packet;                                <FONT COLOR="#009900"><EM>/* Variable de type u_char contenant les packets   */</EM></FONT>
+
+
+        Nous allons maintenant d&eacute;finir une structure qui nous permettra d<FONT COLOR="#650099"><STRONG>'intercepter le signal ^C. Pour plus d'</STRONG></FONT>informations,
+        consultez <FONT COLOR="#650099"><STRONG>'man sigaction'</STRONG></FONT> :
+
+
+                 <FONT COLOR="#ff0000">struct</FONT> sigaction termsignal;                    <FONT COLOR="#009900"><EM>/* Definition du nom de la structure              */</EM></FONT>
+                 termsignal.sa_handler = (<FONT COLOR="#ff0000">void</FONT>*)GetSignal;       <FONT COLOR="#009900"><EM>/* Action ( ici GetSignal() )                     */</EM></FONT>
+                 termsignal.sa_flags = 0 ;                       <FONT COLOR="#009900"><EM>/* Flag de la structure                           */</EM></FONT>
+                 <FONT COLOR="#000000"><STRONG>sigaction</STRONG></FONT>(SIGINT,&amp;termsignal,<FONT COLOR="#650099"><STRONG>NULL</STRONG></FONT>);             <FONT COLOR="#009900"><EM>/* Permet de modifier l'action du processus du    */</EM></FONT>
+                                                                 <FONT COLOR="#009900"><EM>/* sniffer &agrave; la reception d'un signal.            */</EM></FONT>
+
+
+        Ensuite, <FONT COLOR="#9999ff">&quot;remplissons&quot;</FONT> les variables que nous n<FONT COLOR="#ff9900"><STRONG>'avons pas encore remplies : </STRONG></FONT>
+
+
+                 opterr = 0;                                     <FONT COLOR="#009900"><EM>/* Permet de ne pas afficher les erreur de getopt */</EM></FONT>
+                 pmode  = 0;                                     <FONT COLOR="#009900"><EM>/* 0: normal mode | 1: promiscious mode           */</EM></FONT>
+
+
+        Maintenant que les variables sont d&eacute;clar&eacute;e, nous allons devoir v&eacute;rifier les arguments et effectuer les op&eacute;rations en cons&eacute;quence.
+        Pour ce faire nous utilisons la fonction <FONT COLOR="#000000"><STRONG>getopt</STRONG></FONT>() (man getopt) : 
+
+
+                 <FONT COLOR="#0000ff"><STRONG>while</STRONG></FONT> ((option = getopt (argc, argv, opt_list)) !=-1)                  <FONT COLOR="#009900"><EM>/* Parsing des arguments   */</EM></FONT>
+                    {
+                      <FONT COLOR="#0000ff"><STRONG>switch</STRONG></FONT> (option)                                                   <FONT COLOR="#009900"><EM>/* L'argument est &agrave; chaque */</EM></FONT>
+                                                                                        <FONT COLOR="#009900"><EM>/* stock&eacute; dans 'optarg'.   */</EM></FONT>
+                        {
+                        <FONT COLOR="#0000ff"><STRONG>case</STRONG></FONT> <FONT COLOR="#650099"><STRONG>'i'</STRONG></FONT>:                                                       <FONT COLOR="#009900"><EM>/* Si l'option vaut -i ... */</EM></FONT>
+                          device = (<FONT COLOR="#ff0000">char</FONT> *)<FONT COLOR="#000000"><STRONG>malloc</STRONG></FONT>(<FONT COLOR="#0000ff"><STRONG>sizeof</STRONG></FONT>(optarg)*32);                   <FONT COLOR="#009900"><EM>/* Allocation m&eacute;moire      */</EM></FONT>
+                          <FONT COLOR="#000000"><STRONG>strncpy</STRONG></FONT>(device, optarg, <FONT COLOR="#0000ff"><STRONG>sizeof</STRONG></FONT>(optarg));                      <FONT COLOR="#009900"><EM>/* Copie de optarg         */</EM></FONT>
+                          <FONT COLOR="#0000ff"><STRONG>break</STRONG></FONT>;
+                        <FONT COLOR="#0000ff"><STRONG>case</STRONG></FONT> <FONT COLOR="#650099"><STRONG>'p'</STRONG></FONT>:
+                          pmode = 1;                                                    <FONT COLOR="#009900"><EM>/* pmode = 1 -&gt; PROMISC.   */</EM></FONT>
+                          <FONT COLOR="#0000ff"><STRONG>break</STRONG></FONT>;
+                        <FONT COLOR="#0000ff"><STRONG>case</STRONG></FONT> <FONT COLOR="#650099"><STRONG>'h'</STRONG></FONT>:
+                          <FONT COLOR="#000000"><STRONG>DisplayHelp</STRONG></FONT>(NAME);                                            <FONT COLOR="#009900"><EM>/* Affichage de l'aide     */</EM></FONT>
+                          <FONT COLOR="#000000"><STRONG>exit</STRONG></FONT>(0);                                                      <FONT COLOR="#009900"><EM>/* Fin du programme        */</EM></FONT>
+                          <FONT COLOR="#0000ff"><STRONG>break</STRONG></FONT>;
+                        <FONT COLOR="#0000ff"><STRONG>case</STRONG></FONT> <FONT COLOR="#650099"><STRONG>'v'</STRONG></FONT>:                                                       <FONT COLOR="#009900"><EM>/* Affichage de la version */</EM></FONT>
+                          <FONT COLOR="#000000"><STRONG>fprintf</STRONG></FONT>(stdout, <FONT COLOR="#9999ff">&quot;%s\n&quot;</FONT>, VERSION);
+                          <FONT COLOR="#000000"><STRONG>exit</STRONG></FONT>(0);
+                        <FONT COLOR="#0000ff"><STRONG>default</STRONG></FONT>:                                                        <FONT COLOR="#009900"><EM>/* Aucune option ou erreur */</EM></FONT>
+                          <FONT COLOR="#000000"><STRONG>fprintf</STRONG></FONT>(stdout,<FONT COLOR="#9999ff">&quot;ERROR : You must select a valid option. Use -h for help !\n&quot;</FONT>);
+                          <FONT COLOR="#000000"><STRONG>exit</STRONG></FONT>(-1);
+                          <FONT COLOR="#0000ff"><STRONG>break</STRONG></FONT>;
+                        }
+                    }
+
+
+        Si aucune carte r&eacute;seau n<FONT COLOR="#650099"><STRONG>'a &eacute;t&eacute; sp&eacute;cifi&eacute; par l'</STRONG></FONT>option -i, nous allons demander &agrave; pcap qu<FONT COLOR="#ff9900"><STRONG>'il choisisse la carte par d&eacute;faut.</STRONG></FONT>
+        Ainsi sera selectionn&eacute;e la premiere carte r&eacute;seau qui n<FONT COLOR="#ff9900"><STRONG>'est pas du loopback. Voici donc le code : :</STRONG></FONT>
+
+
+                 <FONT COLOR="#0000ff"><STRONG>if</STRONG></FONT>(device==<FONT COLOR="#650099"><STRONG>NULL</STRONG></FONT>) {                                                           <FONT COLOR="#009900"><EM>/* Si aucune interface     */</EM></FONT>
+                    <FONT COLOR="#0000ff"><STRONG>if</STRONG></FONT>((device=<FONT COLOR="#000000"><STRONG>pcap_lookupdev</STRONG></FONT>(errbuf))==<FONT COLOR="#650099"><STRONG>NULL</STRONG></FONT>) {                               <FONT COLOR="#009900"><EM>/* Interface default       */</EM></FONT>
+                      <FONT COLOR="#000000"><STRONG>fprintf</STRONG></FONT>(stderr,<FONT COLOR="#9999ff">&quot;ERROR : detecting device : %s failed !\n&quot;</FONT>, errbuf);     <FONT COLOR="#009900"><EM>/* Erreur :) ...           */</EM></FONT>
+                      <FONT COLOR="#000000"><STRONG>exit</STRONG></FONT>(-1);
+                    }
+                  }
+
+
+        Nous allons maintenant passer au choses s&eacute;rieuse, &agrave; savoir obtenir un d&eacute;scripteur pour la capture de packet, grace &agrave; la fonction
+        <FONT COLOR="#000000"><STRONG>pcap_open_live</STRONG></FONT>(). Je rappelle vite fait la syntaxe : 
+
+
+                 pcap_t *<FONT COLOR="#000000"><STRONG>pcap_open_live</STRONG></FONT>(<FONT COLOR="#ff0000">char</FONT> *device, <FONT COLOR="#ff0000">int</FONT> snaplen, <FONT COLOR="#ff0000">int</FONT> promisc, <FONT COLOR="#ff0000">int</FONT> to_ms, <FONT COLOR="#ff0000">char</FONT> *ebuf)
+
+                        -&gt; <FONT COLOR="#ff0000">char</FONT> *device : Correspond &agrave; l<FONT COLOR="#ff9900"><STRONG>'interface &agrave; sniffer (dans notre code le char device).</STRONG></FONT>
+                        -&gt; <FONT COLOR="#ff0000">int</FONT> snaplen  : Le nombre maximum de bytes &agrave; capturer. 
+                        -&gt; <FONT COLOR="#ff0000">int</FONT> promisc  : 0 correspond au mode normal, 1 au mode promiscious.
+                        -&gt; <FONT COLOR="#ff0000">int</FONT> to_ms    : Le temps en milliseconde avant que le packet ne tombe en timeout.
+                        -&gt; <FONT COLOR="#ff0000">char</FONT> *ebuf   : Le buffer pour les erreures.
+
+                Ainsi notre code est de la sorte :
+
+
+                <FONT COLOR="#0000ff"><STRONG>if</STRONG></FONT>((peer=<FONT COLOR="#000000"><STRONG>pcap_open_live</STRONG></FONT>(device,1500,pmode,1000,errbuf))==<FONT COLOR="#650099"><STRONG>NULL</STRONG></FONT>) {
+                            <FONT COLOR="#000000"><STRONG>fprintf</STRONG></FONT>(stderr,<FONT COLOR="#9999ff">&quot;ERROR : unable to open descriptor : %s !\n&quot;</FONT>, errbuf);
+                            <FONT COLOR="#000000"><STRONG>exit</STRONG></FONT>(-1);
+                }
+        
+
+        Il ne nous reste plus qu<FONT COLOR="#ff9900"><STRONG>'&agrave; commencer le sniffing. Pour ce faire utilisons une boucle infinie, dans laquelle nous utiliserons</STRONG></FONT>
+        la fonciton pcap_next pour r&eacute;cup&eacute;rer les packet que nous afficherons.
+        
+
+         <FONT COLOR="#000000"><STRONG>printf</STRONG></FONT>(<FONT COLOR="#9999ff">&quot;Starting %s on %s\n\n&quot;</FONT>, NAME, device);                 <FONT COLOR="#009900"><EM>/* Stupid stats :)  */</EM></FONT>
+
+         <FONT COLOR="#0000ff"><STRONG>while</STRONG></FONT> (1) {                                                    <FONT COLOR="#009900"><EM>/* boucle infinie   */</EM></FONT>
+          packet = (u_char *) <FONT COLOR="#000000"><STRONG>pcap_next</STRONG></FONT>(peer, &amp;usefull);                <FONT COLOR="#009900"><EM>/* packet suivant   */</EM></FONT>
+          <FONT COLOR="#0000ff"><STRONG>if</STRONG></FONT> (packet != <FONT COLOR="#650099"><STRONG>NULL</STRONG></FONT>) {
+           <FONT COLOR="#0000ff"><STRONG>for</STRONG></FONT> (i=0; i&lt;26;i++) {                                        <FONT COLOR="#009900"><EM>/* 26 premiers bits */</EM></FONT>
+             <FONT COLOR="#000000"><STRONG>printf</STRONG></FONT>(<FONT COLOR="#9999ff">&quot;%.2x&quot;</FONT>, *packet);                                   <FONT COLOR="#009900"><EM>/* Affichage        */</EM></FONT>
+             packet++;                                                  <FONT COLOR="#009900"><EM>/* Packet suivant   */</EM></FONT>
+           }
+          }
+          <FONT COLOR="#000000"><STRONG>printf</STRONG></FONT>(<FONT COLOR="#9999ff">&quot;\n&quot;</FONT>);
+         }
+
+        
+        Enfin pour finir voila les deux fonctions externes, &agrave; savoir <FONT COLOR="#000000"><STRONG>DisplayHelp</STRONG></FONT>() et GetSignal, qui je pense, n<FONT COLOR="#650099"><STRONG>'ont pas besoin d'</STRONG></FONT>&ecirc;tre
+        comment&eacute;e...
+        
+
+        <FONT COLOR="#ff0000">void</FONT> <FONT COLOR="#000000"><STRONG>DisplayHelp</STRONG></FONT>(<FONT COLOR="#ff0000">char</FONT> *version) {
+         <FONT COLOR="#000000"><STRONG>fprintf</STRONG></FONT>(stdout, <FONT COLOR="#9999ff">&quot;Help menu for %s\n&quot;</FONT>, NAME);
+         <FONT COLOR="#000000"><STRONG>fprintf</STRONG></FONT>(stdout, <FONT COLOR="#9999ff">&quot;-i [device]           Use a special device\n&quot;</FONT>);
+         <FONT COLOR="#000000"><STRONG>fprintf</STRONG></FONT>(stdout, <FONT COLOR="#9999ff">&quot;-p                    Sniff packet in promiscious mode\n&quot;</FONT>);
+         <FONT COLOR="#000000"><STRONG>fprintf</STRONG></FONT>(stdout, <FONT COLOR="#9999ff">&quot;-v                    Print the version of Psyrus\n&quot;</FONT>);
+         <FONT COLOR="#000000"><STRONG>fprintf</STRONG></FONT>(stdout, <FONT COLOR="#9999ff">&quot;-h                    This little Help menu\n&quot;</FONT>);
+
+        }
+
+
+        <FONT COLOR="#ff0000">void</FONT> <FONT COLOR="#000000"><STRONG>GetSignal</STRONG></FONT>(<FONT COLOR="#ff0000">int</FONT> signal) {
+          <FONT COLOR="#000000"><STRONG>pcap_close</STRONG></FONT>(peer);
+          <FONT COLOR="#000000"><STRONG>printf</STRONG></FONT>(<FONT COLOR="#9999ff">&quot;Received TERM signal, now stopping.\n&quot;</FONT>);
+          <FONT COLOR="#000000"><STRONG>exit</STRONG></FONT>(0);
+        }
+
+
+        Notre sniffer est maintenant termin&eacute;, nous allons donc pouvoir le tester. Il faut savoir que les r&eacute;sultats qui seront affich&eacute;
+        seront en hexadecimal. Pour la compilation, n<FONT COLOR="#ff9900"><STRONG>'oubliez pas de linker avec la libpcap : &quot;gcc psyrus.c -o psyrus -lpcap&quot;. Vous </STRONG></FONT>
+        pouvez trouver le code complet &agrave; l<FONT COLOR="#ff9900"><STRONG>'annexe A.</STRONG></FONT>
+
+
+
+
+[ 5 ] D&eacute;tecter un sniffer et s<FONT COLOR="#ff9900"><STRONG>'en prot&eacute;ger :</STRONG></FONT>
+
+
+Lorsque vous envoyez une requete &agrave; une machine, celel ci vous r&eacute;pondra. Ainsi pour d&eacute;tecter un sniffer, il vous faut envoyer
+une requete &agrave; l<FONT COLOR="#ff9900"><STRONG>'adresse IP de la machine, mais non pas &agrave; son Adresse MAC.</STRONG></FONT>
+
+Je m<FONT COLOR="#ff9900"><STRONG>'explique : si vous lancer par exemple une requete ICMP Echo (Ping) vers une machine, mais que dans cette requete, le champ</STRONG></FONT>
+IP soit correct, mais pas le champ MAC Adresse. Le packet va alors traverser le r&eacute;seau (tout les packets sont sur le meme brin 
+Ethernet), et chaque machine va comparer l<FONT COLOR="#ff9900"><STRONG>'adresse MAC de Destination &agrave; la sienne. Ainsi en th&eacute;orie vous ne devriez pas avoir de</STRONG></FONT>
+r&eacute;ponses, puisque l<FONT COLOR="#650099"><STRONG>'adresse MAC est &eacute;rron&eacute;e et n'</STRONG></FONT>existe pas. Cependant si par hasard vous obtenez tout de meme une r&eacute;ponse, alors
+cela signifie que la machine qui vous &agrave; r&eacute;pondu utilise un sniffer...
+
+Il existe une multitude d<FONT COLOR="#ff9900"><STRONG>'autres m&eacute;thode pour se d&eacute;tecter un sniffer. Pour les d&eacute;couvrir, aller voir la section ressource.</STRONG></FONT>
+Pour se prot&eacute;ger d<FONT COLOR="#650099"><STRONG>'un sniffer par contre, il n'</STRONG></FONT>y a pas vraiment de solution miracle. Etant donn&eacute; qu<FONT COLOR="#650099"><STRONG>'un sniffer ne se lance qu'</STRONG></FONT>en
+root, il pourrait etre simpliste de dire qu<FONT COLOR="#650099"><STRONG>'il faut faire en sorte qu'</STRONG></FONT>aucun intrus ne gagne le privil&egrave;ge super utilisateur.
+
+Une autre maniere de se prot&eacute;ger est d<FONT COLOR="#ff9900"><STRONG>'utiliser un r&eacute;seau switch&eacute;, de tel sorte que le sniff soit plus difficile. Bref je vous</STRONG></FONT>
+laisse consulter la doc, car ce n<FONT COLOR="#ff9900"><STRONG>'est pas exactement le theme de cet article.</STRONG></FONT>
+
+
+
+[ 6 ] Ressources :
+
+
+Cet article &eacute;tant bien loin d<FONT COLOR="#ff9900"><STRONG>'&ecirc;tre complet (il reste de nombreux aspect &agrave; traiter) je vous sugg&egrave;re donc quelques petites adresses</STRONG></FONT>
+de documents en rapport avec ce th&egrave;me.
+
+
+
+
+        http:<FONT COLOR="#009900"><EM>//www.robertgraham.com/pubs/sniffing-faq.html</EM></FONT>
+
+        http:<FONT COLOR="#009900"><EM>//ouah.bsdjeunz.org/textes9.html</EM></FONT>
+
+        http:<FONT COLOR="#009900"><EM>//www.minithins.net/papers/sniff.txt</EM></FONT>
+
+        http:<FONT COLOR="#009900"><EM>//www.minithins.net/papers/pcap.manual</EM></FONT>
+
+        http:<FONT COLOR="#009900"><EM>//www.hsc.fr/ressources/breves/pcap.html</EM></FONT>
+
+        http:<FONT COLOR="#009900"><EM>//www.hsc.fr/ressources/breves/libnids.html</EM></FONT>
+
+        http:<FONT COLOR="#009900"><EM>//tritheme.sourceforge.net/ressources.html</EM></FONT>
+
+
+        
+[ 7 ] Conclusion :
+
+
+C<FONT COLOR="#650099"><STRONG>'est la fin de cet article qui n'</STRONG></FONT>est en fiat qu<FONT COLOR="#650099"><STRONG>'une introduction. En effet de nombreux points n'</STRONG></FONT>ont pas &eacute;t&eacute; abord&eacute;s, comme par exemple 
+les Network Intrusion Detection System (NIDS) bas&eacute;s eux aussi sur le sniff de packet, ou encore les diff&eacute;rentes m&eacute;thode d<FONT COLOR="#ff9900"><STRONG>'attaque. </STRONG></FONT>
+De ce fait cet article est susceptible d<FONT COLOR="#650099"><STRONG>'&ecirc;tre modifi&eacute; &agrave; l'</STRONG></FONT>avenir (pour une version plus complete que vous trouverez sur 
+<FONT COLOR="#cc00cc"><STRONG>http:</STRONG></FONT><FONT COLOR="#009900"><EM>//subkulture.unixlover.com). </EM></FONT>
+
+Bien entendu je n<FONT COLOR="#650099"><STRONG>'ai pas la science infuse donc il se peut que je me sois tromp&eacute; quelque part, ou encore que j'</STRONG></FONT>ai &eacute;t&eacute; incomplet. Bref
+pour toute remarque, n<FONT COLOR="#ff9900"><STRONG>'h&eacute;sitez pas &agrave; me contacter soit par email (medgi@kernelhacking.net) soit sur irc #subkulture@undernet.</STRONG></FONT>
+
+Pour finir je tenais &agrave; remercier l<FONT COLOR="#650099"><STRONG>'ensemble du crew TipiaK pour m'</STRONG></FONT>avoir &eacute;norm&eacute;ment appris depuis que j<FONT COLOR="#ff9900"><STRONG>'ai rejoint leur rang et ceux</STRONG></FONT>
+autant au niveau de la mentalit&eacute; qu<FONT COLOR="#650099"><STRONG>'au niveau de la technique. Je ne saurais dire comment je leur en suis reconnaissant, et d'</STRONG></FONT>ailleur
+la plus part d<FONT COLOR="#650099"><STRONG>'entre vous s'</STRONG></FONT>en foutent je pense, mais voila... MERCI
+
+Merci aussi &agrave; Martony, Ad, GangstucK, Spud, descript, renar, Lionel, saur0n, crazyl0rd, wp92, klemm, ahk, mycroft, OUAH, Realist, y0me
+Judcious, |Zen|, ...
+
+Special Dedicasse to kraken &amp; devhell crew ...
+
+Have phun - medgi 2001
+
+
+</PRE></BODY>
+</HTML>

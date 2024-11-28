@@ -1,0 +1,226 @@
+
+			    FREEBSD VM SYSTEM OVERVIEW
+
+    By Matthew Dillon, with additional notes from the creator, John Dyson.
+
+    Paragraphs marked (note 1) are annotations made by John Dyson to my
+    original document.  The document is meant to describe the general workings
+    of FreeBSD's VM system to interested parties.
+
+				VM BUFFER CACHE
+
+    Lets see... ok.  At its lowest level the VM system consists of nothing
+    more then the buffer cache.  This cache contains every single page of
+    physical memory.  Each page of physical memory has a vm_page_t 
+    structure associated with it.
+
+    Each page is indexed by (object, page-index).  So, for example, an
+    object might represent a buffered disk device and the index would 
+    then represent a page within that device.  The buffer cache maintains a
+    hashtable allowing the system to locate any piece of the object in the
+    buffer cache.  Being a cache, whole objects are not necessarily stored
+    so if the system is unable to locate a particular page, it needs to
+    allocate a page from the free pool and then initiate the appropriate I/O
+    operation to load it.
+
+    Each page is placed in one of several buckets depending on its state:
+
+	active		pages actively used by programs.
+
+	inactive	pages not actively used by programs which are 
+			dirty and (at some point) need to be written 
+			to their backing store (typically disk).
+
+			These pages are still associated with objects and 
+			can be reclaimed if a program references them.
+
+			Pages can be moved from the active to the inactive
+			queue at any time with little adverse effect.
+			Moving pages to the cache queue has bigger 
+			consequences (note 1)
+
+	cache		pages not actively used by programs which are
+			clean and can be thrown away (moved to the free
+			bucket) at any time.
+
+			These pages are still associated with objects and 
+			can be reclaimed if a program references them.
+
+			The cache pages are available only at non-interrupt
+			time. (note 1)
+
+	free 		pages not used by anyone.  These pages are not
+			associated with objects.
+
+			A limited number of free pages are kept in reserve 
+			at all times.  Older version of BSD had to keep a
+			larger number of free pages to perform correctly,
+			and now the cache queue helps with that purpose.
+			(note 1).
+
+
+    FreeBSD will use 'all of memory' for the disk cache.  What this means
+    is that the 'free' bucket typically contains only a few pages in it.
+    If the system runs out, it can free up more pages from the cache bucket.
+
+    System activity works like this:  When a program actively references
+    a page in a file on the disk (etc...)  the page is brought into the
+    buffer cache via a physical I/O operation.  It typically goes into 
+    the 'active' bucket.  If a program stops referencing the page, the
+    page slowly migrates down into the inactive or cache buckets (depending
+    on whether it is dirty or not).  Dirty pages are slowly 'cleaned' by
+    writing them to their backing store and moved from inactive to cache,
+    and cache pages are freed as necessary to maintain a minimum number of
+    truely free pages in the free bucket.  These pages can still be 
+    'cleaned' by allocating swap as their backing store, allowing them 
+    to migrate through the buckets and eventually be reused.
+
+    On the flip side, programs are continually allocating and freeing memory.
+    Memory not associated with backing store is allocated out of the free
+    list and freed directly back to the freelist.  If the system eats the
+    free list too much, it starts to pull pages out of the cache and put them
+    into the free list.  This, in turn, may starve the cache bucket and cause
+    the system to work harder to clean pages from the inactive bucket so
+    it can move them into the cache, and to deactivate active pages so it
+    can move them into the inactive or cache buckets.
+
+    On a very heavily loaded system, the migration of pages between buckets
+    goes faster and faster and results in more disk I/O as inactive pages
+    are cleaned (written to swap or disk) and as cache pages are thrown away
+    and then later rereferenced by some program, causing a physical I/O
+    to occur.  One of FreeBSD's greatest strengths is it's ability to
+    dynamically tune itself to the load situation on the machine by dynamically
+    adjusting 'target numbers' for the various buckets and then moving pages
+    between the buckets (with the side effect of causing paging, swapping,
+    and disk I/O to occur) to meet the target numbers.
+
+    The tuning is partially due to locking the scan-rate to "demand" on memory
+    instead of arbitrary time.  The traditional arbitrary real time scanning
+    distorts the stats gathering, and is a fatal flaw under load.  It is also
+    importatant to limit the scan rate.  So, the domain for the FreeBSD memory
+    management code is time and recent usage, rather than bogus memory address
+    or just lru position on the queue.  (The usage of the word "domain" above,
+    is the mathematical defn, rather than common usage.) (note 1).
+
+    The VM buffer cache caches everything the underlying storage so, for
+    example, it will not only cache the data blocks associated with a file
+    but it will cache the inode blocks and bitmap blocks as well.  Most
+    filesystem operations thus go very fast even for tripple-indirect block
+    lookups and such.
+
+				BUFFER POINTERS
+
+    FreeBSD also has another buffer cache, called the 'filesystem buffer
+    cache'.  This cache is really just an indirect pointer to the VM buffer
+    cache.. no actual copying is done in most cases.  While treated as 
+    a separate cache, both the filesystem and VM buffer caches reference
+    the same underlying pages and so you get the term 'unified buffer cache'.
+
+    Mostly, the "buffer cache" is a temporary wired mapping scheme for I/O
+    requests.  This allows for compatibility with legacy interfaces, with
+    hopefully minor additional overhead.  (Of course, IMO, that additional
+    overhead is a little too high for my taste.) (note 1)
+
+    The filesystem buffer cache is responsible for collecting random
+    pages from the VM buffer cache into larger contiguous pieces for the
+    filesystem code to mess around with.    For example, the system page
+    size could be 4K but the filesystem block size might be 8K.  The
+    filesystem buffer cache remaps the pages from the VM buffer cache
+    into KVM (kernel virtual memory) via the MMU and is able to thus
+    present 'contiguous' areas of data to the filesystem code.  This
+    same mechanism is used to aid in 'clustering' pages together in order
+    to do more efficient larger I/O's.  For example, the hardware page
+    size is 4K but swap operations are typically grouped in blocks of 
+    16K, and filesystem operations in blocks of 8K.
+
+				    SWAP 
+
+    Swap space is used to assign backing store to 'anonymous memory'.
+    Anonymous memory is called anonymous because it is not backed by a
+    file and all files have a name within the file system name space.
+
+    An example of anonymous memory is memory a program malloc()'s.  The
+    memory that a program uses is typically a combination of file-backed
+    and anonymous memory.  For example, when a program's CODE is loaded
+    into memory it is typically simply mapped directly from the program
+    file.  If any of these pages wind up being unused, the system can
+    simply throw them away (and reload them later if necessary).  A
+    program's DATA area is also mapped into memory, but in a manner that
+    allows the program to modify the data.  If the program modifies the
+    file-backed DATA area the pages in question are reassigned to
+    'anonymous memory' (so modifications to the program's data area are
+    not improperly written back to the program file on disk!).
+
+    The system faces a problem (which swap solves) for anonymous pages...
+    it can't throw them away because these pages are typically dirty
+    (i.e. modified).  In order to reuse anonymous idle memory for other
+    purposes, the system needs to be able to write these pages somewhere
+    before it can push them out of physical memory.  This is where SWAP
+    comes in. 
+
+    UNIXes usually come in two flavors when it comes to assigning SWAP.
+    Most SYS-V based systems pre-allocate swap.  Each page of unassociated
+    memory is assign a swap block even if it is never written to swap.
+    I think Solaris still does this.  IRIX did until around 6.3 or so.
+    Also, some UNIX's are really dumb about assigning swap.  If you 
+    have a shared memory segment, some UNIX's will preallocate swap for
+    the memory segment times each process that is sharing it, which is 
+    very wasteful.  This is because these UNIX's assign swap based on
+    the process's VM space map rather then based on the pages making up
+    the VM space map and then go through hoops to 'fix it up' for memory
+    segments that are truely shared.
+
+    FreeBSD has arguably some of the best swap code in existance.  I personally
+    like it better then Linux's.  Linux is lighter on swap, but doesn't
+    balance system memory resource utilization well under varying load
+    conditions.  FreeBSD does.
+
+    FreeBSD notes the uselessness of existing pages in memory, and decides
+    that it might be advantageous to free memory (enabled by pushing pages
+    to swap), so that it can be used for more active purposes (such as file
+    buffering, or more program space.)  It is a terrible waste to keep unused
+    pages around, for the notion of saving (cheap) disk space.  Since low
+    level SWAP I/O can be faster, with less CPU overhead than file I/O, it
+    is likely desireable to push such unused pages out so that they can be
+    freed for use by higher overhead mechanisms. (note 1)
+
+    In anycase, FreeBSD only allocates swap backing store to anonymous pages
+    of memory when it decides it actually wants to clean those pages.  It
+    typically allocates swap blocks in 16K chunks.  Once allocated, the
+    pages in question are then written to swap space on the disk and moved
+    from the inactive bucket to the cache bucket.  From there they may be
+    reclaimed by the program or moved into the free bucket when the system
+    runs out of free memory and reused for other purposes.   If after being
+    cleaned the page is modified again, the page then moves back to the
+    'active' or 'inactive' buckets and the underlying swap space, now 
+    invalid, is deallocated.  If the page is brought back into memory from
+    swap and not modified, the swap space is typically left allocated to allow
+    the page to be thrown away again without having to re-write it to disk.
+
+    When a page is swapped out and reused, FreeBSD must maintain the swap
+    reference information for that page somewhere (i.e. 'index X in some
+    object O exists in swap block B').  This information is attached to the
+    VM object representing the area of memory in question and 'compressed'
+    by collapsing contiguous regions of allocated swap together.  I don't 
+    quite recall whether FreeBSD allocates swap the way 4.3BSD did, but if
+    so what it does is try to allocate a larger contiguous region of swap
+    (i.e. 16K, 32K, 64K, etc...) and then assign contiguous pages in a
+    VM object (such as a program's RSS and DATA areas) to contiguous
+    pages of swap, allowing the reference information for that chunk to
+    represent a considerable amount of swapped out memory.  Thus FreeBSD
+    will optimally manage the swap for the system no matter whether you
+    have only a little swap (like a hundred megabytes) or a lot of 
+    swap (like a few gigabytes).
+
+			VNODE CACHE, INODE CACHE, NAMEI CACHE
+
+    As with most UNIX's, FreeBSD also maintains a cache for higher level
+    'raw' objects.  A VNODE/INODE typically represents a file, whereas
+    a NAMEI cache object represents a directory entry.  So, for example,
+    if you open() a file, write to it, and then close() it, FreeBSD
+    will remember the name->inode association for the file and even cache
+    most of the information so the next time you open() it, FreeBSD will
+    be able to run the open nearly instantaniously using the cached 
+    information.  This reduces the amount of directory searching and
+    unnecessary extra file I/O required to operate on a file.
+

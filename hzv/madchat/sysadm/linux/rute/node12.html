@@ -1,0 +1,1584 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 99.2beta8 (1.46)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>9. Processes, Environment Variables</TITLE>
+<META NAME="description" CONTENT="9. Processes, Environment Variables">
+<META NAME="keywords" CONTENT="rute">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v99.2beta8">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="rute.css">
+
+<LINK REL="next" HREF="node13.html">
+<LINK REL="previous" HREF="node11.html">
+<LINK REL="up" HREF="rute.html">
+<LINK REL="next" HREF="node13.html">
+</HEAD>
+
+<BODY BGCOLOR=#FFFFFF >
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD align=left bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-purchase.html"><FONT COLOR=white>Purchase</FONT></A>&nbsp;
+</FONT>
+</TD><TD align=center bgcolor="#000000">
+<FONT COLOR=white>
+Copyright&nbsp;&#169;&nbsp;2002&nbsp;Paul Sheer. <A HREF="copying.html"><FONT COLOR=white>Click here for copying permissions.</FONT></A>
+</FONT>
+</TD><TD align=right bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-home.html"><FONT COLOR=white>Home</FONT></A>&nbsp;
+</FONT>
+</TD></TR>
+<TR><TD colspan=2 align=left bgcolor="#ECEBF4">
+<IMG SRC="va-btn-small-light-60.png">
+</TD><TD align=right bgcolor="#ECEBF4">
+<IMG SRC="sflogo2-steel-60.png">
+</TD></TR>
+</TABLE><BR>
+
+<!--Navigation Panel-->
+<A NAME="tex2html1895"
+  HREF="node13.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html1891"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html1885"
+  HREF="node11.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html1893"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html1896"
+  HREF="node13.html">10. Mail</A>
+<B> Up:</B> <A NAME="tex2html1892"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html1886"
+  HREF="node11.html">8. Streams and sed</A>
+ &nbsp <B>  <A NAME="tex2html1894"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html1897"
+  HREF="#SECTION001210000000000000000">9.1 Introduction</A>
+<LI><A NAME="tex2html1898"
+  HREF="#SECTION001220000000000000000">9.2 <TT>
+<FONT COLOR="#0000ff">ps</FONT></TT> -- List Running Processes</A>
+<LI><A NAME="tex2html1899"
+  HREF="#SECTION001230000000000000000">9.3 Controlling Jobs</A>
+<LI><A NAME="tex2html1900"
+  HREF="#SECTION001240000000000000000">9.4 Creating Background Processes</A>
+<LI><A NAME="tex2html1901"
+  HREF="#SECTION001250000000000000000">9.5 <TT>
+<FONT COLOR="#0000ff">kill</FONT></TT><I>ing</I> a Process, Sending Signals</A>
+<LI><A NAME="tex2html1902"
+  HREF="#SECTION001260000000000000000">9.6 List of Common Signals</A>
+<LI><A NAME="tex2html1903"
+  HREF="#SECTION001270000000000000000">9.7 Niceness of Processes, Scheduling Priority</A>
+<LI><A NAME="tex2html1904"
+  HREF="#SECTION001280000000000000000">9.8 Process CPU/Memory Consumption, <TT>
+<FONT COLOR="#0000ff">top</FONT></TT></A>
+<LI><A NAME="tex2html1905"
+  HREF="#SECTION001290000000000000000">9.9 Environments of Processes</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION001200000000000000000">
+9. Processes and Environment Variables</A>
+</H1>
+
+<P>
+<A NAME="chap:processenviron"></A>From this chapter you will get an idea about what is happening under the
+hood of your U<SMALL>NIX</SMALL> system, but go have some coffee first.
+
+<P>
+
+<H1><A NAME="SECTION001210000000000000000">
+9.1 Introduction</A>
+</H1>
+
+<P>
+On U<SMALL>NIX</SMALL>, when you run a program (like any of the shell commands you have been
+using), the actual computer instructions are read from a file on disk from
+one of the <TT>
+<FONT COLOR="#0000ff">bin/</FONT></TT> directories and placed in RAM.
+The program is then executed in memory and becomes a <I>process</I>. A <I>process</I>
+is some command/program/shell-script that is being run (or <I>executed</I>)
+in memory. When the process has finished running, it is removed from memory.
+There are usually about 50 processes running simultaneously at any one time
+on a system with one person logged in. The CPU hops between each
+of them to give a share of its <I>execution time</I>. <FONT COLOR="#ffa500">[Time given to carry out the instructions of a particular program. Note this
+is in contrast to Windows or DOS where the program itself has to allow the others
+a share of the CPU: under U<SMALL>NIX</SMALL>, the process has no say in the matter.
+]</FONT>Each process is given a process number called the <I>PID</I>
+(process ID). Besides the memory actually occupied by
+the executable, the process itself seizes additional memory for its
+operations.
+
+<P>
+In the same way that a file is owned by a particular user and group, a process
+also has an owner--usually the person who ran the program. Whenever a process
+tries to access a file, its ownership is compared to that of the file to decide
+if the access is permissible. Because all devices are files, the only way a
+process can do <I>anything</I> is through a file, and hence file permission
+restrictions are the only kind of restrictions ever needed on U<SMALL>NIX</SMALL>. <FONT COLOR="#ffa500">[There are some exceptions to this.]</FONT> This
+is how U<SMALL>NIX</SMALL> access control and security works.
+
+<P>
+The center of this operation is called the U<SMALL>NIX</SMALL> <I>kernel</I>.
+The kernel is what actually does the hardware access, execution, allocation
+of process IDs, sharing of CPU time, and ownership management.
+
+<P>
+
+<H1><A NAME="SECTION001220000000000000000">
+9.2 <TT>
+<FONT COLOR="#0000ff">ps</FONT></TT> -- List Running Processes</A>
+</H1>
+
+<P>
+Log in on a terminal and type the command <TT>
+<FONT COLOR="#0000ff">ps</FONT></TT>. You should get some output
+like:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&nbsp;PID&nbsp;TTY&nbsp;STAT&nbsp;&nbsp;TIME&nbsp;COMMAND</code><br>
+<code>5995&nbsp;&nbsp;&nbsp;2&nbsp;S&nbsp;&nbsp;&nbsp;&nbsp;0:00&nbsp;/bin/login&nbsp;--&nbsp;myname</code><br>
+<code>5999&nbsp;&nbsp;&nbsp;2&nbsp;S&nbsp;&nbsp;&nbsp;&nbsp;0:00&nbsp;-bash</code><br>
+<code>6030&nbsp;&nbsp;&nbsp;2&nbsp;R&nbsp;&nbsp;&nbsp;&nbsp;0:00&nbsp;ps</code><br>
+</FONT></TD></TR></TABLE><P>
+<TT>
+<FONT COLOR="#0000ff">ps</FONT></TT> with no options shows three processes to be running. These are the only
+three processes visible to you as a user, although there are
+other system processes not belonging to you. The first process
+was the program that logged you in by displaying the login
+prompt and requesting a password. It then ran a second process
+call <TT>
+<FONT COLOR="#0000ff">bash</FONT></TT>, the Bourne Again shell <FONT COLOR="#ffa500">[The Bourne shell
+was the original U<SMALL>NIX</SMALL> shell]</FONT> where you have been typing commands.
+Finally, you ran <TT>
+<FONT COLOR="#0000ff">ps</FONT></TT>, which must have found itself
+when it checked which processes were running, but then exited
+immediately afterward.
+
+<P>
+
+<H1><A NAME="SECTION001230000000000000000">
+9.3 Controlling Jobs</A>
+</H1>
+
+<P>
+The shell has many facilities for controlling and executing processes--this
+is called job control. Create a small script called <TT>
+<FONT COLOR="#0000ff">proc.sh</FONT></TT>:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>#!/bin/sh</code><br>
+<code>echo&nbsp;"proc.sh:&nbsp;is&nbsp;running"</code><br>
+<code>sleep&nbsp;1000</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Run the script with <TT>
+<FONT COLOR="#0000ff">chmod&nbsp;0755&nbsp;proc.sh</FONT></TT> and then <TT>
+<FONT COLOR="#0000ff">./proc.sh</FONT></TT>.
+The shell <I>blocks</I>, waiting for the process to exit. Now press ^Z.
+This will cause the process to <I>stop</I> (that is, pause but not terminate).
+Now do a <TT>
+<FONT COLOR="#0000ff">ps</FONT></TT> again. You will see
+your script listed. However, it is not presently running because it is in the
+condition of being stopped. Type <TT>
+<FONT COLOR="#0000ff">bg</FONT></TT> (for <I>background</I>).
+The script will now be ``unstopped'' and run in the background. You can now try to run
+other processes in the meantime. Type <TT>
+<FONT COLOR="#0000ff">fg</FONT></TT>, and the script returns
+to the <I>foreground</I>. You can then type ^C to interrupt the process.
+
+<P>
+
+<H1><A NAME="SECTION001240000000000000000">
+9.4 Creating Background Processes</A>
+</H1>
+
+<P>
+Create a program that does something a little more interesting:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>#!/bin/sh</code><br>
+<code>echo&nbsp;"proc.sh:&nbsp;is&nbsp;running"</code><br>
+<code>while&nbsp;true&nbsp;&#059;&nbsp;do</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;-e&nbsp;'\a'</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sleep&nbsp;2</code><br>
+<code>done</code><br>
+</FONT></TD></TR></TABLE><P>
+Now perform the ^Z, <TT>
+<FONT COLOR="#0000ff">bg</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">fg</FONT></TT>, and ^C operations from before.
+To put a process immediately into the background, you can use:
+
+<P>
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>./proc.sh&nbsp;&#038;</code><br>
+</FONT></TD></TR></TABLE><P>
+The <B>JOB CONTROL</B> section of the <TT>
+<FONT COLOR="#0000ff">bash</FONT></TT> man page (<TT>
+<FONT COLOR="#0000ff">bash</FONT></TT>(1)) looks like
+this<FONT COLOR="#ffa500">(footnote follows)</FONT> <FONT COLOR="#ffa500">[Thanks to Brian Fox and Chet Ramey
+for this material.]</FONT>:
+(the footnotes are mine)
+
+<P>
+
+<BLOCKQUOTE><FONT SIZE="-1"><B>JOB CONTROL</B>
+<BR>
+<BR><I>Job control</I> refers to the ability to selectively stop (<I>suspend</I>)
+the execution of processes and continue (<I>resume</I>) their execution at a
+later point. A user typically employs this facility via an interactive interface
+supplied jointly by the system's terminal driver and <B>bash</B>.
+<BR>
+<BR>
+The shell associates a <I>job</I> with each
+pipeline. <FONT COLOR="#ffa500">[What does this mean? It means that each time you execute something
+in the background, it gets its own unique number, called the job number.]</FONT>It keeps a table of currently
+executing jobs, which may be listed with the <B>jobs</B> command. When <B>bash</B>
+starts a job asynchronously (in the <I>background</I>), it prints a line that
+looks like:
+<BR>
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<B>[1] 25647</B>
+<BR>
+<BR>
+indicating that this job is job number 1 and that the process ID of the last
+process in the pipeline associated with this job is 25647. All of the processes
+in a single pipeline are members of the same job. <B>Bash</B> uses the <I>job</I>
+abstraction as the basis for job control.
+<BR>
+<BR>
+To facilitate the implementation of the user interface to job control, the system
+maintains the notion of a <I>current terminal process group ID</I>. Members
+of this process group (processes whose process group ID is equal to the current
+terminal process group ID) receive keyboard-generated signals such as <B>SIGINT</B>.
+These processes are said to be in the <I>foreground</I>. <I>Background</I> processes
+are those whose process group ID differs from the terminal's; such processes
+are immune to keyboard-generated signals. Only foreground processes are allowed
+to read from or write to the terminal. Background processes which attempt to
+read from (write to) the terminal are sent a <B>SIGTTIN (SIGTTOU)</B> signal
+by the terminal driver, which, unless caught, suspends the process.
+<BR>
+<BR>
+If the operating system on which <B>bash</B> is running supports job control,
+<B>bash</B> allows you to use it. Typing the <I>suspend</I> character (typically
+<B>^Z</B>, Control-Z) while a process is running causes that process to
+be stopped and returns you to <B>bash</B>. Typing the <I>delayed suspend</I>
+character (typically <B>^Y</B>, Control-Y) causes the process to be stopped
+when it attempts to read input from the terminal, and control to be returned
+to <B>bash</B>. You may then manipulate the state of this job, using the <B>bg</B>
+command to continue it in the background, the <B>fg</B> command to continue
+it in the foreground, or the <B>kill</B> command to kill it. A <B>^Z</B>
+takes effect immediately, and has the additional side effect of causing pending
+output and typeahead to be discarded.
+<BR>
+<BR>
+There are a number of ways to refer to a job in the shell. The character <B>%</B>
+introduces a job name. Job number <I>n</I> may be referred to as <B>%n</B>.
+A job may also be referred to using a prefix of the name used to start it, or
+using a substring that appears in its command  line. For example, <B>%ce</B>
+refers to a stopped <B>ce</B> job. If a prefix matches more than one job,
+<B>bash</B> reports an error. Using <B>%?ce</B>, on the other hand, refers
+to any job containing the string <B>ce</B> in its command  line. If the substring
+matches more than one job, <B>bash</B> reports an error. The symbols <B>%%</B>
+and <B>%+</B> refer to the shell's notion of the <I>current job</I>, which
+is the last job stopped while it was in the foreground. The <I>previous job</I>
+may be referenced using <B>%-</B>. In output pertaining to jobs (e.g., the
+output of the <B>jobs</B> command), the current job is always flagged with
+a <B>+</B>, and the previous job with a <B>-</B>.
+<BR>
+<BR>
+Simply naming a job can be used to bring it into the foreground: <B>%1</B>
+is a synonym for <B>``fg %1''</B>, bringing job 1 from the background into
+the foreground. Similarly, <B>``%1 </B><B>&amp;</B><B>''</B> resumes job 1 in the background,
+equivalent to <B>``bg %1''</B>.
+<BR>
+<BR>
+The shell learns immediately whenever a job changes state. Normally, <B>bash</B>
+waits until it is about to print a prompt before reporting changes in a job's
+status so as to not interrupt any other output. If the <B>-b</B> option to
+the <B>set</B> builtin command is set, <B>bash</B> reports such changes
+immediately. (See also the description of <B>notify</B> variable under <B>Shell
+Variables</B> above.)
+<BR>
+<BR>
+If you attempt to exit <B>bash</B> while jobs are stopped, the shell prints
+a message warning you. You may then use the <B>jobs</B> command to inspect
+their status. If you do this, or try to exit again immediately, you are not
+warned again, and the stopped jobs are terminated.
+</FONT></BLOCKQUOTE>
+
+<P>
+
+<H1><A NAME="SECTION001250000000000000000">
+9.5 <TT>
+<FONT COLOR="#0000ff">kill</FONT></TT><I>ing</I> a Process, Sending Signals</A>
+</H1>
+
+<P>
+<A NAME="sec:killingproc"></A>
+<P>
+To terminate a process, use the <TT>
+<FONT COLOR="#0000ff">kill</FONT></TT> command:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>kill&nbsp;&#060;PID&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+The <TT>
+<FONT COLOR="#0000ff">kill</FONT></TT> command actually sends a termination <I>signal</I> to the process. The sending of
+a signal simply means that the process is asked to execute one of 30 predefined
+functions. In some cases, developers would not have bothered to define a
+function for a particular signal number (called <I>catching</I> the signal);
+in which case the kernel will substitute
+the default behavior for that signal. The default behavior for a signal is usually
+to ignore the signal, to stop the process, or to terminate the process. 
+The default behavior for the <I>termination</I> signal is to terminate the process. 
+
+<P>
+To send a specific signal to a process, you can name the signal on the command-line or use
+its numerical equivalent:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>kill&nbsp;-SIGTERM&nbsp;12345</code><br>
+</FONT></TD></TR></TABLE><P>
+or
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>kill&nbsp;-15&nbsp;12345</code><br>
+</FONT></TD></TR></TABLE><P>
+which is the signal that <TT>
+<FONT COLOR="#0000ff">kill</FONT></TT> normally sends when none is specified on the command-line.
+
+<P>
+To unconditionally terminate a process:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>kill&nbsp;-SIGKILL&nbsp;12345</code><br>
+</FONT></TD></TR></TABLE><P>
+or
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>kill&nbsp;-9&nbsp;12345</code><br>
+</FONT></TD></TR></TABLE><P>
+which should only be used as a last resort. <I>Processes are prohibited from ever catching
+the</I> <TT>
+<FONT COLOR="#0000ff">SIGKILL</FONT></TT> <I>signal</I>.
+
+<P>
+It is cumbersome to have to constantly look up the PID of a process.
+Hence the GNU utilities have a command, <TT>
+<FONT COLOR="#0000ff">killall</FONT></TT>, that sends
+a signal to all processes of the same name:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>killall&nbsp;-&#060;signal&#062;&nbsp;&#060;process_name&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+This command is useful when you are sure that there is only one of a
+process running, either because no one else is logged in
+on the system or because you are not logged in as superuser.
+<I>Note that on other U<SMALL>NIX</SMALL> systems, the <TT>
+<FONT COLOR="#0000ff">killall</FONT></TT> command
+kills <I>all</I> the processes that you are allowed to kill. If you
+are root, this action would crash the machine.</I>
+
+<P>
+
+<H1><A NAME="SECTION001260000000000000000">
+9.6 List of Common Signals</A>
+</H1>
+
+<P>
+The full list of signals can be gotten from <TT>
+<FONT COLOR="#0000ff">signal</FONT></TT>(7), and in the
+file <TT>
+<FONT COLOR="#0000ff">/usr/include/asm/signal.h</FONT></TT>.
+
+<P>
+<A NAME="page:commonsignals"></A>
+
+<DL COMPACT>
+<DT><B><TT>
+<FONT COLOR="#0000ff">SIGHUP</FONT></TT></B> (1)
+<DD><I>Hang up</I>. If the terminal becomes disconnected from a process,
+this signal is sent automatically to the process. Sending a process this signal often
+causes it to reread its configuration files, so it is useful instead of restarting the
+process. Always check the man page to see if a process has this behavior.
+<DT><B><TT>
+<FONT COLOR="#0000ff">SIGINT</FONT></TT></B> (2)
+<DD><I>Interrupt</I> from keyboard. Issued if you press ^C.
+<DT><B><TT>
+<FONT COLOR="#0000ff">SIGQUIT</FONT></TT></B> (3)
+<DD><I>Quit</I> from keyboard. Issued if you press ^D.
+<DT><B><TT>
+<FONT COLOR="#0000ff">SIGFPE</FONT></TT></B> (8)
+<DD><I>Floating point exception</I>. Issued automatically to a program performing some kind of illegal mathematical operation.
+<DT><B><TT>
+<FONT COLOR="#0000ff">SIGKILL</FONT></TT></B> (9)
+<DD><I>Kill</I> signal. This is one of the signals that can never be <I>caught</I>
+by a process. If a process gets this signal it <I>must</I> quit immediately and will
+not perform any clean-up operations (like closing files or removing temporary files).
+You can send a process a <TT>
+<FONT COLOR="#0000ff">SIGKILL</FONT></TT> signal if there is no other means of destroying it.
+<DT><B><TT>
+<FONT COLOR="#0000ff">SIGUSR1</FONT></TT></B> (10), <B><TT>
+<FONT COLOR="#0000ff">SIGUSR2</FONT></TT></B> (12)
+<DD><I>User signal</I>.
+These signals are available to developers when they need extra functionality. For example, some processes begin
+logging debug messages when you send them <TT>
+<FONT COLOR="#0000ff">SIGUSR1</FONT></TT>.
+<DT><B><TT>
+<FONT COLOR="#0000ff">SIGSEGV</FONT></TT></B> (11)
+<DD><I>Segmentation violation</I>. Issued automatically when a process
+tries to access memory outside of its allowable address space, equivalent to a <B>Fatal Exception</B> or <B>General Protection Fault</B> under Windows.
+Note that programs with bugs or programs in the process of being developed often get these signals.
+A program receiving a <TT>
+<FONT COLOR="#0000ff">SIGSEGV</FONT></TT>, however, can never cause the rest of the system to be
+compromised. If the kernel itself were to receive such an error, it would cause
+the system to come down, but such is extremely rare.
+<DT><B><TT>
+<FONT COLOR="#0000ff">SIGPIPE</FONT></TT></B> (13)
+<DD><I>Pipe</I> died. A program was writing to a pipe, the other end of
+which is no longer available.
+<DT><B><TT>
+<FONT COLOR="#0000ff">SIGTERM</FONT></TT></B> (15)
+<DD><I>Terminate</I>. Cause the program to quit gracefully
+<DT><B><TT>
+<FONT COLOR="#0000ff">SIGCHLD</FONT></TT></B> (17)
+<DD><I>Child terminate</I>. Sent to a parent process every time
+one of its spawned processes dies.
+</DD>
+</DL>
+
+<P>
+
+<H1><A NAME="SECTION001270000000000000000">
+9.7 Niceness of Processes, Scheduling Priority</A>
+</H1>
+
+<P>
+<A NAME="sec:nicenessschedulepri"></A>
+All processes are allocated execution time by the kernel. If all
+processes were allocated the same amount of time, performance
+would obviously get worse as the number of processes increased.
+The kernel uses heuristics <FONT COLOR="#ffa500">[Sets of rules.]</FONT> to guess how
+much time each process should be allocated. The kernel tries to be
+fair--two users competing for CPU usage should
+both get the same amount.
+
+<P>
+Most processes spend their time waiting for either a key press,
+some network input, some device to send data, or some time to
+elapse. They hence do not consume CPU.
+
+<P>
+On the other hand, when more than one process runs flat
+out, it can be difficult for the kernel to decide if it should be given
+greater <I>priority</I>
+than another process. What if a process is
+doing some operation more important than another process? How
+does the kernel tell? The answer is the U<SMALL>NIX</SMALL> feature of
+<I>scheduling priority</I> or <I>niceness</I>. Scheduling priority
+ranges from <TT>
+<FONT COLOR="#0000ff">+20</FONT></TT> to <TT>
+<FONT COLOR="#0000ff">-20</FONT></TT>. You can set a process's
+niceness with the <TT>
+<FONT COLOR="#0000ff">renice</FONT></TT> command.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>renice&nbsp;&#060;priority&#062;&nbsp;&#060;pid&#062;</code><br>
+<code>renice&nbsp;&#060;priority&#062;&nbsp;-u&nbsp;&#060;user&#062;</code><br>
+<code>renice&nbsp;&#060;priority&#062;&nbsp;-g&nbsp;&#060;group&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+A typical example is the <I>SETI</I> program. <FONT COLOR="#ffa500">[SETI stands for Search for Extraterrestrial Intelligence.
+SETI is an initiative funded by various obscure sources to scan the
+skies for radio signals from other civilizations. The data
+that SETI gathers has to be intensively processed. SETI distributes
+part of that data to anyone who wants to run a <TT>
+<FONT COLOR="#0000ff">seti</FONT></TT> 
+program in the background. This puts the idle time of millions of
+machines to ``good'' use. There is even a SETI screen-saver that has 
+become quite popular. Unfortunately for the colleague in my office,
+he runs <TT>
+<FONT COLOR="#0000ff">seti</FONT></TT> at <TT>
+<FONT COLOR="#0000ff">-19</FONT></TT> instead of <TT>
+<FONT COLOR="#0000ff">+19</FONT></TT> scheduling
+priority, so nothing on his machine works right. On the other hand,
+I have inside information that the millions of other civilizations
+in this galaxy and others are probably not using radio signals to
+communicate at all :-)]</FONT> Set its priority to <TT>
+<FONT COLOR="#0000ff">+19</FONT></TT> with:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>renice&nbsp;+19&nbsp;&#060;pid&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+to make it disrupt your machine as little as possible.
+
+<P>
+<I>Note that nice values have the reverse meaning that
+you would expect: <TT>
+<FONT COLOR="#0000ff">+19</FONT></TT> means a process that eats <I>little</I>
+CPU, while <TT>
+<FONT COLOR="#0000ff">-19</FONT></TT> is a process that eats <I>lots</I>. Only superuser
+can set processes to negative nice values.</I>
+
+<P>
+Mostly, multimedia applications and some device utilities
+are the only processes that need negative renicing, and most of
+these will have their own command-line options to set the nice
+value. See, for example, <TT>
+<FONT COLOR="#0000ff">cdrecord</FONT></TT>(1) and <TT>
+<FONT COLOR="#0000ff">mikmod</FONT></TT>(1) --
+a negative nice value will prevent skips in your
+playback. <FONT COLOR="#ffa500">[L<SMALL>INUX</SMALL> will soon have so called <I>real time</I>
+process scheduling. This is a kernel feature that reduces scheduling
+<I>latency</I> (the gaps between CPU execution time of a process,
+as well as the time it takes for a process to wake). There are already
+some kernel patches that accomplish this goal.]</FONT>
+<P>
+Also useful are the <TT>
+<FONT COLOR="#0000ff">-u</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">-g</FONT></TT> options, which
+set the priority of all the processes that a user or group owns.
+
+<P>
+Further, we have the <TT>
+<FONT COLOR="#0000ff">nice</FONT></TT> command, which starts
+a program under a defined niceness relative to the current nice
+value of the present user. For example,
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>nice&nbsp;+&#060;priority&#062;&nbsp;&#060;pid&#062;</code><br>
+<code>nice&nbsp;-&#060;priority&#062;&nbsp;&#060;pid&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Finally, the <TT>
+<FONT COLOR="#0000ff">snice</FONT></TT> command can both
+display and set the current niceness. This command doesn't seem
+to work on my machine.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>snice&nbsp;-v&nbsp;&#060;pid&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H1><A NAME="SECTION001280000000000000000">
+9.8 Process CPU/Memory Consumption, <TT>
+<FONT COLOR="#0000ff">top</FONT></TT></A>
+</H1>
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">top</FONT></TT> command sorts all processes by their
+CPU and memory consumption and
+displays the <I>top</I> twenty or so in a table. Use <TT>
+<FONT COLOR="#0000ff">top</FONT></TT>
+whenever you want to see what's hogging your system.
+<TT>
+<FONT COLOR="#0000ff">top -q -d 2</FONT></TT> is useful for scheduling the <TT>
+<FONT COLOR="#0000ff">top</FONT></TT>
+command itself to a high priority, so that it is sure to refresh its
+listing without lag. <TT>
+<FONT COLOR="#0000ff">top -n 1 -b &gt; top.txt</FONT></TT> lists all processes,
+and <TT>
+<FONT COLOR="#0000ff">top -n 1 -b -p &lt;pid&gt;</FONT></TT> prints information on one process.
+
+<P>
+<TT>
+<FONT COLOR="#0000ff">top</FONT></TT> has some useful interactive responses to key presses:
+<DL>
+<DT><STRONG>f</STRONG></DT>
+<DD>Shows a list of displayed fields that you can alter
+interactively. By default the only fields shown are
+<TT>
+<FONT COLOR="#0000ff">USER PRI NI SIZE RSS SHARE STAT %CPU %MEM TIME COMMAND</FONT></TT>
+which is usually what you are most interested in. (The field meanings
+are given below.)
+
+<P>
+</DD>
+<DT><STRONG>r</STRONG></DT>
+<DD>Renices a process.
+
+<P>
+</DD>
+<DT><STRONG>k</STRONG></DT>
+<DD>Kills a process.
+</DD>
+</DL>
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">top</FONT></TT> man page describes the field meanings.
+Some of these are confusing and assume knowledge of the
+internals of <B>C</B> programs. The main question people ask is:
+<I>How much memory is a process using?</I> The answer is given by the
+<TT>
+<FONT COLOR="#0000ff">RSS</FONT></TT> field, which stands for <I>Resident Set Size</I>.
+<TT>
+<FONT COLOR="#0000ff">RSS</FONT></TT> means the amount of RAM that a process consumes alone.
+The following examples show totals for <I>all</I> processes running on my system
+(which had 65536 kilobytes of RAM at the time).
+They represent the total of the <TT>
+<FONT COLOR="#0000ff">SIZE</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">RSS</FONT></TT>, and <TT>
+<FONT COLOR="#0000ff">SHARE</FONT></TT>
+fields, respectively.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>echo&nbsp;`echo&nbsp;'0&nbsp;'&nbsp;&#059;&nbsp;top&nbsp;-q&nbsp;-n&nbsp;1&nbsp;-b&nbsp;|&nbsp;sed&nbsp;-e&nbsp;'1,/PID&nbsp;*USER&nbsp;*PRI/D'&nbsp;|&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;awk&nbsp;'{print&nbsp;"+"&nbsp;$5}'&nbsp;|&nbsp;sed&nbsp;-e&nbsp;'s/M/\\*1024/'`&nbsp;|&nbsp;bc</code><br>
+<code>68016</code><br>
+<code>&nbsp;</code><br>
+<code>echo&nbsp;`echo&nbsp;'0&nbsp;'&nbsp;&#059;&nbsp;top&nbsp;-q&nbsp;-n&nbsp;1&nbsp;-b&nbsp;|&nbsp;sed&nbsp;-e&nbsp;'1,/PID&nbsp;*USER&nbsp;*PRI/D'&nbsp;|&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;awk&nbsp;'{print&nbsp;"+"&nbsp;$6}'&nbsp;|&nbsp;sed&nbsp;-e&nbsp;'s/M/\\*1024/'`&nbsp;|&nbsp;bc</code><br>
+<code>58908</code><br>
+<code>&nbsp;</code><br>
+<code>echo&nbsp;`echo&nbsp;'0&nbsp;'&nbsp;&#059;&nbsp;top&nbsp;-q&nbsp;-n&nbsp;1&nbsp;-b&nbsp;|&nbsp;sed&nbsp;-e&nbsp;'1,/PID&nbsp;*USER&nbsp;*PRI/D'&nbsp;|&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;awk&nbsp;'{print&nbsp;"+"&nbsp;$7}'&nbsp;|&nbsp;sed&nbsp;-e&nbsp;'s/M/\\*1024/'`&nbsp;|&nbsp;bc</code><br>
+<code>30184</code><br>
+</FONT></TD></TR></TABLE><P>
+The <TT>
+<FONT COLOR="#0000ff">SIZE</FONT></TT> represents the total memory usage of a process.
+<TT>
+<FONT COLOR="#0000ff">RSS</FONT></TT> is the same, but excludes memory not needing actual
+RAM (this would be memory swapped to the swap partition).
+<TT>
+<FONT COLOR="#0000ff">SHARE</FONT></TT> is the amount shared between processes.
+
+<P>
+Other fields are described by the <TT>
+<FONT COLOR="#0000ff">top</FONT></TT> man page (quoted verbatim) as follows:
+
+<BLOCKQUOTE></BLOCKQUOTE><DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">uptime</FONT></TT></STRONG></DT>
+<DD>This  line  displays the time the system has been up,
+            and the three load averages for the system.  The load
+            averages  are  the average number of processes ready to
+            run during the last 1, 5 and 15 minutes.   This  line
+            is  just  like  the  output of uptime(1).  The uptime
+            display may be toggled by the interactive l  command.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">processes</FONT></TT></STRONG></DT>
+<DD>The  total number of processes running at the time of
+            the last update.  This is also broken down  into  the
+            number of tasks which are running, sleeping, stopped,
+            or undead. The processes and states  display  may  be
+            toggled by the t interactive command.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">CPU states</FONT></TT></STRONG></DT>
+<DD>Shows the percentage of CPU time in user mode, system
+            mode, niced tasks, and idle.  (Niced tasks  are  only
+            those  whose  nice value is negative.)  Time spent in
+            niced tasks will also be counted in system  and  user
+            time,  so the total will be more than 100%.  The
+            processes and states display may be  toggled  by  the  t
+            interactive command.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">Mem</FONT></TT></STRONG></DT>
+<DD>Statistics on memory usage, including total available
+            memory, free memory, used memory, shared memory,  and
+            memory used for buffers. The display of memory
+            information may be toggled by the m interactive command.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">Swap</FONT></TT></STRONG></DT>
+<DD>Statistics on swap space, including total swap space,
+            available  swap space, and used swap space.  This and
+            Mem are just like the output of free(1).
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">PID</FONT></TT></STRONG></DT>
+<DD>The process ID of each task.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">PPID</FONT></TT></STRONG></DT>
+<DD>The parent process ID of each task.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">UID</FONT></TT></STRONG></DT>
+<DD>The user ID of the task's owner.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">USER</FONT></TT></STRONG></DT>
+<DD>The user name of the task's owner.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">PRI</FONT></TT></STRONG></DT>
+<DD>The priority of the task.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">NI</FONT></TT></STRONG></DT>
+<DD>The nice value of the task. Negative nice values are higher priority.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">SIZE</FONT></TT></STRONG></DT>
+<DD>The  size  of  the  task's  code plus data plus stack
+            space, in kilobytes, is shown here.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">TSIZE</FONT></TT></STRONG></DT>
+<DD>The code size of the task. This gives strange  values
+            for kernel processes and is broken for ELF processes.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">DSIZE</FONT></TT></STRONG></DT>
+<DD>Data + Stack size. This is broken for ELF  processes.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">TRS</FONT></TT></STRONG></DT>
+<DD>Text resident size.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">SWAP</FONT></TT></STRONG></DT>
+<DD>Size of the swapped out part of the task.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">D</FONT></TT></STRONG></DT>
+<DD>Size of pages marked dirty.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">LIB</FONT></TT></STRONG></DT>
+<DD>Size of use library pages. This does not work for ELF
+            processes.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">RSS</FONT></TT></STRONG></DT>
+<DD>The total amount of physical memory used by the task,
+            in  kilobytes,  is shown here. For ELF processes used
+            library pages are counted here, for  a.out  processes
+            not.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">SHARE</FONT></TT></STRONG></DT>
+<DD>The amount of shared memory used by the task is shown
+            in this column.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">STAT</FONT></TT></STRONG></DT>
+<DD>The state of the task is shown  here.  The  state  is
+            either S for sleeping, D for uninterruptible sleep, R
+            for running, Z for  zombies,  or  T  for  stopped  or
+            traced.  These states are modified by a trailing &lt; for a
+            process with negative nice value,  N  for  a  process
+            with positive nice value, W for a swapped out process
+            (this does not work correctly for kernel  processes).
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">WCHAN</FONT></TT></STRONG></DT>
+<DD>depending    on    the    availability    of    either
+            /boot/psdatabase or the kernel  link  map
+            /boot/System.map  this  shows  the  address or the name of the
+            kernel function the task currently is sleeping in.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">TIME</FONT></TT></STRONG></DT>
+<DD>Total CPU time the task has used  since  it  started.
+            If  cumulative mode is on, this also includes the CPU
+            time used by the process's children which have  died.
+            You  can  set cumulative mode with the S command  line
+            option or toggle it with the interactive  command  S.
+            The header line will then be changed to CTIME.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">%CPU</FONT></TT></STRONG></DT>
+<DD>The  task's  share  of  the  CPU  time since the last
+            screen update, expressed as a percentage of total CPU
+            time per processor.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">%MEM</FONT></TT></STRONG></DT>
+<DD>The task's share of the physical memory.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">COMMAND</FONT></TT></STRONG></DT>
+<DD>The  task's  command name, which will be truncated if
+            it is too long to be displayed on one line.  Tasks in
+            memory will have a full command  line, but swapped-out
+            tasks will only have  the  name  of  the  program  in
+            parentheses (for example, "(getty)").
+</DD>
+</DL><BLOCKQUOTE></BLOCKQUOTE>
+
+<P>
+
+<H1><A NAME="SECTION001290000000000000000">
+9.9 Environments of Processes</A>
+</H1>
+
+<P>
+Each process that runs does so with the knowledge of several
+<I>var</I><TT>
+<FONT COLOR="#0000ff">=</FONT></TT><I>value</I> text pairs. All this means is
+that a process can look up the value of some variable that it
+may have inherited from its parent process. The complete list of
+these text pairs is called the <I>environment</I> of the
+process, and each <I>var</I> is called an <I>environment
+variable</I>. Each process has its own environment, which is
+copied from the parent process's environment.
+
+<P>
+After you have logged in and have a shell prompt, the process
+you are using (the shell itself) is just like any other process
+with an environment with environment variables. To get a
+complete list of these variables, just type:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>set</code><br>
+</FONT></TD></TR></TABLE><P>
+This command is useful for finding the value of an environment variable whose name
+you are unsure of:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>set&nbsp;|&nbsp;grep&nbsp;&#060;regexp&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+Try <TT>
+<FONT COLOR="#0000ff">set &#124; grep PATH</FONT></TT> to see the <TT>
+<FONT COLOR="#0000ff">PATH</FONT></TT>
+environment variable discussed previously.
+
+<P>
+The purpose of an environment is just to have an alternative way
+of passing parameters to a program (in addition to command-line
+arguments). The difference is that an environment is inherited from
+one process to the next: for example, a shell might have a certain
+variable set and may run a file manager,
+which may run a word processor. The word processor inherited its
+environment from file manager which inherited its environment
+from the shell. If you had set an environment variable <TT>
+<FONT COLOR="#0000ff">PRINTER</FONT></TT>
+within the shell, it would have been inherited all the way to the
+word processor, thus eliminating the need to separately configure
+which printer the word processor should use.
+
+<P>
+Try
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>X="Hi&nbsp;there"</code><br>
+<code>echo&nbsp;$X</code><br>
+</FONT></TD></TR></TABLE><P>
+You have set a variable. But now run
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>bash</code><br>
+</FONT></TD></TR></TABLE><P>
+You have now run a new process which is a <I>child</I> of the process you
+were just in.
+Type
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>echo&nbsp;$X</code><br>
+</FONT></TD></TR></TABLE><P>
+You will see that <TT>
+<FONT COLOR="#0000ff">X</FONT></TT> is not set. The reason is that
+the variable was not <TT>
+<FONT COLOR="#0000ff">export</FONT></TT><I>ed</I> as an environment
+variable and hence was not inherited. Now type
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>exit</code><br>
+</FONT></TD></TR></TABLE><P>
+which breaks to the <I>parent</I> process. Then
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>export&nbsp;X</code><br>
+<code>bash</code><br>
+<code>echo&nbsp;$X</code><br>
+</FONT></TD></TR></TABLE><P>
+You will see that the new <TT>
+<FONT COLOR="#0000ff">bash</FONT></TT> now knows about <TT>
+<FONT COLOR="#0000ff">X</FONT></TT>.
+
+<P>
+Above we are setting an arbitrary variable for our own use.
+<TT>
+<FONT COLOR="#0000ff">bash</FONT></TT> (and many other programs) automatically set many of
+their own environment variables. The <TT>
+<FONT COLOR="#0000ff">bash</FONT></TT> man page
+lists these (when it talks about <TT>
+<FONT COLOR="#0000ff">unset</FONT></TT><I>ting</I> a variable, it
+means using the command <TT>
+<FONT COLOR="#0000ff">unset &lt;variable&gt;</FONT></TT>). You may not
+understand some of these at the moment, but they are included
+here as a complete reference for later.
+
+<P>
+The following is quoted verbatim from the <TT>
+<FONT COLOR="#0000ff">bash</FONT></TT> man page.
+You will see that some variables are of the type that provide
+special information and are read but never never set, whereas other
+variables configure behavioral features of the shell (or other
+programs) and can be set at any time<FONT COLOR="#ffa500">(footnote follows)</FONT> <FONT COLOR="#ffa500">[Thanks to Brian Fox and Chet Ramey for this material.]</FONT>.
+
+<P>
+
+<BLOCKQUOTE><FONT SIZE="-1"><B>Shell Variables</B>
+</FONT></BLOCKQUOTE>
+<P>
+<BLOCKQUOTE><FONT SIZE="-1">The following variables are set by the shell:
+</FONT></BLOCKQUOTE>
+<P>
+<BLOCKQUOTE></BLOCKQUOTE><DL>
+<DT><STRONG>PPID</STRONG></DT>
+<DD>The process ID of the shell's parent.
+</DD>
+<DT><STRONG>PWD</STRONG></DT>
+<DD>The current working directory as set by the <B>cd</B> command.
+</DD>
+<DT><STRONG>OLDPWD</STRONG></DT>
+<DD>The previous working directory as set by the <B>cd</B> command.
+</DD>
+<DT><STRONG>REPLY</STRONG></DT>
+<DD>Set to the line of input read by the <B>read</B> builtin command when no arguments are supplied.
+</DD>
+<DT><STRONG>UID</STRONG></DT>
+<DD>Expands to the user ID of the current user, initialized at shell startup.
+</DD>
+<DT><STRONG>EUID</STRONG></DT>
+<DD>Expands to the effective user ID of the current user, initialized at shell startup.
+</DD>
+<DT><STRONG>BASH</STRONG></DT>
+<DD>Expands to the full pathname used to invoke this instance of <B>bash</B>.
+</DD>
+<DT><STRONG>BASH_VERSION</STRONG></DT>
+<DD>Expands to the version number of this instance of <B>bash</B>.
+</DD>
+<DT><STRONG>SHLVL</STRONG></DT>
+<DD>Incremented by one each time an instance of <B>bash</B> is started.
+
+<P>
+</DD>
+<DT><STRONG>RANDOM</STRONG></DT>
+<DD>Each time this parameter is referenced, a random
+integer is generated. The sequence of random numbers may be
+initialized by assigning a value to <B>RANDOM</B>. If
+<B>RANDOM</B> is unset, it loses its special properties, even
+if it is subsequently reset.
+
+<P>
+</DD>
+<DT><STRONG>SECONDS</STRONG></DT>
+<DD>Each time this parameter is referenced, the
+number of seconds since shell invocation is returned. If a value
+is assigned to <B>SECONDS</B>. the value returned upon
+subsequent references is the number of seconds since the
+assignment plus the value assigned. If <B>SECONDS</B> is
+unset, it loses its special properties, even if it is
+subsequently reset.
+
+<P>
+</DD>
+<DT><STRONG>LINENO</STRONG></DT>
+<DD>Each time this parameter is referenced, the shell
+substitutes a decimal number representing the current sequential
+line number (starting with 1) within a script or function.  When
+not in a script or function, the value substituted is not
+guaranteed to be meaningful. When in a function, the value is
+not the number of the source line that the command appears on
+(that information has been lost by the time the function is
+executed), but is an approximation of the number of
+<I>simple commands</I> executed in the current function.
+If <B>LINENO</B> is unset, it loses its special properties,
+even if it is subsequently reset.
+
+<P>
+</DD>
+<DT><STRONG>HISTCMD</STRONG></DT>
+<DD>The history number, or index in the history list,
+of the current command. If <B>HISTCMD</B> is unset, it loses
+its special properties, even if it is subsequently reset.
+
+<P>
+</DD>
+<DT><STRONG>OPTARG</STRONG></DT>
+<DD>The value of the last option argument processed by
+the <B>getopts</B> builtin command (see <B>SHELL BUILTIN
+COMMANDS</B> below).
+
+<P>
+</DD>
+<DT><STRONG>OPTIND</STRONG></DT>
+<DD>The index of the next argument to be processed by
+the <B>getopts</B> builtin command (see <B>SHELL BUILTIN
+COMMANDS</B> below).
+
+<P>
+</DD>
+<DT><STRONG>HOSTTYPE</STRONG></DT>
+<DD>Automatically set to a string that uniquely
+describes the type of machine on which <B>bash</B> is
+executing. The default is system-dependent.
+
+<P>
+</DD>
+<DT><STRONG>OSTYPE</STRONG></DT>
+<DD>Automatically set to a string that describes the
+operating system on which <B>bash</B> is executing. The
+default is system-dependent.
+</DD>
+</DL><BLOCKQUOTE></BLOCKQUOTE>
+<P>
+<BLOCKQUOTE><FONT SIZE="-1">The following variables are used by the shell.  In some cases,
+<B>bash</B>
+assigns a default value to a variable; these cases are noted
+below.
+</FONT></BLOCKQUOTE>
+<P>
+<BLOCKQUOTE></BLOCKQUOTE><DL>
+<DT><STRONG>IFS</STRONG></DT>
+<DD>The
+<I>Internal Field Separator</I>
+that is used
+for word splitting after expansion and to
+split lines into words with the
+<B>read</B>
+builtin command.  The default value is
+``&#60;space&#62;&#60;tab&#62;&#60;newline&#62;''.
+</DD>
+<DT><STRONG>PATH</STRONG></DT>
+<DD>The search path for commands.  It
+is a colon-separated list of directories in which
+the shell looks for commands (see
+<B>COMMAND EXECUTION</B>
+below).  The default path is system-dependent,
+and is set by the administrator who installs
+<B>bash</B>.
+A common value is ``/usr/gnu/bin:/usr/local/bin:/usr/ucb:/bin:/usr/bin:.''.
+</DD>
+<DT><STRONG>HOME</STRONG></DT>
+<DD>The home directory of the current user; the default argument for the
+<B>cd</B> builtin command.
+</DD>
+<DT><STRONG>CDPATH</STRONG></DT>
+<DD>The search path for the <B>cd</B> command. This is a colon-separated
+list of directories in which the shell looks for destination directories
+specified by the <B>cd</B> command.  A sample value is <code>``.:~:/usr''.</code>
+</DD>
+<DT><STRONG>ENV</STRONG></DT>
+<DD>If this parameter is set when <B>bash</B> is executing a shell script,
+its value is interpreted as a filename containing commands to
+initialize the shell, as in
+<I>.bashrc</I>.
+The value of
+<B>ENV</B>
+is subjected to parameter expansion, command substitution, and arithmetic
+expansion before being interpreted as a pathname.
+<B>PATH</B>
+is not used to search for the resultant pathname.
+</DD>
+<DT><STRONG>MAIL</STRONG></DT>
+<DD>If this parameter is set to a filename and the
+<B>MAILPATH</B>
+variable is not set,
+<B>bash</B>
+informs the user of the arrival of mail in the specified file.
+</DD>
+<DT><STRONG>MAILCHECK</STRONG></DT>
+<DD>Specifies how
+often (in seconds)
+<B>bash</B>
+checks for mail.  The default is 60 seconds.  When it is time to check
+for mail, the shell does so before prompting.
+If this variable is unset, the shell disables mail checking.
+</DD>
+<DT><STRONG>MAILPATH</STRONG></DT>
+<DD>A colon-separated list of pathnames to be checked for mail. 
+The message to be printed may be specified by separating the pathname from
+the message with a `?'.  $_ stands for the name of the current mailfile. 
+Example:
+<BR><FONT SIZE="-2"><code>MAILPATH='/usr/spool/mail/bfox?"You have mail":~/shell-mail?"$_ has mail!"'</code></FONT>
+<B>Bash</B>
+supplies a default value for this variable, but the location of the user
+mail files that it uses is system dependent (e.g., /usr/spool/mail/<B>$USER</B>).
+</DD>
+<DT><STRONG>MAIL_WARNING</STRONG></DT>
+<DD>If set, and a file that <B>bash</B> is checking for mail has been
+accessed since the last time it was checked, the message ``The mail in
+<I>mailfile</I> has been read'' is printed.
+</DD>
+<DT><STRONG>PS1</STRONG></DT>
+<DD>The value of this parameter is expanded (see
+<B>PROMPTING</B>
+below) and used as the primary prompt string.  The default value is
+``<B>bash&#92;$ </B>''.
+</DD>
+<DT><STRONG>PS2</STRONG></DT>
+<DD>The value of this parameter is expanded
+and used as the secondary prompt string.  The default is
+``<B>&#62;&nbsp;</B>''.
+</DD>
+<DT><STRONG>PS3</STRONG></DT>
+<DD>The value of this parameter is used as the prompt for the
+<I>select</I>
+command (see
+<B>SHELL GRAMMAR</B>
+above).
+</DD>
+<DT><STRONG>PS4</STRONG></DT>
+<DD>The value of this parameter is expanded
+and the value is printed before each command
+<B>bash</B>
+displays during an execution trace.  The first character of
+<B>PS4</B>
+is replicated multiple times, as necessary, to indicate multiple
+levels of indirection.  The default is ``<B>+&nbsp;</B>''.
+</DD>
+<DT><STRONG>HISTSIZE</STRONG></DT>
+<DD>The number of commands to remember in the command history (see
+<B>HISTORY</B>
+below).  The default value is 500.
+</DD>
+<DT><STRONG>HISTFILE</STRONG></DT>
+<DD>The name of the file in which command history is saved.  (See
+<B>HISTORY</B>
+below.)  The default value is <I>~/.bash_history</I>.  If unset, the
+command history is not saved when an interactive shell exits.
+</DD>
+<DT><STRONG>HISTFILESIZE</STRONG></DT>
+<DD>The maximum number of lines contained in the history file.  When this
+variable is assigned a value, the history file is truncated, if
+necessary, to contain no more than that number of lines.  The default
+value is 500.
+</DD>
+<DT><STRONG>OPTERR</STRONG></DT>
+<DD>If set to the value 1,
+<B>bash</B>
+displays error messages generated by the
+<B>getopts</B>
+builtin command (see
+<B>SHELL BUILTIN COMMANDS</B>
+below).
+<B>OPTERR</B>
+is initialized to 1 each time the shell is invoked or a shell
+script is executed.
+</DD>
+<DT><STRONG>PROMPT_COMMAND</STRONG></DT>
+<DD>If set, the value is executed as a command prior to issuing each primary
+prompt.
+</DD>
+<DT><STRONG>IGNOREEOF</STRONG></DT>
+<DD>Controls the
+action of the shell on receipt of an
+<B>EOF</B>
+character as the sole input.  If set, the value is the number of
+consecutive
+<B>EOF</B>
+characters typed as the first characters on an input line before
+<B>bash</B>
+exits.  If the variable exists but does not have a numeric value, or
+has no value, the default value is 10.  If it does not exist,
+<B>EOF</B>
+signifies the end of input to the shell.  This is only in effect for
+interactive shells.
+</DD>
+<DT><STRONG>TMOUT</STRONG></DT>
+<DD>If set to a value greater than zero, the value is interpreted as the
+number of seconds to wait for input after issuing the primary prompt.
+<B>Bash</B>
+terminates after waiting for that number of seconds if input does
+not arrive.
+</DD>
+<DT><STRONG>FCEDIT</STRONG></DT>
+<DD>The default editor for the
+<B>fc</B>
+builtin command.
+</DD>
+<DT><STRONG>FIGNORE</STRONG></DT>
+<DD>A colon-separated list of suffixes to ignore when performing
+filename completion (see
+<B>READLINE</B>
+below).  A filename whose suffix matches one of the entries in 
+<B>FIGNORE</B>
+is excluded from the list of matched filenames.  A sample
+value is ``.o:~''.
+</DD>
+<DT><STRONG>INPUTRC</STRONG></DT>
+<DD>The filename for the readline startup file, overriding the default
+of
+<I>~/.inputrc</I>
+(see
+<B>READLINE</B>
+below).
+</DD>
+<DT><STRONG>notify</STRONG></DT>
+<DD>If set,
+<B>bash</B>
+reports terminated background jobs immediately, rather than waiting
+until before printing the next primary prompt (see also the
+<B>-b</B>
+option to the
+<B>set</B>
+builtin command).
+</DD>
+<DT><STRONG>history_control</STRONG></DT>
+<DD>
+</DD>
+<DT><STRONG>HISTCONTROL</STRONG></DT>
+<DD>If set to a value of
+<I>ignorespace</I>,
+lines which begin with a
+<B>space</B>
+character are not entered on the history list.  If set to
+a value of
+<I>ignoredups</I>,
+lines matching the last history line are not entered.
+A value of
+<I>ignoreboth</I>
+combines the two options.
+If unset, or if set to any other value than those above,
+all lines read
+by the parser are saved on the history list.
+</DD>
+<DT><STRONG>command_oriented_history</STRONG></DT>
+<DD>If set,
+<B>bash</B>
+attempts to save all lines of a multiple-line
+command in the same history entry.  This allows
+easy re-editing of multi-line commands.
+</DD>
+<DT><STRONG>glob_dot_filenames</STRONG></DT>
+<DD>If set,
+<B>bash</B>
+includes filenames beginning with a `.' in the results of pathname
+expansion.
+</DD>
+<DT><STRONG>allow_null_glob_expansion</STRONG></DT>
+<DD>If set,
+<B>bash</B>
+allows pathname patterns which match no
+files (see
+<B>Pathname Expansion</B>
+below)
+to expand to a null string, rather than themselves.
+</DD>
+<DT><STRONG>histchars</STRONG></DT>
+<DD>The two or three characters which control history expansion
+and tokenization (see
+<B>HISTORY EXPANSION</B>
+below).  The first character is the
+<I>history expansion character</I>,
+that is, the character which signals the start of a history
+expansion, normally `<B>!</B>'.
+The second character is the
+<I>quick substitution</I>
+character, which is used as shorthand for re-running the previous
+command entered, substituting one string for another in the command.
+The default is `<B>^</B>'.
+The optional third character is the character
+which signifies that the remainder of the line is a comment, when found
+as the first character of a word, normally `<B>#</B>'.  The history
+comment character causes history substitution to be skipped for the
+remaining words on the line.  It does not necessarily cause the shell
+parser to treat the rest of the line as a comment.
+</DD>
+<DT><STRONG>nolinks</STRONG></DT>
+<DD>If set, the shell does not follow symbolic links when executing
+commands that change the current working directory.  It uses the
+physical directory structure instead.  By default,
+<B>bash</B>
+follows the logical chain of directories when performing commands
+which change the current directory, such as 
+<B>cd</B>.
+See also the description of the <B>-P</B> option to the <B>set</B>
+builtin (
+<B>SHELL BUILTIN COMMANDS</B>
+below).
+</DD>
+<DT><STRONG>hostname_completion_file</STRONG></DT>
+<DD>
+</DD>
+<DT><STRONG>HOSTFILE</STRONG></DT>
+<DD>Contains the name of a file in the same format as
+<I>/etc/hosts</I>
+that should be read when the shell needs to complete a
+hostname.  The file may be changed interactively; the next
+time hostname completion is attempted
+<B>bash</B>
+adds the contents of the new file to the already existing database.
+</DD>
+<DT><STRONG>noclobber</STRONG></DT>
+<DD>If set,
+<B>bash</B>
+does not overwrite an existing file with the
+<B>&#62;</B>,
+<B>&#62;&amp;</B>,
+and
+<B>&#60;&#62;</B>
+redirection operators.  This variable may be overridden when 
+creating output files by using the redirection operator
+<B>&#62;|</B>
+instead of
+<B>&#62;</B>
+(see also the <B>-C</B> option to the
+<B>set</B>
+builtin command).
+</DD>
+<DT><STRONG>auto_resume</STRONG></DT>
+<DD>This variable controls how the shell interacts with the user and
+job control.  If this variable is set, single word simple
+commands without redirections are treated as candidates for resumption
+of an existing stopped job.  There is no ambiguity allowed; if there is
+more than one job beginning with the string typed, the job most recently
+accessed is selected.  The
+<I>name</I>
+of a stopped job, in this context, is the command  line used to
+start it.
+If set to the value
+<I>exact</I>,
+the string supplied must match the name of a stopped job exactly;
+if set to
+<I>substring</I>,
+the string supplied needs to match a substring of the name of a
+stopped job.  The
+<I>substring</I>
+value provides functionality analogous to the
+<B>%?</B>
+job id (see
+<B>JOB CONTROL</B>
+below).  If set to any other value, the supplied string must
+be a prefix of a stopped job's name; this provides functionality
+analogous to the
+<B>%</B>
+job id.
+</DD>
+<DT><STRONG>no_exit_on_failed_exec</STRONG></DT>
+<DD>If this variable exists, a non-interactive shell will not exit if
+it cannot execute the file specified in the
+<B>exec</B>
+builtin command.  An interactive shell does not exit if
+<B>exec</B>
+fails.
+</DD>
+<DT><STRONG>cdable_vars</STRONG></DT>
+<DD>If this is set, an argument to the
+<B>cd</B>
+builtin command that
+is not a directory is assumed to be the name of a variable whose
+value is the directory to change to.
+</DD>
+</DL><BLOCKQUOTE></BLOCKQUOTE>
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html1895"
+  HREF="node13.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html1891"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html1885"
+  HREF="node11.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html1893"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html1896"
+  HREF="node13.html">10. Mail</A>
+<B> Up:</B> <A NAME="tex2html1892"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html1886"
+  HREF="node11.html">8. Streams and sed</A>
+ &nbsp <B>  <A NAME="tex2html1894"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+
+</BODY>
+</HTML>

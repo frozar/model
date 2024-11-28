@@ -1,0 +1,63 @@
+#!/usr/bin/perl
+# Distribute this source Freely.
+# If u modify the source, let me know.
+# ************************************
+# NFO :
+# -----
+# IIS 5.0 WebDav Command Checking ....
+# Affiche les commandes HTTP acceptee
+# par le serveur distant.
+#
+#          Nicola JEAN 2003
+#     mail:nicolaj@katatonie.com
+# ************************************
+# ------------- V1.1 -----------------
+# ************************************
+
+# Modules
+use IO::Socket::INET;
+
+# Variables
+$ip = undef;
+$port = undef;
+@list = ("OPTIONS", "TRACE", "GET", "HEAD", "DELETE", "PUT", "POST", "COPY", "MOVE", "MKCOL", "PROPFIND", "PROPPATCH", "LOCK", "UNLOCK", "SEARCH");
+
+#Quelques trucs divers pour la présentation ...
+print "\n---------------------------------------\n";
+print "---------IIS5.0 -WebDav-Check----------\n";
+print "---------------------------------------\n";
+print "----------unda.katatonie.com-----------\n";
+print "---------------------------------------\n\n";
+
+while ($ip eq undef) {
+print "Entrez l'adresse IP ou le nom DNS : ";
+chomp ($ip = <STDIN>);}
+while ($port eq undef) {
+print "Entrez le port (80) : ";
+chomp($port = <STDIN>);}
+
+# Main prog ...
+for ($i=1; $i<=15; $i++) {
+$data = shift @list;
+$sock = IO::Socket::INET->new(
+        Proto => "tcp",
+	PeerAddr => $ip,
+	PeerPort => $port
+	)
+or die "connexion impossible au port $port sur $ip";
+$sock -> autoflush(1);
+# Envoi des donnees sur le socket
+print $sock $data, " /unda/katatonie/com HTTP/1.0\r\n\r\n";
+# Stockage des donnees dans une table
+@result = <$sock>;
+# Traitement des donnees
+foreach $result(@result) { 
+if ( $result =~ /HTTP\/1.1 200/i ) {
+print "Checking $data ... Le serveur semble accepter cette commande\n";} 
+if ( $result =~ /HTTP\/1.1 400/i ) {
+print "Checking $data ... Le serveur semble accepter cette commande\n";}
+if ( $result =~ /HTTP\/1.1 404/i ) {
+print "Checking $data ... Le serveur semble accepter cette commande\n";}
+close $sock;
+}}
+print "Closing  ...";

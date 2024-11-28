@@ -1,0 +1,237 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML
+><HEAD
+><TITLE
+>POP3 par qmail-pop3d via UCSPI-TCP</TITLE
+><META
+NAME="CREATOR"
+CONTENT="Modular DocBook HTML Stylesheet version 1.07"><META
+NAME="form"
+CONTENT="html"><META
+NAME="Description"
+CONTENT="Introduction to qmail in french"><META
+NAME="Keywords"
+CONTENT="qmail mta"><META
+NAME="Robot"
+CONTENT="index,follow"><META
+NAME="Author"
+CONTENT="Djalil Chafai"></HEAD
+><BODY
+BGCOLOR="#FFFFFF"
+TEXT="#000000"
+><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TH
+COLSPAN="3"
+ALIGN="center"
+>Introduction à qmail</TH
+></TR
+><TR
+><TD
+WIDTH="10%"
+ALIGN="left"
+VALIGN="bottom"
+><A
+HREF="c0304.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="80%"
+ALIGN="center"
+VALIGN="bottom"
+>Chapitre 3. Mise en place de SMTP, POP3, UCSPI et QMTP</TD
+><TD
+WIDTH="10%"
+ALIGN="right"
+VALIGN="bottom"
+><A
+HREF="c0306.html"
+>Suivant</A
+></TD
+></TR
+></TABLE
+><HR
+ALIGN="LEFT"
+WIDTH="515"><H1
+><A
+NAME="I(SERVICES)C(5,SECT1)"
+>POP3 par qmail-pop3d via UCSPI-TCP</A
+></H1
+><P
+>Il faut se procurer UCSPI-TPC sur
+<A
+HREF="http://pobox.com/~djb/ucsp-tcp.html"
+>http://pobox.com/~djb/ucsp-tcp.html</A
+>,
+compiler puis installer les binaires dans
+<TT
+CLASS="FILENAME"
+>/usr/local/bin/</TT
+>. </P
+><P
+>De même, récupérer <I
+CLASS="PRODUCTNAME"
+>checkpassword</I
+> si besoin sur
+<A
+HREF="http://pobox.com/~djb/checkpwd.html"
+>http://pobox.com/~djb/checkpwd.html</A
+>,
+le compiler puis l'installer dans <TT
+CLASS="FILENAME"
+>/usr/local/sbin/</TT
+>.
+Je signale au passage que pour compiler avec les shadows sous
+<I
+CLASS="PRODUCTNAME"
+>Linux</I
+>, 
+vous serez sans doute amené à remplacer
+<TT
+CLASS="LITERAL"
+>SHADOWLIBS=-lshadow</TT
+>
+par
+<TT
+CLASS="LITERAL"
+>SHADOWLIBS= -lcrypt</TT
+> dans le
+<TT
+CLASS="FILENAME"
+>Makefile</TT
+>.</P
+><P
+>Ensuite, commenter la ligne POP3 dans
+<TT
+CLASS="FILENAME"
+>/etc/inetd.conf</TT
+> en
+la préfixant par une dièse et réinitialiser
+<I
+CLASS="APPLICATION"
+>inetd</I
+> par un 
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>root:bash$ kill -HUP $(pidof inetd)</PRE
+></TD
+></TR
+></TABLE
+>
+
+Il ne reste plus qu'à ajouter les deux lignes suivantes à la fin de la partie
+start du fichier <TT
+CLASS="FILENAME"
+>/etc/rc.d/init.d/qmail</TT
+> :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>/usr/local/bin/tcpserver 0 pop3 /var/qmail/bin/qmail-popup votre.host.name \
+/usr/local/sbin/checkpassword /var/qmail/bin/qmail-pop3d Maildir &#38;
+echo $! &#62; /var/lock/subsys/qmail-pop3d   </PRE
+></TD
+></TR
+></TABLE
+>
+
+et ces deux-ci au début de la section stop :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>kill `cat /var/lock/subsys/qmail-pop3d`
+rm -f /var/lock/subsys/qmail-pop3d</PRE
+></TD
+></TR
+></TABLE
+>
+
+Faites attention, le nom du service POP3 peut être pop-3 et non pop3, 
+regardez dans votre <TT
+CLASS="FILENAME"
+>/etc/services</TT
+>.
+Il ne reste plus qu'à stopper puis relancer <I
+CLASS="PRODUCTNAME"
+>qmail</I
+>.</P
+><HR
+ALIGN="LEFT"
+WIDTH="515"><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+><A
+HREF="c0304.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+><A
+HREF="book01.html"
+>Page principale</A
+></TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+><A
+HREF="c0306.html"
+>Suivant</A
+></TD
+></TR
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+>SMTP par qmail-smtpd via UCSPI-TCP</TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+><A
+HREF="c03.html"
+>Niveau précédent</A
+></TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+>QMTP, le petit dernier</TD
+></TR
+></TABLE
+></BODY
+></HTML
+>

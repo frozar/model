@@ -1,0 +1,165 @@
+               Difference Between AT&T and Intel Assembly Syntax
+               -------------------------------------------------
+
+The difference
+--------------
+
+	This document is more related to coding than hacking, although
+assembly is a very useful programming language, as its machine level and
+provides direct access to the CPU, hardware, etc. Now in all Unix-derived 
+systems, the compilers like gcc use att syntax assembly and not intel. For
+example: movl %esp, %ebp
+
+Now this is unfortunate for DOS assembly programmers who recently
+switched to Unix-derived systems. They are used to Intel syntax, whereas
+Linux (and others) uses AT&T syntax. Where in the example above you
+would use: mov ebp, esp.
+
+	I wrote this because I have only seen one document that
+explained the differences between AT&T and Intel syntax. That document was
+the GAS (GNU assembler) reference manual.  
+
+You can get the GAS reference manual at:
+http://www.cs.utah.edu/csinfo/texinfo under "gas"
+
+First let me give a few examples. 
+Intel: push 4
+AT&T: pushl $4
+
+All the immediate operands have a $ in front of them, in intel syntax, you
+don't have prefix.
+
+The register operands, have a % in front of them, intel has none.
+Intel: mov eax, 4
+att: movl $4, %eax
+
+You notice there is a diff in intel/att's src/dst...
+Intel: you do dst, src like mov ax, 2  
+att: it's the opposite, src, dst like movl $2, %ax
+
+You can use 'b' for byte, 'w' for word, 'l' for long, etc...as the memory
+suffix:
+movl, movb, movw, etc.
+in intel you wold do this like mov ax, byte ptr foo...
+
+The far instruction for att is lret $stack-adjust, in intel it's 
+ret far stack-adjust.
+
+The l in front of mov, is the byte/memory operand..... this is actually
+more convient if you ask me.
+
+In Intel you have:
+section:[base + index*scale + disp]
+
+disp = displcement
+scale = 1 if not given
+
+In AT&T, however, you would have:
+section:disp(base, index, scale)
+
+So "es:[ebp-5]" in Intel would be "%es:-4(%ebp)" in AT&T syntax.
+
+Intel: [foo]  AT&T: foo(,1) the ,1 means an index of one...
+Inte: [foor + eax*4] AT&T: foor(, %eax, 4)
+
+I hope this helps :)
+
+How to Get some assembly examples in unix:
+-----------------------------------------
+	 
+Now how to get a few examples on how to get some assembly code for Unix.
+Use this (assuming you called it test.c):
+
+void main()
+{
+  printf("hi\n");
+}
+
+now to compile it, do gcc -S test.c, this will make a file test.s in
+assembly......look at it it contains great info....and some examples of
+the macros and what not defined/shown in gas' (GNU assembler) manual.
+(Which can be found at http://www.cs.utah.edu/csinfo/texinfo, under gas.
+
+here is what test.s will look like:
+
+        .file   "test.c"
+        .version        "01.01"
+gcc2_compiled.:
+.section        .rodata
+.LC0:
+        .string "test\n"
+.text
+        .align 4
+.globl main
+        .type    main,@function
+main:
+        pushl %ebp
+        movl %esp,%ebp
+        pushl $.LC0
+        call printf
+        addl $4,%esp
+.L1:
+        leave
+        ret
+.Lfe1:
+        .size    main,.Lfe1-main
+        .ident  "GCC: (GNU) 2.7.2.1"
+
+
+As you know, the l's in front of push, mov, add, etc....that means it's
+type long. and the % goes in front of all register operands, whereas in
+intel syntax, it is undelimited. Likewise, the immediate operands, have a
+'$' in front of them, whereas once again, intel is undelimited.
+
+movl $3, %eax 
+is equal to:
+mov eax, 3 
+in intel
+
+The other way to get asm code is with gdb......you compile your program
+with gcc -g .......and for even more......gcc -g -a...
+here is our test.c ......in gdb,
+we do 'disassemble main':
+
+(gdb) disassemble main
+Dump of assembler code for function main:
+0x8048474 <main>:       pushl  %ebp
+0x8048475 <main+1>:     movl   %esp,%ebp
+0x8048477 <main+3>:     pushl  $0x80484c8
+0x804847c <main+8>:     call   0x8048378 <printf>
+0x8048481 <main+13>:    addl   $0x4,%esp
+0x8048484 <main+16>:    leave  
+0x8048485 <main+17>:    ret    
+End of assembler dump.
+
+That is with just -g.......with -a as well you can see the difference
+(more instructions show up that usually wouldn't):
+
+(gdb) disassemble main
+Dump of assembler code for function main:
+0x80485d8 <main>:       pushl  %ebp
+0x80485d9 <main+1>:     movl   %esp,%ebp
+0x80485db <main+3>:     cmpl   $0x0,0x8049a6c
+0x80485e2 <main+10>:    jne    0x80485f1 <main+25>
+0x80485e4 <main+12>:    pushl  $0x8049a6c
+0x80485e9 <main+17>:    call   0x80488fc <__bb_init_func>
+0x80485ee <main+22>:    addl   $0x4,%esp
+0x80485f1 <main+25>:    incl   0x8049b78
+0x80485f7 <main+31>:    pushl  $0x8048978
+0x80485fc <main+36>:    call   0x8048468 <printf>
+0x8048601 <main+41>:    addl   $0x4,%esp
+0x8048604 <main+44>:    incl   0x8049b7c
+0x804860a <main+50>:    leave  
+0x804860b <main+51>:    ret    
+End of assembler dump.
+
+I of course need to give credit of this to the gas manual, as parts were
+taken from there.
+
+
+                      Shok (Matt Conover)
+
+Email: shok@dataforce.net
+Web:   http://www.w00w00.org
+----------------
+

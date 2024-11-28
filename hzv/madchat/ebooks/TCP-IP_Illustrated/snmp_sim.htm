@@ -1,0 +1,2138 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 25. SNMP: Simple Network Management Protocol</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="25_0"><H1><I>SNMP: Simple Network Management Protocol</I></H1></a>
+<a name="25_1"><H3>25.1 Introduction</H3></a>
+<P>
+As the number of networks within an organization
+grows, along with the diversity of systems comprising this internet
+(routers from various vendors, hosts with embedded router functionality,
+terminal servers, etc.), managing all these systems within a coherent
+framework becomes important. This chapter looks at the standards
+used within the Internet protocol suite for network management.
+<P>
+Network management of a TCP/IP internet consists
+of <I>network management stations </I>(managers) communicating
+with <I>network elements.</I> The network elements can be anything
+that runs the TCP/IP protocol suite: hosts, routers, X terminals,
+terminal servers, printers, and so on. The software in the network
+element that runs the management software is called the <I>agent.</I>
+Management stations are normally workstations with color monitors
+that graphically display relevant facts about the elements being
+monitored (which links are up and down, volume of traffic across
+various links over time, etc.).
+<P>
+&quot;The communication can be two way: the manager
+asking the agent for a specific value (&quot;how many ICMP port
+unreachables have you generated?&quot;), or the agent telling
+the manager that something important happened (&quot;an attached
+interface has gone down&quot;). Also, the manager should be able
+to set variables in the agent (&quot;change the value of the default
+IP TTL to 64&quot;), in addition to reading variables from the
+agent. TCP/IP network management consists of three pieces.
+<OL>
+<LI>A <I>Management Information Base</I> (MIB) that
+specifies what variables the network elements maintain (the information
+that can be queried and set by the manager). RFC 1213 [McCloghrie
+and Rose 1991] defines the second version of this, called MIB-II.
+<LI>A set of common structures and an identification
+scheme used to reference the variables in the MIB. This is called
+the <I>Structure of Management Information</I> (SMI) and is specified
+in RFC 1155 [Rose and McCloghrie 1990]. For example, the SMI specifies
+that a Counter is a nonnegative integer that counts from 0 through
+4,294,967,295 and then wraps around to 0.
+<LI>The protocol between the manager and the element,
+called the <I>Simple Network Management Protocol</I> (SNMP). RFC
+1157 [Case et al. 1990] specifies the protocol. This details the
+format of the packets exchanged. Although a wide variety of transport
+protocols could be used, UDP is normally used with SNMP.
+</OL>
+<P>
+These RFCs define what is now called SNMPv1, or just
+SNMP, which is the topic of this chapter. During 1993 additional
+RFCs were published specifying SNMP Version 2 (SNMPv2), which
+we describe in <a href="#25_12">Section 25.12</a>.
+<P>
+Our approach to SNMP in this chapter is to describe
+the protocol between the manager and the agent first, and then
+look at the data types for the variables maintained by the agent.
+We describe the database of information maintained by the agent
+(the MIB), looking at the groups that we've described in this
+text: IP, UDP, TCP, and so on. We show examples at each point
+along the way, tying network management back to the protocol concepts
+from earlier chapters.
+<a name="25_2"><H3>25.2 Protocol</H3></a>
+<P>
+SNMP defines only five types of messages that are
+exchanged between the manager and agent.
+<OL>
+<LI>Fetch the value of one or more variables: the
+<TT>get-request</TT> operator.
+<LI>Fetch the next variable after one or more specified
+variables: the <TT>get-next-request</TT> operator.
+(We describe what we mean by &quot;next&quot; later in this chapter.)
+<LI>Set the value of one or more variables: the <TT>set-request</TT>
+operator.
+<LI>Return the value of one or more variables: the
+<TT>get-response</TT> operator. This is the
+message returned by the agent to the manager in response to the
+<TT>get-request</TT>, <TT>get-next-request</TT>,
+and <TT>set-request</TT> operators.
+<LI>Notify the manager when something happens on
+the agent: the <TT>trap</TT> operator.
+</OL>
+<P>
+The first three messages are sent from the manager
+to the agent, and the last two are from the agent to the manager.
+(We'll refer to the first three as the <TT>get</TT>,
+<TT>get-next</TT>, and <TT>set</TT>
+operators.) Figure 25.1 summarizes these five operators.
+<P>
+Since four of the five SNMP messages are simple request-reply
+protocols (the manager sends a request, the agent sends back a
+reply) SNMP uses UDP. This means that a request from the manager
+may not arrive at the agent, and the agent's reply may not make
+it back to the manager. The manager probably wants to implement
+a timeout and retransmission.
+<P>
+<CENTER><a name="fig_25_1"><img src="f_25_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_25_1.gif"></a><br>
+<B>Figure 25.1</B> Summary
+of the five SNMP operators.</CENTER>
+<P>
+The manager sends its three requests to UDP port
+161. The agent sends traps to UDP port 162. By using two different
+port numbers, a single system can easily run both a manager and
+an agent. (See Exercise 25.1.)
+<P>
+Figure 25.2 shows the format of the five SNMP messages,
+encapsulated in a UDP datagram.
+<P>
+<CENTER><a name="fig_25_2"><img src="f_25_2.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_25_2.gif"></a><br>
+<B>Figure 25.2</B> Format
+of the five SNMP messages.</CENTER>
+<P>
+In this figure we specify the size in bytes of the
+IP and UDP headers only. This is because the encoding used for
+the SNMP message-called ASN.1 and BER, which we
+describe later in this chapter-varies depending on
+the type of variable and its value.
+<P>
+The <I>version</I> is 0. This value is really the
+version number minus one, as the version of SNMP that we describe
+is called SNMPv1.
+<P>
+Figure 25.3 shows the values for the <I>PDU</I> type.
+(PDU stands for <I>Protocol Data Unit,</I> a fancy word for &quot;packet.&quot;)
+<P>
+<CENTER>
+<a name="fig_25_3"><TABLE BORDER=1></a>
+<TR><TD WIDTH=80><CENTER><I>PDU type</I></CENTER></TD><TD WIDTH=189><TT>Name</TT>
+</TD></TR>
+<TR><TD WIDTH=80><CENTER>0</CENTER></TD><TD WIDTH=189><TT>get-request</TT>
+</TD></TR>
+<TR><TD WIDTH=80><CENTER>1</CENTER></TD><TD WIDTH=189><TT>get-next-request</TT>
+</TD></TR>
+<TR><TD WIDTH=80><CENTER>2</CENTER></TD><TD WIDTH=189><TT>set-request</TT>
+</TD></TR>
+<TR><TD WIDTH=80><CENTER>3</CENTER></TD><TD WIDTH=189><TT>get-response</TT>
+</TD></TR>
+<TR><TD WIDTH=80><CENTER>4</CENTER></TD><TD WIDTH=189><TT>trap</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.3</B> PDU
+types for SNMP messages.</CENTER>
+<P>
+The <I>community</I> is a character string that is
+a cleartext password between the manager and agent. A common value
+is the 6-character string public.
+<P>
+For the <TT>get</TT>, <TT>get-next</TT>,
+and <TT>set</TT> operators, the <I>request
+ID</I> is set by the manager, and returned by the agent in the
+<TT>get-response</TT> message. We've seen
+this type of variable with other UDP applications. (Recall the
+DNS <I>identification</I> field in <a href="dns_the.htm#fig_14_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dns_the.htm#fig_14_3">Figure 14.3</a>, and the <I>transaction
+ID</I> field in <a href="bootp.htm#fig_16_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/bootp.htm#fig_16_2">Figure 16.2</a>.) It lets the client (the manager
+in this case) match the responses from the server (the agent)
+to the queries that the client issued. &quot;This field also allows
+the manager to issue multiple requests to one or more agents,
+and then be able to sort out the returned replies.
+<P>
+The <I>error status</I> is an integer returned by
+the agent specifying an error. Figure 25.4 shows the values, names,
+and descriptions.
+<P>
+<CENTER>
+<a name="fig_25_4"><TABLE BORDER=1></a>
+<TR><TD WIDTH=76><CENTER><I>error status</I></CENTER>
+</TD><TD WIDTH=104><CENTER>Name</CENTER></TD>
+<TD WIDTH=340><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=76><CENTER>0</CENTER></TD><TD WIDTH=104><TT>noError</TT>
+</TD><TD WIDTH=340>all is OK</TD></TR>
+<TR><TD WIDTH=76><CENTER>1</CENTER></TD><TD WIDTH=104><TT>tooBig</TT>
+</TD><TD WIDTH=340>agent could not fit reply into a single SNMP message
+</TD></TR>
+<TR><TD WIDTH=76><CENTER>2</CENTER></TD><TD WIDTH=104><TT>noSuchName</TT>
+</TD><TD WIDTH=340>operation specified a nonexistent variable
+</TD></TR>
+<TR><TD WIDTH=76><CENTER>3</CENTER></TD><TD WIDTH=104><TT>badValue</TT>
+</TD><TD WIDTH=340>a set operation specified an invalid value or syntax
+</TD></TR>
+<TR><TD WIDTH=76><CENTER>4</CENTER></TD><TD WIDTH=104><TT>readonly</TT>
+</TD><TD WIDTH=340>manager tried to modify a read-only variable
+</TD></TR>
+<TR><TD WIDTH=76><CENTER>5</CENTER></TD><TD WIDTH=104><TT>genErr</TT>
+</TD><TD WIDTH=340>some other error</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.4</B> SNMP
+error status values.</CENTER>
+<P>
+If an error occurred, the <I>error index</I> is an
+integer offset specifying which variable was in error. It is set
+by the agent only for the <TT>noSuchName</TT>,
+<TT>badValue</TT>, and <TT>readonly</TT>
+errors.
+<P>
+A list of variable names and values follows in the
+<TT>get</TT>, <TT>get-next</TT>,
+and <TT>set</TT> requests. The value portion
+is ignored for the <TT>get</TT> and <TT>get-next</TT>
+operators.
+<P>
+For the <TT>trap</TT> operator
+(a <I>PDU type</I> of 4), the format of the SNMP message changes.
+We describe the fields in the trap header when we describe this
+operator in <a href="#25_10">Section 25.10</a>.
+<a name="25_3"><H3>25.3 Structure of Management Information</H3></a>
+<P>
+SNMP uses only a few different types of data. In
+this section we'll look at those data types, without worrying
+about how the data is actually encoded (that is, the bit pattern
+used to store the data).
+<UL>
+<LI><TT>INTEGER</TT>. Some variables are declared
+as an integer with no restrictions (e.g., the MTU of an interface),
+some are defined as taking on specific values (e.g., the IP forwarding
+flag is 1 if forwarding is enabled or 2 if forwarding is disabled),
+and others are defined with a minimum and maximum value (e.g.,
+UDP and TCP port numbers are between 0 and 65535).
+<LI><TT>OCTET STRING</TT>. A string of 0 or more
+8-bit bytes. Each byte has a value between 0 and 255. In the BER
+encoding used for this data type and the next, a count of the
+number of bytes in the string precedes the string. These strings
+are not null-terminated strings.
+<LI><TT>DisplayString</TT>. A string of 0 or more
+8-bit bytes, but each byte must be a character from the NVT ASCII
+set (<a href="telnet.htm#26_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/telnet.htm#26_4">Section 26.4</a>). All variables of this type in the MIB-II must
+contain no more than 255 characters. (A O-length string is OK.)
+<LI><TT>OBJECT IDENTIFIER</TT>. We describe these
+in the <a href="#25_4">next section</a>.
+<LI><TT>NULL</TT>. This indicates that the corresponding
+variable has no value. It is used, for example, as the value of
+all the variables in a get or get-next request, since the values
+are being queried, not set.
+<LI><TT>lpAddress</TT>. An <TT>OCTET STRING</TT>
+of length 4, with 1 byte for each byte of the IP address.
+<LI><TT>PhysAddress</TT>. An <TT>OCTET STRING</TT>
+specifying a physical address (e.g., a 6-byte Ethernet address).
+<LI><TT>Counter</TT>. A nonnegative integer whose
+value increases monotonically from 0 to 2<SUP>32</SUP>-1 (4,294,967,295),
+and then wraps back to 0.
+<LI><TT>Gauge</TT>. A nonnegative integer between
+0 and 2<SUP>32</SUP> -1, whose value can increase or decrease,
+but latches at its maximum value. That is, if the value increments
+to 2<SUP>32</SUP> - 1, it stays there until reset. The MIB variable
+<TT>tcpCurrEstab</TT> is an example: it is
+the number of TCP connections currently in the ESTABLISHED or
+CLOSE_WAIT state.
+<LI><TT>TimeTicks</TT>. A counter that counts the
+time in hundredths of a second since some epoch. Different variables
+can specify this counter from a different epoch, so the epoch
+used for each variable of this type is specified when the variable
+is declared in the MIB. For example, the variable <TT>sysUpTime</TT>
+is the number of hundredths of a second that the agent has been
+up.
+<LI><TT>SEQUENCE</TT>. This is similar to a structure
+in the C programming language. For example, we'll see that the
+MIB defines a <TT>SEQUENCE</TT> named <TT>UdpEntry</TT>
+containing information about an agent's active UDP end points.
+(By &quot;active&quot; we mean ports currently in use by an application.)
+Two entries are in the structure: 
+<P><OL>
+<LI><TT>udpLocalAddress</TT>,
+of type <TT>lpAddress</TT>, containing the
+local IP address.
+<LI><TT>udpLocalPort</TT>,
+of type <TT>INTEGER</TT>, in the range 0 through
+65535, specifying the local port number.
+</OL>
+<LI><TT>SEQUENCE OF</TT>. This is the definition
+of a vector, with all elements having the same data type. If each
+element has a simple data type, such as an integer, then we have
+a simple vector (a one-dimensional array). But we'll see that
+SNMP uses this data type with each element of the vector being
+a <TT>SEQUENCE</TT> (structure). We can then
+think of it as a two-dimensional array or table.
+<P>
+For example, the UDP listener table is named <TT>udpTable</TT>
+and it is a <TT>SEQUENCE OF</TT> the 2-element
+<TT>SEQUENCE</TT> (structure) <TT>UdpEntry</TT>
+that we just described. Figure 25.5 shows this two-dimensional
+array.
+<P>
+<CENTER><a name="fig_25_5"><img src="f_25_5.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_25_5.gif"></a><br>
+<B>Figure 25.5</B> UDP
+listener table (udpTable) as a two-dimensional array in SNMP.</CENTER>
+</UL><P>
+The number of rows in these tables is not specified
+by SNMP, but we'll see that a manager using the <TT>get-next</TT>
+operator (<a href="#25_7">Section 25.7</a>) can determine when the final row of a
+table has been returned. Also, in <a href="#25_6">Section 25.6</a> we'll see how the
+manager specifies which row of a table it wants to get or set.
+<a name="25_4"><H3>25.4 Object Identifiers</H3></a>
+<P>
+An <I>object identifier</I> is a data type specifying
+an authoritatively named object. By &quot;authoritative&quot;
+we mean that these identifiers are not assigned randomly, but
+are allocated by some organization that has responsibility for
+a group of identifiers.
+<P>
+An object identifier is a sequence of integers separated
+by decimal points. These integers traverse a tree structure, similar
+to the DNS (<a href="dns_the.htm#fig_14_1" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dns_the.htm#fig_14_1">Figure 14.1</a>) or a Unix filesystem. There is an unnamed
+root at the top of the tree where the object identifiers start.
+(This is the same direction of tree traversal that's used with
+a Unix filesystem.)
+<P>
+Figure 25.6 shows the structure of this tree when
+used with SNMP. All variables in the MIB start with the object
+identifier 1.3.6.1.2.1.
+<P>
+Each node in the tree is also given a textual name.
+The name corresponding to the object identifier 1.3.6.1.2.1 is
+<TT>iso.org.dod.internet.mgmt.mib</TT>. These
+names are for human readability. The <I>names</I> of the MIB variables
+that are in the packets exchanged between the manager and agent
+(Figure 25.2) are the numeric object identifiers, all of which
+begin with 1.3.6.1.2.1.
+<P>
+<CENTER><a name="fig_25_6"><img src="f_25_6.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_25_6.gif"></a><br>
+<B>Figure 25.6</B> Object
+identifiers in the Management Information Base.</CENTER>
+<P>
+Besides the <TT>mib</TT> object
+identifiers in Figure 25.6 we also show one named <TT>iso.org.dod.internet.private.enterprises</TT>
+(1.3.6.1.4.1). &quot;This is where vendor-specific MIBs are located.
+The Assigned Numbers RFC lists around 400 identifiers registered
+below this node.
+<a name="25_5"><H3>25.5 Introduction to the Management Information Base</H3></a>
+<P>
+The <I>Management Information Base,</I> or MIB, is
+the database of information maintained by the agent that the manager
+can query or set. We describe what's called MIB-II, specified
+in RFC 1213 [McCloghrie and Rose 1991].
+<P>
+As shown in Figure 25.6, the MIB is divided into
+groups named <TT>system</TT>, <TT>interfaces</TT>,
+<TT>at</TT> (address translation), <TT>ip</TT>,
+and so on.
+<P>
+In this section we describe only the variables in
+the UDP group. This is a simple group with only a few variables
+and a single table. In the next sections we use this group to
+show the details of instance identification, lexicographic ordering,
+and some simple examples of these features. After these examples
+we return to the MIB in <a href="#25_8">Section 25.8</a> and describe some of the
+other groups in the MIB.
+<P>
+In Figure 25.6 we showed the group named <TT>udp</TT>
+beneath <TT>mib</TT>. Figure 25.7 shows the
+structure of the UDP group.
+<P>
+<CENTER><a name="fig_25_7"><img src="f_25_7.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_25_7.gif"></a><br>
+<B>Figure 25.7</B> Tree
+structure of IP address table.</CENTER>
+<P>
+There are four simple variables and a table containing
+two simple variables. Figure 25.8 describes the four simple variables.
+<P>
+<CENTER>
+<a name="fig_25_8"><TABLE BORDER=1></a>
+<TR><TD WIDTH=142><CENTER>Name</CENTER></TD>
+<TD WIDTH=76><CENTER>Datatype</CENTER></TD>
+<TD WIDTH=38><CENTER>R/W</CENTER></TD><TD WIDTH=342><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=142><TT>udpInDatagrams</TT></TD><TD WIDTH=76><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=342>Number of UDP datagrams delivered to user processes.
+</TD></TR>
+<TR><TD WIDTH=142><TT>udpNoPorts </TT></TD><TD WIDTH=76><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=342>Number of received UDP datagrams for which no application process was at the destination port.
+</TD></TR>
+<TR><TD WIDTH=142><TT>udpInErrors</TT></TD><TD WIDTH=76><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=342>Number of undeliverable UDP datagrams for reasons other than no application at destination port (e.g., UDP checksum error).
+</TD></TR>
+<TR><TD WIDTH=142><TT>udpOutDatagrams</TT></TD><TD WIDTH=76><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=342>Number of UDP datagrams sent.
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.8</B> Simple
+variables in <TT>udp</TT> group.</CENTER>
+<P>
+We'll use this format to describe all the MIB variables
+in this chapter. The column labeled &quot;R/W&quot; is empty if
+the variable is read-only, or contains a bullet (*) if the variable
+is read-write. We always include this column, even if all the
+variables in a group are read-only (since they are in the <TT>udp</TT>
+group) to reiterate that none of the variables can be set by the
+manager. Also, when the data type is an <TT>INTEGER</TT>
+with bounds, we specify the lower limit and upper limit, as we
+do for the UDP port number in the next figure.
+<P>
+Figure 25.9 describes the two simple variables in
+the <TT>udpTable</TT>.
+<P>
+<CENTER>
+<a name="fig_25_9"><TABLE BORDER=1></a>
+<TR><TD COLSPAN=4 WIDTH=727>
+<CENTER>UDP listener table, index = &lt; <I>udpLocalAddress </I>&gt;.&lt;<I> udpLocalPort </I>&gt;</CENTER>
+</TD></TR>
+<TR><TD WIDTH=156><CENTER>Name</CENTER></TD>
+<TD WIDTH=115><CENTER>Datatype</CENTER></TD>
+<TD WIDTH=55><CENTER>R/W</CENTER></TD><TD WIDTH=381><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=156><TT>udpLocalAddress</TT></TD><TD WIDTH=115><TT>lpAddress</TT>
+</TD><TD WIDTH=55></TD><TD WIDTH=381>Local IP address for this listener. 0.0.0.0 indicates the listener is willing to receive datagrams on any interface.
+</TD></TR>
+<TR><TD WIDTH=156><TT>udpLocalPort</TT></TD><TD WIDTH=115><TT>[0..65535]</TT>
+</TD><TD WIDTH=55></TD><TD WIDTH=381>Local port number for this listener.
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.9</B> Variables
+in <TT>udpTable</TT>.</CENTER>
+<P>
+Each time we describe the variables in an SNMP table,
+the first row of the figure indicates the value of the &quot;index&quot;
+used to reference each row of the table. We show some examples
+of this in the <a href="#25_6">next section</a>.
+<H4>Case Diagrams</H4>
+<P>
+There is a relationship between the first three counters
+in <a href="#fig_25_8">Figure 25.8</a>. Case Diagrams [Case and Partridge 1989] visually
+illustrate the relationships between the various MIB variables
+in a given group. Figure 25.10 is a Case Diagram for the UDP group.
+<P>
+<CENTER><a name="fig_25_10"><img src="f_25_10.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_25_10.gif"></a><br>
+<B>Figure 25.10 </B>Case
+Diagram for UDP group.</CENTER>
+<P>
+What this diagram shows is that the number of UDP
+datagrams delivered to applications (<TT>udpInDatagrams</TT>)
+is the number of UDP datagrams delivered from IP to UDP, minus
+<TT>udpInErrors</TT>, minus <TT>udpNoPorts</TT>.
+Also, the number of UDP datagrams delivered to IP (<TT>udpOutDatagrams</TT>)
+is the number passed to UDP from the applications. This illustrates
+that <TT>udpInDatagrams</TT> does not include
+<TT>udpInErrors</TT> or <TT>udpNoPorts</TT>.
+<P>
+These diagrams were used during the development of
+the MIB to verify that all data paths for a packet were accounted
+for. [Rose 1994] shows Case Diagrams for all the groups in the
+MIB.
+<a name="25_6"><H3>25.6 Instance Identification</H3></a>
+<P>
+Every variable in the MIB must be identified when
+SNMP is referencing it, to fetch or set its value. First, only
+leaf nodes are referenced. SNMP does not manipulate entire rows
+or columns of tables. Returning to <a href="#fig_25_7">Figure 25.7</a>, the leaf nodes
+are the four that we described in <a href="#fig_25_8">Figure 25.8</a> and the two in
+<a href="#fig_25_9">Figure 25.9</a>. <TT>mib</TT>, <TT>udp</TT>,
+<TT>udpTabie</TT>, and <TT>udpEntry</TT>
+are not leaf nodes.
+<H4>Simple Variables</H4>
+<P>
+Simple variables are referenced by appending &quot;.0&quot;
+to the variable's object identifier. For example, the counter
+<TT>udpInDatagrams</TT> from <a href="#fig_25_8">Figure 25.8</a>,
+whose object identifier is 1.3.6.1.2.1.7.1, is referenced as 1.3.6.1.2.1.7.1.0.
+The textual name of this reference is <TT>iso.org.dod.internet.mgmt.mib.udp.udpInDatagrams.0</TT>.
+<P>
+Although references to this variable are normally
+abbreviated as just <TT>udpInDatagrams.0</TT>,
+we reiterate that the <I>name</I> of the variable that appears
+in the SNMP message (<a href="#fig_25_2">Figure 25.2</a>) is the object identifier 1.3.6.1.2.1.7.1.0.
+<H4>Tables</H4>
+<P>
+Instance identification of table entries is more
+detailed. Let's return to the UDP listener table (<a href="#fig_25_7">Figure 25.7</a>).
+<P>
+One or more indexes are specified in the MIB for
+each table. For the UDP listener table, the MIB defines the index
+as the combination of the two variables <TT>udpLocalAddress</TT>,
+which is an IP address, and <TT>udpLocalPort</TT>,
+which is an integer. (We showed this index in the top row in <a href="#fig_25_9">Figure 25.9</a>.)
+<P>
+Assume there are three rows in the UDP listener table:
+the first row is for IP address 0.0.0.0 and port 67, the second
+for 0.0.0.0 and port 161, and the third for 0.0.0.0 and port 520.
+Figure 25.11 shows this table.
+<P>
+<CENTER>
+<a name="fig_25_11"><TABLE BORDER=1></a>
+<TR><TD WIDTH=142><CENTER><TT>udpLocalAddress</TT></CENTER></TD>
+<TD WIDTH=123><CENTER><TT>udpLocalPort</TT></CENTER></TD></TR>
+<TR><TD WIDTH=142><CENTER>0.0.0.0</CENTER>
+</TD><TD WIDTH=123><CENTER>67</CENTER>
+</TD></TR>
+<TR><TD WIDTH=142><CENTER>0.0.0.0</CENTER>
+</TD><TD WIDTH=123><CENTER>161</CENTER>
+</TD></TR>
+<TR><TD WIDTH=142><CENTER>0.0.0.0</CENTER>
+</TD><TD WIDTH=123><CENTER>520</CENTER>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.11</B> Sample
+UDP listener table.</CENTER>
+<P>
+This implies that the system is willing to receive
+UDP datagrams on any interface for ports 67 (BOOTP server), 161
+(SNMP), and 520 (RIP). The three rows in the table are referenced
+as shown in <a href="#fig_25_12">Figure 25.12</a>.
+<H4>Lexicographic Ordering</H4>
+<P>
+There is an implied ordering in the MIB based on
+the order of the object identifiers. All the entries in MIB tables
+are lexicographically ordered by their object identifiers. This
+means the six variables in Figure 25.12 are ordered in the MIB
+as shown in Figure 25.13. Two key points result from this lexicographic
+ordering.
+<P>
+<CENTER>
+<a name="fig_25_12"><TABLE BORDER=1></a>
+<TR><TD WIDTH=47><CENTER>Row</CENTER></TD>
+<TD WIDTH=170><CENTER>Object identifier</CENTER>
+</TD><TD WIDTH=274><CENTER>Abbreviated name</CENTER>
+</TD><TD WIDTH=67><CENTER>Value</CENTER></TD>
+</TR>
+<TR><TD WIDTH=47><CENTER>1</CENTER></TD><TD WIDTH=170>1.3.6.1.2.1.7.5.1.1.0.0.0.0.67<BR>
+1.3.6.1.2.1.7.5.1.2.0.0.0.0.67</TD><TD WIDTH=274><TT>udpLocalAddress.0.0.0.0.67<BR>
+udpLocalPort.0.0.0.0.67</TT>
+</TD><TD WIDTH=67><CENTER>0.0.0.0<BR>
+67</CENTER>
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>2</CENTER></TD><TD WIDTH=170>1.3.6.1.2.1.7.5.1.1.0.0.0.0.161<BR>
+1.3.6.1.2.1.7.5.1.2.0.0.0.0.161</TD><TD WIDTH=274><TT>udpLocalAddress.0.0.0.0.161<BR>
+udpLocalPort.0.0.0.0.161</TT>
+</TD><TD WIDTH=67><CENTER>0.0.0.0
+<BR>
+161</CENTER>
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>3</CENTER></TD><TD WIDTH=170>1.3.6.1.2.1.7.5.1.1.0.0.0.0.520<BR>
+1.3.6.1.2.1.7.5.1.2.0.0.0.0.520</TD><TD WIDTH=274><TT>udpLocalAddress.0.0.0.0.520<BR>
+udpLocalPort.0.0.0.0.520</TT>
+</TD><TD WIDTH=67><CENTER>0.0.0.0
+<BR>
+520</CENTER>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.12</B> Instance
+identification for rows in UDP listener table.</CENTER>
+<P>
+<CENTER>
+<a name="fig_25_13"><TABLE BORDER=1></a>
+<TR><TD WIDTH=51><CENTER>Column</CENTER></TD>
+<TD WIDTH=166><CENTER>Object identifier<BR>
+(lexicographically ordered)</CENTER>
+</TD><TD WIDTH=283><CENTER>Abbreviated name</CENTER>
+</TD><TD WIDTH=57><CENTER>Value</CENTER></TD>
+</TR>
+<TR><TD WIDTH=51><CENTER>1</CENTER></TD><TD WIDTH=166>1.3.6.1.2.1.7.5.1.1.0.0.0.0.67
+<BR>
+1.3.6.1.2.1.7.5.1.1.0.0.0.0.161<BR>
+1.3.6.1.2.1.7.5.1.1.0.0.0.0.520
+</TD><TD WIDTH=283><TT>udpLocalAddress.0.0.0.0.67<BR>
+udpLocalAddress.0.0.0.0.161<BR>
+udpLocalAddress.0.0.0.0.520</TT>
+</TD><TD WIDTH=57><CENTER>0.0.0.0<BR>
+0.0.0.0<BR>
+0.0.0.0</CENTER>
+</TD></TR>
+<TR><TD WIDTH=51><CENTER>2</CENTER></TD><TD WIDTH=166>1.3.6.1.2.1.7.5.1.2.0.0.0.0.67
+<BR>
+1.3.6.1.2.1.7.5.1.2.0.0.0.0.161<BR>
+1.3.6.1.2.1.7.5.1.2.0.0.0.0.520
+</TD><TD WIDTH=283><TT>udpLocalPort.0.0.0.0.67<BR>
+udpLocalPort.0.0.0.0.161<BR>
+udpLocalPort.0.0.0.0.520</TT>
+</TD><TD WIDTH=57><CENTER>67<BR>
+161<BR>
+520</CENTER>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.13</B> Lexicographic
+ordering of UDP listener table.</CENTER>
+<OL>
+<LI>Since all instances for a given variable (<TT>udpLocalAddress</TT>)
+appear before all instances for the next variable in the table
+(<TT>udpLocalPort</TT>),
+this implies that tables are accessed in a column-row order. This
+results from the lexicographic ordering of the object identifiers,
+not the human-readable names.
+<LI>The ordering of the rows in a table depends on
+the values of the indexes for the table. In Figure 25.13, 67 is
+lexicographically less than 161, which is lexicographically less
+than 520.
+</OL>
+<P>
+Figure 25.14 shows this column-row order for our
+sample UDP listener table.
+<P>
+<CENTER><a name="fig_25_14"><img src="f_25_14.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_25_14.gif"></a><br>
+<B>Figure 25.14</B> UDP
+listener table, showing column-row ordering.</CENTER>
+<P>
+We'll also see this column-row ordering when we use
+the get-next operator in the <a href="#25_7">next section</a>.
+<a name="25_7"><H3>25.7 Simple Examples</H3></a>
+<P>
+In this section we'll show some examples that fetch
+the values of variables from an SNMP agent. The software used
+to query the agent is called <TT>snmpi</TT>
+and is from the ISODE system. Both are described briefly in [Rose
+1994].
+<H4>Simple Variables</H4>
+<P>
+We'll query a router for two simple variables from
+the UDP group:
+<P>
+<TT>sun % <B>snmpi -a gateway
+-c secret</B></TT>
+<P>
+<TT>snmpi&gt; <B>get udpInDatagrams.0
+udpNoPorta.0<BR>
+</B>udplnDatagrams.0=616168<BR>
+udpNoPorts.0=33</TT>
+<P>
+<TT>snmpi&gt; <B>quit</B></TT>
+<P>
+The <TT>-a</TT> option identifies
+the agent we want to communicate with, and the <TT>-c</TT>
+option specifies the SNMP <I>community.</I> It is a password supplied
+by the client (<TT>snmpi</TT> in this case)
+and if the server (the agent in the system <TT>gateway</TT>)
+recognizes the community name, it honors the manager's request.
+An agent could allow clients within one community read-only access
+to its variables, and clients in another community read-write
+access.
+<P>
+The program outputs its <TT>snmpi&gt;</TT>
+prompt, and we can type commands such as <TT>get</TT>,
+which translates into an SNMP <TT>get-request</TT>
+message. When we're done, we type <TT>quit</TT>.
+(In all further examples we'll remove this final <TT>quit</TT>
+command.) Figure 25.15 shows the two lines of <TT>tcpdump</TT>
+output for this example.
+<P>
+<CENTER>
+<a name="fig_25_15"><TABLE></a>
+<TR><TD WIDTH=34>1</TD><TD WIDTH=151><TT>0.0</TT>
+</TD><TD WIDTH=413>sun.1024 &gt; gateway.161: GetRequest(42)
+<BR>
+1.3.6.1.2.1.7.1.0 1.3.6.1.2.1.7.2.0
+</TD></TR>
+<TR><TD WIDTH=34>2</TD><TD WIDTH=151><TT>0.348875 (0.3489)</TT>
+</TD><TD WIDTH=413>gateway.161 &gt; sun.1024: GetResponse(46)<BR>
+1.3.6.1.2.1.7.1.0=616168<BR>
+1.3.6.1.2.1.7.2.0=33
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.15</B> <TT>tcpdump</TT>
+output for simple SNMP query.</CENTER>
+<P>
+The request for the two variables is sent in a single
+UDP datagram, and the response is also a single UDP datagram.
+<P>
+We show the variables as their respective object
+identifiers, because that is what's sent in the SNMP messages.
+We had to specify the instance of the two variables as 0. Notice
+also that the <I>name</I> of the variable (its object identifier)
+is always returned in the response. We'll see below that this
+is required for the <TT>get-next</TT> operator
+to work.
+<H4><TT>get-next</TT> Operator</H4>
+<P>
+The operation of the <TT>get-next</TT>
+operator is based on the lexicographic ordering of the MIB. We
+start the following example by asking for the next object identifier
+after <TT>udp</TT> (without specifying
+any instance, since this is not a leaf object). This returns the
+first object in the UDP group. We then ask for the
+next entry after this one, and the second entry is returned. We
+repeat this one more time to get the third entry:
+<P>
+<TT>sun % <B>sninpi -a gateway
+-c secret</B></TT>
+<P>
+<TT>snmpi&gt; <B>next udp<BR>
+</B>udpInDatagrams.0=616318</TT>
+<P>
+<TT>snmpi&gt; <B>next udpInDatagraros.0
+<BR>
+</B>udpNoPorts.0=33</TT>
+<P>
+<TT>snmpi&gt; <B>next udpNoPorts.0
+<BR>
+</B>udpInErrors.0=0</TT>
+<P>
+This example shows why a <TT>get-next</TT>
+operator must return the name of the variable: we ask the agent
+for the next variable, and the agent returns its <I>name</I> and
+<I>value.</I>
+<P>
+Using the <TT>get-next</TT> operator
+in this fashion, one could imagine a manager with a loop that
+starts at the beginning of the MIB and queries the agent for every
+variable that the agent maintains. Another use of this operator
+is to iterate through tables.
+<H4>Table Access</H4>
+<P>
+We can reiterate the column-row ordering of tables
+using our simple query program to step through the entire UDP
+listener table. We start by asking for the next variable after
+<TT>udpTable</TT>. Since this is not a leaf
+object we can't specify an instance, but the <TT>get-next</TT>
+operator still returns the next object in the table. We then work
+our way through the table, with the agent returning the next variable,
+in column-row order:
+<P>
+<TT>sun % <B>snmpi-a gateway -c
+secret</B></TT>
+<P>
+<TT>snmpi&gt; <B>next udpTable
+<BR>
+</B>udpLocalAddress.0.0.0.0.67=0.0.0.0</TT>
+<P>
+<TT>snmpi&gt; <B>next udpLocalAddress.0.0.0.0.67
+<BR>
+</B>udpLocalAddress.0.0.0.0.161-0.0.0.0</TT>
+<P>
+<TT>snmpi&gt; <B>next udpLocalAddress.0.0.0.0.161
+<BR>
+</B>udpLocalAddress.0.0.0.0.52 0=0.0.0.0</TT>
+<P>
+<TT>snmpi&gt; <B>next udpLocalAddress.0.0.0.0.520
+<BR>
+</B>udpLocalPort.0.0.0.0.67=67</TT>
+<P>
+<TT>snmpi&gt; <B>next udpLocalPort.0.0.0.0.67
+<BR>
+</B>udpLocalPort.0.0.0.0.161=161</TT>
+<P>
+<TT>snmpi&gt; <B>next udpLocalPort.0.0.0.0.161
+<BR>
+</B>udpLocalPort.0.0.0.0.520=520</TT>
+<P>
+<TT>snmpi&gt; <B>next udpLocalPort.0.0.0.0.520
+<BR>
+</B>snmpInPkts.0=59 </TT><I>we're finished
+with the UDP listener table</I>
+<P>
+We see that the order returned corresponds to <a href="#fig_25_14">Figure 25.14</a>.
+<P>
+How does a manager know when it reaches the end of
+a table? Since the response to the <TT>get-next</TT>
+operator contains the name of the next entry in the MIB after
+the table, the manager can tell when the name changes. In our
+example the last entry in the UDP listener table is followed by
+the variable <TT>snmpInPkts</TT>.
+<a name="25_8"><H3>25.8 Management Information Base (Continued)</H3></a>
+<P>
+We now return to the description of the MIB. We describe
+only the following groups: <TT>system</TT>
+(system identification), <TT>if</TT> (interfaces)
+, <TT>at</TT> (address translation), <TT>ip</TT>,
+<TT>icmp</TT>, and <TT>tcp</TT>.
+Additional groups are defined.
+<H4><TT>system</TT> Group</H4>
+<P>
+The <TT>system</TT> group is
+simple; it consists of seven simple variables (i.e., no tables).
+Figure 25.16 shows their names, data types, and descriptions.
+<P>
+<CENTER>
+<a name="fig_25_16"><TABLE BORDER=1></a>
+<TR><TD WIDTH=113><CENTER>Name</CENTER></TD>
+<TD WIDTH=123><CENTER><TT>Datatype</TT></CENTER></TD><TD WIDTH=38><CENTER>R/W</CENTER>
+</TD><TD WIDTH=331><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=113><TT>sysDescr</TT></TD><TD WIDTH=123><TT>Display String</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=331>Textual description of entity.
+</TD></TR>
+<TR><TD WIDTH=113><TT>sysObjectID</TT></TD><TD WIDTH=123><TT>ObjectID</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=331>Vendor's ID within the subtree 1.3.6.1.4.1.
+</TD></TR>
+<TR><TD WIDTH=113><TT>sysUpTime</TT></TD><TD WIDTH=123><TT>TimeTicks</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=331>Time in hundredths of a second since network management portion of system was rebooted.
+</TD></TR>
+<TR><TD WIDTH=113><TT>sysContact</TT></TD><TD WIDTH=123><TT>DisplayString</TT>
+</TD><TD WIDTH=38>*</TD><TD WIDTH=331>Name of contact person and how to contact them.
+</TD></TR>
+<TR><TD WIDTH=113><TT>sysName</TT></TD><TD WIDTH=123><TT>DisplayString</TT>
+</TD><TD WIDTH=38>*</TD><TD WIDTH=331>Node's fully qualified domain name (FQDN).
+</TD></TR>
+<TR><TD WIDTH=113><TT>sysLocation</TT></TD><TD WIDTH=123><TT>DisplayString</TT>
+</TD><TD WIDTH=38>*</TD><TD WIDTH=331>Physical location of node.
+</TD></TR>
+<TR><TD WIDTH=113><TT>sysServices</TT></TD><TD WIDTH=123><TT>[0..127]</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=331>Value indicating services provided by node. It is the sum of the layers in the OSI model supported by the node. The following values are added together, depending on the services provided: 0x01 (physical)
+, 0x02 (datalink), 0x04 (internet), 0x08 (end-to-end), 0x40 (application).
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.16</B> Simple
+variables in <TT>system</TT> group.</CENTER>
+<P>
+We can query the router <TT>netb</TT>
+for some of these variables:
+<P>
+<TT>sun % <B>snmpi -a netb -c secret</B></TT>
+<P>
+<TT>snmpi&gt; <B>get sysDescr.0 sysObjectID.0 sysDpTime.0
+sysServices.0<BR>
+</B>sysDescr.0=&quot;Epilogue Technology SNMP agent for Telebit
+NetBlazer&quot;<BR>
+sysObjectID.0=1.3.6.1.4.1.12.42.3.1<BR>
+sysUpTime.0=22 days, 11 hours, 23 minutes, 2 seconds (194178200
+timeticks)<BR>
+sysServices.0=0xc&lt;internet,transport&gt;</TT>
+<P>
+The system's object identifier is in the <TT>internet.private.enterprises</TT>
+group (1.3.6.1.4.1) from <a href="#fig_25_6">Figure 25.6</a>. From the Assigned
+Numbers RFC we can determine that the next object identifier (12)
+is assigned to the vendor (Epilogue).
+<P>
+We can also see that the <TT>sysServices</TT>
+variable is the sum of 4 and 8: this element supports the Internet
+layer (i.e., routing) and the transport layer (i.e., end-to-end).
+<H4><TT>interface</TT> Group</H4>
+<P>
+Only one simple variable is defined for this group:
+the number of interfaces on the system, shown in Figure 25.17.
+<P>
+<CENTER>
+<a name="fig_25_17"><TABLE BORDER=1></a>
+<TR><TD WIDTH=85><CENTER>Name</CENTER></TD>
+<TD WIDTH=76><CENTER>Datatype</CENTER></TD>
+<TD WIDTH=38><CENTER>R/W</CENTER></TD><TD WIDTH=274><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=85><TT>ifNumber</TT></TD><TD WIDTH=76><TT>INTEGER</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=274>Number of network interfaces on system.
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.17</B> Simple
+variable in <TT>if</TT> group.</CENTER>
+<P>
+This group also defines a table with 22 columns.
+Each row of the table defines the characteristics for each interface,
+as shown in Figure 25.18.
+<P>
+<CENTER>
+<a name="fig_25_18"><TABLE BORDER=1></a>
+<TR><TD COLSPAN=4 WIDTH=727><CENTER>Interface table, index = &lt; <I>IfIndex </I>&gt;</CENTER>
+</TD></TR>
+<TR><TD WIDTH=155><CENTER>Name</CENTER></TD>
+<TD WIDTH=140><CENTER>Datatype</CENTER></TD>
+<TD WIDTH=54><CENTER>R/W</CENTER></TD><TD WIDTH=380><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifIndex</TT></TD><TD WIDTH=140><TT>INTEGER</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Index of interface, between one and if Number.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifDescr</TT></TD><TD WIDTH=140><TT>DisplayString</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Textual description of interface.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifType</TT></TD><TD WIDTH=140><TT>INTEGER</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Type, for example: 6 = Ethernet, 7 = 802.3 Ethernet, 9 <I>=</I> 802.5 token ring, 23 = PPP, 28 <I>=</I> SLIP, and many other values.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifMtu</TT></TD><TD WIDTH=140><TT>INTEGER</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>MTU of interface.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifSpeed</TT></TD><TD WIDTH=140><TT>Gauge</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Speed in bits/sec.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifPhysAddress</TT></TD><TD WIDTH=140><TT>PhysAddress</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Physical address, or string of 0 length for interfaces without physical addresses (e.g., serial links).
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifAdminStatus</TT></TD><TD WIDTH=140><TT>[1..3]</TT>
+</TD><TD WIDTH=54><CENTER>*</CENTER></TD>
+<TD WIDTH=380>Desired state of interface: 1 = up, 2 = down, 3 = testing.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifOperStatus</TT></TD><TD WIDTH=140><TT>[1..3]</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Current state of interface: 1 = up, 2 <I>=</I> down, 3 <I>=</I> testing.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifLastChange</TT></TD><TD WIDTH=140><TT>TimeTicks</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Value of <tt>sysUpTime</tt> when interface entered current operational state.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifInoctets</TT></TD><TD WIDTH=140><TT>Counter</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Total number of bytes received, including framing characters.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifInUcastPkts</TT></TD><TD WIDTH=140><TT>Counter</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Number of unicast packets delivered to higher layers.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifInNUcastPkts</TT></TD><TD WIDTH=140><TT>Counter</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Number of nonunicast (i.e., broadcast or multicast) packets delivered to higher layers.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifInDiscards</TT></TD><TD WIDTH=140><TT>Counter</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Number of received packets discarded even though no error in packet (i.e., out of buffers).
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifInErrors</TT></TD><TD WIDTH=140><TT>Counter</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Number of received packets discarded because of errors.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifInUnknownProtos</TT></TD><TD WIDTH=140><TT>Counter</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Number of received packets discarded because of unknown protocol.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifOutoctets</TT></TD><TD WIDTH=140><TT>Counter</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Number of bytes transmitted, including framing characters.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifOutUcastPkts</TT></TD><TD WIDTH=140><TT>Counter</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Number of unicast packets received from higher layers.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifOutNUcastPkts</TT></TD><TD WIDTH=140><TT>Counter</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Number of nonunicast (i.e., broadcast or multicast) packets received from higher layers.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifOutDiscards</TT></TD><TD WIDTH=140><TT>Counter</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Number of outbound packets discarded even though no error in packet (i.e., out of buffers).
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifOutErrors</TT></TD><TD WIDTH=140><TT>Counter</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Number of outbound packets discarded because of errors.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifOutQLen</TT></TD><TD WIDTH=140><TT>Gauge</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>Number of packets in output queue.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ifSpecific</TT></TD><TD WIDTH=140><TT>ObjectID</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=380>A reference to MIB definitions specific to this particular type of media.
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.18</B> Variables
+in interface table: <TT>ifTable</TT>.</CENTER>
+<P>
+We can query the host <TT>sun</TT>
+for some of these variables for all its interfaces. Wet expect
+to find three interfaces, as in <a href="ip_inter.htm#3_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_8">Section 3.8</a>, if the SLIP interface
+is up:
+<P>
+<TT>sun % <B>snmpi -a sun</B></TT>
+<P>
+<TT>snropi&gt; <B>next ifTable</B>
+<I>first see what index of first
+interface is<BR>
+</I>if Index.1=1</TT>
+<P>
+<TT>snmpi&gt; get ifDescr.1 if Type.1 ifMtu.1 if Speed.1 ifPhysAddress.1
+<BR>
+ifDescr.1=&quot;le0&quot;<BR>
+if Type.1=ethernet-csmacd(6)<BR>
+ifMtu.1=1500<BR>
+ifSpeed, 1=10000000<BR>
+ifPhysAddress.1=0x08:00:20;03:f6:42</TT>
+<P>
+<TT>snmpi&gt; next ifDescr.1 if Type.1 ifMtu.1 if Speed.1 ifPhysAddress.1</TT>
+<P>
+<TT>ifDescr.2=&quot;sl0&quot;<BR>
+ifType.2=propPointToPointSerial(22)
+<BR>
+ifMtu.2=552<BR>
+ifSpeed.2=0<BR>
+ifPhysAddress.2=0x00:00:00:00:00:00</TT>
+<P>
+<TT>snmpi&gt; next ifDescr.2 ifType.2 ifMtu.2 if Speed.2 ifPhysAddress.2
+<BR>
+ifDescr.3=&quot;lo0&quot;<BR>
+ifType.3=softwareLoopback(24)<BR>
+ifMtu.3=1536<BR>
+ifSpeed.3=0<BR>
+ifPhysAddress.3=0x00:00:00:00:00:00</TT>
+<P>
+We first get five variables for the first interface
+using the <TT>get</TT> operator, and then
+get the same five variables for the second interface using the
+<TT>get-next</TT> operator. The last command
+gets these same five variables for the third interface, again
+using the <TT>get-next</TT> command.
+<P>
+The interface type for the SLIP link is reported
+as proprietary point-to-point serial, not SLIP. Also, the speed
+of the SLIP link is not reported.
+<P>
+It is critical to understand the relationship between
+the <TT>get-next</TT> operator and the column-row
+ordering. When we say next <TT>ifDescr.1</TT>
+it returns the next row of the table for this variable, not the
+next variable in the same row. If tables were stored in a row-column
+order instead, we wouldn't be able to step to the next occurrence
+of a given variable this way.
+<H4><TT>at</TT> Group</H4>
+<P>
+The address translation group is mandatory for all
+systems, but was deprecated by MIB-II. Starting with MIB-II, each
+network protocol group (e.g., IP) contains its own address translation
+tables. For IP it is the <TT>ipNetToMediaTable</TT>.
+<P>
+Only a single table with three columns is defined
+for the <TT>at</TT> group, shown in Figure 25.19.
+<P>
+We can use a new command within the <TT>snmpi</TT>
+program to dump an entire table. We'll query the router named
+<TT>kinetics</TT> (which routes between a
+TCP/IP network and an AppleTalk network) for its entire ARP cache.
+This output reiterates the lexicographic ordering of the entries
+in the table:
+<P>
+<CENTER>
+<a name="fig_25_19"><TABLE BORDER=1></a>
+<TR><TD COLSPAN=4 WIDTH=727>Address translation table, index <I>=</I> &lt;<I> atIflndex</I> &gt;.1.&lt; <I>atNetAddress </I>&gt;
+</TD></TR>
+<TR><TD WIDTH=146><CENTER>Name</CENTER></TD>
+<TD WIDTH=146><CENTER>Datatype</CENTER></TD>
+<TD WIDTH=56><CENTER>R/W</CENTER></TD><TD WIDTH=380><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=146><TT>atiflndex</TT></TD><TD WIDTH=146><TT>INTEGER</TT>
+</TD><TD WIDTH=56><CENTER>*</CENTER></TD><TD WIDTH=380>Interface number: <TT>ifIndex</TT>.
+</TD></TR>
+<TR><TD WIDTH=146><TT>atPhysAddress</TT></TD><TD WIDTH=146><TT>PhysAddress</TT>
+</TD><TD WIDTH=56><CENTER>*</CENTER></TD><TD WIDTH=380>Physical address. Setting this to a string of 0 length invalidates the entry.
+</TD></TR>
+<TR><TD WIDTH=146><TT>atNetAddress</TT></TD><TD WIDTH=146><TT>NetworkAddress</TT>
+</TD><TD WIDTH=56><CENTER>*</CENTER></TD><TD WIDTH=380>IP address.
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.19</B> Address
+translation table: <TT>atTable</TT>.</CENTER>
+<P>
+<TT>sun % snmpi -a kinetics -c secret dump at</TT>
+<P>
+<TT>atiflndex.1.1.140.252.1.4=1<BR>
+atiflndex.1.1.140.252.1.22=1<BR>
+atiflndex.1.1.140.252.1.183=1<BR>
+atiflndex.2.1.140.252.6.4=2<BR>
+atiflndex.2.1.140.252.6.6=2</TT>
+<P>
+<TT>atPhysAddress.1.1.140.252.1.4=0xaa:00:04:00:f4:14<BR>
+atPhysAddress.1.1.140.252.1.22=0x08:00:20:0f:2d:38
+<BR>
+atPhysAddress.1.1.140.252.1.183=0x00:80:ad:03:6a:80<BR>
+atPhysAddress.2.1.140.252.6.4=0x00:02:16:48<BR>
+atPhysAddress.2.1.140.252.6.6=0x00:02:3c:48</TT>
+<P>
+<TT>atNetAddress.1.1.140.252.1.4=140.252.1.4<BR>
+atNetAddress.1.1.140.252.1.22=140.252.1.22
+<BR>
+atNetAddress.1.1.140.252.1.183=140.252.1.183<BR>
+atNetAddress.2.1.140.252.6.4=140.252.6.4<BR>
+atNetAddress.2.1.140.252.6.6=140.252.6.6</TT>
+<P>
+If we watch the packet exchange using <TT>tcpdump</TT>,
+when <TT>snmpi</TT> dumps an entire table
+it first issues a <TT>get-next</TT> for the
+table name (<TT>at</TT> in this example) to
+get the first entry. It prints the first entry and issues another
+<TT>get-next</TT>. This continues until the
+entire table has been dumped.
+<P>
+Figure 25.20 shows the arrangement of this table.
+<P>
+<CENTER>
+<a name="fig_25_20"><TABLE BORDER=1></a>
+<TR><TD WIDTH=85><TT>atIflndex</TT></TD><TD WIDTH=180><TT>atPhysAddress</TT>
+</TD><TD WIDTH=113><TT>atNetAddress</TT></TD></TR>
+<TR><TD WIDTH=85><CENTER>1</CENTER></TD><TD WIDTH=180><TT>0xaa:00:04:00:f4:14</TT>
+</TD><TD WIDTH=113>140.252.1.4</TD></TR>
+<TR><TD WIDTH=85><CENTER>1</CENTER></TD><TD WIDTH=180><TT>0x08:00:20:0f:2d:38</TT>
+</TD><TD WIDTH=113>140.252.1.22</TD></TR>
+<TR><TD WIDTH=85><CENTER>1</CENTER></TD><TD WIDTH=180><TT>0x00:80:ad:03:6a:80</TT>
+</TD><TD WIDTH=113>140.252.1.183</TD></TR>
+<TR><TD WIDTH=85><CENTER>2</CENTER></TD><TD WIDTH=180><TT>0x00:02:16:48</TT>
+</TD><TD WIDTH=113>140.252.6.4</TD></TR>
+<TR><TD WIDTH=85><CENTER>2</CENTER></TD><TD WIDTH=180><TT>0x00:02:3c:48</TT>
+</TD><TD WIDTH=113>140.252.6.6</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.20</B> Example
+of <TT>at</TT> table (ARP cache).</CENTER>
+<P>
+The AppleTalk physical addresses on interface number
+2 are 32-bit values, not the 48-bit Ethernet addresses to which
+we're accustomed. Also note that an entry exists for our router
+(<TT>netb</TT> at 140.252.1.183), which we
+expect, since <TT>kinetics</TT> and <TT>netb</TT>
+are on the same Ethernet (140.252.1) and <TT>kinetics</TT>
+must use ARP to send the SNMP responses back to us.
+<H4><TT>ip</TT> Group</H4>
+<P>
+The <TT>ip</TT> group defines
+numerous variables and three tables. Figure 25.21 defines the
+simple variables.
+<P>
+<CENTER>
+<a name="fig_25_21"><TABLE BORDER=1></a>
+<TR><TD WIDTH=161><CENTER>Name</CENTER></TD>
+<TD WIDTH=85><CENTER>Datatype</CENTER></TD>
+<TD WIDTH=38><CENTER>R/W</CENTER></TD><TD WIDTH=378><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipForwarding</TT></TD><TD WIDTH=85><TT>[1..2]</TT>
+</TD><TD WIDTH=38>*</TD><TD WIDTH=378>1 means the system is forwarding IP datagrams, and 2 means it is not.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipDefaultTTL</TT></TD><TD WIDTH=85><TT>INTEGER</TT>
+</TD><TD WIDTH=38>*</TD><TD WIDTH=378>Default TTL value when transport layer doesn't provide one.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipInReceives</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Total number of received IP datagrams from all interfaces.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipInHdrErrors</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of IP datagrams discarded because of header errors (e.g., checksum error, version number mismatch, TTL exceeded, etc.).
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipInAddrErrors</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of IP datagrams discarded because of incorrect destination address.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipForwDatagrams</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of IP datagrams for which an attempt was made to forward.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipInUnknownProtos</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of locally addressed IP datagrams with an invalid protocol field.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipInDiscards</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of received IP datagrams discarded because of a lack of buffer space.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipInDelivers</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of IP datagrams delivered to appropriate protocol module.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipOutRequests</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Total number of IP datagrams passed to IP for transmission. Does not include those counted in <TT>ipForwDatagrams</TT>.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipOutDiscards</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of output IP datagrams discarded because of a lack of buffer space.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipOutNoRoutes</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of IP datagrams discarded because no route could be found.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipReasmTimeout</TT></TD><TD WIDTH=85><TT>INTEGER</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Maximum number of seconds that received fragments are held while awaiting reassembly.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipReasmReqds</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of IP fragments received that needed to be reassembled.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipReasmOKs</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of IP datagrams successfully reassembled.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipReasmFails</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of failures by IP reassembly algorithm.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipFragOKs</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of IP datagrams that have been successfully fragmented.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipFragFails</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of IP datagrams that needed to be fragmented but couldn't because the &quot;don't fragment&quot; flag was set.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipFragCreates</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of IP fragments generated by fragmentation.
+</TD></TR>
+<TR><TD WIDTH=161><TT>ipRoutingDiscards</TT></TD><TD WIDTH=85><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of routing entries chosen to be discarded even though they were valid.
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.21</B> Simple
+variables in <TT>ip</TT> group.</CENTER>
+<P>
+The first table in the <TT>ip</TT>
+group is the IP address table. It contains one row for each IP
+address on the system. Each row contains five variables, described
+in Figure 25.22.
+<P>
+<CENTER>
+<a name="fig_25_22"><TABLE BORDER=1></a>
+<TR><TD COLSPAN=4 WIDTH=727><CENTER>IP address table, index <I>=</I> &lt;<I> ipAdEntAddr &gt;</I></CENTER>
+</TD></TR>
+<TR><TD WIDTH=162><CENTER>Name</CENTER></TD>
+<TD WIDTH=124><CENTER>Datatype</CENTER></TD>
+<TD WIDTH=54><CENTER>R/W</CENTER></TD><TD WIDTH=388><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=162><TT>ipAdEntAddr</TT></TD><TD WIDTH=124><TT>lpAddress</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=388>IP address for this row.
+</TD></TR>
+<TR><TD WIDTH=162><TT>ipAdEntIf Index</TT></TD><TD WIDTH=124><TT>INTEGER </TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=388>Corresponding interface number: <TT>ifIndex</TT>.
+</TD></TR>
+<TR><TD WIDTH=162><TT>ipAdEntNetMask</TT></TD><TD WIDTH=124><TT>lpAddress</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=388>Subnet mask for this IP address.
+</TD></TR>
+<TR><TD WIDTH=162><TT>ipAdEntBcastAddr </TT></TD><TD WIDTH=124><TT>[0..1]</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=388>Value of least-significant bit of the IP broadcast address. Normally 1.
+</TD></TR>
+<TR><TD WIDTH=162><TT>ipAdEntReasmMaxSize</TT></TD><TD WIDTH=124><TT>[0..65535]</TT>
+</TD><TD WIDTH=54></TD><TD WIDTH=388>Size of largest IP datagram received on this interface that can be reassembled.
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.22</B> IP
+address table: <TT>ipAddrTable</TT>.</CENTER>
+<P>
+We can query the host sun for its entire IP address
+table:
+<P>
+<TABLE >
+<TR><TD COLSPAN=2 WIDTH=722><TT>sun % <B>snmpi -a sun dump ipAddrTable</B></TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=722><TT>ipAdEntAddr.127.0.0.1=127.0.0.1 <BR>
+ipAdEntAddr.140.252.1.29=140.252.1.29<BR>
+ipAdEntAddr.140.252.13.33=140.252.13.33</TT>
+</TD></TR>
+<TR><TD WIDTH=376><TT>ipAdEntIfIndex.127.0.0.1=3<BR>
+ipAdEntIfIndex.140.252.1.29=2<BR>
+ipAdEntIfIndex.140.252.13.33=1</TT>
+</TD><TD WIDTH=346><I>loopback interface, <TT><I>lo0
+<BR>
+</I></TT>SLIP interface, <TT><I>sl0
+<BR>
+</I></TT>Ethernet interface, <TT><I>le0</I></TT></I>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=722><TT>ipAdEntNetMask.127.0.0.1=255.0.0.0
+<BR>
+ipAdEntNetMask.140.252.1.29=255.255.255.0<BR>
+ipAdEntNetMask.140.252.13.33=255.255.255.224</TT>
+</TD></TR>
+<TR><TD WIDTH=376><TT>ipAdEntBcastAddr.127.0.0.1=1<BR>
+ipAdEntBcastAddr.140.252.1.29=1<BR>
+ipAdEntBcastAddr.140.252.13.33=1</TT>
+</TD><TD WIDTH=346><I>all three use one bits for broadcast</I>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=722><TT>ipAdEntReasmMaxSize.127.0.0.1=65535<BR>
+ipAdEntReasmMaxSize.140.252.1.29=65535<BR>
+ipAdEntReasmMaxSize.140.252.13.33=65535</TT>
+</TD></TR>
+</TABLE>
+<P>
+The interface numbers can be compared with the output
+following <a href="#fig_25_18">Figure 25.18</a>, and the IP addresses and subnet masks
+can be compared with the values output by the <TT>ifconfig</TT>
+command in <a href="ip_inter.htm#3_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_8">Section 3.8</a>.
+<P>
+The next table, Figure 25.23, is the IP routing table.
+(Recall our description of routing tables in <a href="ip_rout.htm#9_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_2">Section 9.2</a>.) The
+index used to access each row of the table is the destination
+IP address.
+<P>
+Figure 25.24 is the IP routing table on the host
+sun obtained with the <TT>dump</TT> <TT>ipRouteTable</TT>
+command using <TT>snmpi</TT>. We have deleted
+all five of the routing metrics, since they are all -1. In the
+column headings we've also removed the prefix <TT>ipRoute</TT>
+from each variable name.
+<P>
+<CENTER>
+<a name="fig_25_23"><TABLE BORDER=1></a>
+<TR><TD COLSPAN=4 WIDTH=727><CENTER>IP routing table, index = &lt; <I>ipRouteDest </I>&gt;</CENTER>
+</TD></TR>
+<TR><TD WIDTH=132><CENTER>Name</CENTER></TD>
+<TD WIDTH=112><CENTER>Datatype</CENTER></TD>
+<TD WIDTH=45><CENTER>R/W</CENTER></TD><TD WIDTH=405><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=132><TT>ipRouteDest</TT></TD><TD WIDTH=112><TT>lpAddress</TT>
+</TD><TD WIDTH=45>*</TD><TD WIDTH=405>Destination IP address. A value of 0.0.0.0 indicates a default entry.
+</TD></TR>
+<TR><TD WIDTH=132><TT>ipRoutelfIndex</TT></TD><TD WIDTH=112><TT>INTEGER</TT>
+</TD><TD WIDTH=45>*</TD><TD WIDTH=405>Interface number: <TT>ifIndex</TT>.
+</TD></TR>
+<TR><TD WIDTH=132><TT>ipRouteMetricI</TT></TD><TD WIDTH=112><TT>INTEGER</TT>
+</TD><TD WIDTH=45>*</TD><TD WIDTH=405>Primary routing metric. The meaning of the metric depends on the routing protocol (<TT>ipRouteProto</TT>). A value of -1 means it's not used.
+</TD></TR>
+<TR><TD WIDTH=132><TT>ipRouteMetric2</TT></TD><TD WIDTH=112><TT>INTEGER</TT>
+</TD><TD WIDTH=45>*</TD><TD WIDTH=405>Alternative routing metric.
+</TD></TR>
+<TR><TD WIDTH=132><TT>IpRouteMetric3</TT></TD><TD WIDTH=112><TT>INTEGER</TT>
+</TD><TD WIDTH=45>*</TD><TD WIDTH=405>Alternative routing metric.
+</TD></TR>
+<TR><TD WIDTH=132><TT>IpRouteMetric4</TT></TD><TD WIDTH=112><TT>INTEGER</TT>
+</TD><TD WIDTH=45>*</TD><TD WIDTH=405>Alternative routing metric.
+</TD></TR>
+<TR><TD WIDTH=132><TT>IpRouteNextHop</TT></TD><TD WIDTH=112><TT>IpAddress</TT>
+</TD><TD WIDTH=45>*</TD><TD WIDTH=405>IP address of next-hop router.
+</TD></TR>
+<TR><TD WIDTH=132><TT>IpRouteType</TT></TD><TD WIDTH=112><TT>INTEGER</TT>
+</TD><TD WIDTH=45>*</TD><TD WIDTH=405>Route type: 1 = other, 2 = invalidated route, 3 <I>=</I> direct, 4 = indirect.
+</TD></TR>
+<TR><TD WIDTH=132><TT>IpRouteProto</TT></TD><TD WIDTH=112><TT>INTEGER</TT>
+</TD><TD WIDTH=45></TD><TD WIDTH=405>Routing protocol: 1 = other, 4 = ICMP redirect, 8 = RIP, 13 <I>=</I> OSPF, 14 = BGP, and others.
+</TD></TR>
+<TR><TD WIDTH=132><TT>IpRouteAge</TT></TD><TD WIDTH=112><TT>INTEGER</TT>
+</TD><TD WIDTH=45>*</TD><TD WIDTH=405>Number of seconds since route was last updated or determined to be correct.
+</TD></TR>
+<TR><TD WIDTH=132><TT>IpRouteMask</TT></TD><TD WIDTH=112><TT>IpAddress</TT>
+</TD><TD WIDTH=45>*</TD><TD WIDTH=405>Mask to be logically ANDed with destination IP address before being compared with <TT>ipRouteDest</TT>.
+</TD></TR>
+<TR><TD WIDTH=132><TT>IpRouteMetrics</TT></TD><TD WIDTH=112><TT>INTEGER</TT>
+</TD><TD WIDTH=45>*</TD><TD WIDTH=405>Alternative routing metric.
+</TD></TR>
+<TR><TD WIDTH=132><TT>ipRouteInfo</TT></TD><TD WIDTH=112><TT>ObjectID</TT>
+</TD><TD WIDTH=45></TD><TD WIDTH=405>Reference to MIB definitions specific to this particular routing protocol.
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.23</B> IP
+routing table: <TT>ipRouteTable</TT>.</CENTER>
+<P>
+<CENTER>
+<a name="fig_25_24"><TABLE BORDER=1></a>
+<TR><TD WIDTH=95><TT>Dest</TT></TD><TD WIDTH=75><TT>IfIndex</TT>
+</TD><TD WIDTH=105><TT>NextHop</TT></TD><TD WIDTH=64><TT>Type</TT>
+</TD><TD WIDTH=58><TT>Proto</TT></TD><TD WIDTH=119><TT>Mask</TT>
+</TD></TR>
+<TR><TD WIDTH=95>0.0.0.0
+<BR>
+127.0.0.1<BR>
+140.252.1.183<BR>
+140.252.13.32<BR>
+140.252.13.65
+</TD><TD WIDTH=75><CENTER>2<BR>
+3<BR>
+2<BR>
+1<BR>
+1</CENTER>
+</TD><TD WIDTH=105>140.252.1.183<BR>
+127.0.0.1<BR>
+140.252.1.29<BR>
+140.252.13.33<BR>
+140.252.13.35
+</TD><TD WIDTH=64>indirect(4)<BR>
+direct(3)<BR>
+direct(3)<BR>
+direct(3)<BR>
+indirect(4)
+</TD><TD WIDTH=58>other(1)<BR>
+other(1)<BR>
+other(1)<BR>
+other(1)<BR>
+other(1)
+</TD><TD WIDTH=119>0.0.0.0<BR>
+255.255.255.255<BR>
+255.255.255.255<BR>
+255.255.0.0<BR>
+255.255.255.255
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.24</B> IP
+routing table for the router <TT>sun</TT>.</CENTER>
+<P>
+For comparison, here is the IP routing table in the
+format output by <TT>netstat</TT> (which we
+discussed in <a href="ip_rout.htm#9_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_2">Section 9.2</a>). Figure 25.24 is lexicographically ordered,
+unlike the <TT>netstat</TT> output:
+<P>
+<TABLE >
+<TR><TD COLSPAN=6 WIDTH=605><TT>sun <I>%</I><B> netstat -rn</B></TT>
+</TD></TR>
+<TR><TD COLSPAN=6 WIDTH=605><TT>Routing tables</TT>
+</TD></TR>
+<TR><TD WIDTH=121><TT>Destination</TT></TD><TD WIDTH=123><TT>Gateway</TT>
+</TD><TD WIDTH=89><TT>Flags</TT></TD><TD WIDTH=89><TT>Refcnt</TT>
+</TD><TD WIDTH=89><TT>Use</TT></TD><TD WIDTH=93><TT>Interface</TT>
+</TD></TR>
+<TR><TD WIDTH=121><TT>140.252.13.65</TT></TD><TD WIDTH=123><TT>140.252.13.35</TT>
+</TD><TD WIDTH=89><TT>UGH</TT></TD><TD WIDTH=89><TT>0</TT></TD>
+<TD WIDTH=89><TT>115</TT></TD><TD WIDTH=93><TT>le0</TT></TD></TR>
+<TR><TD WIDTH=121><TT>127.0.0.1</TT></TD><TD WIDTH=123><TT>127.0.0.1</TT>
+</TD><TD WIDTH=89><TT>UH</TT></TD><TD WIDTH=89><TT>1</TT></TD>
+<TD WIDTH=89><TT>1107</TT></TD><TD WIDTH=93><TT>lo0</TT></TD>
+</TR>
+<TR><TD WIDTH=121><TT>140.252.1.183</TT></TD><TD WIDTH=123><TT>140.252.1.29</TT>
+</TD><TD WIDTH=89><TT>UH</TT></TD><TD WIDTH=89><TT>0</TT></TD>
+<TD WIDTH=89><TT>86</TT></TD><TD WIDTH=93><TT>sl0</TT></TD></TR>
+<TR><TD WIDTH=121><TT>default</TT></TD><TD WIDTH=123><TT>140.252.1.183</TT>
+</TD><TD WIDTH=89><TT>UG</TT></TD><TD WIDTH=89><TT>2</TT></TD>
+<TD WIDTH=89><TT>1628</TT></TD><TD WIDTH=93><TT>sl0</TT></TD>
+</TR>
+<TR><TD WIDTH=121><TT>140.252.13.32</TT></TD><TD WIDTH=123><TT>140.252.13.33</TT>
+</TD><TD WIDTH=89><TT>U</TT></TD><TD WIDTH=89><TT>8</TT></TD>
+<TD WIDTH=89><TT>68359</TT></TD><TD WIDTH=93><TT>le0</TT></TD>
+</TR>
+</TABLE>
+<P>
+The final table in the <TT>ip</TT>
+group is the address translation table. Figure 25.25. As we said
+earlier, the at group is now deprecated, and this IP table replaces
+it.
+<P>
+<CENTER>
+<a name="fig_25_25"><TABLE BORDER=1></a>
+<TR><TD COLSPAN=4 WIDTH=727><CENTER>IP address translation table, index = &lt; <I>ipNetToMedialfIndex </I>&gt;.&lt;<I> ipNetToMediaNetAddress </I>&gt;</CENTER>
+</TD></TR>
+<TR><TD WIDTH=155><CENTER>Name</CENTER></TD>
+<TD WIDTH=122><CENTER>Datatype</CENTER></TD>
+<TD WIDTH=45><CENTER>R/W</CENTER></TD><TD WIDTH=388><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=155><TT>ipNetToMedialfIndex</TT></TD><TD WIDTH=122><TT>INTEGER</TT>
+</TD><TD WIDTH=45>*</TD><TD WIDTH=388>Corresponding interface: if Index.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ipNetfoMediaPhysAddress</TT></TD><TD WIDTH=122><TT>PhysAddress</TT>
+</TD><TD WIDTH=45>*</TD><TD WIDTH=388>Physical address.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ipNetToMediaNetAddress</TT></TD><TD WIDTH=122><TT>lpAddress </TT>
+</TD><TD WIDTH=45>*</TD><TD WIDTH=388>IP address.
+</TD></TR>
+<TR><TD WIDTH=155><TT>ipNetToMediaType</TT></TD><TD WIDTH=122><TT>[1..4]</TT>
+</TD><TD WIDTH=45>*</TD><TD WIDTH=388>Type of mapping: 1 = other, 2 = invalidated, 3 = dynamic, 4 = static.
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.25</B> IP
+address translation table: <TT>ipNetToMediaTable</TT>.</CENTER>
+<P>
+Here is the ARP cache on the system <TT>sun</TT>:
+<P>
+<TT>sun % <B>arp -a</B></TT>
+<P>
+<TT>svr4 (140.252.13.34) at 0:0:c0:c2:9b:26<BR>
+bsdi (140.252.13.35) at 0:0:c0:6f:2d:40</TT>
+<P>
+and the corresponding SNMP output:
+<P>
+<TT>sun % <B>snmpi -a sun dump
+ipHetToMediaTable</B></TT>
+<P>
+<TT>ipNetToMedialfIndex.1.140.252.13.34=1<BR>
+ipNetToMedialfIndex.1.140.252.13.35=1
+<BR>
+ipNetToMediaPhysAddress.1.140.252.13.34=0x00:00:c0:c2:9b:26<BR>
+ipNetToMediaPhysAddress.1.140.252.13.35=0x00:00:c0:6f:2d:40<BR>
+ipNetToMediaNetAddress.1.140.252.13.34=140.252.13.34<BR>
+ipNetToMediaNetAddress.1.140.252.13.35=140.252.13.35<BR>
+ipNetToMediaType.1.140.252.13.34=dynamic(3)<BR>
+ipNetToMediaType.1.140.252.13.35=dynamic(3)</TT>
+<H4><TT>icrop</TT> Group</H4>
+<P>
+The <TT>icmp</TT> group consists
+of four general counters (total number of input and output ICMP
+messages, and number of input and output ICMP messages with errors)
+and 22 counters for the different ICMP message types: II input
+counters and II output counters. These are shown in Figure 25.26.
+<P>
+<CENTER>
+<a name="fig_25_26"><TABLE BORDER=1></a>
+<TR><TD WIDTH=175><CENTER>Name</CENTER></TD>
+<TD WIDTH=75><CENTER>Datatype</CENTER></TD>
+<TD WIDTH=38><CENTER>R/W</CENTER></TD><TD WIDTH=378><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpInMsgs</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Total number of received ICMP messages.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpInErrors</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of received ICMP messages with errors (e.g., invalid ICMP checksum).
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpInDestUnreachs</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of received ICMP destination unreachable message.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpInTimeExcds</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of received ICMP time exceeded message.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpInParmProbs</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of received ICMP parameter problem message.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpInSrcQuenchs</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of received ICMP source quench messages.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpInRedirects</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of received ICMP redirect messages.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpInEchos</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of received ICMP echo request messages.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpInEchoReps</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of received ICMP echo reply messages.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpInTimestamps</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of received ICMP timestamp request messages.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpInTimestampReps</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of received ICMP timestamp reply messages.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpInAddrMasks</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of received ICMP address mask request messages.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpInAddrMaskReps</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of received ICMP address mask reply messages.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpOutMsgs</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Total number of output ICMP messages.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpOutErrors</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of ICMP messages not sent because of a problem within ICMP (e.g., lack of buffers).
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpOutDestUnreachs</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of ICMP destination unreachable messages sent.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpOutTimeExcds</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of ICMP time exceeded messages sent.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpOutParmProbs</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of ICMP parameter problem messages sent.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpOutSrcQuenchs</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of ICMP source quench messages sent.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpOutRedirects</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of ICMP redirect messages sent.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpOutEchos</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of ICMP echo request messages sent.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpOutEchoReps</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of ICMP echo reply messages sent.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpOutTimestamps</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of ICMP timestamp requests sent.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpOutTimestampReps</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of ICMP timestamp reply messages sent.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpOutAddrMasks</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of ICMP address mask request messages sent.
+</TD></TR>
+<TR><TD WIDTH=175><TT>icmpOutAddrMaskReps</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=378>Number of ICMP address mask reply messages sent.
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.26</B> Simple
+variables in <TT>icmp</TT> group.</CENTER>
+<P>
+For the ICMP messages with additional codes (recall
+from <a href="icmp_int.htm#fig_6_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#fig_6_3">Figure 6.3</a> that there are 15 different codes for destination
+unreachable), a separate counter is not maintained by SNMP for
+each code.
+<H4><TT>tcp</TT> Group</H4>
+<P>
+Figure 25.27 describes the simple variables in the
+<TT>tcp</TT> group. Many of these refer to
+the TCP states that we showed in Figure 18.12.
+<P>
+<CENTER>
+<a name="fig_25_27"><TABLE BORDER=1></a>
+<TR><TD WIDTH=168><CENTER>Name</CENTER></TD>
+<TD WIDTH=75><CENTER>Datatype</CENTER></TD>
+<TD WIDTH=38><CENTER>R/W</CENTER></TD><TD WIDTH=408><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=168><TT>tcpRtoAlgorithm</TT></TD><TD WIDTH=75><TT>INTEGER</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=408>Algorithm used to calculate retransmission timeout value: 1 <I>=</I> none of the following, 2 <I>=</I> a constant RTO, 3 = MIL-STD-1778 <a href="append_b.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_b.htm">Appendix B</a>, 4 <I>=</I> Van Jacobson's algorithm.
+</TD></TR>
+<TR><TD WIDTH=168><TT>tcpRtoMin</TT></TD><TD WIDTH=75><TT>INTEGER</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=408>Minimum retransmission timeout value, in milliseconds.
+</TD></TR>
+<TR><TD WIDTH=168><TT>tcpRtoMax</TT></TD><TD WIDTH=75><TT>INTEGER</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=408>Maximum retransmission timeout value, in milliseconds.
+</TD></TR>
+<TR><TD WIDTH=168><TT>tcpMaxConn</TT></TD><TD WIDTH=75><TT>INTEGER</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=408>Maximum number of TCP connections. Value is -1 if dynamic.
+</TD></TR>
+<TR><TD WIDTH=168><TT>tcpActiveOpens</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=408>Number of transitions from CLOSED to SYNSENT states.
+</TD></TR>
+<TR><TD WIDTH=168><TT>tcpPassiveOpens</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=408>Number of transitions from LISTEN to SYNRCVD states.
+</TD></TR>
+<TR><TD WIDTH=168><TT>tcpAttemptFails</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=408>Number of transitions from SYNSENT or SYNRCVD to CLOSED, plus number of transitions from SYNRCVD to LISTEN.
+</TD></TR>
+<TR><TD WIDTH=168><TT>tcpEstabResets</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=408>Number of transitions from ESTABLISHED or CLOSEWAIT states to CLOSED.
+</TD></TR>
+<TR><TD WIDTH=168><TT>tcpCurrEstab</TT></TD><TD WIDTH=75><TT>Gauge</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=408>Number of connections currently in ESTABLISHED or CLOSEWAIT states.
+</TD></TR>
+<TR><TD WIDTH=168><TT>tcpInSegs</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=408>Total number of segments received.
+</TD></TR>
+<TR><TD WIDTH=168><TT>tcpOutSegs</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=408>Total number of segments sent, excluding those containing only retransmitted bytes.
+</TD></TR>
+<TR><TD WIDTH=168><TT>tcpRetransSegs</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=408>Total number of retransmitted segments.
+</TD></TR>
+<TR><TD WIDTH=168><TT>tcpInErrs</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=408>Total number of segments received with an error (such as invalid checksum).
+</TD></TR>
+<TR><TD WIDTH=168><TT>tcpOutRsts</TT></TD><TD WIDTH=75><TT>Counter</TT>
+</TD><TD WIDTH=38></TD><TD WIDTH=408>Total number of segments sent with RST flag set.
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.27</B> Simple
+variables in <TT>tcp</TT> group.</CENTER>
+<P>
+We can query some of these variables on the system
+sun:
+<P>
+<TT>sun % <B>snmpi -a sun</B></TT>
+<P>
+<TT>snmpi&gt; <B>get tcpRtoAlgorithm.0
+tcpRtoMin.0 tcpRtoMax.0 tcpMaxConn.0<BR>
+</B>tcpRtoAlgorithm.0=vanj(4)<BR>
+tcpRtoMin.0=200<BR>
+tcpRtoMax.O=12800<BR>
+tcpMaxConn.0=-1</TT>
+<P>
+This system (SunOS 4.1.3) uses the Van Jacobson retransmission
+timeout algorithm, uses timeouts between 200 ms and 12.8 seconds,
+and has no fixed limit on the number of TCP connections. (This
+upper limit of 12.8 seconds appears wrong, since most implementations
+use an upper limit of 64 seconds, as we saw in <a href="tcp_time.htm#21_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_time.htm#21_0">Chapter 21</a>.)
+<P>
+The tcp group has a single table, the TCP connection
+table, shown in Figure 25.28. This contains one row for each connection.
+Each row contains five variables; the state of the connection,
+local IP address, local port number, remote IP address, and remote
+port number.
+<P>
+<CENTER>
+<a name="fig_25_28"><TABLE BORDER=1></a>
+<TR><TD COLSPAN=4 WIDTH=727><CENTER>index <I>=</I> &lt;<I> tcpConnLocalAddress </I>&gt;.&lt;<I> tcpConnLocalPort</I> &gt;.&lt; <I>tcpConnRemAddress </I>&gt;.&lt;<I> tcpConnRemPort</I> &gt;</CENTER>
+</TD></TR>
+<TR><TD WIDTH=150>Name</TD><TD WIDTH=109>Datatype
+</TD><TD WIDTH=39>R/W</TD><TD WIDTH=428>Description
+</TD></TR>
+<TR><TD WIDTH=150><TT>tcpConnState</TT></TD><TD WIDTH=109><TT>[1..12]</TT>
+</TD><TD WIDTH=39><CENTER>*</CENTER></TD><TD WIDTH=428>State of connection: 1 <I>=</I> CLOSED, 2 <I>=</I> LISTEN, 3 = SYNSENT, 4 = SYNRCVD, 5 = ESTABLISHED, 6 = FINWAIT1,7= FINWAIT2,8= CLOSEWAIT, 9 = LASTACK, 10 <I>=</I> CLOSING, 11 <I>=</I> TIMEWAIT, 12 =
+delete TCB. The only value that the manager can set this variable to is 12 (e.g., immediately terminate the connection).
+</TD></TR>
+<TR><TD WIDTH=150><TT>tcpConnLocalAddress</TT></TD><TD WIDTH=109><TT>IpAddress</TT>
+</TD><TD WIDTH=39></TD><TD WIDTH=428>Local IP address. 0.0.0.0 indicates the listener is willing to accept connections on any interface.
+</TD></TR>
+<TR><TD WIDTH=150><TT>tcpConnLocalPort</TT></TD><TD WIDTH=109><TT>[0..65535]</TT>
+</TD><TD WIDTH=39></TD><TD WIDTH=428>Local port number.
+</TD></TR>
+<TR><TD WIDTH=150><TT>tcpConnRemAddress</TT></TD><TD WIDTH=109><TT>IpAddress</TT>
+</TD><TD WIDTH=39></TD><TD WIDTH=428>Remote IP address.
+</TD></TR>
+<TR><TD WIDTH=150><TT>tcpConnRemPort</TT></TD><TD WIDTH=109><TT>[0..65535]</TT>
+</TD><TD WIDTH=39></TD><TD WIDTH=428>Remote port number.
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.28</B> TCP
+connection table: <TT>tcpConnTable</TT>.</CENTER>
+<P>
+Let's look at this table on the system <TT>sun</TT>.
+We show only a portion of the table, since there are many servers
+listening for connections. Before dumping this table two TCP connections
+were established:
+<P>
+<TABLE >
+<TR><TD WIDTH=295><TT>sun % <B>rlogin gemini</B></TT>
+</TD><TD WIDTH=295><I>IP address</I> o/gemini is <I>140.252.1.11</I>
+</TD></TR>
+<TR><TD WIDTH=295>and</TD><TD WIDTH=295></TD>
+</TR>
+<TR><TD WIDTH=295><TT>sun % <B>telnet localhost</B></TT>
+</TD><TD WIDTH=295><I>IP address should be 127.0.0.1</I>
+</TD></TR>
+</TABLE>
+<P>
+The only listening server that we show is the FTP
+server, on port 21:
+<P>
+<TT>sun % <B>snmpi -a sun dump
+tcpConnTable</B></TT>
+<P>
+<TT>tcpConnState.0.0.0.0.21.0.0.0.0.0=listen(2)<BR>
+tcpConnState.127.0.0.1.23.127.0.0.1.1415=established(5)
+<BR>
+tcpConnState.127.0.0.1.1415.127.0.0.1.23=established(5)<BR>
+tcpConnState.140.252.1.29.1023.140.252.1.11.513=established(5)</TT>
+<P>
+<TT>tcpConnLocalAddress.0.0.0.0.21.0.0.0.0.0=0.0.0.0<BR>
+tcpConnLocalAddress.127.0.0.1.23.127.0.0.1.1415-127.0.0.1
+<BR>
+tcpConnLocalAddress.127.0.0.1.1415.127.0.0.1.23=127.0.0.1<BR>
+tcpConnLocalAddress.140.252.1.29.1023.140.252.1.11.513=140.252.1.29</TT>
+<P>
+<TT>tcpConnLocalPort.0.0.0.0.21.0.0.0.0.0=21<BR>
+tcpConnLocalPort.127.0.0.1.23.127.0.0.1.1415=23
+<BR>
+tcpConnLocalPort.127.0.0.1.1415.127.0.0.1.23=1415<BR>
+tcpConnLocalPort.140.252.1.29.1023.140.252.1.11.513=1023</TT>
+<P>
+<TT>tcpConnRemAddress.0.0.0.0.21.0.0.0.0.0=0.0.0.0<BR>
+tcpConnRemAddress.127.0.0.1.23.127.0.0.1.1415=127.0.0.1
+<BR>
+tcpConnRemAddress.127.0.0.1.1415.127.0.0.1.23=127.0.0.1<BR>
+tcpConnRemAddress.140.252.1.29.1023.140.252.1.11.513=140.252.1.11</TT>
+<P>
+<TT>tcpConnReinPort.0.0.0.0.21.0.0.0.0.0=0<BR>
+tcpConnRemPort.127.0.0.1.23.127.0.0.1.1415=1415
+<BR>
+tcpConnRemPort.127.0.0.1.1415.127.0.0.1.23=23<BR>
+tcpConnRemPort.140.252.1.29.1023.140.252.1.11.513=513</TT>
+<P>
+For the <TT>rlogin</TT> to <TT>gemini</TT>
+only one entry appears, since <TT>gemini</TT>
+is a different host. We only see the client end of the connection
+(local port 1023), but both ends of the Telnet connection appear
+(client port 1415 and server port 23), since the connection is
+through the loopback interface. We can also see that the listening
+FTP server has a local IP address of 0.0.0.0, indicating it will
+accept connections on any interface.
+<a name="25_9"><H3>25.9 Additional Examples</H3></a>
+<P>
+We now return to some earlier problems we encountered
+in the text, and use SNMP to<BR>
+understand what's happening.
+<H4>Interface MTU</H4>
+<P>
+Recall our experiment in <a href="udp_user.htm#11_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_6">Section 11.6</a>, in which we
+tried to determine the MTU of the SLIP link from <TT>netb</TT>
+to <TT>sun</TT>. We can now use SNMP to obtain
+this MTU. We first obtain the interface number (<TT>ipRoutelfIndex</TT>)
+of the SLIP link (140.252.1.29) from the IP routing table. Using
+this we go into the interface table and fetch the MTU (along with
+the description and type) of the SLIP link:
+<P>
+<TT>sun % <B>snmpi -a netb -c
+secret</B></TT>
+<P>
+<TT>snmpi&gt; <B>get ipRouteIfIndex.140.252.1.29
+<BR>
+</B>ipRouteIfIndex.140.252.1.29=12</TT>
+<P>
+<TT>snmpi&gt; get ifDescr.l2 ifType.12 ifMtu.l2<BR>
+ifDescr.l2=&quot;Telebit NetBlazer
+dynamic dial virtual interface&quot;<BR>
+ifType.l2=other(1)<BR>
+ifMtu.l2=1500</TT>
+<P>
+We see that even though the link is a SLIP link,
+the MTU is set to the Ethernet value of 1500, probably to avoid
+fragmentation.
+<H4>Routing Tables</H4>
+<P>
+Recall our discussion of address sorting performed
+by the DNS in <a href="dns_the.htm#14_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dns_the.htm#14_4">Section 14.4</a>. We showed how the first IP address
+returned by the name server was the one that shared a subnet with
+the client. We also mentioned that using the other IP address
+would probably work, but could be less efficient. Let's look at
+using the alternative IP address and see what happens. We'll use
+SNMP to look at a routing table entry, and tie together many concepts
+from earlier chapters dealing with IP routing.
+<P>
+The host <TT>gemini</TT> is multihomed,
+with two Ethernet interfaces. First let's verify that we can Telnet
+to both addresses:
+<P>
+<TT>sun % <B>telnet 140.252.1.11
+daytime<BR>
+</B>Trying 140.252.1.11 ...<BR>
+Connected to 140.252.1.11.<BR>
+Escape character is '^]'.<BR>
+Sat Mar 27 09:37:24 1993<BR>
+Connection closed by foreign host.</TT>
+<P>
+<TT>sun % <B>telnet 140.252.3.54
+daytime<BR>
+</B>Trying 140.252.3.54 ...<BR>
+Connected to 140.252.3.54.<BR>
+Escape character is '^]'.<BR>
+Sat Mar 27 09:37:35 1993<BR>
+Connection closed by foreign host.</TT>
+<P>
+So there is no connectivity difference between the
+two addresses. Now we'll use <TT>traceroute</TT>
+to see if there is a different route for each address:
+<P>
+<TT>sun % <B>traceroute 140.252.1.11
+<BR>
+</B>traceroute to 140.252.1.11 (140.252.1.11), 30 hops
+max, 40 byte packets<BR>
+1 netb (140.252.1.183) 299 ms
+234 ms 233 ms<BR>
+2 gemini (140.252.1.11) 233 ms 228 ms 234 ms</TT>
+<P>
+<TT>sun % <B>traceroute 140.252.3.54
+<BR>
+</B>traceroute to 140.252.3.54 (140.252.3.54), 30 hops
+max, 40 byte packets<BR>
+1 netb (140.252.1.183) 245 ms
+212 ms 234 ms<BR>
+2 swnrt (140.252.1.6) 233 ms 229 ms 234 ms<BR>
+3 gemini (140.252.3.54) 234 ms 233 ms 234 ms</TT>
+<P>
+There is an extra hop if we use the address on subnet
+140.252.3. Let's find the reason for the extra hop. (The router
+<TT>swnrt</TT> is R3 from <a href="ip_inter.htm#fig_3_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_6">Figure 3.6</a>.)
+<P>
+Figure 25.29 shows the arrangement of the systems.
+We can tell from the <TT>traceroute</TT> output
+that the host <TT>gemini</TT> and the router
+<TT>swnrt</TT> are both connected to two networks:
+140.252.1 and 140.252.3.
+<P>
+<CENTER><a name="fig_25_29"><img src="f_25_29.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_25_29.gif"></a><br>
+<B>Figure 25.29</B> Topology
+of systems being used for example.</CENTER>
+<P>
+Recall in <a href="arp_addr.htm#fig_4_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#fig_4_6">Figure 4.6</a> that we explained how proxy
+ARP is used by the router <TT>netb</TT> to
+make it appear as though <TT>sun</TT> was
+directly connected to the Ethernet 140.252.1. We've also omitted
+the modems on the SLIP link between <TT>sun</TT>
+and <TT>netb</TT>, since they're not relevant
+to this discussion.
+<P>
+In Figure 25.29 we show the path of the Telnet data
+using dashed arrows, when the address 140.252.3.54 is specified.
+How do we know that the return packets go directly from <TT>gemini</TT>
+to <TT>netb</TT>, and don't go back the way
+they came? We use our version of <TT>traceroute</TT>
+with loose source routing from <a href="tracerou.htm#8_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm#8_5">Section 8.5</a>:
+<P>
+<TT>sun % <B>traceroute -g 140.252.3.54 sun<BR>
+</B>traceroute to sun (140.252.13.33), 30 hops max, 40 byte packets
+<BR>
+1 netb (140.252.1.183) 244 ms 256 ms 234 ms<BR>
+2 * * *<BR>
+3 gemini (140.252.3.54) 285 ms 227 ms 234 ms<BR>
+4 netb (140.252.1.183) 263 ms 259 ms 294 ms<BR>
+5 sun (140.252.13.33) 534 ms 498 ms 504 ms</TT>
+<P>
+When we specify loose source routing, the router
+<TT>swnrt</TT> never responds. If we look
+at the earlier output from <TT>traceroute</TT>,
+without source routing, we see that <TT>swnrt</TT>
+is indeed the second hop. The reason for the timeouts must be
+that the router does not generate the ICMP time exceeded errors
+when the datagram specifies loose source routing. What we are
+looking for in this <TT>traceroute</TT> output
+is that the return path from <TT>gemini</TT>
+(TTLs 3,4, and 5) goes directly to <TT>netb</TT>,
+and not through the router <TT>swnrt</TT>.
+<P>
+The question that we need SNMP to answer is what
+does the routing table entry on <TT>netb</TT>
+look like for the destination network 140.252.3? It is <TT>netb</TT>
+that sends the packets to <TT>swnrt</TT> and
+not directly to <TT>gemini</TT>. We use the
+get command to fetch the value of the next-hop router for this
+destination:
+<P>
+<TT>sun % <B>snmpi -a netb -c
+secret get ipRouteNextHop.140.252.3.0<BR>
+</B>ipRouteNextHop.l40.252.3.0=140.252.1.6</TT>
+<P>
+This routing table entry tells <TT>netb</TT>
+to send the packets to <TT>swnrt</TT>, which
+is what we see happen.
+<P>
+Why does <TT>gemini</TT> send
+the packets directly back through <TT>netb</TT>?
+Because on <TT>gemini</TT> the destination
+address of the return packets is 140.252.1.29, and that network
+(140.252.1) is a directly connected interface.
+<P>
+What we're seeing in this example is a policy routing
+decision. The default route to network 140.252.3 is through the
+router <TT>swnrt</TT> because <TT>gemini</TT>
+is intended to be a multihomed host, not a router. This is an
+example of a multihomed host that does not want to be a router.
+<a name="25_10"><H3>25.10 Traps</H3></a>
+<P>
+All the examples we've looked at so far in this chapter
+have been from the manager to the agent. As shown in <a href="#fig_25_1">Figure 25.1</a>,
+it's also possible for the agent to send a <I>trap</I> to the
+manager, to indicate that something has happened on the agent
+that the manager might want to know about. Traps are sent to UDP
+port 162 on the manager.
+<P>
+In <a href="#fig_25_2">Figure 25.2</a> we showed the format of the trap PDU.
+We'll go through all the fields in this message when we look at
+some <TT>tcpdump</TT> output below.
+<P>
+Six specific traps are defined, with a seventh one
+allowing a vendor to implement an enterprise-specific trap. Figure
+25.30 describes the values for the <I>trap type</I> in the trap
+message (<a href="#fig_25_2">Figure 25.2</a>).
+<P>
+<CENTER>
+<a name="fig_25_30"><TABLE BORDER=1></a>
+<TR><TD WIDTH=38><CENTER><I>trap<BR>
+type</I></CENTER>
+</TD><TD WIDTH=189><CENTER>Name</CENTER></TD>
+<TD WIDTH=416><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=38><CENTER>0</CENTER></TD><TD WIDTH=189><TT>coldStart</TT>
+</TD><TD WIDTH=416>Agent is initializing itself.
+</TD></TR>
+<TR><TD WIDTH=38><CENTER>1</CENTER></TD><TD WIDTH=189><TT>warmStart</TT>
+</TD><TD WIDTH=416>Agent is reinitializing itself.
+</TD></TR>
+<TR><TD WIDTH=38><CENTER>2</CENTER></TD><TD WIDTH=189><TT>linkDown</TT>
+</TD><TD WIDTH=416>An interface has changed from the up to the down state (<a href="#fig_25_18">Figure 25.18</a>). The first variable in the message identifies the interface.
+</TD></TR>
+<TR><TD WIDTH=38><CENTER>3</CENTER></TD><TD WIDTH=189><TT>linkUp</TT>
+</TD><TD WIDTH=416>An interface has changed from the down to the up state (<a href="#fig_25_18">Figure 25.18</a>). The first variable in the message identifies the interface.
+</TD></TR>
+<TR><TD WIDTH=38><CENTER>4</CENTER></TD><TD WIDTH=189><TT>authenticationFailure </TT>
+</TD><TD WIDTH=416>A message was received from an SNMP manager with an invalid community.
+</TD></TR>
+<TR><TD WIDTH=38><CENTER>5</CENTER></TD><TD WIDTH=189><TT>egpNeighborLoss</TT>
+</TD><TD WIDTH=416>An EGP peer has changed to the down state. The first variable in the messages contains the IP address of the peer.
+</TD></TR>
+<TR><TD WIDTH=38><CENTER>6</CENTER></TD><TD WIDTH=189><TT>enterpriseSpecific</TT>
+</TD><TD WIDTH=416>Look in the <I>specific code</I> field for information on the trap.
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.30</B> Trap
+types.</CENTER>
+<P>
+We can see some traps using <TT>tcpdump</TT>.
+We'll start the SNMP agent on the system <TT>sun</TT>
+and see it generate a <TT>coldStart</TT> trap.
+(We tell the agent to send traps to the host <TT>bsdi</TT>.
+Although we're not running a manager on <TT>bsdi</TT>
+to handle the traps, we can run <TT>tcpdump</TT>
+and see what packets get generated. Recall from <a href="#fig_25_1">Figure 25.1</a> that
+a trap is sent from the agent to the manager, but there is no
+acknowledgment sent by the manager, so we don't need a manager
+to handle the traps.) We then send a request using the <TT>snmpi</TT>
+program, but with an invalid community name. This should generate
+an <TT>authenticationFailure</TT> trap. Figure
+25.31 shows the output.
+<P>
+<CENTER>
+<a name="fig_25_31"><TABLE></a>
+<TR><TD WIDTH=34>1</TD><TD WIDTH=132><TT>0.0</TT>
+</TD><TD WIDTH=501><TT>sun.snmp &gt; bsdi.snmp-trap: C=traps Trap (28) <BR>
+E:unix.1.2.5 [140.252.13.33] coldStart 20</TT>
+</TD></TR>
+<TR><TD WIDTH=34>2</TD><TD WIDTH=132><TT>18.86 (18.86)</TT>
+</TD><TD WIDTH=501><TT>sun.snmp &gt; bsdi.snmp-trap: C=traps Trap (29)
+<BR>
+E:unix.1.2.5 [140.252.13.33] authenticationFailure 1907</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 25.31</B> <TT>tcpdump</TT>
+output of traps generated by SNMP agent.</CENTER>
+<P>
+First we notice that both UDP datagrams are from
+the SNMP agent (port 161, printed as the name snmp) with a destination
+port of 162 (printed as the name <TT>snmp-trap</TT>).
+<P>
+The notation <TT>C=traps</TT>
+is the community name of the trap message. This is a configuration
+option with the ISODE SNMP agent being used.
+<P>
+The next notation. <TT>Trap(28)</TT>
+in line 1 and <TT>Trap(29)</TT> in line 2
+is the <I>PDU</I> type and length.
+<P>
+The next field of output for both lines is <TT>E:unix.1.2.5</TT>.
+This is the <I>enterprise:</I> the agent's <TT>sysObjectID</TT>.
+It falls under the 1.3.6.1.4.1 node of the tree in <a href="#fig_25_6">Figure 25.6</a>
+(<TT>iso.org.dod.internet.private.enterprises</TT>),
+so this agent's object identifier is 1.3.6.1.4.1.4.1.2.5. Its
+abbreviated name is <TT>unix.agents.fourBSD-isode.5</TT>.
+The final number (5) is the version number of this release of
+the ISODE agent. This enterprise value identifies the agent software
+generating the trap.
+<P>
+The next field output by <TT>tcpdump</TT>
+is the IP address of the agent (140.252.13.33).
+<P>
+The <I>trap type</I> is printed as <TT>coldStart</TT>
+on line 1, and <TT>authenticationFailure</TT>
+on line 2. These correspond to <I>trap type</I> values of 0 and
+4, respectively (<a href="#fig_25_30">Figure 25.30</a>). Since these are not enterprise-specific
+traps, the <I>specific code</I> must be 0, and is not printed.
+<P>
+Next comes the <I>timestamp</I> field, printed as
+20 and 1907. This is a <TT>TimeTicks</TT>
+value, representing the number of hundredths of a second since
+the agent initialized. In the case of the cold start trap, the
+trap was generated 200 ms after the agent was initialized. The
+<TT>tcpdump</TT> output indicates that the
+second trap occurred 18.86 seconds after the first one, which
+corresponds to the printed value of 1907 hundredths of a second,
+minus 200 ms.
+<P>
+<a href="#fig_25_2">Figure 25.2</a> indicates that a trap message can contain
+interesting variables that the agents wants to send to the manager,
+but there aren't any in our examples.
+<a name="25_11"><H3>25.11 ASN.1 and BER</H3></a>
+<P>
+The formal specification of SNMP uses <I>Abstract
+Syntax Notation 1</I> (ASN.1) and the actual encoding of the bits
+in the SNMP messages (<a href="#fig_25_2">Figure 25.2</a>) uses the corresponding <I>Basic
+Encoding Rules</I> (BER). Unlike most texts that describe SNMP,
+we have purposely left a discussion of ASN.1 and BER until the
+end. When they're discussed first, it can confuse the reader and
+obfuscate the real purpose of SNMP-network management. In this
+section we only give an overview of these two topics. Chapter
+8 of [Rose 1990] covers ASN.1 and BER in detail.
+<P>
+ASN.1 is a formal language for describing data and
+the properties of the data. It says nothing about how the data
+is stored or encoded. All the fields in the MIB and the SNMP messages
+are described using ASN.1. For example, the ASN.1 definition of
+the data type <TT>IpAddress</TT> from the
+SMI looks like:
+<P>
+<TABLE >
+<TR><TD WIDTH=160><TT>IpAddress ::=</TT></TD></TR>
+<TR><TD WIDTH=160></TD><TD WIDTH=200><TT>[APPLICATION 0]</TT>
+</TD><TD WIDTH=300><TT>-- in network-byte order</TT></TD></TR>
+<TR><TD WIDTH=160></TD><TD WIDTH=160></TD>
+<TD WIDTH=300><TT>IMPLICIT OCTET STRING (SIZE (4))</TT>
+</TD></TR>
+</TABLE>
+<P>
+Similarly, from the MIB we find the following definition
+of a simple variable:
+<P>
+<TABLE >
+<TR><TD COLSPAN=3 WIDTH=727><TT>udpNoPorts OBJECT-TYPE</TT></TD>
+</TR>
+<TR><TD WIDTH=50></TD><TD COLSPAN=2 WIDTH=577><TT>SYNTAX Counter</TT>
+</TD></TR>
+<TR><TD WIDTH=50></TD><TD COLSPAN=2 WIDTH=577><TT>ACCESS read-only</TT>
+</TD></TR>
+<TR><TD WIDTH=50></TD><TD COLSPAN=2 WIDTH=577><TT>STATUS mandatory</TT>
+</TD></TR>
+<TR><TD WIDTH=50></TD><TD COLSPAN=2 WIDTH=577><TT>DESCRIPTION</TT>
+</TD></TR>
+<TR><TD WIDTH=50></TD><TD WIDTH=50></TD><TD WIDTH=373><TT>&quot;The total number of received UDP datagrams for which there was no application at the destination port.&quot;</TT>
+</TD></TR>
+<TR><TD WIDTH=50></TD><TD COLSPAN=2 WIDTH=577><TT>:: = { udp 2 }</TT>
+</TD></TR>
+</TABLE>
+<P>
+The definition of tables using <TT>SEQUENCE</TT>
+and <TT>SEQUENCE OF</TT> is more complex.
+<P>
+Given these ASN.1 definitions, there are many ways
+to encode the data into a stream of bits for transmission. SNMP
+uses BER. The representation of a small integer, such as 64, requires
+3 bytes using BER. One byte says the value is an integer, the
+next byte says how many bytes are used to store the integer (1),
+and the final byte contains the binary value.
+<P>
+Fortunately the details of ASN.1 and BER are only
+important to implementors of SNMP. They are not fundamental to
+the understanding and use of network management.
+<a name="25_12"><H3>25.12 SNMP Version 2</H3></a>
+<P>
+During 1993 11 RFCs were published defining revisions
+to SNMP The first of these, RFC 1441 [Case et al. 1993], provides
+an introduction to SNMP Version 2 (SNMPv2). Two books also describe
+SNMPv2 [Stallings 1993; Rose 1994]. Two publicly available implementations
+already exist (see Appendix B.3 of [Rose 1994]), but vendor implementations
+probably won't be widely available until 1994.
+<P>
+In this section we describe the major differences from SNMPv1 to SNMPv2.
+<OL>
+<LI>A new packet type <TT>get-bulk-request</TT>
+allows the manager to retrieve large blocks of data efficiently.
+<LI>Another new packet type <TT>inform-request</TT>
+allows one manager to send information to another manager.
+<LI>Two new MIBs are defined: the SNMPv2 MIB and
+the SNMPv2-M2M MIB (Manager-to-Manager).
+<LI>SNMPv2 provides security enhancements over SNMPv1.
+In SNMPv1 the community name passed from the manager to the agent
+is a cleartext password. SNMPv2 can provide authentication and
+privacy.
+</OL>
+<P>
+As vendors start to provide SNMPv2-capable agents,
+management stations will also appear that can handle both. [Routhier
+1993] describes extending an implementation of SNMPv1 to support
+SNMPv2.
+<a name="25_13"><H3>25.13 Summary</H3></a>
+<P>
+SNMP is a simple request-reply protocol between an
+SNMP manager and an SNMP agent. The management information base
+(MIB) defines the variables that are maintained by the agent,
+for the manager to query or set. Only a limited number of data
+types are used to define these variables.
+<P>
+All the variables are identified by object identifiers,
+a hierarchical naming scheme consisting of long strings of numbers
+that are normally abbreviated into a simple name, for human readability.
+A specific instance of a variable is identified by appending an
+instance to the object identifier.
+<P>
+Many SNMP variables are contained in tables, with
+a fixed number of columns, but a variable number of rows. Fundamental
+to SNMP is the identification scheme used to identify each row
+in a table (when we don't know how many rows are in the table),
+and the lexicographic ordering (column-row order). The end result,
+SNMP's <TT>get-next</TT> operator, is basic
+to any SNMP manager.
+<P>
+We then described the following groups of SNMP variables:
+system, interface, address translation, IP, ICMP, TCP, and UDP.
+This was followed by two examples, one to determine the MTU of
+an interface, and the other to look at the routing table of a
+router.
+<P>
+We completed the chapter by looking at SNMP traps,
+a way for the agent to notify the manager that something significant
+has occurred, and a brief mention of ASN.1 and BER. These latter
+two topics are probably the most confusing aspects of SNMP, but
+fortunately their details are needed only by implementors.
+<H4>Exercises</H4>
+<P>
+<B>25.1</B> We said that using
+two different ports (161 and 162) allows a system to run both
+a manager and agent. What would happen if the same port number
+were used for both?
+<P>
+<B>25.2</B> How would you list
+an entire routing table using <TT>get-next</TT>?
+</BODY>
+</HTML>

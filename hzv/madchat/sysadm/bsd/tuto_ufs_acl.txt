@@ -1,0 +1,112 @@
+[ Astuces disponibles sur diablotins.org par romain GEORGES ]
+
+						
+                        
+						  Les ACL UFS
+
+
+
+        _________________________________________________________________
+
+   SOMMAIRE :
+
+   1. Présentation de UFS
+
+   2. Présentation des ACL
+
+   3. Configuration du noyau de FreeBSD pour ACL UFS
+
+   4. Configuration fstab pour les ACL UFS
+
+   5. Commandes utiles pour les ACL
+        _________________________________________________________________
+
+      Attention : cette astuces n'est valable que pour la branche 5 de
+   FreeBSD. titre2!1. Présentation de UFS UFS est le système de fichier
+   standard de FreeBSD, il est acctuellement en version 2 sur la branche
+   5 et comprend les Softupdates, un mécanisme de journalisation par
+   méta-données, mais donc aussi un support des ACL.
+
+2. Présentation des ACL
+
+   Les ACl, au même titre qu'une des autres innovations de la branche 5,
+   MAC (Mandatory Access Control), est conforme à la norme POSIX.1e ([27]
+   POSIX.1e Implementation for FreeBSD .
+   Des ACL, offres à l'avantage des droits UNIX historique, une
+   granularité plus importante sur l'accession à une ressource sur le
+   système de fichier, on peut donner des droits spécifique à un user ou
+   à un groupe spécifique.
+
+3. Configuration du noyau de FreeBSD pour ACL UFS
+
+   Pour pouvoir fonctionner votre noyau FreeBSD doit être compilé avec le
+   support des ACLs, il faut donc ajouter la ligne suivante dans le
+   /usr/src/sys/i386/conf/MAMACHINE :
+   $ su -
+   # vi /usr/src/sys/i386/conf/MAMACHINE
+   --
+   [...]
+   options UFS_ACL
+   [...]
+   On recompile donc son noyau :
+   # cd /usr/src
+   # make buildkernel KERNCONF=MAMACHINE
+   # make installkernel KERNCONF=MAMACHINE
+   Ne redémarré pas votre machine tout de suite
+
+4. Configuration fstab pour les ACL UFS
+
+   Il faut maintenant modifier votre /etc/fstab pour gérer les ACL sur
+   vos partitions, il vous faudra des lignes tel que :
+   # vi /etc/fstab
+   --
+   [...] /dev/ad0s1a / ufs rw,acls 1 1
+   (etc..)e! [...]
+   Vous devez maintenant redémarrer votre machine et après vérifier que
+   les ACLs sont installé sur vos partitions, vous devez obtenir des
+   lignes du genre :
+   # mount
+   /dev/ad0s1a on / (ufs, local, acls)
+   (etc...)
+
+5. Commandes utiles pour les ACL
+
+   Les commandes utiles pour les ACLs sont setfacl et getfacl .
+   Exemples :
+   # touch titi
+   # touch tutu
+   # setfacl -m u::rwx,g:mail:rw titi
+   Donne les droits complets au pocesseur du fichier et les droits de
+   lecture/ecriture au membres du groups mail
+   # setfacl -M titi tutu
+   # getfacl titi | setfacl -b -n -M - tutu
+   copie les ACL de 'titi' sur 'tutu'
+   # setfacl -x g:mail:rw tutu
+   supprime les droits de lecture/ecriture au group 'mail' sur tutu
+   # getfacl titi
+   #file:titi
+   #owner:0
+   #group:1001
+   user::rwx
+   group::r--
+   group:mail:rw-
+   mask::rw-
+   other::r--
+   # getfacl tutu
+   #file:tutu
+   #owner:0
+   #group:1001
+   user::rwx
+   group::r--
+   mask::rw-
+   other::r--
+   liste les ACls de tutu et de titi
+   # ls -al titi
+   -rwxrw-r--+ 1 root users 0 Aug 5 12:09 titi
+   On voie ici qu'un fichier qui porte des ACLs possède un '+' à la fin
+   de la liste des droits UNIX.
+   # setfacl -bn titi
+   # setfacl -bn tutu
+   supprime toutes les ACLs
+
+                                             Romain GEORGES le 2003/08/05

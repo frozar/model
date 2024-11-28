@@ -1,0 +1,527 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD><TITLE>FW-1 State Table</TITLE>
+<META content="text/html; charset=iso-8859-1" http-equiv=Content-Type>
+<META 
+content="What happens when a script kiddie gains root on your system.  Paper includes actual system logs and keystrokes from a compromised system" 
+name=description>
+<META 
+content="hacking,security,script kiddie,exploits,scans,black-hat,rewt,tools,rootkit,lrk4" 
+name=keywords>
+<META content="MSHTML 5.00.2920.0" name=GENERATOR><!-- saved from url=(0044)http://www.enteract.com/~lspitz/fwtable.html --></HEAD>
+<BODY link=#0000ff><I><FONT face="Palatino,Book Antiqua"><FONT size=+1>How 
+Stateful is Stateful Inspection?</FONT></FONT></I> <BR><FONT 
+face="Palatino,Book Antiqua"><FONT size=+4>Comprendre la Table d'état de 
+FW-1</FONT></FONT> 
+<P><FONT face="Palatino,Book Antiqua"><FONT size=-1><A 
+href="mailto:lance@spitzner.net?Subject=FW-1 Stateful Inspection">Lance 
+Spitzner</A></FONT></FONT> <BR>Dernière modification: 29 Novembre 2000 
+<BR>(Traduit par <A href="mailto:ldelpha@free.fr">L.DELPHA</A> : dernière 
+modification 14/02/2001) 
+<P><B><FONT face="Book Antiqua">Le but de ce document est de vous aider à 
+comprendre comment la table de connexions "stateful inspection" de FW-1 
+fonctionne. Cette table est le moyen grâce auquel FW-1 conserve l'information 
+sur qui fait quoi et quelles connexions sont autorisées d'après la base de 
+règles. Le document est basé sur des recherches que j'ai effectuées avec la 
+dernière version de FW-1 disponible, la version 4.1. Pour vous&nbsp; aider à 
+mieux comprendre votre propre table "stateful inspection" FW-1, j'ai posté tout 
+le code source que j'ai utilisé à la fin de cette page.</FONT></B> 
+<P><B><FONT face="Palatino,Book Antiqua"><FONT size=+2>Stateful 
+Inspection</FONT></FONT></B> 
+<P>Ce document est parti d'une question élémentaire. Si vous avez un firewall 
+qui accepte tout à travers lui (any - any - accept), ce firewall va-t-il 
+accepter&nbsp; une nouvelle connexion TCP initiée par un ACK? Une partie de moi 
+disait oui. Si le firewall autorise tout, alors n'importe quel paquet doit 
+pouvoir le traverser. Néanmoins, une autre partie de moi disait aussi non. 
+D'après la façon dont la "stateful inspection" fonctionne le paquet devrait être 
+droppé. 
+<P>Ma compréhension initiale de la "stateful inspection" (au moins sur Check 
+Point FireWall-1) fonctionnait comme suit. Lorsqu'un firewall reçoit un paquet 
+SYN initiant une connexion TCP, ce paquet SYN est confronté à la base de règles 
+du firewall. Comme sur un routeur, ce paquet SYN est comparé aux règles de façon 
+séquentielle (en partant de la règle 0), si le paquet passe toutes les règles 
+sans être accepté, le paquet est refusé. La connexion est alors droppée ou 
+rejetée (RST est renvoyé à la machine distante). Toutefois, si le paquet est 
+accepté, la session est enregistrée dans la table de connexion du firewall, 
+située en mémoire noyau. Chaque paquet suivant (s'il n'a pas le bit SYN 
+positionné) est comparé à la table d'état "stateful instection". Si la session 
+est dans la table, et que le paquet appartient à cette session, alors le paquet 
+est accepté. Si le paquet n'appartient pas à la session, alors il est droppé. 
+Ceci améliore les performances du système, car tous les paquets ne sont pas 
+comparés à la base de règles, seulement les paquets SYN initiant une connexion 
+sont comparés à la base de règles. Tous les autres paquets sont comparés à la 
+table d'état en mémoire noyau (très rapide). 
+<P>Maintenant, retour à notre question initiale. Si vous initiez une session 
+avec un paquet ACK, le firewall va-t-il accepter le paquet, même avec une base 
+de règles qui accepte tout ? Comme nous l'avons dit précédemment, on pourrait 
+penser que oui. Mais maintenant que nous avons une meilleure compréhension de la 
+table de connexions, peut être que la réponse est non. Lorsque le firewall 
+reçoit le paquet ACK, il va le comparer à la table d'état en mémoire noyau, pas 
+à la base de règle. Toutefois le firewall n'aura pas cette session dans sa table 
+d'état, puisqu'il n'y a jamais eu de paquet SYN. Alors, le firewall va-t-il 
+accepter le paquet, ou le dropper puisqu'il n'y a pas d'entrée correspondante 
+dans la table d'état.? 
+<P><B><FONT face="Palatino,Book Antiqua"><FONT size=+2>Le Résultat - Comment 
+FW-1 Construit une Connexion.</FONT></FONT></B> 
+<P>Les résultats ont été surprenants. Non seulement le paquet ACK a été accepté, 
+mais il a été inséré dans la table d'état. Ma compréhension de la table d'état 
+du firewall était incorrecte. Voilà ce que j'ai découvert, quand le firewall 
+reçoit un paquet qui n'appartient pas à la table de connexion, ce paquet est 
+confronté à la base de règles, qu'il soit un paquet SYN, ACK ou de n'importe 
+quel type. Si la base de règle accepte cette session, alors elle est insérée 
+dans la table d'état. Tous les paquets suivants de cette session sont comparés à 
+la table (d'état) de connexion et par conséquent acceptés. Dès lors qu'il y a 
+une entrée dans la table d'état pour la session, les paquets sont acceptés sans 
+être comparés à la base de règles. Ci-dessous des sorties de l'outil, <A 
+href="http://www.enteract.com/~lspitz/fwtable.txt">fwtable.pl (ver 1.0),</A> qui 
+convertit les données trouvées dans 'fw tab -t connections'. Cette table est 
+l'endroit dans lequel FW-1 stoque toutes les connexions actives en mémoire. Ces 
+entrées font partie de la table de connexion créée par mon firewall en initiant 
+des connexions avec des paquets ACK. <PRE>mozart #fwtable
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ---- FW-1 CONNECTIONS TABLE ---
+Src_IP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Src_Prt Dst_IP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Dst_Prt IP_prot Kbuf&nbsp;&nbsp;&nbsp; Type&nbsp;&nbsp;&nbsp; Flags&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Timeout
+192.168.7.131&nbsp; 10003&nbsp;&nbsp; 207.229.143.8&nbsp;&nbsp; 25&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 6&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 16385&nbsp;&nbsp; 02ffff00&nbsp;&nbsp;&nbsp; 2845/3600
+192.168.7.131&nbsp; 10002&nbsp;&nbsp; 207.229.143.8&nbsp;&nbsp; 24&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 6&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 16385&nbsp;&nbsp; 02ffff00&nbsp;&nbsp;&nbsp; 2845/3600
+192.168.7.131&nbsp; 10001&nbsp;&nbsp; 207.229.143.8&nbsp;&nbsp; 23&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 6&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 16385&nbsp;&nbsp; 02ffff00&nbsp;&nbsp;&nbsp; 2845/3600</PRE>Ici 
+vous voyez trois paquets acceptés et insérés dans la table d'état du firewall. 
+Cependant, ces trois connexions ont été initiées avec des paquets ACK. La même 
+chose est vraie pour des paquets NULL, SYN/ACK, et d'autres types de paquets, 
+tels que FIN/ACK. Seuls les paquets valides FIN ou RST ne peuvent pas générer 
+une session puisqu'ils sont utilisés pour mettre fin à une connexion. De plus, 
+les seuls paquets à n'avoir JAMAIS été ajoutés à la table d'état sont les 
+paquets "Xmas" (<I>NdT : litérallement "arbre de noël" paquet avec tous les bits 
+SYN, ACK, FIN, RST à 1</I>) créés avec le Nmap de Fyodor (avec l'option -sX), 
+cependant ces paquets sont acceptés et logués. Si un paquet ne fait pas partie 
+de la table d'état, il est comparé à la base de règle. Si la base de règles 
+accepte le paquet, la session est alors ajoutée à la table d'état. Si le paquet 
+n'est pas accepté par la base de règles, le paquet est droppé/rejeté, mettant 
+fin à la session.C'est comme cela que le firewall maintient les connexions quand 
+vous faites un ' <B><FONT face="Courier New, Courier, mono"><FONT 
+size=-1>fwstop;fwstart</FONT></FONT></B> ' Quand vous redémarrez le firewall, la 
+table de connexion, rien n'est conservé. Cependant, toutes les connexions en 
+cours enverront très probablement des ACKs. Le firewall voit ces paquets, les 
+confronte à la base de règles, et reconstruit la table de connexions. Tout ceci 
+est transparent pour l'utilisateur. C'est pourquoi vous perdez les sessions 
+authentifiées et chiffrées, le firewall n'a pas ' l'état initial ' pour ces 
+connexions. Notez bien le timeout dans la colonne de droite, 3600 secondes. 
+Après avoir ajouté une entré dans sa table d'état le firewall conserve cette 
+entrée. Cela veut dire que vous avez 60 minutes pour créer et envoyer un autre 
+paquet pour remettre à zérole compteur de timeout. Les propriétés de ce timeout 
+sont modifiables dans le menu de contrôle des propriétés générales du firewall. 
+<P>J'ai aussi découvert que la "stateful inspection" de FW-1 examine uniquement 
+les IP Source/Destination et les numéros de port pour identifier une session. 
+Elle ne prend PAS en compte les numéros de séquence. Pas plus qu'elle ne 
+maintient d'état concernant le type des paquets lors de l'établissement des 
+connexions. Quand vous envoyez un paquet SYN pour initialiser une session, le 
+firewall le compare à la base de règles. Si le paquet est accepté, il l'ajoute à 
+la table d'état, comme nous l'avons vu précédemment. A cet instant, le timeout 
+est d'abord positionné à 60 secondes. Le firewall attend alors un paquet retour 
+pour établir la connexion. Lorsqu'il voit ce paquet arriver, le timeout est 
+positionné à 3600 secondes (60 minutes). Cependant, le firewall n'est pas 
+exigeant sur le type de paquets qui est renvoyé . J'ai initié une connexion avec 
+un paquet SYN, puis envoyé un paquet ACK seul, que le firewall à accepté 
+gentiment comme faisant partie de la connexion (dès lors que les IPs et les 
+numéros de Port correspondent). Alors le firewall n'a pas l'intelligence 
+d'attendre un paquet SYN/ACK en réponse ni de faire correspondre les numéros de 
+séquence. Ceci est très certainement fait pour des raisons de performance, car 
+le maintient de contexte sur les numéros de séquence demanderait beaucoup plus 
+de ressources. <BR>&nbsp; 
+<P><B>Deni de Service Potentiel (<A 
+href="http://www.securityfocus.com/vdb/bottom.html?vid=549">Bugtraq ID 
+549</A>):</B> Lors de l'établissement d'une connexion, si vous commencez la 
+connexion avec un paquet ACK (ou la plupart des paquets non SYN, comme NULL, 
+FIN/ACK, SYN/ACK, etc) le timeout est mis automatiquement à 3600 secondes (par 
+défaut) <A href="http://ldelpha.free.fr/FW-1%20State%20Table2.htm#table">voir l' 
+example précédent. </A>Cela à des conséquences en terme de déni de service. En 
+initiant beaucoup de connexions avec des paquets ACK pour des machines qui 
+n'existent pas, vous remplissez rapidement la table de connexions. Puisqu'il n'y 
+a pas de machine distante, aucun paquet RST ou FIN n'est envoyé pour mettre fin 
+à la connexion, laissant des connexions "mortes" dans la table de connexions 
+pendant une heure (souvenez vous que le timeout pour les paquet ACK ou la 
+plupart des paquets non SYN est 3600 secondes). Vous pouvez rapidement remplir 
+la table de connexions en initiant des connexions avec des paquets ACK. 
+Heureusement, cette attaque est beaucoup plus difficile à exécuter depuis 
+l'extérieur que depuis l'arrière du firewall. Malheureusement, il est assez 
+facile (et je m'en suis rendu compte) de rendre son propre firewall indisponible 
+(NdT : DoS) en éffectuant des scans depuis son propre réseau interne. Check 
+Point a publié une <A 
+href="http://www.enteract.com/~lspitz/chp_response.txt">réponse à ce 
+problème</A>. Vous pouvez suivre les étapes suivantes pour traiter ce problème : 
+
+<UL>
+  <LI>Check Point a publié une <A 
+  href="http://www.enteract.com/~lspitz/ack_repsonse.txt">solution utilisant 
+  Inspect</A>. Cepandant, elle peut affecter le fonctionnement de la table 
+  d'états lors du rechargement d'une politique. 
+  <LI>Diminuez votre timeout TCP à 15 minutes (900 secondes). Cela diminue la 
+  "fenètre" qu'un pirate peut utiliser pour saturer votre table de connexions. 
+  <LI><A href="http://www.phoneboy.com/fw1/faq/0289.html">Augmentez la taille de 
+  votre table de connexions.</A> Cela rend la saturation de la table de 
+  connexions plus difficile. 
+  <LI>Défininissez une base de règles stricte qui limite les trafics entrant et 
+  sortant. 
+  <LI>Jason Rhoads a developpé un script PERL, <A 
+  href="http://www.sabernet.net/software/fwconwatch.pl">fwconwatch.pl</A>, qui 
+  va surveiller votre base de règles et vous avertir en fonction des critères 
+  que vous aurez définis. 
+  <LI>Implementez Fastpath (pour FW-1 ver 3.0) ou FastMode (pour ver 4.0). Cela 
+  élimine les connexions TCP de votre table de connexions. Cependant, cela 
+  introduire d'autres problématiques de sécutités. <A 
+  href="http://www.enteract.com/~lspitz/fwtable.html#fastpath">Voir ci 
+  dessous</A> pour plus de détails à propos de Fastpath/FastMode. 
+  <LI><B>NOTE: SynDefender ne protège absolument pas contre cette menace, dans 
+  la mesure ou il a été conçu pour protéger contre le SYN flooding, un type 
+  d'attaque different. Ce Déni de Service (ndt : DoS) est basé sur des paquets 
+  non SYN.</B> </LI></UL>Une fonctionalité que j'aime avec FW-1 est la façon dont 
+le firewall traite les paquets SYN. Si vous essayez d'initialiser une nouvelle 
+session qui émule une session existante, le firewall la compare encore avec la 
+base de règles. Par exemple, disons que vous essayiez la chose suivante : 
+<P>A --- FW --&gt; B # La machine A se connecte à la machine B 
+<P>Maintenant, la machine B peut envoyer n'importe quel paquet à la machine A, 
+dès lors que les IPs et les ports correspondent (ie, les paquets appartiennent à 
+la session). Cependant, si la machine B essaie d'initialiser une nouvelle 
+connexion (avec le SYN standard), même si elle utilise les mêmes ports que la 
+session existante, le firewall considère quand même le SYN comme faisant partie 
+d'une nouvelle session et la compare à la base de règles. A mon avis, c'est une 
+bonne chose. Dans l'exemple précédent, disons que le firewall autorise tout le 
+trafic sortant pour la machine A, mais pas le trafic entrant pour la machine B. 
+La seule façon pour la machine B de communiquer avec la machine A c'est à 
+travers une connexion. 
+<P>Lorsque la machine A se connecte à la machine B, la connection est ajoutée à 
+la table d'inspection du firewall ( voir l'exemple de table d'inspection 
+ci-dessus). Alors la machine B peut répondre en envoyant des paquets à la 
+machine A. Cependant, le firewall n'a pas ouvert de faille. La machine B ne peut 
+pas envoyer n'importe quel paquet SYN à la machine A initiant une autre 
+connexion,même si les IPs et les ports sont les mêmes. Quand le firewall voit ce 
+paquet SYN, il le confronte à la base de règles. Dans le scénario ci-dessus, ce 
+paquet serait droppé, même s'il y a une connexion établie. <BR>&nbsp; <BR>&nbsp; 
+
+<P><B><FONT face="Palatino,Book Antiqua"><FONT size=+2>Changements depuis la 
+version 4.1 SP2</FONT></FONT></B> 
+<P>A partir de Firewal-1 version 4.1, ServicePack 2 et plus, CheckPoint a changé 
+le comportement de la table d'états pour les connexions TCP. Cette nouvelle 
+version gère différemment l'initiation des connexions dans façon que seul un 
+paquet SYN peut initier une connexion.Cela veut dire que s'il n'y aucune session 
+dans la table d'états, et que vous essayez d'ouvrir une connexion avec un paquet 
+ACK, le paquet sera droppé nonobstant ce que dit la base de règles. Seul un 
+paquet SYN peut insérer une session dans la table d'état. De ce fait, un paquet 
+ACK ne sera accepté que s'il correspond à une session présente dans la table. 
+C'est pourquoi les utilisateurs verront maintenant le message d'erreur suivant 
+dans leurs logs 
+<P><TT>13:36:26 drop firewall &gt;hme0 proto tcp src 192.168.1.9 dst 
+207.239.115.11 s_port 3012 rule 0 reason: unknown established TCP packet</TT> 
+<P>Ce qui s'est produit est qu'un paquet non-SYN a essayé de créer une connexion 
+TCP. Les nouvelles versions de Firewall-1 exigent des paquets de SYN pour lancer 
+les connexions. Ceci s'est très probablement produit parce que le timeout TCP a 
+expiré (rappelez-vous que la valeur par défaut est de 3600 secondes) et qu'une 
+vieille connexion a essayé de renvoyer un paquet ACK. Vous pouvez changer ce 
+nouveau comportement et revenir à l'ancien en décommentant la ligne suivante 
+dans $$FWDIR/lib/fwui_head.def. 
+<P><TT>#define ALLOW_NON_SYN_RULEBASE_MATCH</TT> 
+<P>Gardez à l'esprit qu'en desactivant ce dispositif que vous avez 
+potentiellement accru le risque, puisque presque n'importe quel paquet peut 
+initier une connexion, par opposition à un paquet SYN. Quand vous installez une 
+nouvelle base de règles la table d'états est effacée. Cependant vous ne perdrez 
+aucune de vos connexions établies en mettant en place une nouvelle base de 
+règles. Par exemple, disons que vous vous connectez à un serveur sur Internet en 
+SSH à travers votre firewall. Cette entrée sera dans la table d'état comme suit. 
+<BR>&nbsp; <BR>&nbsp; 
+<P><TT>Src_IP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Src_Prt 
+Dst_IP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Dst_Prt IP_prot 
+Kbuf&nbsp; Type&nbsp;&nbsp;&nbsp; Flags&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+Timeout</TT> 
+<P><TT>192.168.1.10&nbsp;&nbsp;&nbsp; 3340&nbsp;&nbsp;&nbsp; 
+207.229.143.1&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+17&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp; 16386&nbsp;&nbsp; 
+ff03ff00&nbsp;&nbsp;&nbsp;&nbsp; 15/40</TT> 
+<BR><TT>192.168.1.10&nbsp;&nbsp;&nbsp; 3340&nbsp;&nbsp;&nbsp; 
+207.229.143.1&nbsp;&nbsp; 53&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+17&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp; 16386&nbsp;&nbsp; 
+ff03ff00&nbsp;&nbsp;&nbsp;&nbsp; 15/40</TT> <BR><TT><FONT 
+color=#ff0000>192.168.1.100&nbsp;&nbsp; 3992&nbsp;&nbsp;&nbsp; 
+207.229.143.42&nbsp; 22&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+6&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp; 
+16385&nbsp;&nbsp; 0103ff00&nbsp;&nbsp;&nbsp;&nbsp; 3583/3600</FONT></TT> 
+<P>Maintenant, quand vous installez une nouvelle base de règles, la table d'état 
+sera effacée; Pour cette raison, vous penseriez que la connexion ci-dessus ne 
+serait plus valide, car elle n'a plus d'entrée correspondante dans l'état table. 
+N'importe quelle transmission continuant sera constituée de paquets ACK, qui 
+nous avons vu ne peuvent pas insérer d'entrée dans la table d'état. Par exemple, 
+la table d'état dufirewall après la mise en place de la nouvelle base de règles. 
+
+<P><TT>Src_IP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Src_Prt 
+Dst_IP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Dst_Prt IP_prot 
+Kbuf&nbsp;&nbsp; Type&nbsp;&nbsp;&nbsp; 
+Flags&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Timeout</TT> 
+<P><TT>192.168.1.100&nbsp;&nbsp; 3994&nbsp;&nbsp;&nbsp; 
+192.168.1.1&nbsp;&nbsp;&nbsp;&nbsp; 258&nbsp;&nbsp;&nbsp;&nbsp; 
+6&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+16385&nbsp;&nbsp; 01ffff00&nbsp;&nbsp;&nbsp; 3586/3600</TT> 
+<BR><TT>192.168.1.100&nbsp;&nbsp; 3985&nbsp;&nbsp;&nbsp; 207.229.143.36&nbsp; 
+80&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 6&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 20481&nbsp;&nbsp; 0103ff00&nbsp;&nbsp;&nbsp; 
+49/50</TT> 
+<P>Notez que l'entrée de ssh est manquante, quoique ce soit toujours une 
+connection établie. Maintenant, quand je frappe une touche au clavier dans la 
+connexion ssh, des paquets ACK sont envoyés. Au lieu de refuser cette connexion, 
+le mur à l'épreuve du feu l'accepte et construit une nouvelle table d'état. Ceci 
+va à l'encontre de ce que nous avons présenté. Cependant, Firewall-1 conserve 
+l'état de quelles connexions étaient actives avant la mise à jour des règles. 
+Cette vieille table d'état est conservée comme old_connections. Vous voyez 
+ci-dessous la connexion ssh ajoutée de nouveau à la table d'état après que la 
+base de règles ait été rechargée et un paquet ACK envoyé sur la connexion 
+établie. C'est ainsi Firewall-1 conserve les connexions établies quand vous 
+installez une nouvelle base de règles. 
+<P><TT>Src_IP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Src_Prt 
+Dst_IP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Dst_Prt IP_prot 
+Kbuf&nbsp;&nbsp; Type&nbsp;&nbsp;&nbsp; 
+Flags&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Timeout</TT> 
+<P><TT>192.168.1.100&nbsp;&nbsp; 3994&nbsp;&nbsp;&nbsp; 
+192.168.1.254&nbsp;&nbsp; 258&nbsp;&nbsp;&nbsp;&nbsp; 
+6&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+16385&nbsp;&nbsp; 01ffff00&nbsp;&nbsp;&nbsp; 3572/3600</TT> <BR><TT><FONT 
+color=#ff0000>192.168.1.100&nbsp;&nbsp; 3992&nbsp;&nbsp;&nbsp; 
+207.229.143.42&nbsp; 22&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+6&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+16385&nbsp;&nbsp; 0103ff00&nbsp;&nbsp;&nbsp; 3592/3600</FONT></TT> 
+<BR><TT>192.168.1.100&nbsp;&nbsp; 3985&nbsp;&nbsp;&nbsp; 207.229.143.36&nbsp; 
+80&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 6&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 20481&nbsp;&nbsp; 0103ff00&nbsp;&nbsp;&nbsp; 
+35/50</TT> 
+<P><B>Fastpath</B>: Une autre chose que j'ai apprise est que si Fastpath est 
+activé, alors la session n'est pas ajoutée à une table de connexions, ie aucune 
+table de connexions n'est construite. La raison pour cela est que fastpath ne 
+regarde que le paquet SYN, donc il n'est pas nécessaire d'ajouter de session à 
+la table de connexions. Si le paquet a n'importe quel autre flag d'activé, alors 
+le paquet n'est pas filtré et est autorisé par défaut. Normalement Fastpath est 
+utilisé pour améliorer les performances (ou dans des cas particuliers de 
+routage). Le principe est que si un paquet n'a pas le flag SYN, alors il doit 
+déjà faire partie d'une connexion établie, puisque seul un paquet SYN peut 
+initier une connexion. Comme seuls les paquets SYN sont inspectés, les 
+performances sont largement améliorées. Cependant, activer Fastpath est 
+généralement un mauvaise idée, puisque cela rend vulnérable à une grande variété 
+d'attaques. L'option Fastpath est présente seulement dans FW-1 version 3.0 et 
+est une propriété globale appliquée à tous les paquets TCP. Dans la version 4.0, 
+elle s'appelle Fastmode, et peut être appliquée de façon sélective à différents 
+services TCP. 
+<P><B><FONT size=+2>Fermer une Connexion</FONT></B> <BR>D'après les tests 
+initiaux, il semble que FW-1 ferme les connexions en les laissant tomber en 
+timeout. Lorsque le module d'inspection voit sur une session l'échange d'un 
+paquet FIN ou RST, il change le timeout de 3600 secondes à 50. Si aucun paquet 
+n'est échangé durant cette période de 50 secondes, la connexion est alors 
+enlevée de la table d'états. Si des paquets sont envoyés pendant cet intervalle, 
+le timeout est remis à 50 secondes. En envoyant continuellement des paquets 
+après la rupture d'une connexion, vous pouvez continuer à remettre le timeout à 
+50 secondes. Cela empêche un Deni de Service si quelqu'un envoie des paquets RST 
+ou FIN spoofés. Ce comportement de timeout peut être considéré comme similaire à 
+l'état TIM_WAIT dans lequel entre une connexion TCP après avoir acquitté (ACK) 
+le second paquet FIN lors de la fermeture d'une session. 
+<P><B><FONT size=+2>UDP</FONT></B> 
+<P>Les connexions UDP sont plus simples à gérer car elles n'ont pas de notion 
+d'état. Lorsqu'un paquet UDP est autorisé à traverser le Firewall (d'après la 
+base de règles) une entrée est ajoutée à la table de connexions. N'importe quel 
+paquet UDP peut revenir pendant la durée du timeout (40 secondes par défaut) dès 
+lors que les adresses IP SRC/DST et les ports SRC/DST correspondent. <PRE>Src_IP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Src_Prt Dst_IP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Dst_Prt IP_prot Kbuf&nbsp;&nbsp;&nbsp; Type&nbsp;&nbsp;&nbsp; Flags&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Timeout
+192.168.1.10&nbsp;&nbsp; 1111&nbsp;&nbsp;&nbsp; 136.1.1.20&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 53&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 17&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 16386&nbsp;&nbsp; ff01ff00&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 34/40
+192.168.1.10&nbsp;&nbsp; 1111&nbsp;&nbsp;&nbsp; 136.1.1.20&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 17&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 16386&nbsp;&nbsp; ff01ff00&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 34/40</PRE>Ici 
+vous voyez la machine 192.168.1.10 exécuter une requête DNS au serveur 
+136.1.1.20. Pendant 40 secondes (Timeout) cette machine peut renvoyer autant de 
+paquets UDP qu'elle le désire, pour autant que les adresses SRC/DST et les ports 
+SRC/DST correspondent. Notez bien qu'il y a deux entrées, identiques à 
+l'exception du port de destination (Dst_Prt), qui sont 53 et 0. Je ne sais pas 
+pourquoi FW-1 crée une seconde entrée avec un port destination à 0. Cependant, 
+c'est le cas pour la plupart sinon tout le trafic UDP que FW-1 filtre. 
+<P><B><FONT size=+2>ICMP</FONT></B> 
+<P>ICMP est une grande déception avec FW-1. Par défaut, FW-1 n'inspecte pas de 
+façon "stateful" le trafic ICMP. Il n'est jamais entré dans la table de 
+connexion. De ce fait, les utilisateurs sont obligés d'autoriser aveuglément 
+certains trafics ICMP (tels que des ECHO_REPLY entrant) ou de "bidouiller" (NdT: 
+hack) le code Inspect (voir http://www.phoneboy.com/fw1). Je crois que c'est 
+l'une des plus grandes faiblesses de FW-1. Firewall-1 maintient quatre tables 
+d'état pour ICMP, Je n'ai jamais pu les faire fonctionner. Si quelqu'un peut 
+éclircir un peu le fonctionnement d'ICMP, faites le moi savoir. Les quatre 
+tables ICMP sont : 
+<P><TT>localhost&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+icmp_connections&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+50&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0</TT> 
+<BR><TT>localhost&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+icmp_requests&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+51&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 4</TT> 
+<BR><TT>localhost&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+icmp_replies&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+52&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 4</TT> 
+<BR><TT>localhost&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+icmp_errors&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+53&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 5</TT> 
+<P><B><FONT size=+2>Fragmentation</FONT></B> 
+<P>Récemment je me suis un peu amusé avec la fragmentation, précisément la 
+manière dont FW-1 traite les paquets fragmentés. Bien que la fragmentation ne 
+s'applique pas directement à la table d'état, je pense qu'elle est assez 
+importante pour être ajoutée à ce document. Je n'entrerai pas dans les détails 
+sur le fonctionnement de la fragmentation, je présume que le lecteur a une 
+connaissance de base de la fragmentation IP. J'aborderai d'abord des découvertes 
+générales sur la façon dont FW-1 gère la fragmentation, puis je passerai en 
+revue les spécificités de TCP, UDP et ICMP. 
+<P>Premièrement, FW-1 fait fragmentation entrante, fragmentation sortante. Je 
+veux dire que si FW-1 reçoit un paquet fragmenté qui est accepté par la base de 
+règles, c'est à dire qu'il va le transmettre dès qu'il en aura fini 
+l'inspection. D'où le terme "frags in, frags out". Cependant, je crois aussi que 
+FW-1 réalise une sorte de réassemblage des paquets fragmentés avant de les 
+inspecter. Cette conclusion est basée sur les tests suivants. Lorsque j'ai 
+initié une connexion avec un paquet TCP complèt, fragmenté, le paquet a été 
+accepté par le firewall, ajouté à la table d'états, et transmis (fragmenté). Par 
+complet, je veux dire que tous les fragments composant le paquets ont été 
+envoyés. J'avais dès lors une session enregistrée dans la table de connexions 
+pour 3600 secondes. J'ai alors essayé d'envoyer d'autres paquets qui 
+appartenaient à la même session (NdT : mêmes IP SRC/DST et Port SRC/DST). Ces 
+paquets fragmentés ont été acceptés, la valeur du timeout dans la table d'état a 
+été réinitialisée, et les paquets ont continué leur chemin. Cependant, lorsque 
+j'ai envoyé un fragment TCP incomplet de la même session (en d'autres termes, 
+j'ai envoyé un fragment seul ne constituant pas un paquet entier) le fragment 
+n'a pas été accepté. Non seulement n'a-t-il pas été accepté, mais il n'a pas été 
+loggué. Ceci me pousse à croire que quand FW-1 reçoit d'abord un paquet 
+fragmenté, il ne l'examine pas le paquet avant que tous les fragments ne soient 
+arrivés et le paquet entièrement réassemblé Une fois assemblé, le firewall 
+décide alors quoi faire (accepter, rejeter, etc..), enregistre le paquet, et 
+ajuste la table d'état en conséquence. Un autre exemple de ce comportement avec 
+<A href="http://securityfocus.com/vdb/?id=1236">jolt2</A> un outil de DOS (NdT : 
+Déni de Service) utilisé pour attaquer des systèmes Windows. L'outil envoie 100 
+paquets ICMP (ou UDP) fragmentés incomplèts à une cible choisie. Envoyés à un 
+FW-1, les paquets ne traversent pas le firewall ( bien qu'il accepte l'ICMP) et 
+ne sont pas non plus enregistré par le firewall. Je crois que c'est dû au fait 
+que ces paquets réduits en fragments d'ICMP sont inachevés, ils ne composent pas 
+un paquet ICMP complet. Puisqu'aucun paquet ICMP ne peut être entièrement 
+assemblé, rien n'est inspecté, ni enregistré. 
+<P>En y réfléchissant, un certain type de réassemblage des paquets fragmentés 
+est très probablement nécessaire pour un firewall à états. Beaucoup de firewall 
+stateful (FW-1 y compris) examinent les paquets en se basant sur les adresses IP 
+Src/Dst et les ports Src/Dst (entête TCP). Cependant, seul le premier fragment 
+d'un paquet fragmenté contient toute cette information, tous autres fragments 
+ont seulement l'information sur les adresses IP. Si une certaine forme 
+d'assemblage des fragments ne se produisait pas, le firewall n'aurait aucun 
+moyen de savoir à quelle session appartiennent les fragments, en dehors du 
+premier fragment du paquet. En réassemblant tous les paquets, le moteur 
+d'inspection du firewall peut alors déterminer la session à la quelle 
+appartiennent tous les fragments. 
+<P>Cependant, ne pas examiner les paquets pose également un problème, le 
+firewall est maintenant vulnérable aux attaques de fragmentation qui utilisent 
+les paquets inachevés ou ' illégaux ', comme ceux générés par jolt2. Puisque ces 
+paquets fragmentés inachevés ou ' illégaux ' ne seront jamais correctement 
+réassemblés, ils ne seront ni examinés ni enregistrés. Ainsi, le firewall 
+continuera à recevoir ces paquets et à essayer de les assembler, toutefois 
+l'assemblage est impossible. En attendant, le firewall est vulnérable aux 
+attaques de fragmentation, les ressources système sont utilisées à essayer de 
+traiter tous les fragments (NdT: DOS). Ainsi, le firewall peut être attaqué en 
+utilisant des fragments inachevés ou illégaux, et l'attaque ne peut ni être 
+stoppée par la base de règles du firewall, ni enregistrée par le firewall. Cette 
+vulnérabilité s'est vue assignée par bugtraq le numéro <A 
+href="http://securityfocus.com/vdb/?id=1312">1312</A>. Pour plus d'information 
+sur cette vulnérabilité et les solutions possibles, lisez <A 
+href="http://www.checkpoint.com/techsupport/alerts/ipfrag_dos.html">le bulletin 
+de CheckPoint.</A> Pour vous, utilisateurs d'Unix, vous pouvez également 
+utiliser l'option ligne de commande "fw ctl pstat" pour visualiser combien de 
+fragments ont été traités par le firewall. Voir <A 
+href="http://www.phoneboy.com/fw1/faq/0296.html">phoneboy.com</A> pour plus 
+d'information. 
+<P>Maintenant, les spécifités des protocoles. D'abord, TCP. D'abord, FW-1 
+dropera le premier fragment d'un paquet TCP fragmenté qui a moins de 24 octets 
+de donnée. Si le premier fragment du paquet fragmenté a moins de 24 octets de 
+données, le firewall droppe le fragment par défaut et enregistre le paquet avec 
+le message " paquet de TCP trop court " (NdT:"TCP packet too short"). (NOTE: 
+rappel, lorsque l'on parle des octets de données avec la fragmentation, ceci 
+n'inclut pas les 20 octets de l'entête IP ) Par exemple, le très populaire 
+scanner réseau nmap a une option '-f' qui fragmente les paquets de scan en un 
+paquets de 16 octets de donnée, suivi par un paquet de 8 octets de donnée. Ces 
+scan fragmentés sont droppé par défaut par FW-1 (indépendamment de votre base de 
+règles), avec le message " paquet TCP trop court "(NdT:"TCP packet too short"). 
+<P>ICMP et UDP sont différents. D'abord, tous les deux permettent n'importe 
+quelle taille de fragment standard (8 octets, 16 octets, 32 octets, etc..) à la 
+différence du TCP, qui exige une taille minimum de 24 octets. (NOTE: comme le 
+TCP, la taille de données n'inclut pas les 20 octets de l'entête IP). Cependant, 
+les fragments de taille "bizarre" n'ont pas été acceptées (par bizarre je veux 
+dire non multiples de 8 octets) . Par exemple, j'ai essayé une taille de donnée 
+fragmentée de 12 octets, mais ceci n'a été ni accepté ni a été enregistré. 
+<P>Comme toujours, ces résultats sont basés sur ma propre recherche personnelle, 
+ils ne sont nullement officiels. En fait, je propose à la communauté de sécurité 
+d'effectuer leurs propres essais pour valider ces résultats. Si vous trouvez 
+n'importe quelles imperfections dans ma logique, les méthodes d'essai, ou la 
+mise en place technique, faites le moi savoir! 
+<P><B><FONT size=+2>Translation d'adresses (Network Address 
+Translation</FONT></B>) 
+<P>Je travaille actuellement à la compréhension du fonctionnement de la table 
+d'état pour la Translation d'adresses (NdT: AMHA même si c'est la traduction la 
+plus communément admise je reste persuadé que serait plus juste de dire 
+traduction d'adresse car translation fait trop penser à transposition). Si vous 
+avez n'importe quelle information, je l'apprécierais considérablement, comme 
+j'essaye de développer en même temps ma compréhension et la section de ce 
+document sur NAT. J'ai amélioré la séquence type fwtable de sorte qu'il 
+maintenant des supports Tables de translation d'adresses de réseau (dans la 
+grande partie due au travail de Brett Eldridge, beldridg@best.com). Si vous 
+voulez essayer la dernière version de ce script, téléchargez download <A 
+href="http://www.enteract.com/~lspitz/fwtable_1.1.txt">fwtable_1.1</A>. 
+Faites-moi savoir ce que vous pensez de ce script. Les suggestions sont 
+considérablement appréciées. 
+<P><B><FONT face="Palatino,Book Antiqua"><FONT 
+size=+2>Conclusion</FONT></FONT></B> 
+<P>CheckPoint Firewall-1 est un firewall stateful, mais seulement jusqu'à un 
+certain point. Il garde les états des connexions TCP et UDP, Cependant il ne 
+gère pas intelligemment ICMP. Avant Firewall-1 version 4.1 SP2, une connexion 
+TCP pouvait être initiée avec presque n'importequel paquet. Depuis le SP2, seul 
+un paquet SYN peut initier une connexion TCP. Je pense que c'est une solution 
+plus sûre. La table d'état est basée seulement sur les adresses IP SRC et DST et 
+les ports SRC/DSTD, la table d'inspection ne garde pas l'état au sujet des 
+numéros de séquence TCP, ni sur la séquence SYN - SYN/ACK - ACK. Quant à la 
+cloture des connexions, ses méthodes semblent plutôt évidentes, semblable à 
+l'état TCP TIME_WAIT. La table d'état attend un paquet FIN ou un paquet RST, et 
+fait tomber la session en timeout. La fragmentation semble être gérée par un 
+réassemblage pendant le processus d'inspection. Aucun paquet fragmenté n'est 
+inspecté ou loggué avant d'être entièrement rassemblé. Si tout va bien, après 
+davantage de tests et de contribution de la communauté firewall, ce whitepaper 
+peut être un document de production qui répond à beaucoup de questions communes 
+au sujet de ce qu'est l'inspection stateful, et jusqu'à quel point les tables 
+sont "stateful". 
+<P><B><FONT size=+2>Tests Complémentaires</FONT></B> 
+<P>Ce que j'ai présenté a été testé sur le Check Point FireWall-1, version 4.1 
+SP2 sur une Ultra5 avec Solaris 2.7. Les outils que j'ai utilisé pour lire la 
+table d'état et créer mes propres paquets peuvent être trouvés ci-dessous. Je 
+voudrais faire des tests complémentaires pour comprendre comment les états sont 
+maintenus pour ICMP. Et également, comment le firewall droppe une connexion. Je 
+recherche n'importe qui pour valider (ou infirmer) ce que j'ai présenté ici. En 
+outre, n'importe quelle information supplémentaire serait considérablement 
+appréciée. 
+<P><B><FONT size=+1>Downloads</FONT></B>: 
+<P><A href="http://www.enteract.com/~lspitz/fwtable.txt">fwtable.pl</A> vous 
+aidera mieux à comprendre les tables stateful d'inspection pour vos firewall 
+(fonctionne seulement sur Check Point FW-1). La script peut être exécuté 
+localement sur tout module firewall, à distance depuis n'importe quelle station 
+de Management, ou de façon autonome sur tout système sur lequel PERL est 
+installé.. 
+<P><A href="http://www.eaglenet.org/antirez/hping2.html">hping2</A> vous permet 
+de construire vos propres paquets TCP/ICMP/UDP, avec des outils traceroute et 
+ping intégrés. 
+<P><A href="http://celerity.bartoli.org/nemesis/">Nemesis</A> est semblable à 
+hping, mais avec certaines fonctionnalités différentes. Écrit en C, il utilise 
+libpcap et libnet. Elle vous permet de construire n'importe quel type de paquet, 
+y compris TCP, UDP, ICMP, DNS, OSPF, etc... Extremement simple à utiliser, tout 
+est fait en ligne de commande. Nemesis et hping2 sont mes outils de prédilection 
+pour la construction de paquets. 
+<P><A href="http://www.packetfactory.net/libnet/">libnet</A> pour les codeurs C. 
+
+<P><B><I><FONT face="Helvetica-Narrow,Arial Narrow">Biographie de 
+l'auteur</FONT></I></B> <BR><I>Lance Spitzner a plaisir à apprendre en faisant 
+sauter ses systèmes Unix à la maison. Avant cela, il était <A 
+href="http://www.enteract.com/~lspitz/officer.html">Officier dans la Rapid 
+Deployment Force,(NdT : Force de Déploiement Rapide)</A> où il faisait sauter 
+des choses diffrentes. Vous pouvez le joindre à cette adresse : <A 
+href="mailto:lance@spitzner.net">lance@spitzner.net</A> .</I> <BR>&nbsp; 
+<CENTER>
+<TABLE border=5>
+  <CAPTION>
+  <TBODY><BR></TBODY></CAPTION>
+  <TBODY>
+  <TR>
+    <TD><I><FONT face=Braggadocio><FONT color=#800000><FONT size=+2><A 
+      href="http://www.enteract.com/~lspitz/pubs.html">Whitepapers / 
+      Publications</A></FONT></FONT></FONT></I></TD></TR></TBODY></TABLE></CENTER><A 
+href="http://ldelpha.free.fr/index.html">Page perso du traducteur</A> 
+</BODY></HTML>

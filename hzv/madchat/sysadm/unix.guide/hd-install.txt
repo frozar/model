@@ -1,0 +1,183 @@
+
+  ___________    ____________    ____  __  ___    ______________
+ |\    ____  \  |\    ____   \  |\   \|\ \|\  \  |\_____    ____\
+ | \   \__|\  \ | \   \__|\   \ | \   \ \ \ \  \ | |   |\   \   |
+ \  \    ___   | \ \    ____   \ \ \   \_| \_|  \ \|___| \   \__|
+  \  \   \_|\  \_ \ \   \__|\   \ \ \      _     \      \ \   \
+   \  \   \\ \   \ \ \   \ \ \   \ \ \     |\ http://www.haxworx.com
+    \  \___\\ \___\ \ \___\ \ \___\ \ \____| \_____\      \ \___\
+     \ |   | \ |   | \ |   | \ |   | \ |   |\ |    |       \ |   |
+      \|___|  \|___|  \|___|  \|___|  \|___| \|____|        \|___|
+ 
+
+   Installing/Mounting Multiple HDs under Linux                         
+   Author: BrainRawt                                                    
+   Email: brainrawt@hotmail.com                                         
+   Site: http://www.haxworx.com                                          
+
+   Updated on 5-11-02
+
+ NOTE: This information may vary if you are running a dif type of hdd.  Im not sure
+       because I dont have one but I think scsi HDs will show up as "sd*" instead
+       of "hd*".  So try changing everything that says "hd*" to "sd* and follow
+       the instructions with that in mind.  If you have FACTS about this, then please
+       share those FACTS with me.
+
+       I dont think it matters what distro you are running when installing and mounting 
+       HDs but this install/mount was performed on Mandrake 8.1. 
+
+###############################
+#  Installing The Hard drive  #
+###############################
+
+We will call the hard drive in this text a "HD". It saves me typing. 
+
+OK!!  Im not going go into detail about this part because I am going
+to assume that you know atleast this much about computers if you are
+running linux.
+
+1.  Power Down the System <-- duh!  It sparks alot when you try to do it with the power on.  :)
+2.  Add the 2nd HD <-- Dont forget to set your jumpers.
+3.  Power Up the System
+4.  If it is a new HD then dont forget to partition and format it. (I wont discuss in this text)
+5.  Open a console and follow the instructions below
+
+###############################
+#   Mounting The Hard Drive   #
+###############################
+
+OK!  1st thing we need to do is find the HD.  What does the system see this HD as?  We will use
+"dmesg" and "grep".  grep will limit the information that dmesg gives us.  
+
+[brainrawt@rawt brainrawt]$ dmesg | grep hd
+
+-------------------snip snip--------------------------------------------------------
+hda: WDC WD307AA-00BAA0, ATA DISK drive              <<-- old HD
+hdb: WDC WD84AA, ATA DISK drive                      <<-- new HD
+hdc: CREATIVE CD5230E, ATAPI CD/DVD-ROM drive        
+-------------------snip snip--------------------------------------------------------
+
+[brainrawt@rawt brainrawt]$
+
+We have found the 2 HDs and cdrom above.  I know that WD84AA is my new HD because the other HD is
+a 30 gig WD and it was already installed.
+
+Now that we know the system sees our new HD as "hdb", we can prepare our mounting process.  To
+do this, we must "su" to root and make some changes to the /etc/fstab file.
+
+[brainrawt@rawt brainrawt]$ su
+Password:
+[root@rawt brainrawt]# 
+
+------------------------------fstab sorta explained---------------------------------
+
+The fstab file tells the system what filesystems need mounted and where they 
+should be mounted.
+
+The format for this file is:
+
+device mount_point type_of_filesystem options dump_freq Pass_number
+
+EX:/dev/hda1 / ext2 defaults 1 1
+
+-------------------------------------------------------------
+Linux Supported Filesystems for the "type_of_filesystem" are:
+-------------------------------------------------------------
+
+ext2 = linux partition.
+msdos = dos partition
+umsdos = used when installing linux on a dos partition without any ext2 partitions.
+proc = used for processes that use system information "/proc".
+iso9660 = used for cdroms.
+sysv = support for system v drives under linux.
+hpfs = high performance filesystem.  HPFS support under linux.
+coherent =  coherent filesystem.
+xenix = SCO Xenix filesystem.
+
+-------------------------------------------------------------
+Linux Supported options for the "options" are:
+-------------------------------------------------------------
+
+default = read,write,suid,quota
+rw = read,write
+ro = read only
+suid = access in suid mode allowed
+nosuid = access in suid mode not allowed
+quota = quote may be in affect
+noquota = quota may not be in affect
+
+-------------------------------------------------------------
+Linux Supported options for the "dump_freq" are:
+-------------------------------------------------------------
+
+This number is used for automated backups.  It may and may not be used on your system.
+
+0 = do nothing
+1 = backup once a day
+2 = back up every other day
+3 = .....
+4 = .....
+
+-------------------------------------------------------------
+Linux Supported options for the "pass_number" are:
+-------------------------------------------------------------
+
+This number tells fsck which filesystems to check 1st.
+
+1 = check 1st
+2 = check 2nd
+3 = ...
+4 = ...
+
+If more than one disk or partition has a 1, then fsck will check them
+in whatever order they are in the /etc/fstab file.
+
+------------------------------------------------------------------------------------
+
+[root@rawt brainrawt]# pico /etc/fstab  <<-- you can use any editor of your choice.  I like pico.
+
+If your HD has more than 1 partition on it, you can set them up in fstab by figuring out
+where those other partitions are located on the disk.  For example:  The HD I mounted had
+2 partitions (hdb1 and hdb6).  so I added 2 lines to the fstab file.
+
+EX: /dev/hdb1 /mnt/old-distro ext2 defaults 0 0
+EX: /dev/hdb6 /mnt/old-distro/home ext2 defaults 0 0
+
+---------------------------Now for your HD information------------------------------
+(1 linux partition on the HD) - Add the line below to the /etc/fstab file
+
+/dev/hdb1 /mnt/new_hd ext2 defaults 0 0  <<-- hdb we found using dmesg and we assume that its a 1
+                                              because it usually is.
+
+OR
+
+(1 dos partition on the HD) - Add the line below to the /etc/fstab file
+
+/dev/hdb1 /mnt/new_hd msdos defaults 0 0
+
+Now that we have added the needed lines to /etc/fstab we can make our mount points...
+
+[root@rawt brainrawt]# mkdir /mnt/new_hd  <<-- as we specified in the /etc/fstab file.
+[root@rawt brainrawt]# mount /mnt/new_hd  <<-- mount that baby so we can see whats on it.
+
+NOTE: you can place your mount point anywhere in the "/" of the system that you wish.  I
+      just choose to put mine in the "/mnt" dir for organization reasons.
+
+[root@rawt brainrawt]# cd /mnt/new_hd
+[root@rawt new_hd]# ls -l
+
+pron1.jpg                    really_good_pron_vid.mpg
+pron2.jpg                    frozens_mom.jpg
+pron3.jpg                    zaphod_in_barn_with_large_animals.mpg
+
+WooHoo!!  I can view my pr0n again.  ok ok  This is a fake listing but you get the idea
+of how great it could be to mount a 2nd , 3rd, etc HD. 
+
+[root@rawt new_hd]# 
+
+------------------------------------------------------------------------------------
+I know that there are a few things in this text that werent explained or need a better
+explanation.  They are that way because I either dont know, dont care, or forgot.  If
+there is anything that can be added to make this text easier to understand for a reader 
+then please contact me and share the information - BrainRawt
+

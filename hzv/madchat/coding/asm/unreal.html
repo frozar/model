@@ -1,0 +1,130 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>Le Mode Unreal</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+</head>
+
+<body>
+<p align="center"><font size="3" face="Verdana, Arial, Helvetica, sans-serif"><b>Le Mode Unreal</b></font></p>
+<p align="justify"><font size="3" face="Verdana, Arial, Helvetica, sans-serif">&Agrave; l&rsquo;origine des processeurs x86, le 8086 avait une adresse m&eacute;moire de 20 bits (0x0 &agrave; 0xFFFFF), il &eacute;tait donc limit&eacute; a 1Mo de RAM (2^20=1048576). Mais l&rsquo;espace d&rsquo;adressage &eacute;tant l&eacute;g&egrave;rement sup&eacute;rieur
+                (0xFFFF:0xFFFF = 0x10FFEF), le 20&egrave;me bit &eacute;tait tout simplement oubli&eacute;. Cela veut dire qu&rsquo;au lieu
+                d&rsquo;acceder &agrave; l&rsquo;adresse 0x10FFEF (21 bits) on accede &agrave; l&rsquo;adresse 0xFFEF (20 bits). Cela s&rsquo;appelle le wrap-arround.
+                Les g&eacute;n&eacute;rations suivantes avaient plus de RAM, le wrap-around devenait donc inutile. Mais voil&agrave;
+  le probl&egrave;me: certain programmes on besoin du wrap-around pour fonctionner ! Et comme la devise d&rsquo;Intel
+                c&rsquo;est &ldquo;100% compatible&rdquo;, le wrap-around garde donc sa place. Mais ne vous inquietez pas, le 20&egrave;me bit
+                pourra &ecirc;tre activ&eacute; gr&acirc;ce a l&rsquo;A20 Gate. Le seul probl&egrave;me c&rsquo;est qu&rsquo;il y a plusieurs fa&ccedil;ons de l&rsquo;activer et
+    cela d&eacute;pend de votre machine. Voici trois m&eacute;thodes que je vais vous pr&eacute;senter rapidement, elles devraient
+                    fonctionner sur la plupart des machines actuelles. La premi&egrave;re est la plus vielle et la plus lente, on passe par le controlleur clavier (8042).</font>
+</p>
+<div align="justify">
+    <blockquote><font color="#993333" size="3" face="Courier New, Courier, mono">in al, 0x64<br>
+test al, 2<br>
+jnz $-4<br>
+<br>
+</font><font color="#993333" size="3" face="Courier New, Courier, mono">mov al, 0xd1<br>   
+    out 0x64, al</font><br>
+    <br>  
+    <font color="#993333" size="3" face="Courier New, Courier, mono">	in al, 0x64<br>   
+    test al, 2<br>	
+    jnz $-4</font><br>  
+    <font color="#993333" size="3" face="Courier New, Courier, mono">	<br>
+    mov al, 0xdf<br>   
+  out 0x60, al</font></blockquote>
+</div>
+<p align="justify"><font size="3" face="Verdana, Arial, Helvetica, sans-serif">La deuxi&egrave;me est beaucoup plus rapide, on passe par le System Control Port A</font>
+</p>
+  
+                <div align="justify">
+                  <blockquote><font color="#993333" size="3" face="Courier New, Courier, mono">in al, 0x92<br>   
+        or al, 0x02<br>   
+      out 0x92, al</font></blockquote>
+</div>
+<p align="justify"><font size="3" face="Verdana, Arial, Helvetica, sans-serif">La troisi&egrave;me est plus simple, on passe par le BIOS.</font>
+</p>
+<div align="justify">
+    <blockquote><font color="#993333" size="3" face="Courier New, Courier, mono">mov ax, 0x2401<br>   
+  int 0x15</font></blockquote>
+</div>
+<p align="justify"><font size="3" face="Verdana, Arial, Helvetica, sans-serif">L&rsquo;A20 Gate est activ&eacute; on peut donc acceder &agrave; ce fameux 20&egrave;me bit ! ce qui fait... 64 Ko en plus !? Et bien
+    oui, c&rsquo;est tout ! Mais alors comment acceder a toute la RAM ? Tout d&rsquo;abord la limite des 4 Go est appar&ucirc;t
+    sur le 386 qui poss&eacute;dait une adresse m&eacute;moire de 32 bits (le 286 n&rsquo;en avait que 24). Et pour rester compatible
+    (encore) le processeur poss&eacute;de maintenant diff&eacute;rent modes de fonctionnement, le mode r&eacute;el et le mode
+    prot&eacute;g&eacute;. Le mode r&eacute;el est compatible avec le 8086, et c&rsquo;est le mode actif &agrave; chaque d&eacute;marrage. Le mode
+    prot&eacute;g&eacute; sert &agrave; la simpli&#61441;cation de la programmation et &agrave; la protection materielle des systemes multi-t&acirc;ches
+    (d&rsquo;ou son nom). Le seul interet de ce mode (pour nous) est de pouvoir modi&#61441;er les registres de segment en entier gr&acirc;ce a des
+    d&eacute;scripteurs de segment qui sont r&eacute;pertori&eacute; dans la GDT (Global Descriptor Table). La petite astuce tient
+    dans le fait que lorsque l'on revient en mode r&eacute;el les registres de segment ne sont pas modi&#61441;&eacute;. On peut donc
+    utiliser toute la m&eacute;moire en mode r&eacute;el ! La m&eacute;thode est de passer en mode prot&eacute;g&eacute;, modi&#61441;er les registres de segment de fa&ccedil;ons &agrave; avoir acc&eacute; a toute la RAM, et revenir en mode r&eacute;el. Et nous voil&agrave; dans le mode
+  unreal ! La premi&egrave;re &eacute;tape est donc de dire au processseur ou se trouve la GDT, il faut calculer son adresse lin&eacute;aire.</font>
+</p>
+<div align="justify">
+    <blockquote><font color="#993333" size="3" face="Courier New, Courier, mono">xor eax, eax<br>   
+    mov ax, cs<br>   
+    shl eax, 4<br>   
+  add [gdt+2], eax</font></blockquote>
+</div>
+<p align="justify"><font size="3" face="Verdana, Arial, Helvetica, sans-serif">On la charge.</font>
+</p>
+<div align="justify">
+  <blockquote><font color="#993333" size="3" face="Courier New, Courier, mono">lgdt [gdt]</font></blockquote>
+</div>
+                <p align="justify"><font size="3" face="Verdana, Arial, Helvetica, sans-serif">On passe en mode prot&eacute;g&eacute;.</font>
+                </p>
+<div align="justify">
+    <blockquote><font color="#993333" size="3" face="Courier New, Courier, mono">mov eax, cr0<br>   
+    inc eax<br>   
+  mov cr0, eax</font></blockquote>
+</div>
+<p align="justify"><font size="3" face="Verdana, Arial, Helvetica, sans-serif">Maintenant on peut modi&#61441;er enti&eacute;rement les registres de segment.</font>
+</p>
+<div align="justify">
+    <blockquote><font color="#993333" size="3" face="Courier New, Courier, mono">mov bx, 0x8<br>   
+    mov		ds, bx<br>   
+    mov		es, bx<br>   
+    mov		fs, bx<br>   
+  mov		gs, bx</font></blockquote>
+</div>
+<p align="justify"><font size="3" face="Verdana, Arial, Helvetica, sans-serif">On reviens en mode r&eacute;el.</font>
+</p>
+  
+                <div align="justify">
+                  <blockquote>
+                    <p><font color="#993333" size="3" face="Courier New, Courier, mono">dec		eax<br>	
+          mov		cr0, eax</font></p>
+                  </blockquote>
+      </div>
+                <p align="justify"><font size="3" face="Verdana, Arial, Helvetica, sans-serif">Et voici notre GDT, elle contient deux descripteurs de segment:<br>
+                - Le descripteur null est obligatoire, mais &eacute;tant ignor&eacute; par le processeur vous pouvez l'utiliser comme pointeur.<br>
+                - Le descripteur de donn&eacute;.</font>
+                </p>
+  
+                <div align="justify">
+                  <blockquote>
+                    <p><font color="#993333" size="3" face="Courier New, Courier, mono">GDT<br>
+                    <br>
+            ; 0x0		Descripteur null (pointeur)</font><font color="#993333" size="3" face="Courier New, Courier, mono"><br>
+            <br>
+            dw		GDT.end-GDT-1<br>
+            dw		GDT<br>   
+            dd		0<br>
+            <br>
+            ; 0x8		Descripteur de segment de donn&eacute;e<br>
+            <br>	
+            dw		0xFFFF<br>   
+            dw		0<br>   
+            db		0<br>   
+            db		10010010b<br>   
+            db		10001111b<br>   
+          db		0<br>
+          <br>
+          </font><font color="#993333" size="3" face="Courier New, Courier, mono">.end</font></p>
+                  </blockquote>
+        </div>
+                <p align="justify"><font size="3" face="Verdana, Arial, Helvetica, sans-serif">Nous avons maintenant les registres DS, ES, FS, GS qui pointe sur un segment de donn&eacute;e de 4 Go. Pour les curieux sachez que je ne
+pr&eacute;sente ici qu&rsquo;une infime partie du mode prot&eacute;g&eacute;, pour plus d&rsquo;information reportez vous au manuel Intel.</font></p>
+                <p align="justify"><font size="3" face="Verdana, Arial, Helvetica, sans-serif">par <a href="mailto:%3Ca.gallouet@free.fr%3E">Adrien S. Gallou&euml;t</a> (juin 2003) </font>
+</p>
+</body>
+</html>

@@ -1,0 +1,498 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML
+><HEAD
+><TITLE
+>Organisation de la messagerie <I
+CLASS="PRODUCTNAME"
+>qmail</I
+></TITLE
+><META
+NAME="CREATOR"
+CONTENT="Modular DocBook HTML Stylesheet version 1.07"><META
+NAME="form"
+CONTENT="html"><META
+NAME="Description"
+CONTENT="Introduction to qmail in french"><META
+NAME="Keywords"
+CONTENT="qmail mta"><META
+NAME="Robot"
+CONTENT="index,follow"><META
+NAME="Author"
+CONTENT="Djalil Chafai"></HEAD
+><BODY
+BGCOLOR="#FFFFFF"
+TEXT="#000000"
+><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TH
+COLSPAN="3"
+ALIGN="center"
+>Introduction à qmail</TH
+></TR
+><TR
+><TD
+WIDTH="10%"
+ALIGN="left"
+VALIGN="bottom"
+><A
+HREF="c01.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="80%"
+ALIGN="center"
+VALIGN="bottom"
+>Chapitre 1. Généralités</TD
+><TD
+WIDTH="10%"
+ALIGN="right"
+VALIGN="bottom"
+><A
+HREF="c0103.html"
+>Suivant</A
+></TD
+></TR
+></TABLE
+><HR
+ALIGN="LEFT"
+WIDTH="515"><H1
+><A
+NAME="R,C(1,CHAPTER)(2,SECT1)"
+>Organisation de la messagerie qmail</A
+></H1
+><P
+>À la différence de 
+<I
+CLASS="PRODUCTNAME"
+>sendmail</I
+>, 
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+> 
+n'est pas monolithique.
+Le système 
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+> 
+se compose de plusieurs programmes tournant sous des
+UID/GID différents et presque tous non nuls rendant difficile toute tentative
+d'intrusion. De plus, la gestion des chaînes de caractères dans 
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+> 
+a été traitée avec beaucoup de soin pour éviter les problèmes de
+débordement, souvent à l'origine des trous de sécurité.  
+Un groupe d'utilisateurs offre même un prix de 1000$ à toute personne qui 
+trouverait un trou de sécurité dans <I
+CLASS="PRODUCTNAME"
+>qmail</I
+> !</P
+><P
+>Aucun binaire ne porte le nom <TT
+CLASS="FILENAME"
+>qmail</TT
+>.
+Par contre, beaucoup de binaires ont
+un nom qui commence par <TT
+CLASS="FILENAME"
+>qmail-</TT
+>.</P
+><P
+><I
+CLASS="PRODUCTNAME"
+>qmail</I
+> est en fait un
+ensemble de binaires, tous situés par défaut dans 
+<TT
+CLASS="FILENAME"
+>/var/qmail/bin/</TT
+>,
+comprenant une partie MTA avec ses 
+«facettes» SMTP avec 
+<I
+CLASS="APPLICATION"
+>qmail-smtpd</I
+> 
+et QMTP avec 
+<I
+CLASS="APPLICATION"
+>qmail-qmtpd</I
+>,
+<I
+CLASS="APPLICATION"
+>qmail-inject</I
+> 
+et 
+<I
+CLASS="APPLICATION"
+>mailsubj</I
+> 
+pour l'injection dans la file d'attente
+et une partie MDA 
+<I
+CLASS="APPLICATION"
+>qmail-local</I
+> 
+ainsi qu'un petit wrapper pour
+<I
+CLASS="PRODUCTNAME"
+>sendmail</I
+>.</P
+><P
+>Les binaires du système 
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+> 
+ont tous leur page de manuel.
+L'aide comprend également des pages de manuel supplémentaires décrivant 
+certains formats de fichiers ou d'entêtes par exemple.
+En voici quelques unes :
+<I
+CLASS="EMPHASIS"
+>qmail</I
+>,
+<I
+CLASS="EMPHASIS"
+>qmail-limits</I
+>,
+<I
+CLASS="EMPHASIS"
+>qmail-upgrade</I
+>,
+<I
+CLASS="EMPHASIS"
+>qmail-header</I
+>,
+<I
+CLASS="EMPHASIS"
+>addresses</I
+>,
+<I
+CLASS="EMPHASIS"
+>envelopes</I
+>.</P
+><P
+>      
+Le POP3 est disponible via le triplet 
+<I
+CLASS="APPLICATION"
+>qmail-popup</I
+>,
+<I
+CLASS="APPLICATION"
+>checkpassword</I
+> 
+et 
+<I
+CLASS="APPLICATION"
+>qmail-pop3d</I
+>.
+Il existe des patches pour les gestionnaires IMAP et POP3 habituels
+permettant de les utiliser avec 
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+>, 
+voir la page de
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+>
+<A
+HREF="http://www.qmail.org/"
+>http://www.qmail.org/</A
+>
+pour plus de détails.
+Les messages sont placés dans la file d'attente par 
+<I
+CLASS="APPLICATION"
+>qmail-queue</I
+>.
+La gestion de la file d'attente est effectuée par differents programmes dont
+<I
+CLASS="APPLICATION"
+>qmail-lspawn</I
+>,
+<I
+CLASS="APPLICATION"
+>qmail-clean</I
+> 
+et
+<I
+CLASS="APPLICATION"
+>qmail-rspawn</I
+>, 
+tous fils du daemon
+<I
+CLASS="APPLICATION"
+>qmail-send</I
+>.
+Le traçage via 
+<I
+CLASS="APPLICATION"
+>syslog</I
+> 
+peut être effectué par 
+<I
+CLASS="APPLICATION"
+>splogger</I
+>.
+Voici un schéma montrant la structure de 
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+> lorsqu'il est chargé en
+mémoire :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>UTILISATEUR PROGRAMME                 FONCTION
+qmails      qmail-send                gestion sortie file d'attente
+qmaill      \_ splogger qmail         enregistrement via syslog
+qmailq      \_ qmail-clean            nettoyage de la file d'attente
+qmailr      \_ qmail-rspawn           gestionnaire messages distants
+root        \_ qmail-lspawn ./Mailbox gestionnaire messages locaux</PRE
+></TD
+></TR
+></TABLE
+>
+
+La directive <TT
+CLASS="FILENAME"
+>./Mailbox</TT
+> passée en paramètre à
+<I
+CLASS="APPLICATION"
+>qmail-lspawn</I
+> est la directive de livraison par défaut.
+Elle peut très être un tube (pipe) vers un MDA classique comme
+<I
+CLASS="PRODUCTNAME"
+>procmail</I
+>. C'est par exemple le cas sur la
+<I
+CLASS="PRODUCTNAME"
+>Debian GNU/Linux</I
+>.</P
+><P
+>Voici un petit schéma explicatif emprunté au fichier
+<TT
+CLASS="FILENAME"
+>INTERNALS</TT
+> livré avec les sources
+qui contient une présentation de la structure de la file d'attente de
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+> et sa gestion 
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+> qmail-smtpd --- qmail-queue -- qmail-send --- qmail-rspawn -- qmail-remote
+               /                    |      \
+qmail-inject _/                qmail-clean  \_ qmail-lspawn -- qmail-local</PRE
+></TD
+></TR
+></TABLE
+>&#13;</P
+><P
+><I
+CLASS="APPLICATION"
+>qmail-send</I
+> gère les messages placés dans la file
+d'attente par <I
+CLASS="APPLICATION"
+>qmail-queue</I
+>.
+Il fait appel à <I
+CLASS="APPLICATION"
+>qmail-lspawn</I
+>
+lui même invoquant <I
+CLASS="APPLICATION"
+>qmail-local</I
+>
+et <I
+CLASS="APPLICATION"
+>qmail-rspawn</I
+>
+lui même invoquant <I
+CLASS="APPLICATION"
+>qmail-remote</I
+>.
+Voir leur page de manuel respectives pour les détails.
+Un <B
+CLASS="COMMAND"
+>man qmail</B
+> donne une présentation globale de
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+>.</P
+><P
+>Bien entendu, ces pages de manuel ne seront disponibles que lorsque
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+>
+sera installé. Cependant, une version HTML de ces pages existe
+à l'URL 
+<A
+HREF="http://qmail-docs.surfdirect.com.au/docs/qmail-1.03-man/"
+>http://qmail-docs.surfdirect.com.au/docs/qmail-1.03-man/</A
+>. </P
+><P
+>Avant de passer à la suite, voici la structure standard du répertoire
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+> <TT
+CLASS="FILENAME"
+>/var/qmail/</TT
+>
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+> REPERTOIRE          FONCTION
+ /var/qmail          répertoire principal
+  \_ alias/          réceptacle des courriels «spéciaux» (root...)
+  \_ bin/            binaires de la distribution qmail
+  \_ control/        fichiers de configuration 
+  \_ man/            pages de manuel
+  \_ queue/          la file d'attente
+  \_ users/          plan d'adressage (super-fichier d'alias)</PRE
+></TD
+></TR
+></TABLE
+>
+
+Sur <I
+CLASS="PRODUCTNAME"
+>Debian GNU/linux</I
+>,
+la structure est un peu différente
+et plus conventionnelle. Les binaires sont répartis entre
+<TT
+CLASS="FILENAME"
+>/usr/sbin/</TT
+> et <TT
+CLASS="FILENAME"
+>/usr/bin/</TT
+>,
+les pages de manuel
+sont dans <TT
+CLASS="FILENAME"
+>/usr/man/</TT
+>,
+le répertoire <TT
+CLASS="FILENAME"
+>/var/qmail/control/</TT
+>
+devient  <TT
+CLASS="FILENAME"
+>/etc/qmail/</TT
+> et
+<TT
+CLASS="FILENAME"
+>/var/qmail/queue/</TT
+> devient
+<TT
+CLASS="FILENAME"
+>/var/spool/qmail</TT
+>
+via des liens symboliques.</P
+><P
+>Pour finir cette section, je vous signale l'existence de la
+«qmail big picture» à l'URL
+<A
+HREF="http://www.nrg4u.com/"
+>http://www.nrg4u.com/</A
+>
+qui donne une vue synthétique de l'achitecture de
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+>.</P
+><HR
+ALIGN="LEFT"
+WIDTH="515"><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+><A
+HREF="c01.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+><A
+HREF="book01.html"
+>Page principale</A
+></TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+><A
+HREF="c0103.html"
+>Suivant</A
+></TD
+></TR
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+>Généralités</TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+><A
+HREF="c01.html"
+>Niveau précédent</A
+></TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+>Principales différences avec la messagerie sendmail</TD
+></TR
+></TABLE
+></BODY
+></HTML
+>

@@ -1,0 +1,309 @@
+
+<META content="text/html; charset=iso-8859-1" http-equiv=Content-Type>
+<META content="MSHTML 5.00.2920.0" name=GENERATOR></HEAD>
+<BODY>
+<HR width="100%">
+Cet article a été traduit de l'anglais par OUAH (OUAH_@hotmail.com), 
+http://www.multimania.com/ouah. La version originale est de Lance Spitzner 
+(lspitz@ksni.net) et peut être obtenue à http://www.enteract.net/~lsiptz. Pour 
+tout commentaire, venez sur le channel de hacking français : #root sur 
+irc.kewl.org <BR>
+<HR width="100%">
+
+<P><FONT size=+1><B>Armoring linux:</B> préparer votre ordinateur linux pour 
+Internet</FONT> 
+<P>Les organismes du monde entier ont adopté Linux comme plateforme de 
+production. En se reliant à Internet pour fournir des services sensibles, ils 
+sont aussi des devenus des cibles de choix. Pour vous aider à protéger ces 
+systèmes Linux, cet article parle des bases pour sécuriser un ordinateur Linux. 
+Les exemples fournis ici concernent la Red Hat 6.0 mais devraient s'appliquer à 
+la plupart des distributions Linux. <BR>&nbsp; 
+<P><U>Installation</U> 
+<P>Le meilleur moment pour commencer à sécuriser votre système est au 
+commencement, à l'installation de l'OS. Puisque c'est un ordinateur de 
+production, vous ne pouvez faire confiance aux installations précédentes. Vous 
+voulez commencer avec une installation vierge, où vous pouvez garantir 
+l'intégrité de l'ordinateur. Mettez votre ordinateur dans un réseau isolé. A 
+aucun moment vous ne voulez vous connecter de cet ordinateur à un réseau actif 
+ni à Internet pour ne pas exposer votre système à une possible compromission. 
+J'ai été personnellement témoin d'un système hacké par un script kiddie en moins 
+de 15 minutes de connexion sur le net. Pour obtenir plus tard les fichiers 
+sensibles et les patchs, vous aurez besoin d'un deuxième ordinateur pour le 
+faire. Ce deuxième ordinateur downloadera les fichiers depuis le net puis se 
+connectera à votre "réseau" isolé pour transférer les fichiers sensibles ou 
+graver les patchs sur un CD-ROM. 
+<P>Une fois que vous avez placé votre prochain ordinateur dans un réseau isolé, 
+vous pouvez commencer. La première chose à faire est de choisir quel paquetage 
+de l'OS installer. Pour la Red Hat 6.0 vous avez trois options, Workstation, 
+Server ou Custom (par défaut). Je vous recommande fortement de choisir Custom vu 
+que cela vous permet de choisir quels services sont installés et comment le 
+système est partitionné. L'idée est d'installer le minimum de paquetages tout en 
+maintenant une efficacité maximum. S'il y a moins de logiciels sur l'ordinateur, 
+il y aura moins de trous de sécurité ou de possibilités d'exploits. Cela veut 
+dire que si vous n'avez pas besoin d'un serveur de News ou d'un serveur Real 
+Audio alors ne l'installez pas. Une chose sympa avec Linux est que, si vous 
+changez d'avis, il sera facile d'ajouter des paquetages par la suite. 
+Indépendamment de l'installation que vous choisissez vous installerez les 
+manuels et les docs HOWTO. Je trouve que les documents et pages en ligne du 
+manuel sont une ressource importante qui n'ajoute pas de grands risques pour 
+votre système. 
+<P>Si vous choisissez Custom on vous questionnera sur le partitionement de votre 
+système. J'aime toujours donner au super-utilisateur root le plus de place 
+possible et de gicler tout ce qui n'y a pas sa place, ainsi vous n'exécuterez 
+plus des programmes alors que vous n'avez plus de place. Cependant nous avons 
+besoin de plusieurs partitions pour protéger l'espace du root. Si nous devions 
+remplir la partition root avec des données comme les logging et les emails, nous 
+causerions un déni de service qui pourrait potentiellement crasher le système. 
+<P>Par conséquent je recommande toujours une partition séparée pour /var qui est 
+l'endroit où s'enregistre les logs du système et les emails. En isolant la 
+partition /var vous protégez la partition root d'un remplissage excessif. Je 
+pense que 400 MB est plus que suffisant pour /var. Vous pouvez aussi faire des 
+partitions séparées pour certains programmes et particulièrement ceux qui 
+enregistrent des logging énormes ou un répertoire /home si vous avez pas mal 
+d'utilisateurs. Avec une telle installation, vos partitions ressembleront à ce 
+qui suit: 
+<P>/ - n'importe quoi d'autre <BR>/var - 400 MB <BR>swap - (Je commence 
+normalement avec 256 MB) 
+<P>Une fois que le système a rebooté après l'installation n'oubliez d'installer 
+les patchs de sécurité recommandés. Pour la Red Hat, vous pouvez trouver ces 
+patchs de sécurité au site de soutien pour les errata de la Red Hat. Les patchs 
+sont importants dans la sécurité d'un système et ces systèmes devraient toujours 
+être mis à jour. bugtraq@securityfocus.com ou 
+redhat-watch-list-request@redhat.com sont d'excellentes sources pour les bugs à 
+venir et les patchs. Sans ces patchs votre système peut facilement être 
+compromis. Soyez sûr d'être en deux machines pour obtenir les patchs, votre 
+ordinateur Linux devant toujours rester dans un réseau isolé. Pour la Red Hat, 
+une fois que vous avez downloader le rpm, vous pouvez facilement mettre à jour 
+votre système en utilisant la syntaxe suivante. Un excellent exemple de cela 
+c'est le patch de mise à jour de wu-ftpd. 
+<P>rpm -Uvh wu-ftpd-2.5.0-5.6.0.i386.rpm 
+<P>Pour les systèmes qui sont déjà en ligne, vous pouvez prendre le rpm par ftp 
+et l'installer par la même occasion avec la commande suivante: 
+<P>rpm -Uvh ftp://updates.redhat.com/5.2/i386/wu-ftpd-2.5.0-5.6.0.i386.rpm 
+<BR>&nbsp; 
+<P><U>Désactiver des services</U> 
+<P>Une fois que vous avez exécuté le paquetage d'installation, patché et rebooté 
+votre ordinateur, nous somme maintenant prêts pour sécuriser le système 
+d'exploitation. Le sécuriser consiste principalement à désactiver des services, 
+ajouter des systèmes de logs, modifier quelques fichiers, et configurer les TCP 
+Wrappers. Nous commencerons d'abord par désactiver ces services. 
+<P>Par défaut, Linux est un système d'exploitation puissant qui exécute beaucoup 
+de services utiles. Cependant, la plupart de ces services ne sont pas 
+nécessaires et posent un risque potentiel à la sécurité. L'endroit où nous 
+allons commencer est le fichier /etc/inetd.conf. Ce fichier spécifie les 
+services que le daemon /usr/sbin/inetd devra détecter. Par défaut, 
+/etc/inetd.conf est configuré pour plusieurs services desquels vous certainement 
+besoin de seulment deux, ftp et telnet. Vous désactivez les services inutiles en 
+les mettant en commentaires ("exemple A"). C'est important car plusieurs des 
+services exécutés par inetd pose des problèmes de sécurité sérieux comme popd, 
+imapd et rsh. Assurez-vous des services mis en commentaire en lançant la 
+commande suivante (cela vous montrera tous les services qui ont été laissés non 
+commentés) 
+<P>grep -v "^#" /etc/inetd.conf 
+<P>La chose à faire ensuite est de regarder les scripts .rc qui déterminent 
+quels services sont lancés par le processus init. Pour la Red Hat, vous 
+trouverez ces scripts à /etc/rc.d/rc3.d (ou /etc/rc.d/rc5.d si vous bootez 
+automatiquement depuis une GUI comme Gnome ou KDE. Pour empêcher un script 
+d'être exécuté, remplacez la lettre majuscule S par la minuscule s. Ainsi vous 
+pouvez facilement réexécuter ce script simplement en remplaçant le petit s par 
+un S. Ou, si vous préférez, la Red Hat est distribuée avec un bon utilitaire 
+pour désactiver ces services. Vous n'avez qu'à tapper /usr/sbin/setup au prompt 
+de commande et choisir "System Services" et à partir de là vous pouvez choisir 
+quels scripts seront démarrés durant le processus de boot. Il y a une autre 
+possibilité, c'est chkconfig que vous trouverez dans la plupart des 
+distributions. Les scripts de démarrages suivants ont pu être installés par 
+défaut mais ne sont pas obligatoires pour le fonctionnement du système. Si vous 
+n'en avez pas besoin, désactivez-les. Les nombres dans les noms déterminent la 
+séquence de l'initialisation, ils dépendent de votre distribution et de sa 
+version et peuvent changer. Si les scripts dans notre système commencent par un 
+K au lieu d'un S, ils ont déjà été désactivés. 
+<P>S05apmd (nécessaire uniquement pour les ordinateurs portables) <BR>S10xntpd 
+(Network time protocol) <BR>S11portmap (nécessaire si vous utilisez un service 
+rpc, comme NIS ou NFS) <BR>S15sound (configuration des sons) <BR>S15netfs (c'est 
+le client nfs, utilisé pour mounter des filesystems depuis un serveur nfs) 
+<BR>S20rstatd (Essayez de ne pas exécuter tous les services r car ils 
+fournissent trop d'informations aux utilisateurs à distance) <BR>S20rusersd 
+<BR>S20rwhod <BR>S20rwalld <BR>S20bootparamd (Utilisé par les clients sans 
+lecteur de disquette, vous n'aurez probablement pas besoin de ce service 
+vulnérable) <BR>S25squid (serveur proxy) <BR>S34yppasswdd (nécessaire si vous 
+êtes un serveur NIS, c'est un service extrêmement vulnérable) <BR>S35ypserv 
+(nécessaire si vous êtes un serveur NIS, c'est un service extrêmement 
+vulnérable) <BR>S35dhcpd (démarre le daemon du serveur dhcp) <BR>S40atd (utilisé 
+pour le service at, similaire à cron, mais n'est pas nécessaire) <BR>S45pcmcia 
+(vous avez besoin de ce script seulement pour les ordinateurs portables) 
+<BR>S50snmpd (daemon SNMP, peut donner à des utilisateurs distants des 
+informations détaillées sur votre système) <BR>S55named (serveur DNS. Si vous 
+installez le DNS, faites une mise à jour de la dernière version de BIND à 
+http://www.isc.org/bind.html) <BR>S55routed (RIP, n'exécutez cela que si vous en 
+avez VRAIMENT besoin) <BR>S60lpd (services d'impression) <BR>S60mars-nwe 
+(fichier Netware et serveur d'impression) <BR>S60nfs (Utilisé pour le serveur 
+NFS, lancez le que si vous en avez absolument besoin) <BR>S72amd (daemon 
+AutoMount, sert à mounter les filesystems distants) <BR>S75gated (sert à lancer 
+d'autres protocoles de routage comme OSPF) <BR>S80sendmail (Vous pourrez 
+toujours envoyer des emails si vous désactivez ce script, vous ne pourrez juste 
+plus en recevoir ou les relayer) <BR>S85httpd (serveur web Apache, je vous 
+recommande la mise à jour à la dernière version à http://www.apache.org) 
+<BR>S87ypbind (nécessaire si vous êtes un client NIS) <BR>S90xfs (serveur X 
+font) <BR>S95innd (serveur de news) 
+<P>Pour savoir combien de services sont exécutés avant que vous ne changiez les 
+scripts de démarrage, lancez la commande 
+<P>ps aux | wc -l 
+<P>Une fois que vous avez fini l'installation et avez désactivé les scripts de 
+démarrage, relancez la commande et regardez comme le nombre de service a 
+diminué. Moins il y a de services qui sont exécutés et mieux c'est. <BR>&nbsp; 
+<P><U>Logging et configuration des services</U> 
+<P>Une fois que vous avez désactivé le plus de services possible, nous voulons 
+activer le logging.Tous les logs systèmes se font dans /var/log. Par défaut, 
+Linux a un excellent système de log excepté pour ftp. Vous avez deux 
+possibilités pour le logging de ftp, soit configurer le fichier /etc/ftpaccess 
+ou éditer /etc/inedt.conf. Je préfère éditer /etc/inetd.conf, car c'est plus 
+simple (càd plus de dur de faire des erreurs:). Editez /etc/inetd.conf comme 
+suit pour vous assurer de logger complètement toutes les sessions FTP. 
+<P>ftp&nbsp;&nbsp;&nbsp;&nbsp; stream&nbsp; tcp&nbsp;&nbsp;&nbsp;&nbsp; 
+nowait&nbsp; root&nbsp;&nbsp;&nbsp; /usr/sbin/tcpd&nbsp; in.ftpd -l -L -i -o 
+<P>-- ce que les pages de man nous disent -- 
+<P>Si l'option -l est spécifiée, chaque session ftp est loggée dans syslog 
+<BR>Si l'option -L est utilisée, le logging des commandes sera actif par défaut 
+dès que le serveur <BR>ftp est appelé. Ceci fera logger le serveur toutes les 
+commandes USER, qui si un utilisateur entre accidentellement un password pour 
+cette commande au lieu du username, le fera logger les passwords via syslog. 
+<BR>Si l'option -i est spécifiée, les fichiers reçus par le serveur ftpd(8) 
+seront loggés au xferlog(5). <BR>Si l'option -o est spécifiée, les fichiers 
+transmis par le serveur ftpd(8) seront loggés au xferlog(5). 
+<P>-- coupez ici -- 
+<P>Ensuite viennent les manipulations. Cela comprend l'administration de divers 
+fichiers. La première choses que nous allons faire est de sécuriser notre 
+fichier /etc/passwd (c'est le fichier qui contient les informations des comptes 
+user et des mots de passe). Premièrement nous allons convertir notre système 
+pour l'utilisation de /etc/shadow, cela stocke d'une façon sécurisée les passwds 
+de chaque personne dans un fichier accessible seulement au root. Cela protège 
+vos passwds d'être facilement accédés et crackés (un des premiers exploits qu'un 
+hacker recherche). Tout ce que vous devez faire est de taper la commande 
+suivante en tant que root. Cela transfère automatiquement vos passwds cryptés au 
+fichier /etc/shadow. De toutes les choses que vous pouvez faire pour sécuriser 
+votre sytème, je pense que c'est une des plus importantes. 
+<P>pwconv 
+<P>La deuxième mesure est d'enlever la plupart des comptes système par défaut 
+dans /etc/passwd. Linux installe ces comptes pour différentes activités systèmes 
+que vous n'avez peut-être pas besoin. Si vous n'avez pas besoin de ces comptes 
+alors enlevez les. Plus vous avez de comptes, plus il est facile d'accéder à 
+votre système. Un exemple est le compte "news". Si vous n'exécutez pas nntp, un 
+serveur de newsgroup, vous n'avez pas besoin de ce compte (n'oubliez pas de 
+mettre à jour /etc/cron.hourly vu qu'il recherche l'utilisateur "news"). En 
+outre assurez vous d'enlever le compte "ftp" vu que c'est le compte utilisé pour 
+le ftp annonyme. Les pages man nous disent: 
+<P>man ftpd: 
+<P>Ftpd authentifie des utilisateurs selon quatre règles. 
+<P>4) Si le nom de l'utilisateur est ``anonymous'' ou ``ftp'', un compte 
+annonyme ftp doit être présent dans le fichier password (utilisateur ``ftp"). 
+Dans ce cas l'utilisateur a la permission de se logger en spécifiant n'importe 
+quelle password (par convention on donne l'hostname du client). <BR>&nbsp; 
+<P>Pour un exemple de mon fichier /etc/passwd, regarder l'"exemple C". 
+<P>Nous allons aussi modifier le fichier /etc/ftp/users ("exemple D"). Aucun 
+compte donné dans ce fichier ne peut faire de ftp au système. Cela empêche les 
+comptes systèmes communs comme root ou bin de tenter des sessions ftp. Ce 
+fichier est par défaut sur Linux. Assurez vous que root soit dans ce fichier, 
+vous ne devez jamais laisser root faire des ftp à ce système. Assurez vous 
+qu'AUCUN compte qui ait besoin de faire des ftp à l'ordinateur ne soit dans le 
+fichier /etc/ftpusers. 
+<P>De plus, assurez vous que root ne puisse pas faire de telnet sur le système. 
+Cela force les utilisateurs à se logger avec leur compte et après de faire un su 
+pour être root. Le fichier /etc/securetty énumère à quels tty root peut se 
+connecter. Enumérez seulement tty1, tty2, etc dans ce fichier cela force root à 
+se logger en local seulement. ttyp1, ttyp2 sont des pseudo terminals, ils 
+permettent à root de telneter au système à distance ("exemple E"). 
+<P>Enfin créez le fichier /etc/issue. Ce fichier est une bannière de texte ASCI 
+qui apparaît pour tous les logins par telnet ("exemple B"). Cet avertissement 
+légal apparaîtra toutes les fois que <BR>quelqu'un essayera de se logger à votre 
+système. Si vous voulez continuer à utiliser le même fichier /etc/issue vous 
+devrez modifier /etc/rc.d/init.d/S99local. Par défaut, Linux recrée un nouveau 
+fichier /etc/issue à chaque reboot. <BR>&nbsp; 
+<P><U>TCP Wrappers</U> 
+<P>TCP Wrappers est un must, aucun système sécurisé ne devrait exister sans lui. 
+Créé par Wietse Venema, TCP Wrappers est un programme qui s'interpose avec les 
+service d'inetd comme telnet ou ftp. Avec TCP Wrappers le système lance le 
+wrapper pour les connexions inetd qui log et contrôle toutes les tentatives de 
+connexion. Si la connexion est autorisée, TCP Wrappers remet la connexion au 
+programme concerné comme par exemple telnet. Si la connexion est rejetée par la 
+liste d'accès alors elle est abandonée. Heureusement pour nous, utilisateurs de 
+Linux, TCP Wrappers est déjà installé et la seule chose qu'il nous reste à faire 
+c'est d'éditer les fichiers /etc/hosts.allows et /etc/host.deny. Ces fichiers 
+déterminent qui peut ou ne peut pas accéder à nos systèmes. De plus, TCP 
+Wrappers nous permet de faire d'autres choses marrantes comme des bannières ou 
+des programmes additionels comme safe_finger. La syntaxe est relativement 
+simple. Mettez les adresse IP ou les réseaux dont vous voulez autoriser les 
+connexions dans /etc/hosts.allow. Mettez dans /etc/host.deny les adresses IP ou 
+les réseaux desquels vous voulez interdire l'accès. Par défaut Linux accepte les 
+connexions de n'importe qui donc vous devrez modifier ces fichiers. Voici 2 
+recommandations quand on travaille avec TCP Wrappers. 
+<P>1. Utilisez des adresses IP plutôt que des noms de domaine ou de systèmes 
+<BR>2. Paramétrez /etc/host.deny de TOUT interdire puis permettez des endroits 
+spécifiques avec /etc/hosts.allow 
+<P>Pour des exemples sur la façon de configurer /etc/hosts.allow et 
+/etc/hosts.deny, lisez l'"exemple F". Pour plus d'informations sur la manière 
+d'utiliser TCP Wrappers, jettez un coup d'oeil à "Intrusion Detection". 
+<BR>&nbsp; 
+<P><U>Pour les vrais paranos</U> 
+<P>Je pense que les mesures discutées plus haut sont absolument essentielles. En 
+suivant ces étapes vous avez considérablement augmenté votre sécurité, bravo! 
+Malheureusement votre système n'est pas à 100% sécurisé et il ne le sera jamais. 
+Donc pour les vrais paranos j'ai ajouté quelques mesures supplémentaires. 
+<P>Premièrement nous allons créer un wheel group. Un wheel group est un groupe 
+d'individus choisis qui peuvent exécuter des commandes puissantes comme /bin/su. 
+En limitant les gens qui peuvent accéder à ces commandes, vous augmentez la 
+sécurité de votre système. Pour créer le groupe faites un vi sur le fichier 
+/etc/group, créez le groupe wheel et ajoutez l'administrateur système sur ce 
+groupe. Ensuite identifiez les programmes système importants comme /bin/su. 
+Changez la propriété du groupe par wheel, les permissions par le propriétaire et 
+mettez le groupe en exécutable seulement (soyez sûr de garder activé les bits 
+suid ou guid pour les programmes spécifiques). Pour /bin/su les commandes 
+seraient: 
+<P>/bin/chgrp wheel /bin/su <BR>/bin/chmod 4750 /bin/su 
+<P>En second lieu, nous bloquerions les fichiers .rhots, .netrc et 
+/etc/hosts.equiv. Les commandes R utilisent ces fichiers pour accéder aux 
+systèmes. Pour les bloquer, créez les et changez leur permission par zéro. Ainsi 
+personne ne pourra créer ou altérer ces fichiers. Par exemple: 
+<P>/bin/touch /.rhosts /.netrc /etc/hosts.equiv <BR>/bin/chmod 0 /.rhosts 
+/.netrc /etc/hosts.equiv 
+<P>Troisièmement, nous allons configurer /etc/shadow pour utiliser le hachage 
+MD5 au lieu de la fonction crypt(3). Cela rend le fichier password crypté bien 
+plus difficile à cracker. Cela se fait en changeant les modules PAM. PAM 
+(Pluggable Authentication Modules) est une suite de librairies partagées qui 
+vous permettent de choisir comment les applications authentifient les 
+utilisateurs. Pour plus d'information sur PAM, allez voir 
+<BR>ftp://ftp.us.kernel.org/pub/linux/libs/pam/Linux-PAM-html/pam.html. 
+<P>Avant, vous deviez manuellement modifier les modules PAM afin d'utiliser le 
+hachage MD5. Toutefois avec la Red Hat 6.0 et les suivantes vous pouvez choisir 
+le hachage MD5 avec le programme de configuration setup. Tapez juste "setup" à 
+l'invite de commande et séléctionnez "authentication configuration". De là vous 
+pouvez choisir d'utiliser le hachage MD5. Cependant <BR>le hachage MD5 ne sera 
+pas actif tant que les utilisateurs n'auront pas réentrer leur passwords. Pour 
+ceux d'entre vous qui n'ont pas le programme setup (ou qui ont la Red hat 5.2 ou 
+plus vieille) vous pouvez toujours modifier les modules PAM manuellement 
+("exemple G"). 
+<P>Pour nous utilisateurs du bash, je ne suis pas un grand fan du fichier 
+.bash_history. Je ne veux pas que les gens (dont root) connaissent l'historique 
+de mes commandes. Ainsi dans mon fichier .bash_profile, j'exporte l'entrée 
+suivante: <BR>HISTFILESIZE=0 
+<P>Cela signifie que rien ne sera loggé dans mon fichier .bash_history. J'aurai 
+toujours l'historique des frappes au clavier et du rappel, la variable 
+d'environnement HISTSIZE, mais l'historique de commande ne sera pas sauvé dans 
+le fichier .bash_history file. 
+<P>La dernière chose que nous pouvons faire est de protéger notre système des 
+accès physiques. Cela consiste principalement à configurer un password pour 
+notre BIOS. En outre vous protégez votre système d'un password durant le boot en 
+configurant /etc/lilo.conf par un password (password=xxx) où xxx est votre 
+password. Cependant gardez à l'esprit qu'une fois que quelqu'un a accès 
+physiquement à votre système il n'y pas de manière garantie de le protéger. 
+<BR>&nbsp; 
+<P><U>Conclusion</U> 
+<P>Nous avons couvert certaines des mesures les plus fondamentales impliquée 
+dans la sécurisation d'un ordinateur avec Linux (distribution Red Hat). L'astuce 
+d'un système sécurisé est d'avoir le moins de logiciels installés et des 
+protections entre eux comme TCP Wrappers. Il y a beaucoup de mesures 
+additionnelles qui peuvent être prises comme ipchains (programme firewall), ssh 
+(rlogin, rcp et telnet cryptés), tripwire (monitore les changement dans les 
+programmes systèmes) et swatch (monitoring et alertes de log automatiques). 
+Souvenez-vous qu'aucun système n'est 100% sécurisé. Toutefois avec les mesures 
+décrites plus haut, vous réduisez considérablement les risques de sécurité. 
+</P></BODY></HTML>

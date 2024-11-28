@@ -1,0 +1,174 @@
+<html>
+
+<head>
+<meta name="description" content="Michael Lucas takes us on a developers tour through the BSD ports collection. He introduces how the ports collection works and identifies some of its key components.">
+<meta name="keywords" content="O'Reilly Network,O'Reilly Network,oreillynet,oreillynet.com,O'Reilly,OREILLY,Installation, Configuration, Administration, Networking, Tutorials, Devices, Servers/Services as Peers, FreeBSD,BSD,ports,pkg-src,packages,description,BSD,application,compile,configure,patches,checksum">
+<title>BSD Ports Collection Basics | By O'Reilly</title>
+
+<script language="JavaScript" src="/common.js"></script><!--  388 common.js  -->
+<script language="JavaScript">
+<!-- 
+if (navigator.userAgent.indexOf('Win') != -1 ) {
+     if (navigator.appName.indexOf('Microsoft') != -1)
+     document.write('<link rel="STYLESHEET" type="text/css" href="/styles/pc-px-msie.css">');
+     else
+     document.write('<link rel="STYLESHEET" type="text/css" href="/styles/pc-px-net.css">');
+     }
+else if (navigator.userAgent.indexOf('Mac') != -1 )
+     document.write('<link rel="STYLESHEET" type="text/css" href="/styles/mac-px.css">');
+else 
+     document.write('<link rel="STYLESHEET" type="text/css" href="/styles/linux-px.css">');
+// -->
+</script>
+<noscript>
+<link rel="STYLESHEET" type="text/css" href="/styles/linux-px.css">
+</noscript><!--  376 styles  -->
+</head>
+
+<body bgcolor="#ffffff" text="#000000">
+
+<!--  389 body  -->
+
+<!--  top banner ad  -->
+
+<!--  header area  -->
+
+<!--  main content area  -->
+<p><font size="2" face="Verdana"><b>BSD Ports Collection Basics</b></font>
+<p><font size="2" face="Verdana">Par Michael Lucas<br>
+12/21/2000</font>
+<p><font size="2" face="Verdana">In the early days of Unix, installing a program
+from source code was a hit-or-miss proposition at best. The now-pervasive
+&quot;configure&quot; hadn't appeared yet. Every systems administrator had to
+understand the platform a program had been written for, and its differences from
+their platform, before they had a hope of porting a chunk of code. The
+duplication of effort was truly monstrous. The FreeBSD ports system started
+addressing this back in 1995; the system has scaled well, and is still very
+popular among the BSD community.</font></p>
+<p><font size="2" face="Verdana">In FreeBSD parlance, a &quot;port&quot; is
+simply a set of instructions and patches for compiling a piece of software.
+Ports have spread from FreeBSD to NetBSD and OpenBSD, where they've been changed
+to fit those environments. (Since NetBSD uses &quot;ports&quot; to mean a
+hardware platform, they call them &quot;packages.&quot;) The basic concepts
+remain the same, however.</font></p>
+<p><font size="2" face="Verdana">Most FreeBSD users understand the basics of
+using a port: You go to the port's directory, type <code>make install</code>,
+and the computer magically pulls the source code out of the ether, confirms it
+hasn't been tampered with, uncompresses, patches, builds, and installs. The
+overwhelming majority of the time, this system works perfectly.</font></p>
+<p><font size="2" face="Verdana">For most users, the most difficult problem is
+finding the desired port. Right now FreeBSD has over four thousand ports,
+scattered over forty-odd categories. I highly recommend pib (<code>/usr/ports/sysutils/pib</code>),
+the Ports Index Browser. It's a simple <code>tk</code>-based tool that reads <code>/usr/ports/INDEX</code>
+and presents a searchable, browsable interface.</font></p>
+<p><font size="2" face="Verdana">If you think <code>tk</code> is too heavy, or
+just want to quickly find a single port, you can find most of them with <code>grep</code>.
+When you know the port's name, you can use:</font></p>
+<pre><code><font size="2" face="Courier New">grep -i ^portname /usr/ports/INDEX</font></code></pre>
+<p><font size="2" face="Verdana">The <code>^</code> tells grep that the word
+appears at the beginning of the line, and considerably trims your search. A <code>grep
+-i ^gtk INDEX</code> gives 29 results, where not using the <code>^</code> gives
+387.</font></p>
+<p><font size="2" face="Verdana">Some ports don't work seamlessly. Either
+FreeBSD has changed, or the original source code has changed, or the program has
+features the port doesn't cover. When that happens, you can contact the port
+maintainer or search the freebsd-questions archive to see if anyone else has had
+the problem. Worst case, you need to break out your programming skills and try
+to diagnose the problem.</font></p>
+<p><font size="2" face="Verdana">In any case, it's a good idea to understand the
+basics of the ports system. You need to solve the problem anyway, and if you can
+send patches back to the FreeBSD project, you'll help a lot of people as well as
+yourself.</font></p>
+<p><font size="2" face="Verdana">If you want to learn about the ports system,
+you have four major sources of information.</font></p>
+<p><font size="2" face="Verdana">First, the FreeBSD handbook contains a
+step-by-step tutorial on how to use the ports system. It covers just what's
+needed to get started.</font></p>
+<p><font size="2" face="Verdana">For more in-depth information than the handbook,
+check ports (7). This describes the basic environment variables and make targets
+that control port-building behavior.</font></p>
+<p><font size="2" face="Verdana">The porter's handbook describes how to create a
+port for FreeBSD.</font></p>
+<p><font size="2" face="Verdana">Finally, the big enchilada: <code>bsd.ports.mk</code>.
+Any of the prior three might be out of date, depending on how overloaded the
+documentation team is that week. The actual source code that controls the entire
+process is <code>/usr/ports/Mk/bsd.ports.mk</code>. If you find something in
+bsd.ports.mk that doesn't match the documentation, the documents are incorrect.
+(Patches can be sent via send-pr.) In a way, <code>bsd.ports.mk</code> is one of
+the easiest pieces of FreeBSD code to read and understand; it's far simpler than,
+say, the IP stack or the FTP client. Remember, there's a difference between
+&quot;easy&quot; and &quot;easiest part of the system.&quot;</font></p>
+<p><font size="2" face="Verdana">One term you'll find scattered throughout the
+ports system is &quot;<code>distfile</code>.&quot; A <code>distfile</code> is
+simply a file of source code. They're usually combined with <code>tar</code>,
+and then compressed with gzip, zip, compress, or bzip.</font></p>
+<p><font size="2" face="Verdana">A port itself is fairly simple. The ports tree
+layout has recently changed, however, so we'll cover it briefly.</font></p>
+<p><font size="2" face="Verdana">Every port contains a <code>Makefile</code>.
+This isn't your usual source code <code>Makefile</code>; instead, the port <code>Makefile</code>
+tells FreeBSD how to build the source code it downloads. It includes such
+information as which version of <code>make</code> to use, which compiler it
+needs, and dependencies.</font></p>
+<p><font size="2" face="Verdana">The file <code>distinfo</code> contains
+distfile checksums. When the port was last updated, the port maintainer
+confirmed the checksum of a known good <code>distfile</code> and recorded it
+here.</font></p>
+<p><font size="2" face="Verdana">The file <code>pkg-comment</code> contains a
+one-line description of the port.</font></p>
+<p><font size="2" face="Verdana">A longer description of the port, usually
+including a URL for further information, is found in <code>pkg-descr</code>.</font></p>
+<p><font size="2" face="Verdana">The <code>pkg_plist</code> file has a list of
+all files the port installs.</font></p>
+<p><font size="2" face="Verdana">The optional <code>files</code> directory
+contains any patches needed to make the code compile on FreeBSD.</font></p>
+<p><font size="2" face="Verdana">Lastly, the optional <code>scripts</code>
+directory contains scripts that can be run at various parts of the installation.
+Scripts can be used for any pre- or post-processing that the port needs, for
+example, to change permissions on a downloaded distfile so that patch(1) can run
+properly.</font></p>
+<p><font size="2" face="Verdana">Here's an overview of what happens when you go
+to a port's directory and type <code>make install</code>.</font></p>
+<p><font size="2" face="Verdana">The process starts with <code>make fetch</code>.
+If the source code isn't in <code>/usr/ports/distfiles</code>, your system goes
+to the <code>MASTER_SITE</code> specified in the <code>Makefile</code> and gets
+it.</font></p>
+<p><font size="2" face="Verdana">Then, <code>make checksum</code> confirms that
+the distfile's hashed signature matches the one that the port has on file. This
+is meant as a security measure; if the source code contains a Trojan horse
+loaded by an attacker, this process will detect it and stop the build with a
+warning about a checksum mismatch.</font></p>
+<p><font size="2" face="Verdana">Of course, <code>make checksum</code> also
+stops compilation if the <code>distfile</code> has been deliberately changed.
+Software authors might make a minor change in their code, but give the source
+file the same name when they make it available for download. The FreeBSD port
+might or might not work after this change. If you're sure that the <code>distfile</code>
+has not been compromised and want to try it anyway, you can override this with <code>make
+NO_CHECKSUM=YES</code>.</font></p>
+<p><font size="2" face="Verdana">The <code>make depends</code> stage checks to
+see if the port requires any other software to install. For example, an X window
+manager requires an X server. Recursing through the various dependencies, <code>make
+depends</code> builds them as needed.</font></p>
+<p><font size="2" face="Verdana">To create a <code>work</code> directory and
+uncompress the distfile, use <code>make extract</code>.</font></p>
+<p><font size="2" face="Verdana">A port contains patches, if necessary, to allow
+the software to build under FreeBSD; <code>make patch</code> applies them.</font></p>
+<p><font size="2" face="Verdana">Any configure script in the source code is run
+by <code>make configure</code>.</font></p>
+<p><font size="2" face="Verdana">The <code>make build</code> stage compiles the
+checked, extracted, and patched software.</font></p>
+<p><font size="2" face="Verdana">Finally, <code>make install</code> installs the
+software and records its presence under <code>/var/db/pkg</code>.</font></p>
+<p><font size="2" face="Verdana">Whenever you use a <code>make</code> target,
+all previous stages are run. For example, a <code>make extract</code> runs
+through <code>make fetch</code>, <code>make checksum</code>, and <code>make
+extract</code>.</font></p>
+<p><font size="2" face="Verdana">Now that you know what normally happens when
+working with ports, next time we'll look at some ways to fine-tune a port.</font></p>
+<p><i><font size="2" face="Verdana">Michael Lucas lives in a haunted house in
+Detroit, Michigan, with his wife Liz, assorted rodents, and a multitude of fish.
+He's the Network Architect for the Great Lakes Technologies Group, which is
+simply a nice way of saying it's all his problem.</font></i></p>
+
+</body>
+
+</html>

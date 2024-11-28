@@ -1,0 +1,1785 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 11. UDP: User Datagram Protocol</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="11_0"><H1><I>UDP: User Datagram Protocol</I></H1></a>
+<a name="11_1"><H3>11.1 Introduction</H3></a>
+<P>
+UDP is a simple, datagram-oriented, transport layer
+protocol: each output operation by a process produces exactly
+one UDP datagram, which causes one IP datagram to be sent. This
+is different from a stream-oriented protocol such as TCP where
+the amount of data written by an application may have little relationship
+to what actually gets sent in a single IP datagram. Figure 11.1
+shows the encapsulation of a UDP datagram as an IP datagram.
+<P>
+<CENTER><a name="fig_11_1"><IMG SRC="f_11_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_11_1.gif"></a><BR>
+<B>Figure 11.1</B> UDP encapsulation.</CENTER>
+<P>
+RFC 768 [Postel 1980] is the official specification
+of UDP.
+<P>
+UDP provides no reliability: it sends the datagrams
+that the application writes to the IP layer, but there is no guarantee
+that they ever reach their destination. Given this lack of reliability,
+we are tempted to think we should avoid UDP and always use a reliable
+protocol such as TCP. After we describe TCP in <A HREF="tcp_tran.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_tran.htm">Chapter 17</A>
+we'll return to this topic and see what types of applications
+can utilize UDP.
+<P>
+The application needs to worry about the size of
+the resulting IP datagram. If it exceeds the network's MTU (<A HREF="link_lay.htm#2_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_8">Section 2.8</A>),
+the IP datagram is fragmented. This applies to each network that
+the datagram traverses from the source to the destination, not
+just the first network connected to the sending host. (We defined
+this as the <I>path MTU</I> in <A HREF="link_lay.htm#2_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_9">Section 2.9</A>.)
+We examine IP fragmentation in <A HREF="#11_5">Section 11.5</A>.
+<a name="11_2"><H3>11.2 UDP Header</H3></a>
+<P>
+Figure 11.2 shows the fields in the UDP header.
+<P>
+<CENTER><a name="fig_11_2"><IMG SRC="f_11_2.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_11_2.gif"></a><BR>
+<B>Figure 11.2</B> UDP header.</CENTER>
+<P>
+The <I>port numbers</I> identify the sending process
+and the receiving process. In <A HREF="introduc.htm#fig_1_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#fig_1_8">Figure 1.8</A>
+we showed that TCP and UDP use the destination port number to
+demultiplex incoming data from IP. Since IP has already demultiplexed
+the incoming IP datagram to either TCP or UDP (based on the protocol
+value in the IP header), this means the TCP port numbers are looked
+at by TCP, and the UDP port numbers by UDP. The TCP port numbers
+are independent of the UDP port numbers.
+<P>
+Despite this independence, if a well-known service
+is provided by both TCP and UDP, the port number is normally chosen
+to be the same for both transport layers. This is purely for convenience
+and is not required by the protocols.
+<P>
+The <I>UDP length</I> field is the length of the
+UDP header and the UDP data in bytes. The minimum value for this
+field is 8 bytes. (Sending a UDP datagram with 0 bytes of data
+is OK.) This UDP length is redundant. The IP datagram contains
+its total length in bytes (<A HREF="ip_inter.htm#fig_3_1" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_1">Figure 3.1</A>),
+so the length of the UDP datagram is this total length minus the
+length of the IP header (which is specified by the header length
+field in <A HREF="ip_inter.htm#fig_3_1" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_1">Figure 3.1</A>).
+<a name="11_3"><H3>11.3 UDP Checksum</H3></a>
+<P>
+The <I>UDP checksum</I> covers the UDP header and
+the UDP data. Recall that the checksum in the IP header only covers
+the IP header-it does not cover any data in the IP datagram. Both
+UDP and TCP have checksums in their headers to cover their header
+and their data. With UDP the checksum is optional, while with
+TCP it is mandatory.
+<P>
+Although the basics for calculating the UDP checksum
+are similar to what we described in <A HREF="ip_inter.htm#3_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_2">Section 3.2</A>
+for the IP header checksum (the ones complement sum of 16-bit
+words), there are differences. First, the length of the UDP datagram
+can be an odd number of bytes, while the checksum algorithm adds
+16-bit words. The solution is to append a pad byte of 0 to the
+end, if necessary, just for the checksum computation. (That is,
+this possible pad byte is not transmitted.)
+<P>
+Next, both UDP and TCP include a 12-byte pseudo-header
+with the UDP datagram (or TCP segment) just for the checksum computation.
+This pseudo-header includes certain fields from the IP header.
+The purpose is to let UDP double-check that the data has arrived
+at the correct destination (i.e., that IP has not accepted a datagram
+that is not addressed to this host, and that IP has not given
+UDP a datagram that is for another upper layer). Figure 11.3 shows
+the pseudo-header along with a UDP datagram.
+<P>
+<CENTER><a name="fig_11_3"><IMG SRC="f_11_3.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_11_3.gif"></a><BR>
+<B>Figure 11.3</B> Fields used
+for computation of UDP checksum.</CENTER>
+<P>
+In this figure we explicitly show a datagram with
+an odd length, requiring a pad byte for the checksum computation.
+Notice that the length of the UDP datagram appears twice in the
+checksum computation.
+<P>
+If the calculated checksum is 0, it is stored as
+all one bits (65535), which is equivalent in ones-complement arithmetic.
+If the transmitted checksum is 0, it indicates that the sender
+did not compute the checksum.
+<P>
+If the sender did compute a checksum and the receiver
+detects a checksum error, the UDP datagram is silently discarded.
+No error message is generated. (This is what happens if an IP
+header checksum error is detected by IP.)
+<P>
+This UDP checksum is an end-to-end checksum. It is
+calculated by the sender, and then verified by the receiver. It
+is designed to catch any modification of the UDP header or data
+anywhere between the sender and receiver.
+<P>
+Despite UDP checksums being optional, they should
+<I>always</I> be enabled. During the 1980s some computer vendors
+turned off UDP checksums by default, to speed up their implementation
+of Sun's Network File System (NFS), which uses UDP. While this
+<I>might </I>be acceptable on a single LAN, where the cyclic redundancy
+check on the data-link frame (e.g., Ethernet or token ring frame)
+can detect most corruption of the frame, when the datagrams pass
+through routers, all bets are off. Believe it or not, there have
+been routers with software and hardware bugs that have modified
+bits in the datagrams being routed. These errors are undetectable
+in a UDP datagram if the end-to-end UDP checksum is disabled.
+Also realize that some data-link protocols (e.g., SLIP) don't
+have any form of data-link checksum.
+<P>
+The Host Requirements RFC requires that UDP checksums
+be enabled by default. It also states that an implementation must
+verify a received checksum if the sender calculated one (i.e.,
+the received checksum is nonzero). Many implementations violate
+this, however, and only verify a received checksum if outgoing
+checksums are enabled.
+<H4><TT>tcpdump</TT> Output</H4>
+<P>
+It is hard to detect whether a particular system
+has UDP checksums enabled. It is normally impossible for an application
+to obtain the checksum field in a received UDP header. To get
+around this, the author added another option to the tcpdump program
+that prints the received UDP checksum. If this printed value is
+0, it means the sending host did not calculate the checksum.
+<P>
+Figure 11.4 shows the output to and from three different
+systems on our test network (see the figure on the inside front
+cover). We ran our sock program (<A HREF="append_c.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_c.htm">Appendix C</A>),
+sending a single UDP datagram with 9 bytes of data to the standard
+echo server.
+<P>
+<CENTER>
+<a name="fig_11_4"><TABLE></a>
+<TR><TD WIDTH=33>1<BR>
+2</TD><TD WIDTH=162><TT>0.0<BR>
+0.303755 ( 0.3038)</TT>
+</TD><TD WIDTH=388><TT>sun.1900 &gt; gemini.echo: udp 9 (UDP cksum=6e90)<BR>
+gemini.echo &gt; sun.1900: udp 9 (UDP cksum=0)</TT>
+</TD></TR>
+<TR><TD WIDTH=33><I>3<BR>
+4</I></TD><TD WIDTH=162><TT>17.392480 (17.0887)<BR>
+17.614371 ( 0.2219)</TT>
+</TD><TD WIDTH=388><TT>sun.1904 &gt; aix.echo: udp 9 (UDP cksum=6e3b)<BR>
+aix.echo &gt; sun.1904: udp 9 (UDP cksum=6e3b)</TT>
+</TD></TR>
+<TR><TD WIDTH=33>5<BR>
+6</TD><TD WIDTH=162><TT>32.092454 (14.4781)<BR>
+32.314378 ( 0.2219)</TT>
+</TD><TD WIDTH=388><TT>sun.1907 &gt; solaris.echo: udp 9 (UDP cksum=6e74)<BR>
+solaris.echo &gt; sun.1907: udp 9 (UDP cksum=6e74)</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 11.4</B> <TT>tcpdump</TT>
+output to see whether other hosts enable UDP checksum.</CENTER>
+<P>
+We can see from this that two of the three systems
+have UDP checksums enabled.
+<P>
+Also notice that for this simple example the outgoing
+datagram has the same checksum as the incoming datagram (lines
+3 and 4, 5 and 6). Looking at <A HREF="#fig_11_3">Figure 11.3</A>
+we see that the two IP addresses are swapped, as are the two port
+numbers. The other fields in the pseudo-header and the UDP header
+are the same, as is the data being echoed. This reiterates that
+the UDP checksums (indeed, all the checksums in the TCP/IP protocol
+suite) are simple 16-bit sums. They cannot detect an error that
+swaps two of the 16-bit values.
+<P>
+The author also directed a DNS query at each of the
+eight root name servers described in <A HREF="dns_the.htm#14_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dns_the.htm#14_2">Section 14.2</A>.
+The DNS uses UDP primarily, and only two of the eight had UDP
+checksums enabled!
+<H4>Some Statistics</H4>
+<P>
+[Mogul 1992] provides counts of various checksum
+errors on a busy NFS (Network File System) server that had been
+up for 40 days. Figure 11.5 summarizes these numbers.
+<P>
+<CENTER><a name="fig_11_5"><TABLE BORDER=1></a>
+<TR><TD WIDTH=66>Layer</TD><TD WIDTH=151>Number of checksum errors
+</TD><TD WIDTH=217>Approximate total number of packets
+</TD></TR>
+<TR><TD WIDTH=66>Ethernet
+<BR>
+IP<BR>
+UDP<BR>
+TCP
+</TD><TD WIDTH=151>446<BR>
+14<BR>
+5<BR>
+350
+</TD><TD WIDTH=217>170,000,000<BR>
+170,000,000<BR>
+140,000,000<BR>
+30,000,000
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 11.5</B> Counts
+of corrupted packets detected by various checksums.</CENTER>
+<P>
+The final column is only the approximate total for
+each row, since other protocols are in use at the Ethernet and
+IP layers. For example, not all the Ethernet frames are IP datagrams,
+since minimally ARP is also used on an Ethernet. Not all IP datagrams
+are UDP or TCP, since ICMP also uses IP.
+<P>
+Note the much higher percentage of TCP checksum errors
+compared to UDP checksum errors. This is probably because the
+TCP connections on this system tended to be &quot;long distance&quot;
+(traversing many routers, bridges, etc.) while the UDP traffic
+was local. The bottom line is not to trust the data-link (e.g.,
+Ethernet, token ring, etc.) CRC completely. You should enable
+the end-to-end checksums all the time. Also, if your data is valuable,
+you might not want to trust either the UDP or the TCP checksum
+completely, since these are simple checksums and were not meant
+to catch all possible errors.
+<a name="11_4"><H3>11.4 A Simple Example</H3></a>
+<P>
+We'll use our sock program to generate some UDP datagrams
+that we can watch with tcpdump:
+<P>
+<TABLE >
+<TR><TD WIDTH=470><TT>bsdi % <B>sock -v -u -i -n4 svr4 discard <BR>
+</B>connected on 140.252.13.35.1108 to 140.252.13.34.9</TT>
+</TD></TR>
+<TR><TD WIDTH=470><TT>bsdi % <B>sock -v -u -i -n4 -w0 svr4 discard<BR>
+</B>connected on 140.252.13.35.1110 to 140.252.13.34.9</TT>
+</TD></TR>
+</TABLE>
+<P>
+The first time we execute the program we specify
+the verbose mode (<TT>-v</TT>) to see the
+ephemeral port numbers, specify UDP (<TT>-u</TT>)
+instead of the default TCP, and use the source mode (<TT>-i</TT>)
+to send data instead of trying to read and write standard input
+and output. The <TT>-n4</TT> option says to
+output 4 datagrams (instead of the default 1024) and the destination
+host is <TT>svr4</TT>. We described the discard
+service in <A HREF="introduc.htm#1_12" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#1_12">Section 1.12</A>. We use
+the default output size of 1024 bytes per write.
+<P>
+The second time we run the program we specify <TT>-w0</TT>,
+causing 0-length datagrams to be written. Figure 11.6 shows the
+<TT>tcpdump</TT> output for both commands.
+<P>
+<CENTER>
+<a name="fig_11_6"><TABLE></a>
+<TR><TD WIDTH=36>1 <BR>
+<I>2<BR>
+3<BR>
+4</I>
+</TD><TD WIDTH=177><TT>0.0<BR>
+0.002424 ( 0.0024)<BR>
+0.006210 ( 0.0038)<BR>
+0.010276 ( 0.0041)</TT>
+</TD><TD WIDTH=370><TT>bsdi.1108 &gt; svr4.discard: udp 1024<BR>
+bsdi.1108 &gt; svr4.discard: udp 1024<BR>
+bsdi.1108 &gt; svr4.discard: udp 1024<BR>
+bsdi.1108 &gt; svr4.discard: udp 1024</TT>
+</TD></TR>
+<TR><TD WIDTH=36><I>5<BR>
+6<BR>
+7<BR>
+8</I>
+</TD><TD WIDTH=177><TT>41.720114 (41.7098)<BR>
+41.721072 ( 0.0010)<BR>
+41.722094 ( 0.0010)<BR>
+41.723070 ( 0.0010)</TT>
+</TD><TD WIDTH=370><TT>bsdi.1110 &gt; svr4.discard: udp 0<BR>
+bsdi.1110 &gt; svr4.discard: udp 0<BR>
+bsdi.1110 &gt; svr4.discard: udp 0<BR>
+bsdi.1110 &gt; svr4.discard: udp 0</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 11.6</B> <TT>tcpdump</TT>
+output when UDP datagrams are sent in one direction.</CENTER>
+<P>
+This output shows the four 1024-byte datagrams, followed
+by the four 0-length data-grants. Each datagram followed the previous
+by a few milliseconds. (It took 41 seconds to type in the second
+command.)
+<P>
+There is no communication between the sender and
+receiver before the first datagram is sent. (We'll see in <A HREF="tcp_tran.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_tran.htm">Chapter 17</A>
+that TCP must establish a connection with the other end before
+the first byte of data can be sent.) Also, there are no acknowledgments
+by the receiver when the data is received. The sender, in this
+example, has no idea whether the other end receives the datagrams.
+<P>
+Finally note that the source UDP port number changes
+each time the program is run. First it is 1108 and then it is
+1110. We mentioned in <A HREF="introduc.htm#1_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#1_9">Section 1.9</A>
+that the ephemeral port numbers used by clients are typically
+in the range 1024 through 5000, as we see here.
+<a name="11_5"><H3>11.5 IP Fragmentation</H3></a>
+<P>
+As we described in <A HREF="link_lay.htm#2_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_8">Section 2.8</A>,
+the physical network layer normally imposes an upper limit on
+the size of the frame that can be transmitted. Whenever the IP
+layer receives an IP datagram to send, it determines which local
+interface the datagram is being sent on (routing), and queries
+that interface to obtain its MTU. IP compares the MTU with the
+datagram size and performs fragmentation, if necessary. Fragmentation
+can take place either at the original sending host or at an intermediate
+router.
+<P>
+When an IP datagram is fragmented, it is not reassembled
+until it reaches its final destination. (This handling of reassembly
+differs from some other networking protocols that require reassembly
+to take place at the next hop, not at the final destination.)
+The IP layer at the destination performs the reassembly. The goal
+is to make fragmentation and reassembly transparent to the transport
+layer (TCP and UDP), which it is, except for possible performance
+degradation. It is also possible for the fragment of a datagram
+to again be fragmented (possibly more than once). The information
+maintained in the IP header for fragmentation and reassembly provides
+enough information to do this.
+<P>
+Recalling the IP header (<A HREF="ip_inter.htm#fig_3_1" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_1">Figure 3.1</A>),
+the following fields are used in fragmentation. The <I>identification</I>
+field contains a unique value for each IP datagram that the sender
+transmits. This number is copied into each fragment of a particular
+datagram. (We now see the use for this field.) <I>T</I>he flags
+field uses one bit as the &quot;more fragments&quot; bit. This
+bit is turned on for each fragment comprising a datagram except
+the final fragment. <I>T</I>he fragment offset field contains
+the offset of this fragment from the beginning of the original
+datagram. Also, when a datagram is fragmented the <I>total length</I>
+field of each fragment is changed to be the size of that fragment.
+<P>
+Finally, one of the bits in the flags field is called
+the &quot;don't fragment&quot; bit. If this is turned on, IP will
+not fragment the datagram. Instead the datagram is thrown away
+and an ICMP error (&quot;fragmentation needed but don't fragment
+bit set,&quot; <A HREF="icmp_int.htm#fig_6_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#fig_6_3">Figure 6.3</A>)
+is sent to the originator. We'll see an example of this error
+in the next section.
+<P>
+When an IP datagram is fragmented, each fragment
+becomes its own packet, with its own IP header, and is routed
+independently of any other packets. This makes it possible for
+the fragments of a datagram to arrive at the final destination
+out of order, but there is enough information in the IP header
+to allow the receiver to reassemble the fragments correctly.
+<P>
+Although IP fragmentation looks transparent, there
+is one feature that makes it less than desirable: if one fragment
+is lost the entire datagram must be retransmitted. To understand
+why this happens, realize that IP itself has no timeout and retransmission-that
+is the responsibility of the higher layers. (TCP performs timeout
+and retransmission, UDP doesn't. Some UDP applications perform
+timeout and retransmission themselves.) When a fragment is lost
+that came from a TCP segment, TCP will time out and retransmit
+the entire TCP segment, which corresponds to an IP datagram. There
+is no way to resend only one fragment of a datagram. Indeed, if
+the fragmentation was done by an intermediate router, and not
+the originating system, there is no way for the originating system
+to know how the datagram was fragmented, For this reason alone,
+fragmentation is often avoided. [Kent and Mogul 1987] provide
+arguments for avoiding fragmentation.
+<P>
+Using UDP it is easy to generate IP fragmentation.
+(We'll see later that TCP tries to avoid fragmentation and that
+it is nearly impossible for an application to force TCP to send
+segments large enough to require fragmentation.) We can use our
+sock program and increase the size of the datagram until fragmentation
+occurs. On an Ethernet the maximum amount of data in a frame is
+1500 bytes (<a href="link_lay.htm#fig_2_1" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#fig_2_1">Figure 2.1</a>), which leaves 1472 bytes for our data,
+assuming 20 bytes for the IP header and 8 bytes for the UDP header.
+We'll run our sock program, with data sizes of 1471, 1472, 1473,
+and 1474 bytes. We expect the last two to cause fragmentation:
+<P>
+<TABLE >
+<TR><TD WIDTH=395><TT>bsdi % <B>sock -u -i -nl -wl471 svr4 discard <BR>
+</B>bsdi % <B>sock -u -i -nl -wl472 svr4 discard<BR>
+</B>bsdi % <B>sock -u -i -nl -wl473 svr4 discard<BR>
+</B>bsdi % <B>sock -u -i -nl -wl474 svr4 discard</B></TT>
+</TD></TR>
+</TABLE>
+<P>
+Figure 11.7 shows the corresponding <TT>tcpdump</TT>
+output.
+<P>
+<CENTER>
+<a name="fig_11_7"><TABLE></a>
+<TR><TD WIDTH=29>1</TD><TD WIDTH=169><TT>0.0</TT>
+</TD><TD WIDTH=385><TT>bsdi-1112 &gt; svr4.discard: udp 1471</TT>
+</TD></TR>
+<TR><TD WIDTH=29>2</TD><TD WIDTH=169><TT>21.008303 (21.0083)</TT>
+</TD><TD WIDTH=385><TT>bsdi.lll4 &gt; svr4.discard: udp 1472</TT>
+</TD></TR>
+<TR><TD WIDTH=29>3</TD><TD WIDTH=169><TT>50.449704 (29.4414)</TT>
+</TD><TD WIDTH=385><TT>bsdi.lll6 &gt; svr4.discard: udp 1473 (frag 26304:1480@0+)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>4</TD><TD WIDTH=169><TT>50.450040 ( 0.0003)</TT>
+</TD><TD WIDTH=385><TT>bsdi &gt; svr4: (frag 26304:l@1480)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>5</TD><TD WIDTH=169><TT>75.328650 (24.8786)</TT>
+</TD><TD WIDTH=385><TT>bsdi.1118 &gt; svr4.discard: udp 1474 (frag 26313:1480@0+)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>6</TD><TD WIDTH=169><TT>75.328982 ( 0.0003)</TT>
+</TD><TD WIDTH=385><TT>bsdi &gt; svr4: (frag 26313:2@1480)</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 11.7</B> Watching
+fragmentation of UDP datagrams.</CENTER>
+<P>
+The first two UDP datagrams (lines 1 and 2) fit into
+Ethernet frames, and are not fragmented. But the length of the
+IP datagram corresponding to the write of 1473 bytes is 1501,
+which must be fragmented (lines 3 and 4). Similarly the datagram
+generated by the write of 1474 bytes is 1502, and is also fragmented
+(lines 5 and 6).
+<P>
+When the IP datagram is fragmented, <TT>tcpdump</TT>
+prints additional information. First, the output <TT>frag
+26304</TT> (lines 3 and 4) and <TT>frag 26313</TT>
+(lines 5 and 6) specify the value of the identification field
+in the IP header.
+<P>
+The next number in the fragmentation information,
+the 1480 between the colon and the at sign in line 3, is the size,
+excluding the IP header. The first fragment of both datagrams
+contains 1480 bytes of data: 8 bytes for the UDP header and 1472
+bytes of user data. (The 20-byte IP header makes the packet exactly
+1500 bytes.) The second fragment of the first datagram (line 4)
+contains 1 byte of data-the remaining byte of user data. The second
+fragment of the second datagram (line 6) contains the remaining
+2 bytes of user data.
+<P>
+Fragmentation requires that the data portion of the
+generated fragments (that is, everything excluding the IP header)
+be a multiple of 8 bytes for all fragments other than the final
+one. In this example, 1480 is a multiple of 8.
+<P>
+The number following the at sign is the offset of
+the data in the fragment, from the start of the datagram. The
+first fragment of both datagrams starts at 0 (lines 3 and 5) and
+the second fragment of both datagrams starts at byte offset 1480
+(lines 4 and 6). The plus sign following this offset that is printed
+for the first fragment of both datagrams means there are more
+fragments comprising this datagram. This plus sign corresponds
+to the &quot;more fragments&quot; bit in the 3-bit flags in the
+IP header. The purpose of this bit is to let the receiver know
+when it has completed the reassembly of all the fragments for
+a datagram.
+<P>
+Finally, notice that lines 4 and 6 (fragments other
+than the first) omit the protocol (UDP) and the source and destination
+ports. The protocol could be printed, since it's in the IP header
+that's copied into the fragments. The port numbers, however, are
+in the UDP header, which only occurs in the first fragment.
+<P>
+Figure 11.8 shows what's happening with the third
+datagram that is sent (with 1473 bytes of user data). It reiterates
+that any transport layer header appears only in the first fragment.
+<P>
+Also note the terminology: an <I>IP datagram</I>
+is the unit of end-to-end transmission at the IP layer (before
+fragmentation and after reassembly), and a <I>packet</I> is the
+unit of data passed between the IP layer and the link layer. A
+packet can be a complete IP datagram or a fragment of an IP datagram.
+<P>
+<CENTER><a name="fig_11_8"><img src="f_11_8.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_11_8.gif"></a><br>
+<B>Figure 11.8</B> Example
+of UDP fragmentation.</CENTER>
+<a name="11_6"><H3>11.6 ICMP Unreachable Error (Fragmentation Required)</H3></a>
+<P>
+Another variation of the ICMP unreachable error occurs
+when a router receives a datagram that requires fragmentation,
+but the don't fragment (DF) flag is turned on in the IP header.
+This error can be used by a program that needs to determine the
+smallest MTU in the path to a destination-called the <I>path MTU
+discovery</I> mechanism (<a href="link_lay.htm#2_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_9">Section 2.9</a>).
+<P>
+Figure 11.9 shows the format of the ICMP unreachable
+error for this case. This differs from Figure 6.10 because bits
+16-31 of the second 32-bit word can provide the MTU of the next
+hop, instead of being 0.
+<P>
+<CENTER><a name="fig_11_9"><img src="f_11_9.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_11_9.gif"></a><br>
+<B>Figure 11.9</B> ICMP unreachable
+error when fragmentation required but don't fragment bit set.</CENTER>
+<P>
+If a router doesn't provide this newer format ICMP
+error, the next-hop MTU is set to 0.
+<P>
+The new Router Requirements RFC [Almquist 1993] states
+that a router must generate this newer form when originating this
+ICMP unreachable error.
+<H4>Example</H4>
+<P>
+A problem encountered by the author involving fragmentation
+and this ICMP error is trying to determine the MTU on the dialup
+SLIP link from the router <TT>netb</TT> to
+the host <TT>sun</TT>. We know the MTU of
+this link from <TT>sun</TT> to <TT>netb</TT>:
+it's part of the SLIP configuration process when SLIP was installed
+in the host <TT>sun</TT>, plus we saw it with
+the <TT>netstat</TT> command in <a href="ip_inter.htm#3_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_9">Section 3.9</a>.
+We want to determine the MTU in the other direction also. (In
+<a href="snmp_sim.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/snmp_sim.htm">Chapter 25</a> we'll see how to determine this using SNMP.) On a point-to-point
+link, it is not required that the MTU be the same in both directions.
+<P>
+The technique used was to run <TT>ping</TT>
+on the host <TT>solaris</TT>, to the host
+<TT>bsdi</TT>, increasing the size of the
+data packets until fragmentation was seen on the incoming packets.
+This is shown in Figure 11.10.
+<P>
+<CENTER>
+<a name="fig_11_10"><img src="f_11_10.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_11_10.gif"></a><br>
+<B>Figure 11.10</B> Systems
+being used to determine MTU of SLIP link from <TT>netb</TT>
+to <TT>sun</TT>.</CENTER>
+<P>
+<TT>tcpdump</TT> was run on the host <TT>sun</TT>,
+watching the SLIP link, to see when fragmentation occurred. No
+fragmentation was observed and everything was fine until the size
+of the data portion of the <TT>ping</TT> packet
+was increased from 500 to 600 bytes. The incoming echo requests
+were seen (there was still no fragmentation), but the echo replies
+disappeared.
+<P>
+To track this down, <TT>tcpdump</TT>
+was also run on <TT>bsdi</TT>, to see what
+it was receiving and sending. Figure 11.11 shows the output.
+<P>
+<CENTER><a name="fig_11_11"><TABLE></a>
+<TR><TD WIDTH=34>1</TD><TD WIDTH=151><TT>0.0</TT>
+</TD><TD WIDTH=350><TT>solaris &gt; bsdi: icmp: echo request (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=34>2</TD><TD WIDTH=151><TT>0.000000 (0.0000)</TT>
+</TD><TD WIDTH=350><TT>bsdi &gt; solaris: icmp: echo reply (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=34>3</TD><TD WIDTH=151><TT>0.000000 (0.0000)</TT>
+</TD><TD WIDTH=350><TT>sun &gt; bsdi: icmp: solaris unreachable -
+<BR>
+need to frag, mtu = 0 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=34>4</TD><TD WIDTH=151><TT>0.738400 (0.7384)</TT>
+</TD><TD WIDTH=350><TT>solaris &gt; bsdi: icmp: echo request (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=34>5</TD><TD WIDTH=151><TT>0.748800 (0.0104)</TT>
+</TD><TD WIDTH=350><TT>bsdi &gt; solaris: icmp: echo reply (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=34>6</TD><TD WIDTH=151><TT>0.748800 (0.0000)</TT>
+</TD><TD WIDTH=350><TT>sun &gt; bsdi: icmp: solaris unreachable -
+<BR>
+need to frag, mtu = 0 (DF)</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 11.11</B> <TT>tcpdump</TT>
+output for <TT>ping</TT> of <TT>bsdi</TT>
+from <TT>solaris</TT> with 600-byte IP datagram.</CENTER>
+<P>
+First, the notation (<TT>DF</TT>)
+in each line means the don't fragment bit is turned on in the
+IP header. It turns out that Solaris 2.2 normally turns this bit
+on, as part of its implementation of the path MTU discovery mechanism.
+<P>
+Line 1 shows that the echo request got through the
+router netb to sun without being fragmented, and with the DF bit
+set, so we know that the SLIP MTU of <TT>netb</TT>
+has not been reached yet.
+<P>
+Next, notice in line 2 that the DF flag is copied
+into the echo reply. This is what causes the problem. The echo
+reply is the same size as the echo request (just over 600 bytes),
+but the MTU on sun's outgoing SLIP interface is 552. The echo
+reply needs to be fragmented, but the DF flag is set. This causes
+sun to generate the ICMP unreachable error back to <TT>bsdi</TT>
+(where it's discarded).
+<P>
+This is why we never saw any echo replies on <TT>solaris</TT>.
+The replies never got past <TT>sun</TT>. Figure
+11.12 shows the path of the packets.
+<P>
+<CENTER><a name="fig_11_12"><img src="f_11_12.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_11_12.gif"></a><br>
+<B>Figure 11.12</B> Packets
+exchanged in example.</CENTER>
+<P>
+Finally, the notation <TT>mtu=0</TT>
+in lines 3 and 6 of <a href="#fig_11_11">Figure 11.11</a> indicates that <TT>sun</TT>
+does not return the MTU of the outgoing interface in the ICMP
+unreachable message, as shown in <a href="#fig_11_9">Figure 11.9</a>. (In <a href="snmp_sim.htm#25_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/snmp_sim.htm#25_9">Section 25.9</a>
+we return to this problem and use SNMP to determine that the MTU
+of the SLIP interface on netb is 1500.)
+<a name="11_7"><H3>11.7 Determining the Path MTU Using Traceroute</H3></a>
+<P>
+Although most systems don't support the path MTU
+discovery feature, we can easily modify a version of <TT>traceroute</TT>
+(<a href="tracerou.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm">Chapter 8</a>) to let us determine the path MTU. What we'll do is
+send packets with the &quot;don't fragment&quot; bit set. The
+size of the first packet we send will equal the MTU of the outgoing
+interface, and whenever we receive an ICMP &quot;can't fragment&quot;
+error (which we described in the previous section) we'll reduce
+the size of the packet. If the router sending the ICMP error sends
+the newer version that includes the MTU of the outgoing interface,
+we'll use that value; otherwise we'll try the next smallest MTU.
+As RFC 1191 [Mogul and Deering 1990] states, there are a limited
+number of MTUs, so our program has a table of the likely values
+and moves to the next smallest value.
+<P>
+Let's first try it from our host sun to the host
+<TT>slip</TT>, knowing that the SLIP link
+has an MTU of 296:
+<P>
+<TT>sun % <B>traeeroute.pmtu slip
+<BR>
+</B>traceroute to slip (140.252.13.65), 30 hops max<BR>
+outgoing MTU = 1500<BR>
+1 bsdi (140.252.13.35) 15 ms 6 ms 6 ms<BR>
+2 bsdi (140.252.13.35) 6 ms<BR>
+fragmentation required and DF set, trying new MTU = 1492<BR>
+fragmentation required and DF set, trying new MTU = 1006<BR>
+fragmentation required and DF set, trying new MTU = 576<BR>
+fragmentation required and DF set, trying new MTU = 552<BR>
+fragmentation required and DF set, trying new MTU = 544<BR>
+fragmentation required and DF set, trying new MTU = 512<BR>
+fragmentation required and DF set, trying new MTU = 508<BR>
+fragmentation required and DF set, trying new MTU = 296<BR>
+2 slip (140.252.13.65) 377 ms 377 ms 377 ms</TT>
+<P>
+In this example the router <TT>bsdi</TT>
+does not return the MTU of the outgoing interface in the ICMP
+error, so we step through the likely values for the MTU. The first
+line of output for a TTL of 2 prints a hostname of <TT>bsdi</TT>,
+but that's because it's the router returning the ICMP error. The
+final line of output for a TTL of 2 is what we're looking for.
+<P>
+It's not hard to modify the ICMP code on bsdi to
+return the MTU of the outgoing interface, and if we do that and
+rerun our program, we get the following output:
+<P>
+<TT>sun % <B>traceroute.pmtu slip
+<BR>
+</B>traceroute to slip (140.252.13.65), 30 hops max<BR>
+outgoing MTU = 1500<BR>
+1 bsdi (140.252.13.35) 53 ms 6 ms 6 ms<BR>
+2 bsdi (140.252.13.35) 6 ms<BR>
+fragmentation required and DF set, next hop MTU = 296<BR>
+2 slip (140.252.13.65) 377 ms 378 ms 377 ms</TT>
+<P>
+Here we don't have to try eight different values
+for the MTU before finding the right one-the router returns the
+correct value.
+<H4>The Worldwide Internet</H4>
+<P>
+As an experiment, this modified version of <TT>traceroute</TT>
+was run numerous times to various hosts around the world. Fifteen
+countries (including Antarctica) were reached and various transatlantic
+and transpacific links were used. Before doing this, however,
+the MTU of the dialup SLIP link between the author's subnet and
+the router <TT>netb</TT> (<a href="#fig_11_12">Figure 11.12</a>) was
+increased to 1500, the same as an Ethernet.
+<P>
+Out of 18 runs, only 2 had a path MTU of less than
+1500. One of the transatlantic links had an MTU of 572 (a value
+not even listed as a likely value in RFC 1191) and the router
+did return the newer format ICMP error. Another link, between
+two routers in Japan, wouldn't handle a 1500-byte frame, and the
+router did not return the newer format ICMP error. Setting the
+MTU down to 1006 did work.
+<P>
+The conclusion we can make from this experiment is
+that many, but not all, WANs today can handle packets larger than
+512 bytes. Using the path MTU discovery feature will allow applications
+to take advantage of these larger MTUs.
+<a name="11_8"><H3>11.8 Path MTU Discovery with UDP</H3></a>
+<P>
+Let's examine the interaction between an application
+using UDP and the path MTU discovery mechanism. We want to see
+what happens when the application writes datagrams that are too
+big for some intermediate link.
+<H4>Example</H4>
+<P>
+Since the only system that we've been using that
+supports the path MTU discovery mechanism is Solaris 2.x, we'll
+use it as the source host to send 650-byte datagrams to <TT>slip</TT>.
+Since our host <TT>slip</TT> sits behind a
+SLIP link with an MTU of 296, any UDP datagram greater than 268
+bytes (296 -20-8) with the &quot;don't fragment&quot; bit set
+should cause the router bsdi to generate the ICMP &quot;can't
+fragment&quot; error. Figure 11.13 shows the topology and the
+MTUs.
+<P>
+<CENTER><a name="fig_11_13"><img src="f_11_13.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_11_13.gif"></a><br>
+<B>Figure 11.13</B> Systems
+used for path MTU discovery using UDP.</CENTER>
+<P>
+The following command generates ten 650-byte UDP
+datagrams, with a 5-second pause between each datagram:
+<P>
+<TT>solaris % <B>sock -u -i -n10
+-w650 -p5 slip discard</B></TT>
+<P>
+Figure 11.14 shows the <TT>tcpdump</TT>
+output. When this example was run, the router <TT>bsdi</TT>
+was set to not return the next-hop MTU as part of the ICMP &quot;can't
+fragment&quot; error.
+<P>
+The first datagram is sent with the DF bit set (line
+1) and generates the expected error from the router <TT>bsdi</TT>
+(line 2). What's puzzling is that the next datagram is also sent
+with the DF bit set (line 3) and generates the same ICMP error
+(line 4). We would expect this datagram to be sent with the DF
+bit off.
+<P>
+On line 5 it appears IP has finally learned that
+datagrams to this destination should not be sent with the DF bit
+set, so IP goes ahead and fragments the datagrams at the source
+host. This is different from earlier examples where IP sends the
+datagram that is passed to it by UDP and allows the router with
+the smaller MTU (<TT>bsdi</TT> in this case)
+to
+<P>
+<CENTER>
+<a name="fig_11_14"><TABLE></a>
+<TR><TD WIDTH=29>1</TD><TD WIDTH=160><TT>0.0</TT>
+</TD><TD WIDTH=394><TT>solaris.38196 &gt; slip.discard: udp 650 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>2</TD><TD WIDTH=160><TT>0.004218 (0.0042)</TT>
+</TD><TD WIDTH=394><TT>bsdi &gt; solaris: icmp:
+<BR>
+slip unreachable - need to frag, mtu = 0 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>3</TD><TD WIDTH=160><TT>4.980528 (4.9763)</TT>
+</TD><TD WIDTH=394><TT>solaris.38196 &gt; slip.discard: udp 650 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>4</TD><TD WIDTH=160><TT>4.984503 (0.0040)</TT>
+</TD><TD WIDTH=394><TT>bsdi &gt; solaris: icmp:
+<BR>
+slip unreachable - need to frag, mtu = 0 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>5</TD><TD WIDTH=160><TT>9.870407 (4.8859)</TT>
+</TD><TD WIDTH=394><TT>solaris.38196 &gt; slip.discard: udp 650 (frag 47942:552@0+)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>6</TD><TD WIDTH=160><TT>9.960056 (0.0896)</TT>
+</TD><TD WIDTH=394><TT>solaris &gt; slip: (frag 47942:106(3552)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>7</TD><TD WIDTH=160><TT>14.940338 (4.9803)</TT>
+</TD><TD WIDTH=394><TT>solaris.38196 &gt; slip.discard: udp 650 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>8</TD><TD WIDTH=160><TT>14.944466 (0.0041)</TT>
+</TD><TD WIDTH=394><TT>bsdi &gt; solaris: icmp:
+<BR>
+slip unreachable - need to frag, mtu = 0 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>9</TD><TD WIDTH=160><TT>19.890015 (4.9455)</TT>
+</TD><TD WIDTH=394><TT>solaris.38196 &gt; slip.discard: udp 650 (frag 47944:552@0+)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>10</TD><TD WIDTH=160><TT>19.950463 (0.0604)</TT>
+</TD><TD WIDTH=394><TT>solaris &gt; slip: (frag 47944:106@552)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>11</TD><TD WIDTH=160><TT>24.870401 (4.9199)</TT>
+</TD><TD WIDTH=394><TT>solaris.38196 &gt; slip.discard: udp 650 (frag 47945:552@0+)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>12</TD><TD WIDTH=160><TT>24.960038 (0.0896)</TT>
+</TD><TD WIDTH=394><TT>solaris &gt; slip: (frag 47945:1060552)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>13</TD><TD WIDTH=160><TT>29.880182 (4.9201)</TT>
+</TD><TD WIDTH=394><TT>solaris.38196 &gt; slip.discard: udp 650 (frag 47946:552@0+)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>14</TD><TD WIDTH=160><TT>29.940498 (0.0603)</TT>
+</TD><TD WIDTH=394><TT>solaris &gt; slip: (frag 47946:1060552)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>15</TD><TD WIDTH=160><TT>34.860607 (4.9201)</TT>
+</TD><TD WIDTH=394><TT>solaris.38196 &gt; slip.discard: udp 650 (frag 47947:552@0+)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>16</TD><TD WIDTH=160><TT>34.950051 (0.0894)</TT>
+</TD><TD WIDTH=394><TT>solaris &gt; slip: (frag 47947:1060552)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>17</TD><TD WIDTH=160><TT>39.870216 (4.9202)</TT>
+</TD><TD WIDTH=394><TT>solaris.38196 &gt; slip.discard: udp 650 (frag 47948:552@0+)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>18</TD><TD WIDTH=160><TT>39.930443 (0.0602)</TT>
+</TD><TD WIDTH=394><TT>solaris &gt; slip: (frag 47948:106@552)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>19</TD><TD WIDTH=160><TT>44.940485 (5.0100)</TT>
+</TD><TD WIDTH=394><TT>solaris.38196 &gt; slip.discard: udp 650 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>20</TD><TD WIDTH=160><TT>44.944432 (0.0039)</TT>
+</TD><TD WIDTH=394><TT>bsdi &gt; solaris: icmp:
+<BR>
+slip unreachable - need to frag, mtu = 0 (DF)</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 11.14</B> Path
+MTU discovery using UDP.</CENTER>
+<P>
+do the fragmentation. Since the ICMP &quot;can't
+fragment&quot; message didn't specify the next-hop MTU, it appears
+that IP guesses that an MTU of 576 is OK. The first fragment (line
+5) contains 544 bytes of UDP data, the 8-byte UDP header, and
+the 20-byte IP header, for a total IP datagram size of 572 bytes.
+The second fragment (line 6) contains the remaining 106 bytes
+of UDP data and a 20-byte IP header.
+<P>
+Unfortunately the next datagram, line 7, has its
+DF bit set, so it's discarded by <TT>bsdi</TT>
+and the ICMP error returned. What has happened here is that an
+IP timer has expired telling IP to see if the path MTU has increased
+by setting the DF bit again. We see this happen again on lines
+19 and 20. Comparing the times on lines 7 and 19 it appears that
+IP turns on the DF bit, to see if the path MTU has increased,
+every 30 seconds.
+<P>
+This 30-second timer value is way too small. RFC
+1191 recommends a value of 10 minutes. It can be changed by modifying
+the parameter <TT>ip_ire_pathmtu_interval</TT>
+(<a href="append_e.htm#E_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_e.htm#E_4">Section E.4</a>). Also there is no way in Solaris 2.2 to turn off
+this path MTU discovery for a single UDP application or for all
+UDP applications. It can only be enabled or disabled on a systemwide
+basis by changing the parameter <TT>ip_path_mtu_discovery</TT>.
+As we can see from this example, enabling path MTU discovery when
+UDP applications write datagrams that will probably be fragmented
+can cause datagrams to be discarded.
+<P>
+The maximum datagram size assumed by the IP layer
+on <TT>solaris</TT> (576 bytes) is not right.
+In <a href="#fig_11_13">Figure 11.13</a> we see that the real MTU is 296 bytes. This means
+the fragments generated by <TT>solaris</TT>
+will be fragmented again by <TT>bsdi</TT>.
+Figure 11.15 shows the <TT>tcpdump</TT> output
+collected on the destination host (<TT>slip</TT>)
+for the first datagram that arrives (lines 5 and 6 from <a href="#fig_11_14">Figure
+11.14</a>).
+<P>
+<CENTER>
+<a name="fig_11_15"><TABLE></a>
+<TR><TD WIDTH=29>1</TD><TD WIDTH=150><TT>0.0</TT>
+</TD><TD WIDTH=404><TT>solaris.38196 &gt; slip.discard: udp 650 (frag 47942:272@0+)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>2</TD><TD WIDTH=150><TT>0.304513 (0.3045)</TT>
+</TD><TD WIDTH=404><TT>solaris &gt; slip: (frag 47942:272@272+)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>3</TD><TD WIDTH=150><TT>0.334651 (0.0301)</TT>
+</TD><TD WIDTH=404><TT>solaris &gt; slip: (frag 47942:8@544+)</TT>
+</TD></TR>
+<TR><TD WIDTH=29>4</TD><TD WIDTH=150><TT>0.466642 (0.1320)</TT>
+</TD><TD WIDTH=404><TT>solaris &gt; slip: (frag 47942:106@552)</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 11.15</B> First
+datagram arriving at host <TT>slip</TT> from
+<TT>solaris</TT>.</CENTER>
+<P>
+In this example the host <TT>solaris</TT>
+should not fragment the outgoing datagrams but should turn off
+the DF bit and let the router with the smaller MTU do the fragmentation.
+<P>
+Now we'll run the same example but modify the router
+bsdi to return the next-hop MTU in the ICMP &quot;can't fragment&quot;
+error. Figure 11.16 shows the first six lines of the <TT>tcpdump</TT>
+output.
+<P>
+<CENTER>
+<a name="fig_11_16"><TABLE></a>
+<TR><TD WIDTH=30>1</TD><TD WIDTH=150><TT>0.0</TT>
+</TD><TD WIDTH=404><TT>solaris. 37974 &gt; slip.discard: udp 650 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=30>2</TD><TD WIDTH=150><TT>0.004199 (0.0042)</TT>
+</TD><TD WIDTH=404><TT>bsdi &gt; solaris: icmp:
+<BR>
+slip unreachable - need to frag, mtu = 296 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=30>3</TD><TD WIDTH=150><TT>4.950193 (4.9460)</TT>
+</TD><TD WIDTH=404><TT>solaris.37974 &gt; slip.discard: udp 650 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=30>4</TD><TD WIDTH=150><TT>4.954325 (0.0041)</TT>
+</TD><TD WIDTH=404><TT>bsdi &gt; solaris: icmp:
+<BR>
+slip unreachable - need to frag, mtu = 296 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=30>5</TD><TD WIDTH=150><TT>9.779855 (4.8255)</TT>
+</TD><TD WIDTH=404><TT>solaris.37974 &gt; slip.discard: udp 650 (frag 35278:272@0+)</TT>
+</TD></TR>
+<TR><TD WIDTH=30>6</TD><TD WIDTH=150><TT>9.930018 (0.1502)</TT>
+</TD><TD WIDTH=404><TT>solaris &gt; slip: (frag 35278:272@272+)</TT>
+</TD></TR>
+<TR><TD WIDTH=30>7</TD><TD WIDTH=150><TT>9.990170 (0.0602)</TT>
+</TD><TD WIDTH=404><TT>solaris &gt; slip: (frag 35278:114@544)</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 11.16</B> Path
+MTU discovery using UDP.</CENTER>
+<P>
+Again, the first two datagrams are sent with the
+DF bit set, and both elicit the ICMP error. The ICMP error now
+specifies the next-hop MTU of 296.
+<P>
+In lines 5, 6, and 7 we see the source host perform
+fragmentation, similar to <a href="#fig_11_14">Figure 11.14</a>. But knowing the next-hop
+MTU, only three fragments are generated, compared to the four
+fragments generated by the router <TT>bsdi</TT>
+in <a href="#fig_11_15">Figure 11.15</a>.
+<a name="11_9"><H3>11.9 Interaction Between UDP and ARP</H3></a>
+<P>
+Using UDP we can see an interesting (and often unmentioned)
+interaction with UDP and typical implementations of ARP.
+<P>
+We use our <TT>sock</TT> program
+to generate a single UDP datagram with 8192 bytes of data. We
+expect this to generate six fragments on an Ethernet (see Exercise
+11.3). We also assure that the ARP cache is empty before running
+the program, so that an ARP request and reply must be exchanged
+before the first fragment is sent.
+<P>
+<TABLE >
+<TR><TD WIDTH=347><TT>bsdi % <B>arp -a</B></TT>
+</TD><TD WIDTH=180><I>verify ARP cache is empty</I>
+</TD></TR>
+<TR><TD WIDTH=347><TT>bsdi % <B>sock -u -i -nl -w8192 svr4 discard</B></TT>
+</TD><TD WIDTH=180></TD></TR>
+</TABLE>
+<P>
+We expect the first fragment to cause an ARP request
+to be sent. Five more fragments are generated by IP and this presents
+two timing questions that we'll need to use <TT>tcpdump</TT>
+to answer: are the remaining fragments ready to be sent before
+the ARP reply is received, and if so, what does ARP do with multiple
+packets to a given destination when it's waiting for an ARP reply?
+Figure 11.17 shows the <tt>tcpdump</tt> output.
+<P>
+<CENTER>
+<a name="fig_11_17"><TABLE></a>
+<TR><TD WIDTH=36>1</TD><TD WIDTH=151><TT>0.0</TT>
+</TD><TD WIDTH=321><TT>arp who-has svr4 tell bsdi</TT></TD></TR>
+<TR><TD WIDTH=36>2</TD><TD WIDTH=151><TT>0.001234 (0.0012)</TT>
+</TD><TD WIDTH=321><TT>arp who-has svr4 tell bsdi</TT></TD></TR>
+<TR><TD WIDTH=36>3</TD><TD WIDTH=151><TT>0.001941 (0.0007)</TT>
+</TD><TD WIDTH=321><TT>arp who-has svr4 tell bsdi</TT></TD></TR>
+<TR><TD WIDTH=36>4</TD><TD WIDTH=151><TT>0.002775 (0.0008)</TT>
+</TD><TD WIDTH=321><TT>arp who-has svr4 tell bsdi</TT></TD></TR>
+<TR><TD WIDTH=36>5</TD><TD WIDTH=151><TT>0.003495 (0.0007)</TT>
+</TD><TD WIDTH=321><TT>arp who-has svr4 tell bsdi</TT></TD></TR>
+<TR><TD WIDTH=36>6</TD><TD WIDTH=151><TT>0.004319 (0.0008)</TT>
+</TD><TD WIDTH=321><TT>arp who-has svr4 tell bsdi</TT></TD></TR>
+<TR><TD WIDTH=36>7</TD><TD WIDTH=151><TT>0.008772 (0.0045)</TT>
+</TD><TD WIDTH=321><TT>arp reply svr4 is-at 0:0:c0:c2:9b:26</TT>
+</TD></TR>
+<TR><TD WIDTH=36>8</TD><TD WIDTH=151><TT>0.009911 (0.0011)</TT>
+</TD><TD WIDTH=321><TT>arp reply svr4 is-at 0:0:c0:c2:9b:26</TT>
+</TD></TR>
+<TR><TD WIDTH=36>9</TD><TD WIDTH=151><TT>0.011127 (0.0012)</TT>
+</TD><TD WIDTH=321><TT>bsdi &gt; svr4: (frag 10863:800@7400)</TT>
+</TD></TR>
+<TR><TD WIDTH=36>10</TD><TD WIDTH=151><TT>0.011255 (0.0001)</TT>
+</TD><TD WIDTH=321><TT>arp reply svr4 is-at 0:0:c0:c2:9b:26</TT>
+</TD></TR>
+<TR><TD WIDTH=36>11</TD><TD WIDTH=151><TT>0.012562 (0.0013)</TT>
+</TD><TD WIDTH=321><TT>arp reply svr4 is-at 0:0:c0:c2:9b:26</TT>
+</TD></TR>
+<TR><TD WIDTH=36>12</TD><TD WIDTH=151><TT>0.013458 (0.0009)</TT>
+</TD><TD WIDTH=321><TT>arp reply svr4 is-at 0:0:c0:c2:9b:26</TT>
+</TD></TR>
+<TR><TD WIDTH=36>13</TD><TD WIDTH=151><TT>0.014526 (0.0011)</TT>
+</TD><TD WIDTH=321><TT>arp reply svr4 is-at 0:0:c0:c2:9b:26</TT>
+</TD></TR>
+<TR><TD WIDTH=36>14</TD><TD WIDTH=151><TT>0.015583 (0.0011)</TT>
+</TD><TD WIDTH=321><TT>arp reply svr4 is-at 0:0:c0:c2:9b:26</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 11.17</B> Packet
+exchange when an 8192-byte UDP datagram is sent on an Ethernet.</CENTER>
+<P>
+There are a few surprises in this output. First,
+six ARP requests are generated before the first ARP reply is returned.
+What we guess is happening is that IP generates the six fragments
+rapidly, and each one causes an ARP request.
+<P>
+Next, when the first ARP reply is received (line
+7) only the last fragment is sent (line 9)! It appears that the
+first five fragments have been discarded. Indeed, this is the
+normal operation of ARP. Most implementations keep only the <I>last</I>
+packet sent to a given destination while waiting for an ARP reply.
+<P>
+The Host Requirements RFC requires an implementation
+to prevent this type <I>of ARP flooding </I>(repeatedly sending
+an ARP request for the same IP address at a high rate). The recommended
+maximum rate is one per second. Here we see six ARP requests in
+4.3 ms.
+<P>
+The Host Requirements RFC states that ARP should
+save at least one packet, and this should be the latest packet.
+That's what we see here.
+<P>
+Another unexplained anomaly in this output is that
+<tt>svr4</tt> sends back seven ARP replies, not six.
+<P>
+The final point worth mentioning is that tcpdump
+was left to run for 5 minutes after the final ARP reply was returned,
+waiting to see if svr4 sent back an ICMP &quot;time exceeded during
+reassembly&quot; error. The ICMP error was never sent. (We showed
+the format of this message in <a href="tracerou.htm#fig_8_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm#fig_8_2">Figure 8.2</a>. A <I>code</I> of I indicates
+that the time was exceeded during the reassembly of a datagram.)
+<P>
+The IP layer must start a timer when the first fragment
+of a datagram appears. Here &quot;first&quot; means the first
+arrival of any fragment for a given datagram, not the first fragment
+(with a fragment offset of 0). A normal timeout value is 30 or
+60 seconds. If all the fragments for this datagram have not arrived
+when the timer expires, all these fragments are discarded. If
+this were not done, fragments that never arrive (as we see in
+this example) could eventually cause the receiver to run out of
+buffers.
+<P>
+There are two reasons we don't see the ICMP message
+here. First, most Berkeley-derived implementations never generate
+this error! These implementations do set a timer, and do discard
+all fragments when the timer expires, but the ICMP error is never
+generated. Second, the first fragment-the one with an offset of
+0 containing the UDP header-was never received. (It was the first
+of the five packets discarded by ARP.) An implementation is not
+required to generate the ICMP error unless this first fragment
+has been received. The reason is that the receiver of the ICMP
+error couldn't tell which user process sent the datagram that
+was discarded, because the transport layer header is not available.
+It's assumed that the upper layer (either TCP or the application
+using UDP) will eventually time out and retransmit.
+<P>
+In this section we've used IP fragmentation to see
+this interaction between UDP and ARP. We can also see this interaction
+if the sender quickly transmits multiple UDP datagrams. We chose
+to use fragmentation because the packets get generated quickly
+by IP, faster than multiple datagrams can be generated by a user
+process.
+<P>
+As unlikely as this example might seem, it occurs
+regularly. NFS sends UDP datagrams whose length just exceeds 8192
+bytes. On an Ethernet these are fragmented as we've indicated,
+and if the appropriate ARP cache entry times out, you can see
+what we've shown here. NFS will time out and retransmit, but the
+first IP datagram can still be discarded because of ARP's limited
+queue.
+<a name="11_10"><H3>11.10 Maximum UDP Datagram Size</H3></a>
+<P>
+Theoretically, the maximum size of an IP datagram
+is 65535 bytes, imposed by the 16-bit total length field in the
+IP header (<a href="ip_inter.htm#fig_3_1" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_1">Figure 3.1</a>). With an IP header of 20 bytes and a UDP
+header of 8 bytes, this leaves a maximum of 65507 bytes of user
+data in a UDP datagram. Most implementations, however, provide
+less than this maximum.
+<P>
+&quot;There are two limits we can encounter. First
+the application program may be limited by its programming interface.
+The sockets API (<a href="introduc.htm#1_15" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#1_15">Section 1.15</a>) provides a function that the application
+can call to set the size of the receive buffer and the send buffer.
+For a UDP socket, this size is directly related to the maximum
+size UDP datagram the application can read or write. Most systems
+today provide a default of just over 8192 bytes for the maximum
+size of a UDP datagram that can be read or written. (This default
+is because 8192 is the amount of user data that NFS reads and
+writes by default.)
+<P>
+The next limitation comes from the kernel's implementation
+of TCP/IP. There may be implementation features (or bugs) that
+limit the size of an IP datagram to less than 65535 bytes.
+<P>
+The author experimented with various UDP datagram
+sizes, using the sock program. Using the loopback interface under
+SunOS 4.1.3, the maximum size IP datagram was 32767 bytes. All
+higher values failed. But going across an Ethernet from BSD/386
+to SunOS 4.1.3, the maximum size IP datagram the Sun could accept
+was 32786 (that is, 32758 bytes of user data). Using the loopback
+interface under Solaris 2.2, the maximum 65535-byte IP datagram
+could be sent and received. From Solaris 2.2 to AIX 3.2.2, the
+maximum 65535-byte IP datagram could be transferred. Obviously
+this limit depends on the source and destination implementations.
+<P>
+We mentioned in <a href="ip_inter.htm#3_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_2">Section 3.2</a> that a host is required
+to receive at least a 576-byte IP datagram. Many UDP applications
+are designed to restrict their application data to 512 bytes or
+less, to stay below this limit. We saw this in <a href="dynamic.htm#10_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dynamic.htm#10_4">Section 10.4</a>, for
+example, where the Routing Information Protocol always sent less
+than 512 bytes of data per datagram. We'll encounter this same
+limit with other UDP applications: the DNS (<a href="dns_the.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dns_the.htm">Chapter 14</a>), TFTP
+(<a href="tftp_tri.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tftp_tri.htm">Chapter 15</a>), BOOTP (<a href="bootp.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/bootp.htm">Chapter 16</a>),
+and SNMP (<a href="snmp_sim.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/snmp_sim.htm">Chapter 25</a>).
+<H4>Datagram Truncation</H4>
+<P>
+Just because IP is capable of sending and receiving
+a datagram of a given size doesn't mean the receiving application
+is prepared to read that size. UDP programming interfaces allow
+the application to specify the maximum number of bytes to return
+each time. What happens if the received datagram exceeds the size
+the application is prepared to deal with?
+<P>
+Unfortunately the answer depends on the programming
+interface and the implementation.
+<P>
+The traditional Berkeley version of the sockets API
+truncates the datagram, discarding any excess data. Whether the
+application is notified depends on the version. (4.3BSD Reno and
+later can notify the application that the datagram was truncated.)
+<P>
+The sockets API under SVR4 (including Solaris 2.x)
+does not truncate the datagram. Any excess data is returned in
+subsequent reads. The application is not notified that multiple
+reads are being fulfilled from a single UDP datagram.
+<P>
+The TLI API does not discard the data. Instead a
+flag is returned indicating that more data is available, and subsequent
+reads by the application return the rest of the datagram.
+<P>
+When we discuss TCP we'll see that it provides a
+continuous stream of bytes to the application, without any message
+boundaries. TCP passes the data to the application in whatever
+size reads the application asks for-there is never any data loss
+across this interface.
+<a name="11_11"><H3>11.11 ICMP Source Quench Error</H3></a>
+<P>
+Using UDP we are also able to generate the ICMP &quot;source
+quench&quot; error. This is an error that may be generated by
+a system (router or host) when it receives datagrams at a rate
+that is too fast to be processed. Note the qualifier &quot;may.&quot;
+A system is not required to send a source quench, even if it runs
+out of buffers and throws datagrams away.
+<P>
+Figure 11.18 shows the format of the ICMP source
+quench error. We have a perfect scenario with our test network
+for generating this error. We can send datagrams from bsdi to
+the router sun across the Ethernet that must be routed across
+the dialup SLIP link. Since the SLIP link is about 1000 times
+slower than the Ethernet, we should easily be able to overrun
+its buffer space. The following command sends 100 1024-byte datagrams
+from the host bsdi through the router sun to solaris. We send
+the datagrams to the standard discard service, where they'll be
+ignored:
+<P>
+bsdi <I>%</I> sock -u -i -w1024 -n100
+solaris discard
+<P>
+<CENTER>
+<a name="fig_11_18"><img src="f_11_18.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_11_18.gif"></a><br><B>Figure 11.18</B> ICMP
+source quench error.</CENTER>
+<P>
+Figure 11.19 shows the <TT>tcpdump</TT>
+output corresponding to this command.
+<P><CENTER>
+<a name="fig_11_19"><TABLE></a>
+<TR><TD WIDTH=45>1</TD><TD WIDTH=104><TT>0.0</TT>
+</TD><TD WIDTH=441><TT>bsdi .1403 &gt; solaris.discard: udp 1024</TT>
+</TD></TR>
+<TR><TD WIDTH=45></TD><TD WIDTH=104></TD><TD WIDTH=441><TT><I>26 lines that we don't show</I></TT>
+</TD></TR>
+<TR><TD WIDTH=45>27</TD><TD WIDTH=104><TT>0.10 (0.00)</TT>
+</TD><TD WIDTH=441><TT>bsdi.1403 &gt; solaris.discard: udp 1024</TT>
+</TD></TR>
+<TR><TD WIDTH=45>28</TD><TD WIDTH=104><TT>0.11 (0.01)</TT>
+</TD><TD WIDTH=441><TT>sun &gt; bsdi: icmp: source quench</TT>
+</TD></TR>
+<TR><TD WIDTH=45>29</TD><TD WIDTH=104><TT>0.11 (0.00)</TT>
+</TD><TD WIDTH=441><TT>bsdi.1403 &gt; solaris.discard: udp 1024</TT>
+</TD></TR>
+<TR><TD WIDTH=45>30</TD><TD WIDTH=104><TT>0.11 (0.00)</TT>
+</TD><TD WIDTH=441><TT>sun &gt; bsdi: icmp: source quench</TT>
+</TD></TR>
+<TR><TD WIDTH=45></TD><TD WIDTH=104></TD><TD WIDTH=441><TT><I>142 lines that we don't show</I></TT>
+</TD></TR>
+<TR><TD WIDTH=45>173</TD><TD WIDTH=104><TT>0.71 (0.06)</TT>
+</TD><TD WIDTH=441><TT>bsdi. 1403 &gt; solaris.discard: udp 1024</TT>
+</TD></TR>
+<TR><TD WIDTH=45>174</TD><TD WIDTH=104><TT>0.71 (0.00)</TT>
+</TD><TD WIDTH=441><TT>sun &gt; bsdi: icmp: source quench</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 11.19</B> ICMP
+source quench from the router sun.</CENTER>
+<P>
+We have removed lots of lines from this output; there
+is a pattern. The first 26 datagrams are received without an error;
+we show the output only for the first. Starting with our 27th
+datagram, however, every time we send a datagram, we receive a
+source quench in return. There are a total of 26 + (74 x 1) <I>=</I>
+174 lines of output.
+<P>
+From our serial line throughput calculations in <a href="link_lay.htm#2_10" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_10">Section 2.10</a>,
+it takes just over 1 second to transfer a 1024-byte datagram
+at 9600 bits/sec. (In our example it should take longer than this
+since the 20 + 8 + 1024 byte datagram will be fragmented because
+the MTU of the SLIP link from sun to netb is 552 bytes.) But we
+can see from the timing in Figure 11.19 that the router sun receives
+all 100 datagrams in less than 1 second, before the first one
+is through the SLIP link. It's not surprising that we used up
+many of its buffers.
+<P>
+Although RFC 1009 [Braden and Postel 1987] requires
+a router to generate source quenches when it runs out of buffers,
+the new Router Requirements RFC [Almquist 1993] changes this and
+says that a router must not originate source quench errors. The
+current feeling is to deprecate the source quench error, since
+it consumes network bandwidth and is an ineffective and unfair
+fix for congestion.
+<P>
+Another point to make regarding this example is that
+our sock program either never received a notification that the
+source quenches were being received, or if it did, it appears
+to have ignored them.. It turns out that BSD implementations normally
+ignore received source quenches if the protocol is UDP. (TCP is
+notified, and slows down the data transfer on the connection that
+generated the source quench, as we discuss in <a href="tcp_time.htm#21_10" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_time.htm#21_10">Section 21.10</a>.)
+Part of the problem is that the process that generated the data
+that caused the source quench may have already terminated when
+the source quench is received. Indeed, if we use the Unix <TT>time</TT>
+program to measure how long our sock program takes to run, it
+only executes for about 0.5 seconds. But from Figure 11.19 we
+see that some of the source quenches are received 0.71 seconds
+after the first datagram was sent, after the process has terminated.
+What is happening is that our program writes 100 datagrams and
+terminates. But not all 100 datagrams have been sent-some are
+queued for output.
+<P>
+This example reiterates that UDP is an unreliable
+protocol and illustrates the value of end-to-end flow control.
+Even though our <TT>sock</TT> program successfully
+wrote 100 datagrams to its network, only 26 were really sent to
+the destination. The other 74 were probably discarded by the intermediate
+router. Unless we build some form. of acknowledgment into the
+application, the sender has no idea whether the receiver really
+got the data.
+<a name="11_12"><H3>11.12 UDP Server Design</H3></a>
+<P>
+There are some implications in using UDP that affect
+the design and implementation of a server. The design and implementation
+of clients is usually easier than that of servers, which is why
+we talk about server design and not client design. Servers typically
+interact with the operating system and most servers need a way
+to handle multiple clients at the same time.
+<P>
+Normally a client starts, immediately communicates
+with a single server, and is done. Servers, on the other hand,
+start and then go to sleep, waiting for a client's request to
+arrive. In the case of UDP, the server wakes up when a client's
+datagram arrives, probably containing a request message of some
+form from the client.
+<P>
+Our interest here is not in the programming aspects
+of clients and servers ([Stevens 1990] covers all those details),
+but in the protocol features of UDP that affect the design and
+implementation of a server using UDP. (We examine the details
+of TCP server design in <a href="tcp_conn.htm#18_11" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#18_11">Section 18.11</a>.) Although some of the features
+we describe depend on the implementation of UDP being used, the
+features are common to most implementations.
+<H4>Client IP Address and Port Number</H4>
+<P>
+What arrives from the client is a UDP datagram. The
+IP header contains the source and destination IP addresses, and
+the UDP header contains the source and destination UDP port numbers.
+When an application receives a UDP datagram, it must be told by
+the operating system who sent the message-the source IP address
+and port number.
+<P>
+This feature allows an iterative UDP server to handle
+multiple clients. Each reply is sent back to the client that sent
+the request.
+<H4>Destination IP Address</H4>
+<P>
+Some applications need to know who the datagram was
+sent to, that is, the destination IP address. For example, the
+Host Requirements RFC states that a TFTP server should ignore
+received datagrams that are sent to a broadcast address. (We describe
+broadcasting in <a href="broadcas.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm">Chapter 12</a> and TFTP in <a href="tftp_tri.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tftp_tri.htm">Chapter 15</a>.)
+<P>
+This requires the operating system to pass the destination
+IP address from the received UDP datagram to the application.
+Unfortunately, not all implementations provide this capability.
+<P>
+The sockets API provides this capability with the
+<TT>IP_RECVDSTADDR</TT> socket option. Of
+the systems used in the text, only BSD/386, 4.4BSD, and AIX 3.2.2
+support this option. SVR4, SunOS 4.x, and Solaris 2.x don't support
+it.
+<H4>UDP Input Queue</H4>
+<P>
+We said in <a href="introduc.htm#1_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#1_8">Section 1.8</a> that most UDP servers are
+iterative servers. This means a single server process handles
+all the client requests on a single UDP port (the server's well-known
+port).
+<P>
+Normally there is a limited size input queue associated
+with each UDP port that a application is using. This means that
+requests that arrive at about the same time from different clients
+are automatically queued by UDP. The received UDP datagrams are
+passed to the application (when it asks for the next one) in the
+order they were received. It is possible, however, for this queue
+to overflow, causing the kernel's UDP module to discard incoming
+datagrams. We can see this with the following experiment. We start
+our sock program on the host bsdi running as a UDP server:
+<P><TABLE>
+<TR><TD WIDTH=423><TT>bsdi % sock -s -u -v -E -R256 -r256 -P30 6666</TT>
+</TD><TD WIDTH=167></TD></TR>
+<TR><TD WIDTH=423><TT>from 140.252.13.33, to 140.252.13.63: 1111111111</TT>
+</TD><TD WIDTH=167><I>from <TT>sun</TT><I> to broad cast address</I></I>
+</TD></TR>
+<TR><TD WIDTH=423><TT>from 140.252.13.34, to 140.252.13.35: 4444444444444</TT>
+</TD><TD WIDTH=167><I>from <TT>svr4</TT><I>, to unicast address</I></I>
+</TD></TR>
+</TABLE>
+<P>
+We specify the following flags: <TT>-s</TT>
+to run as a server, <TT>-u</TT> for UDP, <TT>-v</TT>
+to print the client's IP address, and <TT>-E</TT>
+to print the destination IP address (which is supported by this
+system). Additionally we set the UDP receive buffer for this port
+to 256 bytes (<TT>-R</TT>), along with the
+size of each application read (<TT>-r</TT>).
+The flag <TT>-P30</TT> tells it to pause for
+30 seconds after creating the UDP port, before reading the first
+datagram. This gives us time to start the clients on two other
+hosts, send some datagrams, and see how the receive queueing works.
+<P>
+Once the server is started, and is in its 30-second
+pause, we start one client on the host <TT>sun</TT>
+and send three datagrams:
+<P>
+<TT>sun %</TT><B> </B><TT><B>sock
+-u -v 140.252.13.63 6666</B></TT>
+<I>to Ethernet broadcast address<BR>
+</I>connected on 140.252.13.33.1252 to 140.252.13.63.6666<BR>
+<TT><B>1111111111</B></TT>
+<I>11 bytes of data (with newline)<BR>
+</I><TT><B>222222222</B></TT>
+<I>10 bytes of data (with newline)<BR>
+</I><TT><B>33333333333</B></TT>
+<I>12 bytes of data (with newline)</I>
+<P>
+The destination address is the broadcast address
+(140.252.13.63). We also start a second client on the host <TT>svr4</TT>
+and send another three datagrams:
+<P>
+<TT>svr4 % <B>sock -u -v bsdi
+6666<BR>
+</B>connected on 0.0.0.0.1042 to 140.252.13.35.6666<BR>
+<B>4444444444444</B></TT>
+<I>14 bytes of data (with newline)<BR>
+</I><TT><B>555555555555555</B></TT>
+<I>16 bytes of data (with newline)<BR>
+</I><TT><B>66666666</B></TT>
+<I>9 bytes of data (with newline)</I>
+<P>
+The first thing we notice in the interactive output
+shown earlier on <TT>bsdi</TT> is that only
+two datagrams were received by the application: the first one
+from <TT>sun</TT> with all 1s, and the first
+one from <tt>svr4</tt> with all 4s. The other four datagrams appear to
+have been thrown away.
+<P>
+The <TT>tcpdump</TT> output in
+Figure 11.20 shows that all six datagrams were delivered to the
+destination host. The datagrams were typed on the two clients
+in alternating order: first from sun, then from <TT>svr4</TT>,
+and so on. We can also see that all six were delivered in about
+12 seconds, within the 30-second period while the server was sleeping.
+<P><CENTER><a name="fig_11_20"><TABLE></a>
+<TR><TD WIDTH=26>1</TD><TD WIDTH=170><TT>0.0</TT>
+</TD><TD WIDTH=394><TT>sun.1252 &gt; 140.252.13.63.6666: udp 11</TT>
+</TD></TR>
+<TR><TD WIDTH=26>2</TD><TD WIDTH=170><TT>2.499184 (2.4992)</TT>
+</TD><TD WIDTH=394><TT>svr4.1042 &gt; bsdi.6666: udp 14</TT></TD>
+</TR>
+<TR><TD WIDTH=26>3</TD><TD WIDTH=170><TT>4.959166 (2.4600)</TT>
+</TD><TD WIDTH=394><TT>sun.1252 &gt; 140.252.13.63.6666: udp 10</TT>
+</TD></TR>
+<TR><TD WIDTH=26>4</TD><TD WIDTH=170><TT>7.607149 (2.6480)</TT>
+</TD><TD WIDTH=394><TT>svr4.1042 &gt; bsdi.6666: udp 16</TT></TD>
+</TR>
+<TR><TD WIDTH=26>5</TD><TD WIDTH=170><TT>10.079059 (2.4719)</TT>
+</TD><TD WIDTH=394><TT>sun.1252 &gt; 140.252.13.63.6666: udp 12</TT>
+</TD></TR>
+<TR><TD WIDTH=26>6</TD><TD WIDTH=170><TT>12.415943 (2.3369)</TT>
+</TD><TD WIDTH=394><TT>svr4.1042 &gt; bsdi.6666: udp 9</TT></TD>
+</TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 11.20</B> <TT>tcpdump</TT>
+for UDP datagrams sent by two clients.</CENTER>
+<P>
+We can also see the server's <TT>-E</TT>
+option lets it know the destination IP address of each datagram.
+If it wanted to, it could choose what to do with the first datagram
+it receives, which was sent to a broadcast address.
+<P>
+We can see several points in this example. First,
+the application is not told when its input queue overflows. The
+excess datagrams are just discarded by UDP. Also, from the tcpdump
+output we see that nothing is sent back to the client to tell
+it that its datagram was discarded. There is nothing like an ICMP
+source quench sent back to the sender. Finally, it appears that
+the UDP input queue is FIFO (first-in, first-out), whereas we
+saw that the ARP input queue in <a href="#11_9">Section 11.9</a> was LIFO (last-in,
+first-out).
+<H4>Restricting Local IP Address</H4>
+<P>
+Most UDP servers <I>wildcard</I> their local IP address
+when they create a UDP end point. This means that an incoming
+UDP datagram destined for the server's port will be accepted on
+any local interface. For example, we can start a UDP server on
+port 7777:
+<P>
+<TT>sun % <B>sock -u -s 7777</B></TT>
+<P>
+We then use the <TT>netstat</TT>
+command to see the state of the end point:
+<TABLE>
+<TR><TD COLSPAN=6 WIDTH=555><TT>sun % <B>netstat -a -n -f inet</B></TT>
+</TD></TR>
+<TR><TD COLSPAN=6 WIDTH=555><TT>Active Internet connections (including servers)</TT>
+</TD></TR>
+<TR><TD WIDTH=73><TT>Proto</TT></TD><TD WIDTH=66><TT>Recv-Q</TT>
+</TD><TD WIDTH=76><TT>Send-Q</TT></TD><TD WIDTH=125><TT>Local Address</TT>
+</TD><TD WIDTH=139><TT>Foreign Address</TT></TD><TD WIDTH=76><TT>(state)</TT>
+</TD></TR>
+<TR><TD WIDTH=73><TT>udp</TT></TD><TD WIDTH=66><TT>0</TT></TD>
+<TD WIDTH=76><TT>0</TT></TD><TD WIDTH=125><TT>*.7777</TT></TD>
+<TD WIDTH=139><TT>*.*</TT></TD><TD WIDTH=76></TD></TR>
+</TABLE>
+<P>
+We have deleted many lines of output other than the
+one in which we're interested. The <TT>-a</TT>
+flag reports on all network end points. The <TT>-n</TT>
+flag prints IP addresses as dotted-decimal numbers, instead of
+trying to use the DNS to convert the address to a name, and prints
+numeric port numbers instead of service names. The <TT>-f
+inet</TT> option reports only TCP and UDP end points.
+<P>
+The local address is printed as *.7777 where the
+asterisk means the local IP address has been wildcarded.
+<P>
+When the server creates its end point it can specify
+one of the host's local IP addresses, including one of its broadcast
+addresses, as the local IP address for the end point. Incoming
+UDP datagrams will then be passed to this end point only if the
+destination IP address matches the specified local address. With
+our sock program, if we specify an IP address before the port
+number, that IP address becomes the local IP address for the end
+point. For example,
+<P>
+<TT>sun % <B>sock -u -s 140.252.1.29
+7777</B></TT>
+<P>
+restricts the server to datagrams arriving on the
+SLIP interface (140.252.1.29). The <TT>netstat</TT>
+output shows this:
+<TABLE>
+<TR><TD WIDTH=54><TT>Proto</TT></TD><TD WIDTH=66><TT>Recv-Q</TT>
+</TD><TD WIDTH=66><TT>Send-Q</TT></TD><TD WIDTH=151><TT>Local Address</TT>
+</TD><TD WIDTH=123><TT>Foreign Address</TT></TD><TD WIDTH=66><TT>(state)</TT>
+</TD></TR>
+<TR><TD WIDTH=54><TT>udp</TT></TD><TD WIDTH=66><TT>0</TT></TD>
+<TD WIDTH=66><TT>0</TT></TD><TD WIDTH=151><TT>140.252.1.29.7777</TT>
+</TD><TD WIDTH=123><TT>*.*</TT></TD><TD WIDTH=66></TD></TR>
+</TABLE>
+<P>
+If we try to send this server a datagram from a host
+on the Ethernet, <TT>bsdi</TT> at address
+140.252.13.35, an ICMP port unreachable is returned. The server
+never sees the datagram. Figure 11.21 shows this scenario.
+<a name="fig_11_21"><TABLE></a>
+<TR><TD WIDTH=26>1</TD><TD WIDTH=151><TT>0.0</TT>
+</TD><TD WIDTH=413><TT>bsdi.1723 &gt; sun.7777: udp 13</TT></TD>
+</TR>
+<TR><TD WIDTH=26>2</TD><TD WIDTH=151><TT>0.000822 (0.0008)</TT>
+</TD><TD WIDTH=413><TT>sun &gt; bsdi: icmp: sun udp port 7777 unreachable</TT>
+</TD></TR>
+</TABLE>
+<P>
+<CENTER><B>Figure 11.21</B> Rejection
+of UDP datagram caused by server's local address binding.</CENTER>
+<P>
+It is possible to start different servers at the
+same port, each with a different local IP address. Normally, however,
+the system must be told by the application that it is OK to reuse
+the same port number.
+<P>
+With the sockets API the <TT>SO_REUSEADDR</TT>
+socket option must be specified. This is done by our sock program
+by specifying the <TT>-A</TT> option.
+<P>
+On our host <TT>sun</TT> we can
+start five different servers on the same UDP port (8888):
+<TABLE>
+<TR><TD WIDTH=319><TT>sun % <B>sock -u -s 140.252.1.29 8888</B></TT>
+</TD><TD WIDTH=170><I>for SLIP link</I></TD>
+</TR>
+<TR><TD WIDTH=319><TT>sun % <B>sock -u -s -A 140.252.13.33 8888</B></TT>
+</TD><TD WIDTH=170><I>for Ethernet</I></TD>
+</TR>
+<TR><TD WIDTH=319><TT>sun %<B> sock -u -s -A 127.0.0.1 8888</B></TT>
+</TD><TD WIDTH=170><I>for loopback interface</I>
+</TD></TR>
+<TR><TD WIDTH=319><TT>sun % <B>sock -u -s -A 140.252.13.63 8888</B></TT>
+</TD><TD WIDTH=170><I>for Ethernet broadcasts</I>
+</TD></TR>
+<TR><TD WIDTH=319><TT>sun % sock -u -s -A 8888 everything else (wildcard IP address)</TT>
+</TD><TD WIDTH=170></TD></TR>
+</TABLE>
+<P>
+All except the first of the servers must be started
+with the <TT>-A</TT> flag, telling the system
+that it's OK to reuse the same port number. The <TT>netstat</TT>
+output shows the five servers:
+<TABLE>
+<TR><TD WIDTH=54><TT>Proto</TT></TD><TD WIDTH=66><TT>Recv-Q</TT>
+</TD><TD WIDTH=66><TT>Send-Q</TT></TD><TD WIDTH=161><TT>Local Address</TT>
+</TD><TD WIDTH=123><TT>Foreign Address</TT></TD><TD WIDTH=57><TT>(state)</TT>
+</TD></TR>
+<TR><TD WIDTH=54><TT>udp</TT></TD><TD WIDTH=66><TT>0</TT></TD>
+<TD WIDTH=66><TT>0</TT></TD><TD WIDTH=161><TT>*.8888</TT></TD>
+<TD WIDTH=123><TT>*.*</TT></TD><TD WIDTH=57></TD></TR>
+<TR><TD WIDTH=54><TT>udp</TT></TD><TD WIDTH=66><TT>0</TT></TD>
+<TD WIDTH=66><TT>0</TT></TD><TD WIDTH=161><TT>140.252.13.63.8888</TT>
+</TD><TD WIDTH=123><TT>*.*</TT></TD><TD WIDTH=57></TD></TR>
+<TR><TD WIDTH=54><TT>udp</TT></TD><TD WIDTH=66><TT>0</TT></TD>
+<TD WIDTH=66><TT>0</TT></TD><TD WIDTH=161><TT>127.0.0.1.8888</TT>
+</TD><TD WIDTH=123><TT>*.*</TT></TD><TD WIDTH=57></TD></TR>
+<TR><TD WIDTH=54><TT>udp</TT></TD><TD WIDTH=66><TT>0</TT></TD>
+<TD WIDTH=66><TT>0</TT></TD><TD WIDTH=161><TT>140.252.13.33.8888</TT>
+</TD><TD WIDTH=123><TT>*.*</TT></TD><TD WIDTH=57></TD></TR>
+<TR><TD WIDTH=54><TT>udp</TT></TD><TD WIDTH=66><TT>0</TT></TD>
+<TD WIDTH=66><TT>0</TT></TD><TD WIDTH=161><TT>140.252.1.29.8888</TT>
+</TD><TD WIDTH=123><TT>*.*</TT></TD><TD WIDTH=57></TD></TR>
+</TABLE>
+<P>
+In this scenario, the only datagrams that will go
+to the server with the wildcarded local IP address are those destined
+to 140.252.1.255, because the other four servers cover all other
+possibilities.
+<P>
+There is a priority implied when an end point with
+a wildcard address exists. An end point with a specific IP address
+that matches the destination IP address is always chosen over
+a wildcard. The wildcard end point is used only when a specific
+match is not found.
+<H4>Restricting Foreign IP Address</H4>
+<P>
+In all the <TT>netstat</TT> output
+that we showed earlier, the foreign IP address and foreign port
+number are shown as <TT>*.*</TT> meaning the
+end point will accept an incoming UDP datagram from any IP address
+and any port number. Most implementations allow a UDP end point
+to restrict the foreign address.
+<P>
+This means the end point will only receive UDP datagrams
+from that specific IP address and port number. Our sock program
+uses the <TT>-f</TT> option to specify the
+foreign IP address and port number:
+<P>
+<TT>sun % <B>sock -u -s -f 140.252.13.35.4444
+5555</B></TT>
+<P>
+This sets the foreign IP address to 140.252.13.35
+(our host <TT>bsdi</TT>) and the foreign port
+number to 4444. The server's well-known port is 5555. If we run
+<TT>netstat</TT> we see that the local IP
+address has also been set, even though we didn't specify it:
+<TABLE>
+<TR><TD WIDTH=54><TT>Proto</TT></TD><TD WIDTH=66><TT>Recv-Q</TT>
+</TD><TD WIDTH=66><TT>Send-Q</TT></TD><TD WIDTH=161><TT>Local Address</TT>
+</TD><TD WIDTH=123><TT>Foreign Address</TT></TD><TD WIDTH=57><TT>(state)</TT>
+</TD></TR>
+<TR><TD WIDTH=54><TT>udp</TT></TD><TD WIDTH=66><TT>0</TT></TD>
+<TD WIDTH=66><TT>0</TT></TD><TD WIDTH=161><TT>140.252.13.33.5555</TT>
+</TD><TD WIDTH=123><TT>*.*</TT></TD><TD WIDTH=57></TD></TR>
+</TABLE>
+<P>
+This is a side effect of specifying the foreign IP
+address and foreign port on Berkeley-derived systems: if the local
+address has not been chosen when the foreign address is specified,
+the local address is chosen automatically. Its value becomes the
+IP address of the interface chosen by IP routing to reach the
+specified foreign IP address. Indeed, in this example the IP address
+on sun for the Ethernet that is connected to the foreign address
+is 140.252.13.33.
+<P>
+Figure 11.22 summarizes the three types of address
+bindings that a UDP server can establish for itself.
+<P><CENTER>
+<a name="fig_11_22"><TABLE BORDER=1></a>
+<TR><TD WIDTH=85><CENTER>Local Address</CENTER>
+</TD><TD WIDTH=95><CENTER>Foreign Address</CENTER>
+</TD><TD WIDTH=312><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=85><CENTER><I>localIP.lport
+<BR>
+localIP.lport<BR>
+*. lport</I></CENTER>
+</TD><TD WIDTH=95><CENTER><I>foreignIP.fport<BR>
+*.*<BR>
+*.*</I></CENTER>
+</TD><TD WIDTH=312>restricted to one client<BR>
+restricted to datagrams arriving on one local interface: <I>localIP<BR>
+</I>receives all datagrams sent to <I>lport</I>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 11.22</B> Specification
+of local and foreign IP addresses and port number for UDP server.</CENTER>
+<P>
+In all cases, <I>lport</I> is the server's well-known
+port and <I>localIP</I> must be the IP address of a local interface.
+The ordering of the three rows in the table is the order that
+the UDP module applies when trying to determine which local end
+point receives an incoming datagram. The most specific binding
+(the first row) is tried first, and the least specific (the last
+row with both IP addresses wildcarded) is tried last.
+<H4>Multiple Recipients per Port</H4>
+<P>
+Although it's not specified in the RFCs, most implementations
+allow only one application end point at a time to be associated
+with any one local IP address and UDP port number. When a UDP
+datagram arrives at a host destined for that IP address and port
+number, one copy is delivered to that single end point. The IP
+address of the end point can be the wildcard, as shown earlier.
+<P>
+For example, under SunOS 4.1.3 we start one server
+on port 9999 with a wildcarded local IP address:
+<P>
+<TT>sun % <B>sock -u -s 9999</B></TT>
+<P>
+If we then try to start another server with the same
+wildcarded local address and the same port, it doesn't work, even
+if we specify the <TT>-A</TT> option:<BR>
+
+<P>
+<TT>sun % <B>sock -u -s 9999</B></TT>
+<I>we expect this to fail<BR>
+</I><TT>can't bind local address: Address already in use</TT>
+<P>
+<TT>sun % <B>sock -u-s-A 9999</B></TT>
+<I>so we try -A flag this time<BR>
+</I><TT>can't bind local address: Address already in use</TT>
+<P>
+On systems that support multicasting (<a href="broadcas.htm#12_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm#12_0">Chapter 12</a>),
+this changes. Multiple end points can use the same local IP address
+and UDP port number, although the application normally must tell
+the API that this is OK (i.e., our <TT>-A</TT>
+flag to specify the <TT>SO_REUSEADDR</TT>
+socket option).
+<P>
+4.4BSD, which supports multicasting, requires the
+application to set a different socket option (<TT>SO_REUSEPORT</TT>)
+to allow multiple end points to share the same port. Furthermore
+each end point must specify this option, including the first one
+to use the port.
+<P>
+When a UDP datagram arrives whose destination IP
+address is a broadcast or multicast address, and there are multiple
+end points at the destination IP address and port number, one
+copy of the incoming datagram is passed to <I>each</I> end point.
+(The end point's local IP address can be the wildcard, which matches
+any destination IP address.) But if a UDP datagram arrives whose
+destination IP address is a unicast address, only a single copy
+of the datagram is delivered to <I>one</I> of the end points.
+Which end point gets the unicast datagram is implementation dependent.
+<a name="11_13"><H3>11.13 Summary</H3></a>
+<P>
+UDP is a simple protocol. Its official specification,
+RFC 768 [Postel 1980], requires only three pages. The services
+it provides to a user process, above and beyond IP, are port numbers
+and an optional checksum. We used UDP to examine this checksum
+and to see how fragmentation is performed.
+<P>
+We then examined the ICMP unreachable error that
+is part of the new path MTU discovery feature (<a href="link_lay.htm#2_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_9">Section 2.9</a>). We
+watched path MTU discovery using Traceroute and UDP We also looked
+at the interaction between UDP and ARP whereby most ARP implementations
+only retain the most recently transmitted datagram to a given
+destination, while waiting for an ARP reply.
+<P>
+The ICMP source quench error can be sent by a system
+that is receiving IP datagrams faster than they can be processed.
+It is easy to generate these ICMP errors using UDP.
+<H4>Exercises</H4>
+<P>
+<B>11.1</B> In <a href="#11_5">Section 11.5</a> we
+caused fragmentation on an Ethernet by writing a UDP datagram
+with 1473 bytes of user data. What is the smallest amount of user
+data that causes fragmentation on an Ethernet if IEEE 802 encapsulation
+(<a href="link_lay.htm#2_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_2">Section 2.2</a>) is used instead?
+<P>
+<B>11.2</B> Read RFC 791 [Postel
+1981a] to determine why all fragments other than the last must
+have a length that is a multiple of 8 bytes.
+<P>
+<B>11.3</B> Assume an Ethernet
+and a UDP datagram with 8192 bytes of user data. How many fragments
+are transmitted and what is the offset and length of each fragment?
+<P>
+<b>11.4</b> Continue the previous exercise, assuming these
+fragments then traverse a SLIP link with an MTU of 552. You also
+need to remember that the amount of data in each fragment (i.e.,
+everything other than the IP header) must be a multiple of 8 bytes.
+How many fragments are transmitted and what is the offset and
+length of each fragment?
+<P>
+<b>11.5</b> An application using UDP sends a datagram that
+gets fragmented into four pieces. Assume that fragments 1 and
+2 make it to the destination, with fragments 3 and 4 being lost.
+The application then times out and retransmits the UDP datagram
+10 seconds later and this datagram is fragmented identically to
+the first transmission (i.e., same offsets and lengths). Assume
+that this time fragments 1 and 2 are lost but fragments 3 and
+4 make it to the destination. Also assume that the reassembly
+timer on the receiving host is 60 seconds, so when fragments 3
+and 4 of the retransmission make it to the destination, fragments
+1 and 2 from the first transmission have not been discarded. Can
+the receiver reassemble the IP datagram from the four fragments
+it now has?
+<P>
+<B>11.6</B> How do you know that
+the fragments in <a href="#fig_11_15">Figure 11.15</a> really correspond to lines 5 and
+6 in <a href="#fig_11_14">Figure 11.14</a>?
+<P>
+<B>11.7</B> After the host <TT>gemini</TT>
+had been up for 33 days, the <TT>netstat</TT>
+program showed that 129 IP datagrams out of 48 mi1110n had been
+dropped because of a bad header checksum, and 20 TCP segments
+out of 30 mi1110n had been dropped because of a bad TCP checksum.
+Not a single UDP datagram was dropped, however, because of a UDP
+checksum error, out of the approximately 18 mi1110n UDP datagrams.
+Give two reasons why. (<I>Hint:</I> See <a href="#fig_11_4">Figure 11.4</a>.)
+<P>
+<B>11.8</B> In our discussion
+of fragmentation we never said what happens to IP options in the
+IP header-are they copied as part of the IP header in each fragment,
+or left in the first fragment only? We've described the following
+IP options: record route (<a href="pingprog.htm#7_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm#7_3">Section 7.3</a>), time-stamp
+(<a href="pingprog.htm#7_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm#7_4">Section 7.4</a>),
+strict and loose source routing (<a href="tracerou.htm#8_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm#8_5">Section 8.5</a>). How would you expect
+fragmentation to handle these options? Check your answer with
+RFC 791.
+<P>
+<B>11.9</B> In <a href="introduc.htm#fig_1_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#fig_1_8">Figure 1.8</a> we
+said that incoming UDP datagrams are demultiplexed based on the
+destination UDP port number. Is that correct?
+</BODY>
+</HTML>

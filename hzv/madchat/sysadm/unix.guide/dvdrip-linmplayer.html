@@ -1,0 +1,47 @@
+<html><title>Ripper un DVD sous Linux</title><pre>
+
+http://www.bunkus.org/dvdripping4linux/separate/index.html
+
+---
+
+Bon alors deja j'ai les lib suivantes installées :
+- libdvdread
+- libdvdcss
+- libdvdnav (mais inutile pour ripper)
+- lamemp3
+
+Quand je configure MPlayer :
+
+Checking for DVD support (libmpdvdkit) ... yes
+Checking for DVD support (libcss - old style) ... no
+Checking for DVD support (libdvdread - new style) ... disabled by libmpdvdkit
+Checking for DVD support (libdvdnav) ... no
+
+
+Bref imaginons que je veuille ripper le premier episode de Lain.
+Pour lire cet episode avec mplayer j'utilise la commande :
+$mplayer -dvd 1 -alang fr 
+
+
+Premiere etape, je rip seulement le son avec mencoder :
+$mencoder -dvd 1 -ovc frameno -o frameno.avi -oac mp3lame -lameopts abr:br=128 -alang fr
+A cette etape Mencoder vous suggere tout seul le 'vbitrate' en fonction du film et de la taille des CDs :
+    Recommended video bitrate for 650MB CD: 1845
+    Recommended video bitrate for 700MB CD: 1992
+
+Deuxieme etape : Je fais la 1° passe du rip video (sans son of course) :
+$mencoder -nosound -o /dev/null -ovc lavc -lavcopts vcodec=mpeg4:vbitrate=1000:vhq:vpass=1:vqmin=1:vqmax=31 -vop scale=640:480 -npp lb -dvd 1
+# avec la nouvelle version de mplayer/mencoder, il faut faire plutot :
+mencoder <b>-oac copy</b> -o /dev/null -ovc lavc -lavcopts vcodec=mpeg4:vbitrate=1000:vhq:vpass=1:vqmin=1:vqmax=31 <b>-vop pp=lb,scale=640:480</b> -dvd 1 -slang en
+
+Ca créera un fichier de stats "lavc_stats.txt" (ou "divx2pass.log").
+
+Ensuite tu fais la Troisieme et derniere etape, tu rassemble tout ça en faisant la 2° passe :
+$mencoder -oac copy -o lain-1.avi -ovc lavc -lavcopts vcodec=mpeg4:vbitrate=1000:vhq:vpass=2:vqmin=1:vqmax=31 -vop scale=640:480 -npp lb -dvd 1
+# avec la nouvelle version de mplayer (0.9rc3) faire plutot (meme modifs de syntaxe) :
+$mencoder -oac copy -o lain-1.avi -ovc lavc -lavcopts vcodec=mpeg4:vbitrate=1000:vhq:vpass=2:vqmin=1:vqmax=31 -vop pp=lb,scale=640:480 -dvd 1
+
+
+Et voilou tout est dans lain-1.avi apres.
+Le truc important c'est de bien nommer le fichier qui contiens le son "frameno.avi" c'est le nom
+par defaut...

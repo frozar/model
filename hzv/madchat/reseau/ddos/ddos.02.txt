@@ -1,0 +1,212 @@
+[last updated 02/11/2000]
+
+   Distributed Denial Of Service Attacks (DDOS)
+
+Overview:  What is a distributed denial of service attack
+=========
+
+A distributed denial of service attack (DDOS) is one in which
+an attacker first compromises a number of hosts, and installs
+a daemon on those hosts.  At a later point, the attacker sends
+a request to the daemon on the compromised hosts asking it to
+begin flooding a target host with various types of packets.
+The ensuing massive stream of data overwhelms the victim's
+hosts or routers, rendering them unable to provide service.
+
+History
+=======
+
+Automated distributed attacks have been known for a while; in
+IRC, a script called "Tribe" for the mIRC program has been
+floating around since at least 1998.  It allowed "flood"
+type attacks, but had to be run from a user currently
+accessing the IRC network.  The results of this were
+relatively inconsequential compared to the modern DDOS
+tools. [2]  This was followed up by another DoS tool called
+fapi [13] later in 1998.
+
+Today's DDOS attacks need to be considered in the context
+of the vulnerability environment.  Recently, several remotely
+exploitable security holes have been discovered in RPC
+services:
+
+  rpc.statd + automountd hole [4]
+
+  rpc.cmsd [3]
+
+  rpc.tooltalk [5]
+
+The CERT coordination center suggests in [1] that automated tools are
+being used to exploit these security holes, and the magnitude of
+recent DDOS attacks against major websites suggests that this is true.
+The attack against Buy.com was reported to consume 800 Mbps (5 OC-3s
+worth of data);  the attack against Yahoo! comsumed more than a 
+gigabit.  Generating a gigabit of traffic is not something which
+is lightly undertaken without either a large number of hosts
+(implying automated control) or an amplification system of
+some sort, like a smurf attack.  Preliminary reports from the
+affected sites lead me to believe that at least part of the attacks
+came directly from compromised machines.
+
+The first attribute of a DDOS attack is the ability to rapidly
+take control of a large number of diversely situated systems.
+Programs like nmap [7] and whisker [8] allow attackers to scan
+extremely large numbers of systems rapidly, and specialized tools
+to scan for specific vulnerabilities like those described
+above can be written quite easily.  These tools are capable of
+scanning hundreds or thousands of hosts per minute.
+
+The next component of a DDOS attack is the actual denial-of-service
+attack which is launched.  Many forms of DOS attacks are known;
+among the more common we find basic bandwidth hog attacks like
+ping floods, amplifier attacks like smurfing, and protocol
+attacks like SYN floods and corrupted packet attacks (fragment
+attacks, "stream.c", etc).  All of these attacks provide a way
+for an attacker with various levels of resources to render
+a victim's machine or network inoperable.  Defenses exist for
+some of these attacks - firewalls or bug fixes - but it's
+extremely difficult to defend against pure brute-force attacks which
+consume all of a victim's bandwidth.
+
+When these attacks are launched from a single source, even with
+spoofed addresses, it's possible to track the attacker using
+a tool such as MCI's DOStracker, or UUNET's more modern DoS
+tracking IP overlay network [9]
+
+This is where a distributed denial of service attack comes in.
+A single computer will typically not have the bandwidth to shut
+down a large site such as Yahoo!, and if it uses an amplifier
+attack, it can still be traced.  However, when the source of the
+attack is two thousand machines distributed across the world
+(started remotely with little further communication to the
+central controller), it is much more difficult to trace, and
+much more difficult to stop.
+
+The known DDOS tools thus far include trinoo [10], Tribal Flood Net (TFN) [11],
+a derivative thereof called TFN2k, and the latest, Stacheldraht [12].
+These programs all use a client/server architecture to allow
+a single attacker to simultaneously direct attacks by many
+machines, though the details vary.  In all cases, the architecture
+looks like:
+
+                                       Flooder Daemon (machine 1)
+      client program ----------------> Flooder Daemon (machine 2)
+                                          ...
+
+An attacker may control multiple client programs.
+
+The implications of widespread DDOS tools are frightening.
+Over the last two days, a number of large sites with 
+huge amounts of bandwidth have been successfully attacked:
+
+  - Yahoo!  was taken offline for several hours 2/72000
+  - Etrade, another broker, was reported to have suffered problems
+    from a similar flood attack, 2/9/2000
+  - Buy.com was taken offline for several hours, 2/8/2000
+  - Amazon.com was offline for "more than an hour", 2/8/2000
+  - CNN was mostly unreachable for 2 hours, 2/8/2000
+  - eBay, 2/8/2000
+  - Datek, an online securities broker, was down for 30 minutes 2/9/2000,
+    but it was later found to be due to an unrelated problem.  The
+    company officials initially reported it as a related problem, but
+    retracted it.
+
+The question remains, "What was the attack used?"  
+lucifer@lightbearer.com
+suggested in mail to the NANOG mailing list that someone he knew
+had a RedHat box which was compromised and participated in the
+attack, and that it had been compromised via an NFS bug.
+Speculation in the news media and on provider mailing lists
+is rampant, but no concrete answers have yet emerged.
+It does seem likely that one of the DDOS tools discussed
+herein was used, but that's not certain yet.
+
+Yahoo! spokespeople have indicated that the problem was
+a swamping of ICMP echoreply packets which traversed
+about 50 (half) of globalcenter's peers.  It sounds like
+a smurf attack:
+
+  "The requests were sent to Yahoo! indirectly. The attacker or attackers
+  actually sent a flood of requests through networks that fraudulently
+  listed Yahoo! as a return address." [14]
+
+This suggests
+that the attackers had a good spread in the penetration
+of victim networks, and also strongly suggests that the
+attack came either via TFN2k or Stacheldraht.
+
+
+What's Next
+-----------
+
+The evolution of these programs is clear.  The most recent tool,
+Stacheldraht, provides an encrypted telnet-like transport for its
+command channel.  The functionality provided by the programs,
+however, is still the same:  the attacker uses one or more
+client programs to cause many compromised machines to
+simultaneously begin flooding a target with packets.  The
+type of flood varies with the program;  Stacheldraht
+allows for SYN floods, ICMP floods, and UDP floods.
+
+Stacheldraht was captured and analyzed before the advent
+of the "stream" DOS attack;  it seems inevitable that the
+distributed denial of service attacks will grow to
+include the features of many protocol specific DOS
+attacks, so that a flood attack will attempt to not
+only overwhelm a target, but crash vulnerable machines
+at the same time.
+
+At the present time, these tools have observable signatures
+and can be scanned for, but simple techniques (authenticating
+a requestor before responding to a presence query, for instance)
+could be used to reduce their visibility by a large degree;
+other changes could be made to the packet contents to make
+the protocol less observable.
+
+Many of these programs are not written by extremely competent
+experts, but are instead cobbled together from bits and
+pieces of other DoS tools.  Just as the latest scare, "stream.c"
+was really just an incremental improvement to the traditional
+SYN flooders, we should expect to see the next generation
+of DDOS tools be better-engineered and have more features.
+
+Counters to the attack
+----------------------
+
+egress and ingress filtering:  doesn't prevent flooding, but
+improves accountability, removes the potential for smurfing, etc.
+
+tools:
+  - NIPC just released find_ddos which detects 
+    stacheldraht, trinoo, tfn, and tfn2k clients and servers
+
+  - Afro productions released trinoo killer, which sends an "all quit"
+    message to trinoo nodes
+
+  - It's very likely that IDS systems will be updated to watch for
+    the control traffic for these systems, but they don't seem to
+    have been yet.
+
+References
+----------
+
+[1] http://www.cert.org/incident_notes/IN-99-04.html
+[2] Stefan Laudat <stefan@NS.ASIT.RO>, in email to BugTraq
+
+[3] http://www.cert.org/advisories/CA-99-08-cmsd.html
+[4] http://www.cert.org/advisories/CA-99-05-statd-automountd.html
+[5] http://www.cert.org/advisories/CA-98.11.tooltalk.html
+
+[6] http://dailynews.yahoo.com/h/nm/20000209/ts/tech_hackers_3.html
+[7] http://www.insecure.org/~fyodor/nmap/
+[8] http://www.wiretrip.net/rfp/p/doc.asp?id=21&iface=2
+[9] http://www.nanog.org/mtg-9910/robert.html
+
+[10] http://staff.washington.edu/dittrich/misc/trinoo.analysis
+[11] http://staff.washington.edu/dittrich/misc/tfn.analysis
+[12] http://staff.washington.edu/dittrich/misc/stacheldraht.analysis
+[13] Results of the Distributed-Systems Intruder Tools Workshop,
+     CERT.
+[14] http://www.nytimes.com/library/tech/00/02/biztech/articles/10attack.html
+
+

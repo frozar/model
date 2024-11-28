@@ -1,0 +1,370 @@
+<HTML>
+<HEAD>
+<TITLE>Ordonnancement</TITLE>
+</HEAD>
+<BODY BGCOLOR="BFBFBF">
+<FONT SIZE=+2>
+<STRONG><FONT COLOR=red>Ordonnancement</FONT></STRONG>
+</FONT>
+<P>
+<FONT SIZE=+1>
+<STRONG><FONT COLOR=green>Introduction</FONT></STRONG>
+</FONT>
+<P>
+Dans tout syst&egrave;me multit&acirc;ches l'un (si ce n'est le) des
+probl&egrave;mes centraux est celui de l'ordonnancement, c'est-&agrave;-dire
+la s&eacute;lection &agrave; un instant donn&eacute; du processus
+auquel le processeur sera allou&eacute;. C'est
+la composante du syst&egrave;me assurant cette fonction,
+l'<FONT COLOR=blue><STRONG>ordonnanceur</STRONG> (<EM>scheduler</EM>)</FONT>
+qui permet de garantir une ex&eacute;cution concurrente
+de plusieurs t&acirc;ches. Il est bien clair que les objectifs vis&eacute;s
+ne sont pas les m&ecirc;mes selon la nature du syst&egrave;me
+consid&eacute;r&eacute; et par suite les strat&eacute;gies mises
+en oeuvre dans les ordonnanceurs de ces diff&eacute;rents types de
+syst&egrave;mes sont diff&eacute;rents.
+<BR>
+Le probl&egrave;me d'ordonnancement est encore plus d&eacute;licat dans
+un syst&egrave;me temps r&eacute;el, car non seulement il faut r&eacute;soudre
+le probl&egrave;me classique, mais il faut en plus tenir compte de la forte
+contrainte qu'est le temps r&eacute;el. Pour cela, on utilise la
+priorit&eacute; d'une t&acirc;che. Celle-ci est
+li&eacute;e &agrave; son caract&egrave;re plus ou moins critique. 
+<P>
+Pour r&eacute;sumer, le contexte dans lequel on se place est donc le suivant:
+<UL TYPE=disc>
+<LI>il existe un <EM>pool</EM> de processus attendant le processeur
+(ce qui correspond &agrave; l'&eacute;tat pr&ecirc;t);
+<LI>le r&ocirc;le de l'ordonnanceur est d'affecter &eacute;quitablement
+le processeur aux processus  en optimisant son utilisation relativement
+&agrave; certains crit&egrave;res.
+</UL>
+<P>
+<FONT SIZE=+1>
+<STRONG><FONT COLOR=green>Quelques notions de base</FONT></STRONG>
+</FONT>
+<P>
+- Les processus ont au cours de leur existence diff&eacute;rents
+<FONT COLOR=blue>&eacute;tats possibles</FONT>. Citons les trois principaux:
+<UL TYPE=disc>
+<LI><FONT COLOR=blue>actif (<EM>running</EM>)</FONT>: il s'ex&eacute;cute
+effectivement sur un processeur (qui lui a donc &eacute;t&eacute;
+allou&eacute;);
+<LI><FONT COLOR=blue>pr&ecirc;t (<EM>ready</EM>)</FONT>: il est
+pr&ecirc;t &agrave; s'ex&eacute;cuter mais il n'a pas encore &eacute;t&eacute;
+&eacute;lu par l'ordonnanceur et attend donc de l'&ecirc;tre;
+<LI><FONT COLOR=blue>endormi (<EM>waiting</EM>)</FONT>: il est attente d'un
+&eacute;v&eacute;ement (diff&eacute;rent de l'allocation d'un processeur).
+Il peut s'agir de la terminaison d'une entr&eacute;e-sortie ou
+d'une op&eacute;ration logique (pose d'un verrou, op&eacute;ration
+P sur un s&eacute;maphore, lecture dans un tube vide, ...).
+</UL>
+- <FONT COLOR=blue>Quand l'op&eacute;ration a-t-elle lieu?</FONT>
+<P>
+<UL TYPE=disc>
+<LI>de mani&egrave;re la plus &eacute;vidente,  quand le processus
+actif se termine. Dans les premiers syst&egrave;mes assurant un fonctionnement
+en train de t&acirc;ches (<EM>batch processing</EM>), c'&eacute;tait la
+seule situation o&ugrave; le changement de t&acirc;che active
+&eacute;tait r&eacute;alis&eacute;;
+<LI>assez naturellement lorsque processus actif se bloque (passe &agrave;
+&eacute;tat endormi): cela suppose que d'autres processus sont susceptibles
+d'&ecirc;tre activ&eacute;s et donc sont pr&eacute;sents en  m&eacute;moire.
+Cela correspond au concept de <FONT COLOR=blue>multiprogrammation</FONT>;
+<LI>lors d'une interruption physique: c'est typiquement une interruption
+d'horloge dans un syst&egrave;me &agrave; temps partag&eacute;.
+</UL>
+- <FONT COLOR=blue>M&eacute;thodes d'&eacute;valuation des algorithmes</FONT>
+<UL TYPE=disc>
+<LI>taux d'utilisation du processeur;
+<LI>d&eacute;bit: nombre de t&acirc;ches prises en compte pendant une
+p&eacute;riode donn&eacute;e;
+<LI>temps d'ex&eacute;cution entre le lancement et la terminaison. Ce temps
+est la somme du temps CPU, du temps pass&eacute; &agrave; l'&eacute;tat
+pr&ecirc;t et celui pass&eacute; &agrave; l'&eacute;tat endormi (plus
+le temps de chargement);
+<LI>temps d'attente moyen: ce crit&egrave;re concerne le temps moyen
+pass&eacute; &agrave; l'&eacute;tat pr&ecirc;t;
+<LI>temps de r&eacute;ponse: ce crit&egrave;re concerne le temps moyen
+de prise en compte d'une requ&ecirc;te.
+</UL>
+- <FONT COLOR=blue>Pr&eacute;emption / r&eacute;quisition</FONT>:
+elle correspond au fait d'interrompre autoritairement une
+t&acirc;che active pour allouer le processeur &agrave; une autre;
+<P>
+- <FONT COLOR=blue>Priorit&eacute;</FONT>: valeur num&eacute;rique
+associ&eacute;e &agrave; une t&acirc;che permettant de classer
+les diff&eacute;rents t&acirc;ches selon leur importance.
+En g&eacute;n&eacute;ral il s'agit de valeurs enti&egrave;res,
+les petites valeurs correspondant souvent aux grandes priorit&eacute;s.
+<BR>
+Ces priorit&eacute;s peuvent &ecirc;tre <FONT COLOR=blue>statiques</FONT>
+(si elles sont fix&eacute;es au lancement des
+t&acirc;ches et ne sont pas modifi&eacute;es par le syst&egrave;me)
+ou <FONT COLOR=blue>dynamiques</FONT> (si elles sont mises &agrave;
+jour p&eacute;riodiquement par le syst&egrave;me). 
+<BR>
+Ainsi, typiquement, dans un syst&egrave;me temps r&eacute;el,
+les priorit&eacute;s
+sont fixes et refl&egrave;tent le caract&egrave;re critique des t&acirc;ches.
+Dans les syst&egrave;mes orient&eacute;s sur le partage du temps,
+les priorit&eacute;s sont dynamiques: sch&eacute;matiquement la priorit&eacute;
+d'un processsus y diminuera si le processus est gros consommateur de CPU
+et augmentera dans le cas contraire (ce qui favorisera les processus
+interactifs).
+<P>
+- <FONT COLOR=blue>Quantum/tranche de temps</FONT> (<EM>time slicing</EM>):
+le temps est d&eacute;coup&eacute; en tranches et, &agrave; chaque tranche
+une interruption permet &agrave; l'ordonnanceur du syst&egrave;me
+de reprendre le contr&ocirc;le;
+<P>
+- <FONT COLOR=blue>Tourniquet</FONT> (<EM>round robin</EM>): 
+c'est la technique de base consistant &agrave; allouer alternativement
+le processeur  &agrave; chacun des processus pr&ecirc;ts pour une dur&eacute;e
+maximale correspondant au quantum de temps  (elle sera inf&eacute;rieure
+pour les t&acirc;ches s'endormant durant leur p&eacute;riode
+d'activit&eacute;).
+<P>
+<FONT SIZE=+1>
+<STRONG><FONT COLOR=green>Les algorithmes d'ordonnancement g&eacute;n&eacute;raux</FONT></STRONG>
+</FONT>
+<P>
+<STRONG><FONT COLOR=blue>- Ordonnancement FCFS</FONT></STRONG>
+<P>
+L'algorithme <FONT COLOR=blue><STRONG>FCFS</STRONG>
+(<EM>First-Come-First-Served</EM>)</FONT> (premier arriv&eacute;, premier
+servi) est le plus simple des algorithmes d'ordonnancement.
+<P>
+<STRONG><FONT COLOR=blue>- Ordonnancement SJF</FONT></STRONG>
+<P>
+L'algorithme <FONT COLOR=blue><STRONG>SJF</STRONG>
+(<EM>Shortest-Job-First</EM>)</FONT> (le plus court en premier)
+<P>
+<FONT SIZE=+1>
+<STRONG><FONT COLOR=green>Les algorithmes d'ordonnancement pour le temps-r&eacute;el</FONT></STRONG>
+</FONT>
+<P>
+<STRONG><FONT COLOR=blue>- Ordonnancement cyclique</FONT></STRONG>
+<P>
+<STRONG><FONT COLOR=blue>- L'ordonnancement HPF</FONT></STRONG>
+<P>
+L'algorithme <FONT COLOR=blue><STRONG>HPF</STRONG>
+(<EM>Highest Priority First</EM>)</FONT>
+repose sur des priorit&eacute;s statiques associ&eacute;es
+aux diff&eacute;rentes t&acirc;ches selon la m&eacute;thode d'analyse
+monotone par taux (<EM>Rate-Monotonic Scheduling</EM>).
+Le principe en est le suivant:
+<UL TYPE=disc>
+<LI>les t&acirc;ches sont p&eacute;riodiques et la priorit&eacute;
+d'une t&acirc;che est inversement proportionnelle &agrave; sa p&eacute;riode;
+<LI>les t&acirc;ches peuvent &ecirc;tre pr&eacute;empt&eacute;es et les temps
+de commutation sont n&eacute;gligeables. L'id&eacute;e sous-jacente &agrave;
+cette approche est qu'une t&acirc;che
+est d'autant plus critique que sa p&eacute;riode est courte;
+<LI>les t&acirc;ches peuvent &ecirc;tre pr&eacute;empt&eacute;es et les temps
+<LI>les temps d'&eacute;x&eacute;cution des t&acirc;ches sont connus.
+</UL>
+<P>
+Dans l'exemple ci-dessous (en cliquant sur l'image, une version anim&eacute;e
+en est donn&eacute;e), les trois t&acirc;ches ont des p&eacute;riodes
+respectives de <FONT COLOR=blue>10</FONT>, <FONT COLOR=blue>15</FONT> et <FONT COLOR=blue>35</FONT> unit&eacute;s de temps, soit des
+priorit&eacute;s respectives <FONT COLOR=blue>0.1</FONT>, <FONT COLOR=blue>0.07</FONT> et <FONT COLOR=blue>0.03</FONT>. Le temps
+de traitement n&eacute;cessaire &agrave; chacune de leur p&eacute;riode
+est respectivement de <FONT COLOR=blue>4</FONT>, <FONT COLOR=blue>4</FONT> et <FONT COLOR=blue>12</FONT> unit&eacute;s de temps.
+<P>
+<A HREF="rmsOrdoAnime.gif"><IMG SRC="rmsOrdo37.gif" HSPACE=15></A>
+<P>
+Au temps <FONT COLOR=blue>35</FONT>, la t&acirc;che <FONT COLOR=blue>T<SUB>3</SUB></FONT>
+a consomm&eacute; 10 des 12 unit&eacute;s de temps n&eacute;cessaires au
+traitement et
+le temps correspondant &agrave; sa p&eacute;riode, un nouvel exemplaire
+en est lanc&eacute; provoquant probablement l'abandon du
+traitement de l'occurrence en cours de traitement
+avant que celui-ci n'ait donn&eacute; de r&eacute;sultat.
+<P>
+<STRONG><FONT COLOR=blue>- L'ordonnancement EDF</FONT></STRONG>
+<P>
+La strat&eacute;gie <FONT COLOR=blue><STRONG>EDF</STRONG>
+(<EM>Earliest-Deadline First</EM>)</FONT>
+est bas&eacute;e sur des priorit&eacute;s dynamiques :
+une t&acirc;che est d'autant plus prioritaire que
+son &eacute;ch&eacute;ance est proche.
+<P>
+<A HREF="ordoAnime.gif"><IMG SRC="ordo37.gif" HSPACE=15></A>
+<P>
+<STRONG><FONT COLOR=blue>- L'ordonnancement LLF</FONT></STRONG>
+<P>
+La strat&eacute;gie <FONT COLOR=blue><STRONG>LLF</STRONG>
+(<EM>Least-Laxity First</EM>)</FONT> est une variante de EDF.
+<P>
+<FONT SIZE=+1>
+<STRONG><FONT COLOR=green>Exemples</FONT></STRONG>
+</FONT>
+<P>
+<STRONG><FONT COLOR=blue>- JAVA</FONT></STRONG>
+<P>
+Une <EM>thread</EM> Java h&eacute;rite &agrave; sa cr&eacute;ation de
+la priorit&eacute; de celle qui la cr&eacute;e (de la m&ecirc;me
+mani&egrave;re qu'un processus h&eacute;rite de la priorit&eacute; de
+son processus p&egrave;re lors d'un fork). Cette priorit&eacute;
+peut &ecirc;tre modifi&eacute;e ult&eacute;rieurement en lui appliquant
+la m&eacute;thode <FONT COLOR=blue>setPriority</FONT>.
+Les priorit&eacute;s des threads sont comprises entre les valeurs
+<FONT COLOR=blue>MIN_PRIORITY</FONT> et <FONT COLOR=blue>MAX_PRIORITY</FONT>
+d&eacute;finies dans la classe <FONT COLOR=blue>Thread</FONT>
+(<FONT COLOR=blue>1</FONT> pour <FONT COLOR=blue>MIN_PRIORITY</FONT>,
+<FONT COLOR=blue>10</FONT> pour <FONT COLOR=blue>MAX_PRIORITY</FONT>
+et <FONT COLOR=blue>5</FONT> comme priorit&eacute; standard
+<FONT COLOR=blue>NORM_PRIORITY</FONT>).
+<BR>
+L'algorithme d'ordonnancement utilis&eacute; est un algorithme 
+pr&eacute;emptif avec tourniquet sur les syst&egrave;mes supportant
+le temps partag&eacute; (par tranchage du temps). De mani&egrave;re
+plus pr&eacute;cise, une thread restera active jusqu'&agrave; ce que
+l'une des conditions suivantes soit r&eacute;alis&eacute;e:
+<UL TYPE=disc>
+<LI>elle se termine (!!!);
+<LI>elle rel&acirc;che spontan&eacute;ment; le processeur en appelant la
+m&eacute;thode statique <CODE><FONT COLOR=blue>yield</FONT></CODE> (noter
+que cela ne permettra pas d'&eacute;lire une thread de priorit&eacute;
+inf&eacute;rieure);
+<LI>une thread de plus grande priorit&eacute; est pr&ecirc;te;
+<LI>si le syst&egrave;me sous-jacent supporte le <EM>time-slicing</EM>;
+la thread a consomm&eacute; son quantum
+(<FONT COLOR=red>attention, le <EM>runtime</EM>
+Java n'impl&eacute;mente pas lui-m&ecirc;me cette politique</EM>)</FONT>.
+</UL>
+<P>
+<STRONG><FONT COLOR=blue>- MACH</FONT></STRONG>
+<P>
+A chaque activit&eacute; (<EM>thread</EM>) est associ&eacute; en vue
+de sa prise en compte par l'ordonnanceur d'un couple form&eacute; de
+<UL TYPE=square>
+<LI>la classe d'ordonnancement,
+<LI>la priorit&eacute;.
+</UL>
+Les activit&eacute;s sont tout d'abord ordonn&eacute;es sur la base
+des clases d'ordonnancement. Puis &agrave; l'int&eacute;rieur d'une classe
+d'ordonnancement la priorit&eacute; est utilis&eacute; pour classer les
+activit&eacute;s. Ainsi une activit&eacute; de
+la classe temps-r&eacute;el sera toujours plus prioritaire
+qu'une activit&eacute; de la classe temps partag&eacute;.
+<P>
+Le noyau de Mach est de mani&egrave;re standard configur&eacute;
+avec les politiques suivantes:
+<UL TYPE=square>
+<LI><EM> Earliest Deadline First</EM>: elle s'applique pour des
+syst&egrave;mes temps-r&eacute;el o&ugrave; des activit&eacute;s
+sont cr&eacute;&eacute;es ou supprim&eacute;es dynamiquement;
+<LI><EM>Rate Monotonic</EM>: elle s'utilise pour des groupes
+d'activit&eacute;s dont on conna&icirc;t par avance l'utilisation
+CPU;
+<LI>priorit&eacute; fixe: chaque activit&eacute; a une priorit&eacute; fixe
+comprise entre 0 (la plus forte) et 31 (la plus faible); 
+<LI>temps partag&eacute;: chaque activit&eacute; a une priorit&eacute
+initiale comprise entre 0 (la plus forte) et 31 (la plus faible) &agrave;
+laquelle est ajout&eacute; une valeur enti&egrave;re fonction du temps
+CPU qu'elle a consomm&eacute; r&eacute;cemment;
+<LI>arri&egrave;re plan (<EM>background</EM>): les activit&eacute;s de
+cette classe sont activ&eacute;es uniquement lorsqu'aucune activit&eacute;
+d'une autre classe n'est pr&ecirc;te.
+</UL>
+<P>
+<STRONG><FONT COLOR=blue>- CHORUS</FONT></STRONG>
+<P>
+Comme c'est le cas dans MACH, dans le syst&egrave;me CHORUS une
+activit&eacute; poss&egrave;de une
+classe d'ordonnancement et une priorit&eacute; dans cette classe. D'un point de vue
+interne, une activit&eacute; poss&egrave;de une priorit&eacute; syst&egrave;me
+comprise entre 0 (la plus grande priorit&eacute;) et 255 (la plus petite).
+<BR>
+Par d&eacute;faut, une politique FIFO est appliqu&eacute;e:
+<UL TYPE=disc>
+<LI>les 256 niveaux de priorit&eacute; sont disponibles;
+<LI>une  activit&eacute; ne peut &ecirc;tre pr&eacute;empt&eacute;e que
+par une  activit&eacute; de priorit&eacute; strictement sup&eacute;rieure
+(il n'y a donc pas de tourniquet entre activit&eacute;s de m&ecirc;me
+priorit&eacute;). Dans ce cas elle est plac&eacute;e en t&ecirc;te de
+la file des activit&eacute;s en attente avec sa priorit&eacute;;
+<LI>lorsqu'une activit&eacute; passe de l'&eacute;tat endormi &agrave;
+l'&eacute;tat pr&ecirc;t elle est plac&eacute;e en queue de la file des
+activit&eacute;s en attente avec sa priorit&eacute;.
+</UL>
+Un autre module d'ordonnancement, plus complet, peut &ecirc;tre utilis&eacute
+de mani&egrave;re optionnelle. Dans ce cas, trois classes d'ordonnancement
+coexistent:
+<UL TYPE=disc>
+<LI>la classe FIFO telle que d&eacute;finie pr&eacute;c&eacute;demment;
+<LI>la classe RR (<EM>Round Robin</EM>) dont les caract&eacute;ristiques sont les
+suivantes:
+<UL TYPE=square>
+<LI>les 256 niveaux de priorit&eacute; sont disponibles;
+<LI>comme c'est le cas pour la classe FIFO, une activit&eacute; peut &ecirc;tre
+pr&eacute;empt&eacute;e par une activit&eacute; de priorit&eacute;
+strictement sup&eacute;rieure (quelle que soit sa classe de priorit&eacute;).
+Elle est alors plac&eacute;e en t&ecirc;te de la file dont elle
+rel&egrave;
+<LI>de plus, lorsqu'une activit&eacute; de cette classe est &eacute;lue;
+elle re&ccedil;o&icirc;t le processeur pour un quantum de temps.
+Si &agrave;  l'expiration de ce d&eacute;lai elle est encore active, elle
+est interrompue et plac&eacute;e en queue de la file dont elle rel&egrave;ve:
+cela signifie qu'une activit&eacute; de m&ecirc;me priorit&eacute
+(de l'une quelconque des classes) peut &ecirc;tre &eacute;lue;
+</UL>
+<LI>la classe RT (<EM>Real-Time</EM>): il s'agit d'une implantation de la classe
+d'ordonnancement RT telle que d&eacute;finie dans les versions SVR4 d'UNIX.
+La strat&eacute;gie est un tourniquet o&ugrave; une valeur du
+quantum peut &ecirc;tre d&eacute;finie pour chaque activit&eacute
+(les priorit&eacute;s syst&egrave;me correspondantes sont comprises entre
+95 et 155).
+</UL>
+<P>
+<EM>Remarque</EM>: on retrouve la m&ecirc;me approche avec les deux classes
+FIFO et RR
+propos&eacute;es
+dans l'interface POSIX pour les  activit&eacute;s (les <EM>PTHREADS</EM>).
+Une troisi&egrave;me politique (TS) correspondant &agrave; l'ordonnancement
+temps partag&eacute; &agrave; la Unix y a &eacute;t&eacute; ajout&eacute;e.
+<P>
+<STRONG><FONT COLOR=blue>- QNX</FONT></STRONG>
+<P>
+On y retrouve la m&ecirc;me approche avec les deux classes
+FIFO et RR.  Une troisi&egrave;me classe y a
+&eacute;galement &eacute;t&eacute; ajout&eacute;e (l'ordonnancement adaptatif)
+utilis&eacute; pour les aspects temps-partag&eacute;. Lorsqu'un processus
+(QNX a adopt&eacute; le parti pris de ne pas utiliser le concept de
+threads) a consomm&eacute; tout son quantum de temps, sa priorit&eacute; est
+d&eacute;cr&eacute;ment&eacute;e (d&eacute;g&eacute;n&eacute;rescence
+de priorit&eacute;) et lorsqu'il s'endort, il reprend sa
+priorit&eacute; initiale.
+<BR>
+Cependant dans ce syst&egrave;me bas&eacute; sur un micro-noyau,
+le mod&egrave;le client/serveur est largement utilis&eacute; pour 
+le d&eacute;veloppement de nouvelles applications et services.
+Quelles que soit la politique d'ordonnancement adopt&eacute;e pour
+ces applications, les clients s`ex&eacute;cutent g&eacute;n&eacute;ralement
+&agrave; une priorit&eacute; inf&eacute;rieure &agrave; celle des serveurs.
+Dans ces conditions, si un client de faible priorit&eacute; requiert un service
+d'un serveur de haute priorit&eacute; en lui adressant un message,
+cette requ&ecirc;te sera a priori trait&eacute; avec la priorit&eacute;
+&eacute;lev&eacute;e du serveur. Donc d'une certaine mani&egrave;re le
+client verra sa priorit&eacute; augment&eacute;e. On peut imaginer
+qu'ainsi la requ&ecirc;te non prioritaire s`ex&eacute;cutera au d&eacute;triment
+d'applications plus prioritaires que le client (mais moins prioritaire que
+le serveur). C'est pour cette raison qu'il est possible pour un serveur
+de sp&eacute;cifier qu'il traitera les demandes avec la priorit&eacute;
+de ses clients (<EM>client-driven priority</EM>). Finalement afin
+de pouvoir traiter une nouvelle demande plus prioritaire qui arriverait
+pendant le traitement d'une requ&ecirc;te, la priorit&eacute; de
+la requ&ecirc;te sera adopt&eacute;e imm&eacute;diatement par le
+serveur pour poursuivre le traitement en cours.
+<BR>
+<HR>
+<FONT COLOR=blue>
+<DIV STYLE="font-style:italic; font-size:10pt; font-color:blue;">Derni&egrave;re mise &agrave; jour : 16 octobre 2002
+</DIV>
+</FONT>
+</BODY>
+</HTML>
+</BODY>
+</HTML>

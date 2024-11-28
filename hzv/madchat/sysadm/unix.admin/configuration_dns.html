@@ -1,0 +1,244 @@
+<HTML>
+<HEAD>
+<TITLE>Administration UNIX - Configuration d'un serveur DNS</TITLE>
+<STYLE TYPE="text/css">A {text-decoration:none; color:#5e5e5e}</STYLE>
+</HEAD>
+<BODY BGCOLOR=white>
+<A NAME="start"></A>
+<HR>
+<H1><CENTER>Administration UNIX - Configuration d'un serveur DNS</CENTER></H1>
+<HR>
+<H2>1.<A HREF="#1"> Th&eacute;orie</A></H2>
+<H2>2.<A HREF="#2"> Le fichier rc.conf</A></H2>
+<H2>3.<A HREF="#3"> Le fichier named.conf et les fichiers de zones</A></H2>
+<FONT SIZE=3><B>3.1. Introduction</B></FONT><BR>
+<FONT SIZE=3><B>3.2. Chemin du r&eacute;pertoire de configuration</B></FONT><BR>
+<FONT SIZE=3><B>3.3. Zone root</B></FONT><BR>
+<FONT SIZE=3><B>3.4. Zone locale</B></FONT><BR>
+<FONT SIZE=3><B>3.5. Zone de conversion nom vers adresse IP</B></FONT><BR>
+<FONT SIZE=3><B>3.6. Zone de conversion adresse IP vers nom</B></FONT><BR>
+<FONT SIZE=3><B>3.6. Fichier complet named.conf</B></FONT><BR>
+<H2>4.<A HREF="#4"> Les fichiers resolv.conf, host.conf et hosts</A></H2>
+<H2>5.<A HREF="#5"> Teste du serveur DNS</A></H2>
+<H2>6.<A HREF="#6"> Plus d'informations</A></H2>
+<H2>7.<A HREF="#7"> Copyright</A></H2>
+
+
+<HR><H2>1.<A NAME="1"> Théorie</A> <FONT SIZE=2><A HREF="#start">back</A></FONT></H2>
+
+<P ALIGN=justify>Qu'est-ce qu'un DNS (Domain Name System) ? hé bien, c'est un service qui permet de convertir un nom de machine en une adresse IP. Par exemple, www.adresse.fr est le FQDN (Fullty Qualified Domain Name) de la machine www sur le domaine adresse.fr, et son adresse IP est 192.168.0.154. Un serveur DNS sert donc aux humains, puisqu'il est plus facile de retenir un nom qu'une suite de numéros.</P>
+
+<P ALIGN=justify>Ce document va donc traiter de l'installation de ce type de serveur, et le serveur utilisé sera BIND v8. Si vous possédez la 4, vous feriez mieux de vous mettre à jour :-).</P>
+
+<HR><H2>2.<A NAME="2"> Le fichier rc.conf</A> <FONT SIZE=2><A HREF="#start">back</A></FONT></H2>
+
+<P ALIGN=justify>Le serveur BIND est lancé à l'aide de la commande named. Pour que votre serveur soit chargé au démarrage de votre machine, il faut modifier le fichier /etc/rc.conf en lui ajoutant ceci:</P>
+
+<PRE>
+# Lancement du serveur DNS
+named_enable="YES"
+named_program="named"</PRE>
+
+<P ALIGN=justify>Une fois ceci fait, il faut configurer le serveur BIND lui-même.</P>
+
+<HR><H2>3.<A NAME="3"> Le fichier named.conf et les fichiers de zones</A> <FONT SIZE=2><A HREF="#start">back</A></FONT></H2>
+
+<H3>3.1. Introduction</H3>
+
+<P ALIGN=justify>Il faut maintenant modifier le fichier /etc/namedb/named.conf.</P>
+
+<P ALIGN=justify>Ce fichier se présente sous la forme d'une succession de paragraphes, le premier servant à configurer le chemin du répertoire de base de configuration de BIND. Les autres définissent chacun une zone. Chaque zone possède ses propres paramètres, ainsi que son propre fichier de configuration dans lequel on définis les adresses des machines contenues dans cette zone (une zone définie généralement un domain).</P>
+
+<H3>3.2. Chemin du répertoire de configuration</H3>
+
+<P ALIGN=justify>Nous allons donc d'abord configurer le premier paragraphe comme ceci:</P>
+
+<PRE>
+options {
+	directory "/etc/namedb";
+};</PRE>
+
+<P ALIGN=justify>Nous pouvons maintenant configurer les différentes zones.</P>
+
+<H3>3.3. Zone root</H3>
+
+<P ALIGN=justify>La première zone à configurer est la zone "root", qui est en fait un pointeur vers un fichier contenant les adresses des serveurs DNS qui régissent l'univers d'Internet. Ces serveurs sont ceux qui sont utilisés pour maintenir à jour les tables de conversion adresse IP vers nom, et inversement. Le deuxième paragraphe est donc le suivant:</P>
+
+<PRE>
+zone "." {
+	type hint;
+	file "named.root";
+};</PRE>
+
+<H3>3.4. Zone locale</H3>
+
+<P ALIGN=justify>La deuxième zone est la zone locale, celle qui permet à la machine de convertir les adresses quand elle parle d'elle-même à elle-même. Voici:</P>
+
+<PRE>
+zone "0.0.127.IN-ADDR.ARPA" {
+	type master;
+	file "127.0.0";
+};</PRE>
+
+<P ALIGN=justify>Comme vous le voyez, la ligne 3 indique un fichier nommé 127.0.0 qu'il va vous falloir créer dans le répertoire /etc/namedb. Ce fichier contiendra ceci:</P>
+
+<PRE>
+@	IN	SOA	votre_domaine.fr. root.votre_domaine.fr. (
+		1	; Serial
+		8H	; Refresh
+		2H	; retry
+		1W	; Expire
+		1D)	; Minimum TTL
+		NS	vote_domaine.fr.
+1		PTR	localhost.</PRE>
+
+<H3>3.5. Zone de conversion nom vers adresse IP</H3>
+
+<P ALIGN=justify>Revenons maintenant à votre fichier /etc/namedb/named.conf. Définissions maintenant la zone qui va correspondre à votre_domaine.fr:</P>
+
+<PRE>
+zone "votre_domaine.fr" {
+	notify no;
+	type master;
+	file "votre_domaine.fr";
+};</PRE>
+
+<P ALIGN=justify>La ligne notify no est très importante, c'est elle qui dira si oui ou non vous souhaitez informer les serveurs DNS root d'une éventuelle mise à jour dans leurs tables de correspondance adresse IP - nom de machine. Si vous exécutez votre serveur DNS sur une machine qui est reliée à Internet par modem, il va de soit que ce n'est pas utile (le domaine que vous allez créer sera fictif). Là encore, il faut créer un fichier /etc/namedb/votre_domaine.fr:</P>
+
+<PRE>
+@	IN	SOA	votre_machine.votre_domaine.fr. root.votre_machine.votre_domaine.fr. (
+			199802151	; serial, todays date + todays serial #
+			8H		; refresh, seconds
+			2H		; retry, seconds
+			1W		; expire; seconds
+			1D)		; minimum, seconds
+;
+		TXT	"Ceci est un descriptif de votre domaine"
+		NS	votre_machine.votre_domaine.fr.
+		MX	10 votre_serveur_de_mail.votre_domaine.fr. ; Primary Mail Exchanger
+
+localhost			A	127.0.0.1
+votre_machine.votre_domaine.fr.	A	192.168.0.1
+				HINFO	"Descriptif de votre_machine"
+machine2.votre_domaine.fr.	A	192.168.0.2
+machine3.votre_domaine.fr.	A	192.168.0.3</PRE>
+
+<P ALIGN=justify>Ce fichier servira donc pour la conversion des noms de machines en adresses IP. Si vous comptez utiliser un domaine virtuel (qui n'utiliseras donc pas d'adresses IP routables sur Internet), il vaut mieux utiliser des adresses IP ... non-routables. Utilisez pour cela des adresses du type 192.168.x.x.</P>
+
+<P ALIGN=justify>Si votre machine possède déjà une adresse IP, et qu'elle n'est pas de ce type, vous devriez la modifier. Editer pour cela le fichier /etc/rc.conf, et modifiez la ligne contenant ifconfig_interface="inet adresse_IP netmask 255.255.255.0" en remplaçant adresse_IP par une adresse du type décrit plus haut. Il faut que cette adresse soit en concordance avec le fichier de zone de votre serveur DNS. De même pour la ligne hostname="votre_machine.votre_domaine.fr".</P>
+
+<P ALIGN=justify>Revenons à ce fichier de zone. La ligne contenant MX indique le nom du serveur de mail principal de votre domaine. Les lignes à partir de localhost sont les correspondances noms de machines - adresses IP. Le champ HINFO est optionnel, il sert à afficher une description de la machine correspondante lors d'un certain type de requête effectuée avec nslookup. Une fois ajoutées toutes vos machines dans ce fichier, nous pouvons retourner au fichier /etc/named.conf.</P>
+
+<H3>3.6. Zone de conversion adresse IP vers nom</H3>
+
+<P ALIGN=justify>Il ne reste plus qu'une zone à ajouter, la zone permettant de convertir les adresses IP en noms de machines:</P>
+
+<PRE>
+zone "0.168.192.IN-ADDR.ARPA" {
+	notify no;
+	type master;
+	file "192.168.0";
+};</PRE>
+
+<P ALIGN=justify>Créez le fichier /etc/namedb/192.168.0:</P>
+
+<PRE>
+@	IN	SOA	votre_machine.votre_domaine.fr. root.votre_machine.votre_domaine.fr. (
+			1998021151	; Serial, todays date + todays serial
+			8H		; Refresh
+			2H		; Retry
+			1W		; Expire
+			1D)		; Minimum TTL
+			NS		votre_domaine.votre_domaine.fr.
+
+1		PTR	votre_machine.votre_domaine.fr.
+2		PTR	machine2.votre_domaine.fr.
+3		PTR	machine3.votre_domaine.fr.</PRE>
+
+<P ALIGN=justify>Ce fichier suit à peu près la même logique que le fichier de zone votre_domaine.fr.</P>
+
+<P ALIGN=justify>Vous pouvez souvegarder maintenant la configuration de named.conf et des autres fichiers, votre serveur DNS est maintenant configuré.</P>
+
+<P ALIGN=justify>Rechargez les fichiers de configuration du daemon named avec la commande:</P>
+
+<PRE>
+prompt$ <B>killall -1 named</B>
+</PRE>
+
+<H3>3.6. Fichier complet named.conf</H3>
+
+<P ALIGN=justify>Vous pouvez trouver le fichier named.conf ici <A HREF="http://www.chez.com/gomor/Fichiers/dns/named.conf">http://www.chez.com/gomor/Fichiers/dns/named.conf</A> et le fichier de zones ici <A HREF="http://www.chez.com/gomor/Fichiers/dns/zones.txt">http://www.chez.com/gomor/Fichiers/dns/zones.txt</A>, avec ma configuration.</P>
+
+<HR><H2>4.<A NAME="4"> Les fichiers resolv.conf, host.conf et hosts</A> <FONT SIZE=2><A HREF="#start">back</A></FONT></H2>
+
+<P ALIGN=justify>Il faut maintenant dire à vos machines où se trouve le serveurs DNS pour pouvoir l'interroger correctement, lors d'une requête nslookup par exemple.</P>
+
+<P ALIGN=justify>Editer le fichier /etc/resolv.conf et mettez-y ces deux lignes:</P>
+
+<PRE>
+domain votre_domaine.fr
+nameserver 192.168.0.1</PRE>
+
+<P ALIGN=justify>Puis le fichier /etc/host.conf, qui va servir à dire comment traîter une requête de conversion d'adresse, à savoir soit en interrogeant d'abord le contenu du fichier /etc/hosts, soit en interrogeant le serveur DNS, soit en interrogeant le serveur NIS. Ce fichier décrit donc dans quel ordre traîter la requête. Mettez-y ceci:</P>
+
+<PRE>
+# D'abord essayer /etc/hosts
+hosts
+# Ensuite le serveur DNS
+bind</PRE>
+
+<P ALIGN=justify>Pour finir, regardez ce que contient le fichier /etc/hosts de vos machines ; il ne faut pas qu'il y ait de contradiction avec le serveur DNS, donc mettez simplement ceci dans ce fichier:</P>
+
+<PRE>
+127.0.0.1 localhost
+</PRE>
+
+<HR><H2>5.<A NAME="5"> Teste du serveur DNS</A> <FONT SIZE=2><A HREF="#start">back</A></FONT></H2>
+
+<P ALIGN=justify>Pour tester si votre serveur DNS fonctionne correctement, vous allez utiliser la commande nslookup (oui, je vous en parle depuis le début ;-)).</P>
+ 
+<P ALIGN=justify>Tapez donc nslookup au prompt. Il doit vous afficher ceci:</P>
+
+<PRE>
+Default Server: votre_machine.votre_domaine.fr
+Address: 192.168.0.1
+></PRE>
+
+<P ALIGN=justify>Le prompt > qui s'affiche vous permet d'entrer des commandes. Saisissez par exemple, pour tester la conversion nom de machine vers adresse IP: machine2.votre_domaine.fr. Il doit vous afficher:</P>
+
+<PRE>
+Server: votre_machine.votre_domaine.fr
+Address: 192.168.0.1
+
+Name: machine2.votre_domaine.fr
+Address: 192.168.0.2
+
+></PRE>
+
+<P ALIGN=justify>Essayez ensuite la conversion adresse IP vers nom de machine en tapant par exemple: 192.168.0.3. Il doit vous afficher:</P>
+
+<PRE>
+Server: votre_machine.votre_domaine.fr
+Address: 192.168.0.1
+
+Name: machine3.votre_domaine.fr
+Address: 192.168.0.3
+
+></PRE>
+
+<P ALIGN=justify>Si tout va bien, c'est parfait, vous pouvez quitter nslookup avec la commande exit. Autrement, relisez attentivement cette documentation, et si le problème persiste, n'hésitez pas: <A HREF="mailto:gomor@gomor.org">gomor@gomor.org</A> .</P>
+
+<P ALIGN=justify>Pour plus d'informations concernant la commande nslookup, vous pouvez taper: man nslookup, c'est très instructif.</P>
+
+<HR><H2>6.<A NAME="6"> Plus d'informations</A> <FONT SIZE=2><A HREF="#start">back</A></FONT></H2>
+
+<P ALIGN=justify>Pour plus d'informations sur la configuration d'un serveur DNS, vous pouvez consulter le HowTo Linuxien sur disponible sur <A HREF="http://www.linuxstart.com/">http://www.linuxstart.com/</A> (si je ne m'abuse). Pour savoir comment marche exactement la conversion de noms sur Internet, vous pouvez lire les RFC <A HREF="http://www.chez.com/gomor/Fichiers/dns/rfc1034.txt">http://www.chez.com/gomor/Fichiers/dns/rfc1034.txt</A> et <A HREF="http://www.chez.com/gomor/Fichiers/dns/rfc1035.txt">http://www.chez.com/gomor/Fichiers/dns/rfc1035.txt</A> .</P>
+
+<HR><H2>7.<A NAME="7"> Copyright</A> <FONT SIZE=2><A HREF="#start">back</A></FONT></H2>
+<P>Ce document est fournis "tel qu'en l'&eacute;tat" par l'auteur (<A HREF="mailto:gomor@gomor.org">gomor@gomor.org</A>) et il n'est donn&eacute; aucune garantie, implicite ou explicite, quant &agrave; son utilisation commerciale, professionnelle ou autre.</P>
+<P>L'auteur ne peut en aucun cas &ecirc;tre tenu pour responsable  de quelque dommage ou pr&eacute;judice direct, indirect, secondaire ou accessoire (y compris les pertes financi&egrave;res dues au manque &agrave; gagner, &agrave; l'interruption d'activit&eacute;s, ou la perte d'informations et autres) d&eacute;coulant de l'utilisation de la documentation ou de l'impossibilit&eacute; d'utiliser celle-ci, et dont l'utilisateur accepte l'enti&egrave;re responsabilit&eacute;.</P>
+<P>Par ailleurs, ce document peut &ecirc;tre copier partiellement ou enti&egrave;rement, &agrave; condition que l'auteur soit cit&eacute;, et que son adresse <I>eMail</I> (<A HREF="mailto:gomor@gomor.org">gomor@gomor.org</A>) soit donn&eacute;e, dans cette copie.</P>
+<HR>
+<FONT SIZE=1>Derni&egrave;re mise &agrave; jours: Thu Nov  8 21:28:07 CET 2001</FONT>
+</BODY>
+</HTML>

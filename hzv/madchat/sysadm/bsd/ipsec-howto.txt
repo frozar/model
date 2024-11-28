@@ -1,0 +1,589 @@
+FreeBSD IPsec mini-HOWTO
+29 Nov 2000
+
+1. Introduction
+
+The latest version of this tutorial can always be found at:
+
+http://asherah.dyndns.org/~josh/ipsec-howto.txt
+http://www.x-itec.de/projects/tuts/ipsec-howto.txt
+
+A Japanese version can also be found at:
+
+http://www1.neweb.ne.jp/wa/yamdas/column/technique/ipsec-howtoj.txt
+
+Thanks to yomoyomo for the translation.
+
+This document is intended to be a primer on how to get IPsec on FreeBSD up and
+running, interoperating both with another FreeBSD (or NetBSD or any other
+KAME-derived stack) machine, and a Windows 2000 machine.
+
+IPsec is a means to secure IP layer communications between hosts, and can
+secure both IPv4 and IPv6 traffic. Only IPsec over IPv4 will be discussed
+here.
+
+IPsec can be used to build tunnels between subnets (tunnel mode)
+or secure communication between two machines directly (transport
+mode) with the guarantee that the packets are encrypted, authenticated
+and anti-replay protected (by sequence-numbers) with  limited
+traffic flow confidentiality. By design, IPsec communication is
+encrypted by symmetric algorithms (Blowfish, DES, 3DES). This is known as ESP
+(Encapsulating Security Payload) mode, in which the payload of a packet is
+encrypted. The headers of the packet are left untouched. If you do
+not want to encrypt the traffic, you can use IPsec in what's known as AH
+(Authenticaed Header) mode.  In this mode, the payload of the packet is not
+encrypted, but the header fields are hashed using a secure hashing function,
+and an additional header containing this hash is added to the packet to allow
+the information in the packet to be authenticated.
+added
+
+This document will not describe the overall architechture of IPsec,
+and its component protocols. We will show only some basics here.
+
+If we take a technical look at the tcp packet, we have the following
+structure now (see RFC 2406). The drawings are from this RFC for
+educational use:
+
+
+                 BEFORE APPLYING ESP
+            ----------------------------
+      IPv4  |orig IP hdr  |     |      |
+            |(any options)| TCP | Data |
+            ----------------------------
+
+
+                 AFTER APPLYING ESP
+            -------------------------------------------------
+      IPv4  |orig IP hdr  | ESP |     |      |   ESP   | ESP|
+            |(any options)| Hdr | TCP | Data | Trailer |Auth|
+            -------------------------------------------------
+                                |<----- encrypted ---->|
+                          |<------ authenticated ----->|
+
+
+If we would have IPV6, the design would look like this:
+
+
+                     BEFORE APPLYING ESP
+            ---------------------------------------
+      IPv6  |             | ext hdrs |     |      |
+            | orig IP hdr |if present| TCP | Data |
+            ---------------------------------------
+
+
+                     AFTER APPLYING ESP
+            ---------------------------------------------------------
+      IPv6  | orig |hop-by-hop,dest*,|   |dest|   |    | ESP   | ESP|
+            |IP hdr|routing,fragment.|ESP|opt*|TCP|Data|Trailer|Auth|
+            ---------------------------------------------------------
+                                         |<---- encrypted ---->|
+                                     |<---- authenticated ---->|
+
+            * = if present, could be before ESP, after ESP, or both
+
+
+It is important to know what we are doing here to understand the
+mechanism how ESP works so we know what we are doing  and WHY we
+are NOT using a SSH tunnel or similar. This is a structure of the
+ESP header, some of the words you may have read somewhere, and this
+graphic may help you to understand something more about ESP.
+
+0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ ----
+|               Security Parameters Index (SPI)                 | ^Auth.
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |Cov-
+|                      Sequence Number                          | |erage
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ | ----
+|                    Payload Data* (variable)                   | |   ^
+~                                                               ~ |   |
+|                                                               | |Conf.
++               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |Cov-
+|               |     Padding (0-255 bytes)                     | |erage*
++-+-+-+-+-+-+-+-+               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ |   |
+|                               |  Pad Length   | Next Header   | v   v
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ ------
+|                 Authentication Data (variable)                |
+~                                                               ~
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+        * If included in the Payload field, cryptographic
+          synchronization data, e.g., an Initialization Vector
+
+If you hear somewhere words like "Padding", "Sequence Numbers",
+"Payload Data" if you are reading the docs of racoon.conf(5) or
+setkey(8) now you know that this informations are a part of the
+ESP header or it has something to do with ipsec.
+
+The basic procedure for implementing IPsec is:
+
+        * Configure kernel
+        * Set security policy
+        * Configure key exchange
+
+2. Getting started
+
+In order to use IPsec on a FreeBSD machine, it is highly recommended that you
+be running FreeBSD 4.1 or later. While the KAME IPsec code exists in versions
+prior to this (notably FreeBSD 3.x), it is not sufficient to be able to use
+the racoon IKE (Internet Key Exchange) daemon to perform automatic keying.
+
+To add IPsec support to your kernel, add the following lines to your kernel
+config file
+
+options         IPSEC                   #IP security
+options         IPSEC_ESP               #IP security (crypto; define w/ IPSEC)
+options         IPSEC_DEBUG             #debug for IP security
+
+Additionally, if you want to use IPsec in tunnel mode, you may will also want
+to add the following line to the kernel config:
+
+        device gif 4
+
+Recompile and install the new kernel.
+
+Install the racoon daemon from ports:
+
+        cd /usr/ports/security/racoon ; make all install clean
+
+Currently the latest version of the port is racoon-20001111a. While it is
+possible to have 2 FreeBSD machines communicate via IPsec using only manual
+keying (that is, manually specifying the encryption keys), not only is it not
+interesting or practical, but it wont work when you try to interact with a
+Win2k machine.
+
+3. Setting security policy
+
+An integral part of IPsec, is letting the kernel know which packets it should
+be encrypting, and how it should be encrypting them; Whether to use AH
+(authentication header) mode, or ESP (encapsulating security payload) mode;
+What encryption and hashing algorithms to use.
+
+These decisions are referred to as 'policy', and are stored in a table in the
+kernel known as the Security Policy Database (SPD). You can use the setkey(8)
+program to manipulate the SPD.
+
+There is also a table in the kernel which stores the various encryption keys
+needed to secure communications between hosts. This table is known as the
+Security Association Database (SAD). If you are configuring IPsec using manual
+keying then the setkey(8) program is also used to configure the manual keys in
+the SAD. If you are using IKE to automatically exchange keys between hosts,
+then racoon will handle the adding and deleting entries from the SAD.
+
+If you have 2 FreeBSD machines, node A with an IP address of 1.2.3.4, and node
+B with an address of 5.6.7.8, then the following commands will add policy to
+the SPD to enable IPsec between the 2 nodes:
+
+        #!/bin/sh
+        # These commands need to be run on node A
+        # The next 2 lines delete all existing entries from the SPD and SAD
+        setkey -FP
+        setkey -F
+        # Add the policy
+        setkey -c << EOF
+        spdadd 1.2.3.4/32 5.6.7.8/32 any -P out ipsec
+         esp/transport/1.2.3.4-5.6.7.8/require;
+        spdadd 5.6.7.8/32 1.2.3.4/32 any -P in ipsec
+         esp/transport/5.6.7.8-1.2.3.4/require;
+        EOF
+
+The first spdadd command sets the policy that all outgoing packets from
+1.2.3.4/32 to 5.6.7.8/32 will be required to be encrypted using ESP. The
+second spdadd command sets the same policy, but for incoming packets from
+5.6.7.8/32 to 1.2.3.4/32
+
+        #!/bin/sh
+        # These commands need to be run on node B
+        # The next 2 lines delete all existing entries from the SPD and SAD
+        setkey -FP
+        setkey -F
+        # Add the policy
+        setkey -c << EOF
+        spdadd 5.6.7.8/32 1.2.3.4/32 any -P out ipsec
+         esp/transport/5.6.7.8-1.2.3.4/require;
+        spdadd 1.2.3.4/32 5.6.7.8/32 any -P in ipsec
+         esp/transport/1.2.3.4-5.6.7.8/require;
+        EOF
+
+Examples on how to set SAD entries using setkey(8) are given in the IPsec
+section of the FreeBSD handbook.
+
+4. AH vs ESP. Tunnel vs Transport.
+
+Given even a casual reading of the available IPsec documentation, one
+can get rather confused as to what mode they should be running in. Unless you
+are wanting to set up a VPN, then the mode that you probably want is
+ESP/transport.
+
+In ESP/transport mode, each packet that is destined for a host for which IPsec
+is requested, has its payload encrypted. In tunnel mode, the entire packet
+(including the encrypted payload) is encapsulated within another packet before
+being sent off to the remote host.
+
+However, if your goal is to set up a VPN, that is, link 2 widely-separated
+networks together over the Internet, then you'll probably want to use
+ESP/tunnel mode. The configuration of the SPD for tunnel mode is very similar
+to that of transport mode. The major change that is done is the use of the
+gif(4) device to implement the IP-IP tunneling.
+
+Returning to our hypothetical nodes A and B, presume the following network
+topology:
+
+Internal net A <-> Node A <-----> Internet <------> Node B <-> Internal net B
+
+where
+
+node A's internal address is 10.10.10.1/24
+         external address is 1.2.3.4
+
+node B's internal address is 10.20.20.1/24
+         external address is 5.6.7.8
+
+then to configure policy on node A:
+
+        #!/bin/sh
+        # These commands need to be run on node A
+		  # Set up the tunnel device. This presumes you have gif(4) support
+		  # gif0 connects 1.2.3.4 to 5.6.7.8
+		  gifconfig gif0 1.2.3.4 5.6.7.8
+		  # The 'internal' side of the tunnel connects 10.10.10.1 to 10.20.20.1
+		  ifconfig gif0 inet 10.10.10.1 10.20.20.1 netmask 255.255.255.0
+        # The next 2 lines delete all existing entries from the SPD and SAD
+        setkey -FP
+        setkey -F
+        # Add the policy
+        setkey -c << EOF
+        spdadd 10.10.10.0/24 10.20.20.0/24 any -P out ipsec
+         esp/transport/1.2.3.4-5.6.7.8/require;
+        spdadd 10.20.20.0/24 10.10.10.0/24 any -P in ipsec
+         esp/transport/5.6.7.8-1.2.3.4/require;
+        EOF
+
+Note the difference in the spdadd command. We are setting policy to have
+traffic from the network 10.10.10/24 to the network 10.20.20/24 be encrypted
+(via ESP), and routed from 1.2.3.4 to 5.6.7.8, and vice versa.
+
+And on node B:
+
+        #!/bin/sh
+        # These commands need to be run on node B
+		  # Set up the tunnel device. This presumes you have gif(4) support
+		  # gif0 connects 5.6.7.8 to 1.2.3.4
+		  gifconfig gif0 5.6.7.8 1.2.3.4
+		  # The 'internal' side of the tunnel connects 10.20.20.1 to 10.10.10.1
+		  ifconfig gif0 inet 10.20.20.1 10.10.10.1 netmask 255.255.255.0
+        # The next 2 lines delete all existing entries from the SPD and SAD
+        setkey -FP
+        setkey -F
+        # Add the policy
+        setkey -c << EOF
+        spdadd 10.20.20.0/24 10.10.10.0/24 any -P out ipsec
+         esp/transport/5.6.7.8-1.2.3.4/require;
+        spdadd 10.10.10.0/24 10.20.20.0/24 any -P in ipsec
+         esp/transport/1.2.3.4-5.6.7.8/require;
+        EOF
+
+5. Automatic key exchange using racoon.
+
+Configuring racoon to the point where you can successfully exchange keys is
+reasonably easy. The default racoon.conf file is sufficient for a basic setup.
+However, we would recommend that the following items be changed.
+
+The default log level of "debug4" is very chatty. While its handy when setting
+things up normally, its a bit excessive for normal usage. To reduce logging,
+change the line
+
+        log "debug4";
+
+to
+
+        log "info";
+
+In a thread on the freebsd-net mailing list, it was pointed out that the
+default values for the lifetime of the keys negotiated by racoon is far too
+short for WAN links, especially over PPPoE links. Thus, you may want to give
+thought to changing the 'lifetime time' and 'lifetime byte' parameters in the
+'sainfo anonymous' stanza to 3600 seconds and 50000 kb respectively.
+
+Part of the key-exchange process requires that the 2 nodes agree on some
+predetermined secret. This can be accomplished either by presenting X.509
+certificates, or (simpler) via some pre-shared text key. To configure a
+pre-shared key, then you must edit the /usr/local/etc/racoon/psk.txt file on
+both nodes.
+
+In the psk.txt file, add the following line:
+
+        peer_ip_address        sharedkey
+
+If you were configuring IPsec to talk to a peer with an IP of 5.6.7.8 and a
+shared key of 'thisisatest' then you'd add the line
+
+        5.6.7.8                thisisatest
+
+to the psk.txt file on that machine.
+
+Make sure that the psk.txt file is mode 600 and owned by root, else racoon
+will refuse to read it.
+
+At this point, you can launch racoon on both boxes via the following command:
+
+        /usr/local/sbin/racoon -f /usr/local/etc/racoon/racoon.conf
+
+If you've done everything right, then pinging either host should work. There
+will be a brief delay while racoon exchanges keys, but then you'll see packets
+flow. The default location of racoon's log file is /var/log/racoon.log. By
+tailing the log you can see the keys being exchanged.
+
+6. Interoperating with Win2k
+
+It is possible to have a FreeBSD box use IPsec to communicate with
+a Win2k machine. As you cannot setup manual keying when interoperating
+with a Win2k machine, you must use racoon to automatically exchange
+keys. Also you should know that there are some limitations on a
+Win2k machine and it is not as secure as an encrypted FreeBSD
+network (less algorithms, less bits for encryption).
+
+The very first thing you have to to if you want to create an
+encrypted session between your FreeBSD machine and your Win2k server
+is to download the latest service pack available and you have
+to download the "high encryption pack for win2k". This encryption
+pack is neccessary for several countries to enable 128 bit 3DES
+encryption on your win2k box. If you do not download the pack, you
+are NOT able to connect to the FreeBSD server and everything you
+get is a TIMEOUT. The service packs and the high encryption pack
+is freely available from Microsoft.
+
+Set up the FreeBSD machine as detailed above, recompiling the kernel to
+include IPsec, adding the entries to the SAD using setkey(8), configuring and
+running racoon.
+
+You have first to setup the basics with setkey and then you may
+start racoon. You should not start racoon before you have setup
+the basic configuration described above of this tutorial (the
+setkey-script).
+
+At this point we will show you how to configure racoon specially
+for win2k requirements.
+
+Have a look at this configuration file, we will call it "my-racoon.conf".
+we have made some modifications to it, so it is not completely the
+same as the original racoon.conf.
+
+We really cannot stress enough the importance in using the latest version of
+racoon. Development on racoon procedes fairly rapidly, with numerous bugs and
+interoperability issues fixed between releases.
+
+A word about the option "log debug4". At the first point our mission
+is to get the encrypted communication up and running. If it works
+we can go on optimizing the configuration and its options.
+
+-------------------------------------------------------
+
+path pre_shared_key "/usr/local/etc/psk.txt" ;
+
+log debug4;
+
+# "padding" defines some parameter of padding.  You should not touch these.
+padding
+{
+        maximum_length 20;      # maximum padding length.
+        randomize off;          # enable randomize length.
+        strict_check off;       # enable strict check.
+        exclusive_tail off;     # extract last one octet.
+}
+
+# Specification of default various timer.
+timer
+{
+        # These value can be changed per remote node.
+        counter 5;              # maximum trying count to send.
+        interval 20 sec;        # maximum interval to resend.
+        persend 1;              # the number of packets per a send.
+
+        # timer for waiting to complete each phase.
+        phase1 30 sec;
+        phase2 15 sec;
+}
+
+remote anonymous
+{
+        #exchange_mode main,aggressive;
+        exchange_mode aggressive,main;
+        doi ipsec_doi;
+        situation identity_only;
+
+        #we not need an identifier, it is set automatically
+        #my_identifier address;
+        #my_identifier address "192.168.0.99";
+        ##peers_identifier address "192.168.0.1";
+        #certificate_type x509 "mycert" "mypriv";
+
+        nonce_size 16;
+        lifetime time 1 min;    # sec,min,hour
+        lifetime byte 5 MB;     # B,KB,GB
+        initial_contact on;
+        support_mip6 on;
+        proposal_check obey;    # obey, strict or claim
+
+        #very important. We need 3DES for encryption and MD5 as checksum
+
+        proposal {
+                encryption_algorithm 3des;
+                hash_algorithm md5;
+                authentication_method pre_shared_key ;
+                dh_group 2 ;
+        }
+}
+
+sainfo anonymous
+{
+        pfs_group 1;
+        lifetime time 36000 sec;
+        lifetime byte 50000 KB;
+        encryption_algorithm 3des,des,cast128,blowfish ;
+        authentication_algorithm hmac_sha1,hmac_md5;
+        compression_algorithm deflate ;
+}
+
+-------------------------------------------------------
+
+A word about the lifetime settings. The shorter the lifetime, the better
+the security of your session. This is because the session keys for
+the symmetric encryption algorithm are changed more often. As a
+result, less of your communication is vulnerable to one of the
+session keys being cracked. But there are some limitations on the
+Win2k machine. You can not setup a very short lifetime with it. At
+the other hand, the shorter the lifetime is, the more overhead you
+have, as additional bandwidth and processing power is dedicated to key exchange.
+
+As described above in this tutorial, do not forget to create a
+"secret file"  with your pre-shared "key" (password). One of the
+advantages of racoon is that you have not to make some calculations
+about the password-length (bits divided by 8 must fit to the password
+length), and you have not to use two passwords (one for authentication,
+one for encryption). With Windows 200, you cannot use two passwords. You
+have only one shared secret for your communication and it is not
+divided by seperate passes for authentication and encryption.
+
+For debugging purposes, we start racoon with the following options:
+
+    racoon -F -v -f my-racoon.conf
+
+This forces racoon to run in the foreground and we have a debugging
+protocol on the screen for later analysis of common problems.
+
+On the Windows machine, perform the following steps:
+
+* Start a command window, and launch 'mmc'. Go to Console->Add/Remove
+Snap in. Add the IP Security Policy Management snap-in.
+
+* Click on IP Security Policies in the tree listing, and then select
+Action->Create IP Security Policy from the menu.
+
+* Go through the wizard. In particular,
+        * Do not activate the default response rule.
+        * Edit the properties.
+
+* In the properties, click on the Add button to add a new rule. Go through the
+wizard, and ensure the following settings:
+        * The rule does not specify a tunnel.
+        * The rule applies to the LAN
+        * Use a string to protect the key exchange. Stick in the same key as you
+        used in the psk.txt file
+        * You'll want to create a new IP filter so that only traffic to the BSD box
+        is subjected to the security policy. Select this new filter.
+        * Select 'Require Security' for the filter action.
+
+        Make sure the used configuration for 'Require Security' is as following.
+        There are several rules you might see, check for a rule with this options
+        or create a new rule by yourself:
+
+        AH is disabled
+        ESP integrity is MD5
+        Encryption algo is 3DES
+
+        For our first testing purposes, the 'Session Key Settings' are disabled.
+        You can change and optimize it later.
+
+* Restart the IPsec policy agent, via the Administrative Tools->Services
+selection from the Control Panel. You should restart the agent
+every time if you make any changes to your rulesets to ensure that
+the rules are promptly and properly accepted.
+
+* Select the new policy in the window, and click on the toggle switch icon in
+the menu bar to activate the policy.
+
+* Start the "ipsecmon" program. With this tool you can monitor the active
+rules on the machine.
+
+* Open up a command window, and ping the BSD box. The ping will
+'fail' with a message 'Negotiating IP Security'. Another ping should
+subsequently work. As soon as you ping, you can see on the BSD box
+that there is going on a lot of debug messages.
+
+At this point, all IP traffic between the 2 boxes has been secured.
+
+On the windows machine, you can see the encrypted session with the
+ipsecmon tool. On the BSD Box you can follow the debug messages to
+see that everything works well.
+
+On the BSD machine we can try to dump the data on the wire to go
+sure everything works as we want. A command like
+
+   tcpdump -i ed0 -x -X -s 14400
+
+where ed0 is your interface, will show the packets on the wire.
+You can see both the IKE key exchange between Win2k and racoon,
+and the actual encrypted packets, shown as the ESP packets.
+
+If you are having problems with setting up IPsec, we would urge you to first
+direct your queries to the appropriate mailing lists; freebsd-net@freebsd.org
+or freebsd-questions@freebsd.org; before contacting the authors directly.
+
+A. Useful links
+
+Kame documentation:
+http://www.kame.net
+
+FreeBSD IPsec documentation:
+http://www.freebsd.org/handbook/ipsec.html
+
+Raccoon configuration tips:
+http://www.kame.net/newsletter/20001119/
+
+Using certificates instead of pre-shared keys in Racoon:
+http://www.kame.net/newsletter/20001119b/
+
+NetBSD IPsec documentation:
+http://www.netbsd.org/Documentation/network/ipsec/
+
+Some RFCs:
+RFC2709: Security Model with Tunnel-mode IPsec for NAT Domains
+RFC2663: IP Network Address Translator (NAT) Terminology and Considerations
+RFC2406: ESP
+RFC2402: AH
+RFC2409: IKE
+
+http://www.rfc.net contains a comprehensive collection of the RFCs
+
+B. About the Authors
+
+Authors address:
+Josh Tiefenbach (josh@zipperup.org)
+
+X-ITEC IT-Consulting, Security, Engineering
+Boris Köster (x-itec@freenet.de) MCSE, CNA
+Grüne 33
+57368 Lennestadt - Germany
+Tel: (0 27 21) 989 400
+http://www.x-itec.de (if the domain is N/A contact me via email)
+If you need commerial support for FreeBSD in Germany,
+contact me (I am a so called "freelancer" and working on start-up of my company)
+
+
+C. Misc
+
+Suggestions, hints, advice, corrections, and feedback about this document may
+be sent to the authors.
+

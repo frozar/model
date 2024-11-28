@@ -1,0 +1,1123 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 99.2beta8 (1.46)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>18. UNIX Devices</TITLE>
+<META NAME="description" CONTENT="18. UNIX Devices">
+<META NAME="keywords" CONTENT="rute">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v99.2beta8">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="rute.css">
+
+<LINK REL="next" HREF="node22.html">
+<LINK REL="previous" HREF="node20.html">
+<LINK REL="up" HREF="rute.html">
+<LINK REL="next" HREF="node22.html">
+</HEAD>
+
+<BODY BGCOLOR=#FFFFFF >
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD align=left bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-purchase.html"><FONT COLOR=white>Purchase</FONT></A>&nbsp;
+</FONT>
+</TD><TD align=center bgcolor="#000000">
+<FONT COLOR=white>
+Copyright&nbsp;&#169;&nbsp;2002&nbsp;Paul Sheer. <A HREF="copying.html"><FONT COLOR=white>Click here for copying permissions.</FONT></A>
+</FONT>
+</TD><TD align=right bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-home.html"><FONT COLOR=white>Home</FONT></A>&nbsp;
+</FONT>
+</TD></TR>
+<TR><TD colspan=2 align=left bgcolor="#ECEBF4">
+<IMG SRC="va-btn-small-light-60.png">
+</TD><TD align=right bgcolor="#ECEBF4">
+<IMG SRC="sflogo2-steel-60.png">
+</TD></TR>
+</TABLE><BR>
+
+<!--Navigation Panel-->
+<A NAME="tex2html2062"
+  HREF="node22.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2058"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2052"
+  HREF="node20.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2060"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2063"
+  HREF="node22.html">19. Partitions, File Systems,</A>
+<B> Up:</B> <A NAME="tex2html2059"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2053"
+  HREF="node20.html">17. Overview of the</A>
+ &nbsp <B>  <A NAME="tex2html2061"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html2064"
+  HREF="#SECTION002110000000000000000">18.1 Device Files</A>
+<LI><A NAME="tex2html2065"
+  HREF="#SECTION002120000000000000000">18.2 Block and Character Devices</A>
+<LI><A NAME="tex2html2066"
+  HREF="#SECTION002130000000000000000">18.3 <I>Major</I> and <I>Minor</I> Device Numbers</A>
+<LI><A NAME="tex2html2067"
+  HREF="#SECTION002140000000000000000">18.4 Common Device Names</A>
+<LI><A NAME="tex2html2068"
+  HREF="#SECTION002150000000000000000">18.5 <TT>
+<FONT COLOR="#0000ff">dd</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">tar</FONT></TT>, and Tricks with Block Devices</A>
+<UL>
+<LI><A NAME="tex2html2069"
+  HREF="#SECTION002151000000000000000">18.5.1 Creating boot disks from boot images</A>
+<LI><A NAME="tex2html2070"
+  HREF="#SECTION002152000000000000000">18.5.2 Erasing disks</A>
+<LI><A NAME="tex2html2071"
+  HREF="#SECTION002153000000000000000">18.5.3 Identifying data on raw disks</A>
+<LI><A NAME="tex2html2072"
+  HREF="#SECTION002154000000000000000">18.5.4 Duplicating a disk</A>
+<LI><A NAME="tex2html2073"
+  HREF="#SECTION002155000000000000000">18.5.5 Backing up to floppies</A>
+<LI><A NAME="tex2html2074"
+  HREF="#SECTION002156000000000000000">18.5.6 Tape backups</A>
+<LI><A NAME="tex2html2075"
+  HREF="#SECTION002157000000000000000">18.5.7 Hiding program output, creating blocks of zeros</A>
+</UL>
+<LI><A NAME="tex2html2076"
+  HREF="#SECTION002160000000000000000">18.6 Creating Devices with <TT>
+<FONT COLOR="#0000ff">mknod</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">/dev/MAKEDEV</FONT></TT></A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION002100000000000000000">
+18. U<SMALL>NIX</SMALL> Devices</A>
+</H1>
+
+<P>
+<A NAME="chap:unixdevices"></A>
+<P>
+U<SMALL>NIX</SMALL> was designed to allow transparent access to hardware devices
+across all CPU architectures. U<SMALL>NIX</SMALL> also supports the philosophy that
+all devices be accessible using the same set of command-line
+utilities.
+
+<P>
+
+<H1><A NAME="SECTION002110000000000000000">
+18.1 Device Files</A>
+</H1>
+
+<P>
+<A NAME="chap:device"></A>
+<P>
+U<SMALL>NIX</SMALL> has a beautifully consistent method of allowing programs to
+access hardware. Under U<SMALL>NIX</SMALL>, every piece of hardware is a file. To
+demonstrate this novelty, try viewing the file <TT>
+<FONT COLOR="#0000ff">/dev/hda</FONT></TT> (you will have to
+be <TT>
+<FONT COLOR="#0000ff">root</FONT></TT> to run this command):
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>less&nbsp;-f&nbsp;/dev/hda</code><br>
+</FONT></TD></TR></TABLE><P>
+<TT>
+<FONT COLOR="#0000ff">/dev/hda</FONT></TT> is not really a file at all. When you read
+from it, you are actually reading directly from the first
+physical hard disk of your machine. <TT>
+<FONT COLOR="#0000ff">/dev/hda</FONT></TT> is known
+as a device file, and all of them are stored under the
+<TT>
+<FONT COLOR="#0000ff">/dev</FONT></TT> directory.
+
+<P>
+Device files allow access to hardware. If you have a sound card installed
+and configured, you can try:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>cat&nbsp;/dev/dsp&nbsp;&#062;&nbsp;my_recording</code><br>
+</FONT></TD></TR></TABLE><P>
+Say something into your microphone and then type:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>cat&nbsp;my_recording&nbsp;&#062;&nbsp;/dev/dsp</code><br>
+</FONT></TD></TR></TABLE><P>
+The system will play out the sound through your speakers. (Note that
+this does not always work, since the recording volume or the recording
+speed may not be set correctly.)
+
+<P>
+If no programs are currently using your mouse, you can also try:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>cat&nbsp;/dev/mouse</code><br>
+</FONT></TD></TR></TABLE><P>
+If you now move the mouse, the mouse protocol commands will be
+written directly to your screen (it will look like garbage).
+This is an easy way to see if your mouse is working, and is especially
+useful for testing a serial port.
+Occasionally this test doesn't work because some command has previously
+configured the serial port in some odd way. In that case, also try:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>cu&nbsp;-s&nbsp;1200&nbsp;-l&nbsp;/dev/mouse</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+At a lower level, programs that access device files do so in
+two basic ways:
+
+<UL>
+<LI>They read and write to the device to send and retrieve
+bulk data (much like <TT>
+<FONT COLOR="#0000ff">less</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">cat</FONT></TT> above).
+</LI>
+<LI>They use the <B>C</B> <TT>
+<FONT COLOR="#0000ff">ioctl</FONT></TT> (<I>IO Control</I>) function
+to configure the device. (In the case of the sound card, this
+might set mono versus stereo, recording speed, or other parameters.)
+</LI>
+</UL>
+
+<P>
+Because every kind of device that one can think of (except
+for network cards) can be twisted to fit these two modes
+of operation, U<SMALL>NIX</SMALL>'s scheme has endured since its inception
+and is the universal method of accessing hardware.
+
+<P>
+
+<H1><A NAME="SECTION002120000000000000000">
+18.2 Block and Character Devices</A>
+</H1>
+
+<P>
+Hardware devices can generally be categorized into
+random access devices
+like disk and tape drives, and serial devices like mouse
+devices, sound cards, and terminals.
+
+<P>
+Random access devices are usually accessed in large contiguous
+blocks of data that are stored persistently. They are read from
+in discrete units (for most disks, 1024 bytes at a time). These
+are known as <I>block</I> devices. Running an <TT>
+<FONT COLOR="#0000ff">ls -l /dev/hda</FONT></TT> shows
+a <TT>
+<FONT COLOR="#0000ff">b</FONT></TT> on the far left of the listing, which means that your hard disk
+is a block device:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>brw-r-----&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;disk&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3,&nbsp;&nbsp;64&nbsp;Apr&nbsp;27&nbsp;&nbsp;1995&nbsp;/dev/hdb</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Serial devices, on the other hand, are accessed one byte at a
+time. Data can be read or written only once. For example, after
+a byte has been read from your mouse, the same byte cannot be
+read by some other program. Serial devices are called <I>character</I>
+devices and are indicated by a <TT>
+<FONT COLOR="#0000ff">c</FONT></TT> on the far left of the
+listing. Your <TT>
+<FONT COLOR="#0000ff">/dev/dsp</FONT></TT> (<I>Digital
+Signal Processor</I>--that is, your sound card) device looks like:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>crw-r--r--&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sys&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;14,&nbsp;&nbsp;&nbsp;3&nbsp;Jul&nbsp;18&nbsp;&nbsp;1994&nbsp;/dev/dsp</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H1><A NAME="SECTION002130000000000000000">
+18.3 <I>Major</I> and <I>Minor</I> Device Numbers</A>
+</H1>
+
+<P>
+Devices are divided into sets called <I>major device numbers</I>.
+For instance, all SCSI disks are <I>major number
+8</I>. Further, each individual device has a <I>minor device number</I>
+like <TT>
+<FONT COLOR="#0000ff">/dev/sda</FONT></TT>, which is <I>minor device 0</I>.
+Major and minor device numbers identify the device
+to the kernel. The file name of the device is arbitrary
+and is chosen for convenience and consistency. You can see the
+major and minor device number (<TT>
+<FONT COLOR="#0000ff">8,&nbsp;&nbsp;&nbsp;0</FONT></TT>) in the
+<TT>
+<FONT COLOR="#0000ff">ls</FONT></TT> listing for
+<TT>
+<FONT COLOR="#0000ff">/dev/sda</FONT></TT>:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>brw-rw----&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;disk&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8,&nbsp;&nbsp;&nbsp;0&nbsp;May&nbsp;&nbsp;5&nbsp;&nbsp;1998&nbsp;/dev/sda</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H1><A NAME="SECTION002140000000000000000">
+18.4 Common Device Names</A>
+</H1>
+
+<P>
+<A NAME="sec:miscdevices"></A>
+<P>
+A list of common devices and their descriptions follows.
+The major numbers are shown in parentheses. The complete reference
+for devices is the file
+<TT>
+<FONT COLOR="#0000ff">/usr/src/linux/Documentation/devices.txt</FONT></TT>.
+
+<P>
+<DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/hd??</FONT></TT></STRONG></DT>
+<DD><TT>
+<FONT COLOR="#0000ff">hd</FONT></TT> stands for <I>hard disk</I>, but refers here only to
+<I>IDE</I> devices--that is, common hard
+disks. The first letter after the <TT>
+<FONT COLOR="#0000ff">hd</FONT></TT> dictates the physical disk drive:
+<DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/hda</FONT></TT> (3)</STRONG></DT>
+<DD>First drive, or primary master.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/hdb</FONT></TT> (3)</STRONG></DT>
+<DD>Second drive, or primary slave.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/hdc</FONT></TT> (22)</STRONG></DT>
+<DD>Third drive, or secondary master.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/hdd</FONT></TT> (22)</STRONG></DT>
+<DD>Fourth drive, or secondary slave.
+</DD>
+</DL>
+When accessing any of these devices (with, say, <TT>
+<FONT COLOR="#0000ff">less /dev/hda</FONT></TT>), you
+would be reading raw from the actual physical disk starting at the
+first sector of the first track,
+sequentially, until the last sector of the last
+track.
+
+<P>
+Partitions<A NAME="page:partition"></A> <FONT COLOR="#ffa500">[With all operating systems, disk
+drives are divided into sections called <I>partitions</I>. A typical disk might
+have 2 to 10 partitions. Each partition acts as a whole disk on its own,
+giving the effect of having more than one disk. For instance, you might
+have Windows installed on one partition
+and L<SMALL>INUX</SMALL> installed on another.
+More details come in Chapter <A HREF="node22.html#chap:partfilesys">19</A>.]</FONT>are named <TT>
+<FONT COLOR="#0000ff">/dev/hda1</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">/dev/hda2</FONT></TT>,
+etc., indicating the first, second, etc., partition on physical
+drive <TT>
+<FONT COLOR="#0000ff">a</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/sd</FONT></TT><I>??</I> (8)</STRONG></DT>
+<DD><TT>
+<FONT COLOR="#0000ff">sd</FONT></TT> stands for <I>SCSI disk</I>,
+the high-end drives mostly used by servers. <TT>
+<FONT COLOR="#0000ff">sda</FONT></TT> is the
+first physical disk probed, and so on. Probing goes by SCSI ID
+and has a system completely different from that of IDE devices. <TT>
+<FONT COLOR="#0000ff">/dev/sda1</FONT></TT>
+is the first partition on the first drive, etc.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/ttyS</FONT></TT><I>?</I> (4)</STRONG></DT>
+<DD>These are serial devices numbered from
+<TT>
+<FONT COLOR="#0000ff">0</FONT></TT> up. <TT>
+<FONT COLOR="#0000ff">/dev/ttyS0</FONT></TT> is your first serial port (COM1 under MS-DOS or Windows).
+If you have a multiport card, these can go to <TT>
+<FONT COLOR="#0000ff">32</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">64</FONT></TT>, and up.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/psaux</FONT></TT> (10)</STRONG></DT>
+<DD>PS/2 mouse.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/mouse</FONT></TT></STRONG></DT>
+<DD>A symlink to <TT>
+<FONT COLOR="#0000ff">/dev/ttyS0</FONT></TT> or <TT>
+<FONT COLOR="#0000ff">/dev/psaux</FONT></TT>.
+Other mouse devices are also supported.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/modem</FONT></TT></STRONG></DT>
+<DD>A symlink to <TT>
+<FONT COLOR="#0000ff">/dev/ttyS1</FONT></TT> or whatever port your
+modem is on.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/cua</FONT></TT><I>?</I> (4)</STRONG></DT>
+<DD>Identical to <TT>
+<FONT COLOR="#0000ff">ttyS</FONT></TT><I>?</I> but now fallen out of use.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/fd</FONT></TT><I>?</I> (2)</STRONG></DT>
+<DD><I>Floppy disk</I>. <TT>
+<FONT COLOR="#0000ff">fd0</FONT></TT>
+is equivalent to your <TT>
+<FONT COLOR="#0000ff">A:</FONT></TT> drive and <TT>
+<FONT COLOR="#0000ff">fd1</FONT></TT> your
+<TT>
+<FONT COLOR="#0000ff">B:</FONT></TT> drive. The <TT>
+<FONT COLOR="#0000ff">fd0</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">fd1</FONT></TT> devices
+autodetect the format of the floppy disk, but you can
+explicitly specify a higher density by using a device name like
+<TT>
+<FONT COLOR="#0000ff">/dev/fd0H1920</FONT></TT>, which gives you access to 1.88 MB,
+formatted, 3.5-inch floppies. Other floppy devices are shown in
+Table <A HREF="node21.html#tab:floppydevicenaming">18.1</A>.
+
+<P>
+See Section&nbsp;<A HREF="node22.html#sec:floppyformat">19.3.4</A> on how to format these devices.
+
+<P>
+<BR><P></P>
+<DIV ALIGN="CENTER"><A NAME="tab:floppydevicenaming"></A><A NAME="page:floppydevice"></A><A NAME="24189"></A>
+<TABLE>
+<CAPTION><STRONG>Table 18.1:</STRONG>
+Floppy device names</CAPTION>
+<TR><TD><IMG
+ WIDTH="556" HEIGHT="408" BORDER="0"
+ SRC="img19.png"
+ ALT="\begin{table}\begin{center}
+\begin{tabularx}{\textwidth}{\vert l \vert p{24ex} \...
+...s
+you are most interested in.
+\\
+\hline
+\end{tabularx}\end{center}\end{table}"></TD></TR>
+</TABLE>
+</DIV><P></P>
+<BR>
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/par</FONT></TT><I>?</I> (6)</STRONG></DT>
+<DD><I>Parallel port</I>. <TT>
+<FONT COLOR="#0000ff">/dev/par0</FONT></TT> is your first
+parallel port or LPT1 under DOS.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/lp</FONT></TT><I>?</I> (6)</STRONG></DT>
+<DD><I>Line printer</I>. Identical to <TT>
+<FONT COLOR="#0000ff">/dev/par</FONT></TT><I>?</I>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/urandom</FONT></TT></STRONG></DT>
+<DD><I>Random</I> number generator. Reading from this device
+gives pseudo-random numbers.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/st</FONT></TT><I>?</I> (9)</STRONG></DT>
+<DD><I>SCSI tape</I>. SCSI backup tape drive.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/zero</FONT></TT> (1)</STRONG></DT>
+<DD>Produces zero bytes, and as many of them as you need. This is useful
+if you need to generate a block of zeros for some reason. Use <TT>
+<FONT COLOR="#0000ff">dd</FONT></TT> (see Section <A HREF="node21.html#sec:ddzero">18.5.2</A>)
+to read a specific number of zeros.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/null</FONT></TT> (1)</STRONG></DT>
+<DD><I>Null device</I>. Reads nothing. Anything you write to the device is discarded.
+This is very useful for discarding output.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/pd</FONT></TT><I>?</I></STRONG></DT>
+<DD><I>Parallel port IDE disk</I>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/pcd</FONT></TT><I>?</I></STRONG></DT>
+<DD><I>Parallel port ATAPI CD-ROM</I>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/pf</FONT></TT><I>?</I></STRONG></DT>
+<DD><I>Parallel port ATAPI disk</I>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/sr</FONT></TT><I>?</I></STRONG></DT>
+<DD><I>SCSI CD-ROM</I>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/scd</FONT></TT><I>?</I></STRONG></DT>
+<DD><I>SCSI CD-ROM</I> (Identical, alternate name).
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/sg</FONT></TT><I>?</I></STRONG></DT>
+<DD><I>SCSI generic</I>. This is a general-purpose SCSI command interface for
+devices like scanners.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/fb</FONT></TT><I>?</I> (29)</STRONG></DT>
+<DD><I>Frame buffer</I>. This represents the kernel's attempt at
+a graphics driver.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/cdrom</FONT></TT></STRONG></DT>
+<DD>A symlink to
+<TT>
+<FONT COLOR="#0000ff">/dev/hda</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">/dev/hdb</FONT></TT>, or <TT>
+<FONT COLOR="#0000ff">/dev/hdc</FONT></TT>. It can also be linked to your SCSI CD-ROM.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/ttyI</FONT></TT><I>?</I></STRONG></DT>
+<DD><I>ISDN modems</I>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/tty</FONT></TT><I>?</I> (4)</STRONG></DT>
+<DD><I>Virtual console</I>. This is the terminal device for
+the virtual console itself and is numbered <TT>
+<FONT COLOR="#0000ff">/dev/tty1</FONT></TT> through <TT>
+<FONT COLOR="#0000ff">/dev/tty63</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/tty</FONT></TT><I>??</I> (3) and <TT>
+<FONT COLOR="#0000ff">/dev/pty</FONT></TT><I>??</I> (2)</STRONG></DT>
+<DD>Other
+<I>TTY</I> devices used for emulating a terminal. These are
+called <I>pseudo-TTY</I>s and are identified by two lowercase
+letters and numbers, such as <TT>
+<FONT COLOR="#0000ff">ttyq3</FONT></TT>. To nondevelopers,
+these are mostly of theoretical interest.
+</DD>
+</DL>
+
+<P>
+The file <TT>
+<FONT COLOR="#0000ff">/usr/src/linux/Documentation/devices.txt</FONT></TT> also has this to
+say (quoted verbatim):
+
+<P>
+<BLOCKQUOTE>
+ <FONT SIZE="-1"><B>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Recommended links</B>
+</FONT></BLOCKQUOTE>
+<P>
+<BLOCKQUOTE><FONT SIZE="-1">It is recommended that these links exist on all systems:
+</FONT></BLOCKQUOTE>
+<P>
+<BLOCKQUOTE><IMG
+ WIDTH="515" HEIGHT="159" ALIGN="BOTTOM" BORDER="0"
+ SRC="img20.png"
+ ALT="\begin{tabular}{l \vert l \vert l \vert l}
+\texttt{\protect\leavevmode{\color{bl...
+...}{sr}}}\emph{?} &amp; hard &amp; Alternate SCSI CD-ROM \\
+&amp; &amp; &amp; name \\
+\end{tabular}">
+<BR>
+<FONT SIZE="-1">
+<BR>
+<BR>
+</FONT></BLOCKQUOTE>
+<P>
+<BLOCKQUOTE><FONT SIZE="-1"><B>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Locally defined links</B>
+</FONT></BLOCKQUOTE>
+<P>
+<BLOCKQUOTE><FONT SIZE="-1">The following links may be established locally to conform to the
+configuration of the system.  This is merely a tabulation of existing
+practice, and does not constitute a recommendation.  However, if they
+exist, they should have the following uses:
+</FONT></BLOCKQUOTE>
+<P>
+<BLOCKQUOTE><IMG
+ WIDTH="544" HEIGHT="159" ALIGN="BOTTOM" BORDER="0"
+ SRC="img21.png"
+ ALT="\begin{tabular}{l \vert l \vert l \vert l}
+\texttt{\protect\leavevmode{\color{bl...
+...e}{/dev/swap}}} &amp; swap device &amp; symbolic &amp; Current swap device \\
+\end{tabular}">
+<BR>
+</BLOCKQUOTE>
+<P>
+<BLOCKQUOTE><FONT SIZE="-1"><TT>
+<FONT COLOR="#0000ff">/dev/modem</FONT></TT> should not be used for a modem which supports dial-in as
+well as dialout, as it tends to cause lock file problems.  If it
+exists, <TT>
+<FONT COLOR="#0000ff">/dev/modem</FONT></TT> should point to the appropriate primary TTY device
+(the use of the alternate callout devices is deprecated).
+</FONT></BLOCKQUOTE>
+<P>
+<BLOCKQUOTE><FONT SIZE="-1">For SCSI devices, <TT>
+<FONT COLOR="#0000ff">/dev/tape</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">/dev/cdrom</FONT></TT> should point to the
+``cooked'' devices (<TT>
+<FONT COLOR="#0000ff">/dev/st</FONT></TT><I>*</I> and <TT>
+<FONT COLOR="#0000ff">/dev/sr</FONT></TT><I>*</I>, respectively), whereas
+<TT>
+<FONT COLOR="#0000ff">/dev/cdwriter</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">/dev/scanner</FONT></TT> should point to the appropriate generic
+SCSI devices (<TT>
+<FONT COLOR="#0000ff">/dev/sg</FONT></TT><I>*</I>).
+</FONT></BLOCKQUOTE>
+<P>
+<BLOCKQUOTE><FONT SIZE="-1"><TT>
+<FONT COLOR="#0000ff">/dev/mouse</FONT></TT> may point to a primary serial TTY device, a hardware mouse
+device, or a socket for a mouse driver program (e.g. <TT>
+<FONT COLOR="#0000ff">/dev/gpmdata</FONT></TT>).
+<BR>
+<BR>
+</FONT></BLOCKQUOTE>
+<P>
+<BLOCKQUOTE><FONT SIZE="-1"><B>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sockets and pipes</B>
+</FONT></BLOCKQUOTE>
+<P>
+<BLOCKQUOTE><FONT SIZE="-1">Non-transient sockets and named pipes may exist in <TT>
+<FONT COLOR="#0000ff">/dev</FONT></TT>.  Common entries are:
+</FONT></BLOCKQUOTE>
+<P>
+<BLOCKQUOTE><IMG
+ WIDTH="329" HEIGHT="64" ALIGN="BOTTOM" BORDER="0"
+ SRC="img22.png"
+ ALT="\begin{tabular}{l \vert l \vert l}
+\texttt{\protect\leavevmode{\color{blue}{/dev...
+...mode{\color{blue}{/dev/gpmdata}}} &amp; socket &amp; mouse multiplexer \\
+\end{tabular}">
+<BR>
+
+
+</BLOCKQUOTE>
+
+<P>
+
+<H1><A NAME="SECTION002150000000000000000">
+18.5 <TT>
+<FONT COLOR="#0000ff">dd</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">tar</FONT></TT>, and Tricks with Block Devices</A>
+</H1>
+
+<P>
+<TT>
+<FONT COLOR="#0000ff">dd</FONT></TT> probably originally stood for <I>disk dump</I>. It is actually just
+like <TT>
+<FONT COLOR="#0000ff">cat</FONT></TT> except it can read and write in discrete
+blocks. It essentially reads and writes between devices while
+converting the data in some way. It is generally used in one of these ways:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>dd&nbsp;if=&#060;in-file&#062;&nbsp;of=&#060;out-file&#062;&nbsp;[bs=&#060;block-size&#062;]&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[count=&#060;number-of-blocks&#062;]&nbsp;[seek=&#060;output-offset&#062;]&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[skip=&#060;input-offset&#062;]</code><br>
+<code>&nbsp;</code><br>
+<code>dd&nbsp;if=&#060;in-file&#062;&nbsp;[bs=&#060;block-size&#062;]&nbsp;[count=&#060;number-of-blocks&#062;]&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[skip=&#060;input-offset&#062;]&nbsp;&#062;&nbsp;&#060;outfile&#062;</code><br>
+<code>&nbsp;</code><br>
+<code>dd&nbsp;of=&#060;out-file&#062;&nbsp;[bs=&#060;block-size&#062;]&nbsp;[count=&#060;number-of-blocks&#062;]&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[seek=&#060;output-offset&#062;]&nbsp;&#060;&nbsp;&#060;infile&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+To use <TT>
+<FONT COLOR="#0000ff">dd</FONT></TT>, you must specify an input file and an output file with the
+<TT>
+<FONT COLOR="#0000ff">if=</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">of=</FONT></TT> options. If the <TT>
+<FONT COLOR="#0000ff">of=</FONT></TT> option is omitted,
+then <TT>
+<FONT COLOR="#0000ff">dd</FONT></TT> writes to stdout. If the <TT>
+<FONT COLOR="#0000ff">if=</FONT></TT> option is omitted,
+then <TT>
+<FONT COLOR="#0000ff">dd</FONT></TT> reads from stdin. <FONT COLOR="#ffa500">[If you are confused, remember that
+<TT>
+<FONT COLOR="#0000ff">dd</FONT></TT> thinks of <I>in</I> and <I>out</I> with respect to itself.]</FONT>
+<P>
+Note that <TT>
+<FONT COLOR="#0000ff">dd</FONT></TT> is an unforgiving and destructive command
+that should be used with caution.
+
+<P>
+
+<H2><A NAME="SECTION002151000000000000000">
+18.5.1 Creating boot disks from boot images</A>
+</H2>
+
+<P>
+To create a new RedHat boot floppy, find the <TT>
+<FONT COLOR="#0000ff">boot.img</FONT></TT> file on <TT>
+<FONT COLOR="#0000ff">ftp.redhat.com</FONT></TT>,
+and with a new floppy, run:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>dd&nbsp;if=boot.img&nbsp;of=/dev/fd0</code><br>
+</FONT></TD></TR></TABLE><P>
+This command writes the raw disk image directly to the floppy disk. All distributions will
+have similar disk images for creating installation floppies (and sometimes rescue floppies).
+
+<P>
+
+<H2><A NAME="SECTION002152000000000000000">
+18.5.2 Erasing disks</A>
+</H2>
+
+<P>
+<A NAME="sec:ddzero"></A>
+<P>
+If you have ever tried to repartition a L<SMALL>INUX</SMALL> disk back into a
+DOS/Windows disk, you will
+know that DOS/Windows <TT>
+<FONT COLOR="#0000ff">FDISK</FONT></TT> has bugs in it that prevent it from recreating the
+partition table. A quick
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>dd&nbsp;if=/dev/zero&nbsp;of=/dev/hda&nbsp;bs=1024&nbsp;count=10240</code><br>
+</FONT></TD></TR></TABLE><P>
+will write zeros to the first 10 megabytes of your first IDE drive.
+This will wipe out the partition table as well as any
+file system information and give you a ``brand new'' disk.
+
+<P>
+To zero a floppy disk is just as easy:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>dd&nbsp;if=/dev/zero&nbsp;of=/dev/fd0&nbsp;bs=1024&nbsp;count=1440</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Even writing zeros to a floppy may not be sufficient. Specialized equipment
+can probably still read magnetic media after it has been erased several
+times. If, however, you write random bits to the floppy, it becomes
+completely impossible to determine what was on it:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>mknod&nbsp;/dev/urandom&nbsp;c&nbsp;1&nbsp;9</code><br>
+<code>for&nbsp;i&nbsp;in&nbsp;1&nbsp;2&nbsp;3&nbsp;4&nbsp;&#059;&nbsp;do</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;dd&nbsp;if=/dev/urandom&nbsp;of=/dev/fd0&nbsp;bs=1024&nbsp;count=1440</code><br>
+<code>done</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H2><A NAME="SECTION002153000000000000000">
+18.5.3 Identifying data on raw disks</A>
+</H2>
+
+<P>
+Here is a nice trick to find out something about a hard drive:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>dd&nbsp;if=/dev/hda1&nbsp;count=1&nbsp;bs=512&nbsp;|&nbsp;file&nbsp;-</code><br>
+</FONT></TD></TR></TABLE><P>
+gives <TT>
+<FONT COLOR="#0000ff">x86 boot sector</FONT></TT>.
+
+<P>
+To discover what a floppy disk is, try
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>dd&nbsp;if=/dev/fd0&nbsp;count=1&nbsp;bs=512&nbsp;|&nbsp;file&nbsp;-</code><br>
+</FONT></TD></TR></TABLE><P>
+which gives <TT>
+<FONT COLOR="#0000ff">x86 boot sector, system )k?/bIHC, FAT (12 bit)</FONT></TT>
+for DOS floppies.
+
+<P>
+
+<H2><A NAME="SECTION002154000000000000000">
+18.5.4 Duplicating a disk</A>
+</H2>
+
+<P>
+If you have two IDE drives that are of identical size, and provided that
+you are sure they contain no bad sectors and <I>provided
+neither are mounted</I>, you can run
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>dd&nbsp;if=/dev/hdc&nbsp;of=/dev/hdd</code><br>
+</FONT></TD></TR></TABLE><P>
+to copy the entire disk and avoid having to install an operating
+system from scratch. It doesn't matter what is on the original
+(Windows, L<SMALL>INUX</SMALL>, or whatever) since each sector is identically
+duplicated; the new system will work perfectly.
+
+<P>
+(If they are not the same size, you will have to use
+<TT>
+<FONT COLOR="#0000ff">tar</FONT></TT> or <TT>
+<FONT COLOR="#0000ff">mirrordir</FONT></TT> to replicate the file system exactly.)
+
+<P>
+
+<H2><A NAME="SECTION002155000000000000000">
+18.5.5 Backing up to floppies</A>
+</H2>
+
+<P>
+You can use <TT>
+<FONT COLOR="#0000ff">tar</FONT></TT> to back up to <I>any</I> device.
+Consider periodic backups to an ordinary IDE drive instead of a
+tape. Here we back up to the secondary slave:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>tar&nbsp;-cvzf&nbsp;/dev/hdd&nbsp;/bin&nbsp;/boot&nbsp;/dev&nbsp;/etc&nbsp;/home&nbsp;/lib&nbsp;/sbin&nbsp;/usr&nbsp;/var</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+<TT>
+<FONT COLOR="#0000ff">tar</FONT></TT> can also back up across multiple floppy disks:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>tar&nbsp;-cvMf&nbsp;/dev/fd0&nbsp;/home/simon</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H2><A NAME="SECTION002156000000000000000">
+18.5.6 Tape backups</A>
+</H2>
+
+<P>
+<A NAME="page:tapebackups"></A><TT>
+<FONT COLOR="#0000ff">tar</FONT></TT> traditionally backs up onto tape drives. The commands
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>mt&nbsp;-f&nbsp;/dev/st0&nbsp;rewind</code><br>
+<code>tar&nbsp;-cvf&nbsp;/dev/st0&nbsp;/home</code><br>
+</FONT></TD></TR></TABLE><P>
+rewind <TT>
+<FONT COLOR="#0000ff">s</FONT></TT>csi <TT>
+<FONT COLOR="#0000ff">t</FONT></TT>ape <TT>
+<FONT COLOR="#0000ff">0</FONT></TT> and archive the
+<TT>
+<FONT COLOR="#0000ff">/home</FONT></TT> directory onto it. You should not try to use
+compression with tape drives because they are error prone, and a single
+error could make the entire archive unrecoverable. The <TT>
+<FONT COLOR="#0000ff">mt</FONT></TT> command stands
+for <TT>
+<FONT COLOR="#0000ff">m</FONT></TT>agnetic <TT>
+<FONT COLOR="#0000ff">t</FONT></TT>ape and controls generic SCSI tape
+devices. See also <TT>
+<FONT COLOR="#0000ff">mt</FONT></TT>(1).
+
+<P>
+
+<H2><A NAME="SECTION002157000000000000000">
+18.5.7 Hiding program output, creating blocks of zeros</A>
+</H2>
+
+<P>
+If you don't want to see any program output,
+just append <TT>
+<FONT COLOR="#0000ff">&gt; /dev/null</FONT></TT> to the command. For example,
+we aren't often interested in the output of
+<TT>
+<FONT COLOR="#0000ff">make</FONT></TT>. <FONT COLOR="#ffa500">[<TT>
+<FONT COLOR="#0000ff">make</FONT></TT> is discussed later.]</FONT>Here we absorb everything save for error messages.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>make&nbsp;&#062;&nbsp;/dev/null</code><br>
+</FONT></TD></TR></TABLE><P>
+Then, of course, we can absorb all output <I>including</I> error messages
+with either
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>make&nbsp;&#062;&#038;&nbsp;/dev/null</code><br>
+</FONT></TD></TR></TABLE><P>
+or
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>make&nbsp;&#062;&nbsp;/dev/null&nbsp;2&#062;&#038;1</code><br>
+</FONT></TD></TR></TABLE><P>
+The device <TT>
+<FONT COLOR="#0000ff">/dev/null</FONT></TT> finds
+innumerable uses in shell scripting to suppress the output of a
+command or to feed a command dummy (empty) input.
+<TT>
+<FONT COLOR="#0000ff">/dev/null</FONT></TT> is a <I>safe</I> file from a security point
+of view. It is often used when a file is required for some
+feature in a configuration script, and you would like the
+particular feature disabled. For instance, specifying the users
+shell to <TT>
+<FONT COLOR="#0000ff">/dev/null</FONT></TT> inside the password file will
+<I>certainly</I> prevent insecure use of a shell, and is an explicit
+way of saying that that account does <I>not</I> allow shell
+logins.
+
+<P>
+You can also use <TT>
+<FONT COLOR="#0000ff">/dev/null</FONT></TT> to create a file containing nothing:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>cat&nbsp;/dev/null&nbsp;&#062;&nbsp;myfile</code><br>
+</FONT></TD></TR></TABLE><P>
+or alternatively, to create a file containing only zeros. Try
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>dd&nbsp;if=/dev/zero&nbsp;bs=1024&nbsp;count=&#060;number-of-kilobytes&#062;&nbsp;&#062;&nbsp;myfile</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H1><A NAME="SECTION002160000000000000000">
+18.6 Creating Devices with <TT>
+<FONT COLOR="#0000ff">mknod</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">/dev/MAKEDEV</FONT></TT></A>
+</H1>
+
+<P>
+Although all devices are listed in the <TT>
+<FONT COLOR="#0000ff">/dev</FONT></TT> directory,
+you can create a device anywhere in the file system by using the
+<TT>
+<FONT COLOR="#0000ff">mknod</FONT></TT> command:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>mknod&nbsp;[-m&nbsp;&#060;mode&#062;]&nbsp;&#060;file-name&#062;&nbsp;[b|c]&nbsp;&#060;major-number&#062;&nbsp;&#060;minor-number&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+The letters <TT>
+<FONT COLOR="#0000ff">b</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">c</FONT></TT> are for creating a block
+or character device, respectively.
+
+<P>
+To demonstrate, try
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>mknod&nbsp;-m&nbsp;0600&nbsp;~/my-floppy&nbsp;b&nbsp;2&nbsp;0</code><br>
+<code>ls&nbsp;-al&nbsp;/dev/fd0&nbsp;~/my-floppy</code><br>
+</FONT></TD></TR></TABLE><P>
+<TT>
+<FONT COLOR="#0000ff">my-floppy</FONT></TT> can be used just like <TT>
+<FONT COLOR="#0000ff">/dev/fd0</FONT></TT>
+
+<P>
+Note carefully the <I>mode</I> (i.e., the permissions) of <TT>
+<FONT COLOR="#0000ff">/dev/fd0</FONT></TT>.
+<TT>
+<FONT COLOR="#0000ff">/dev/fd0</FONT></TT> should be readable and writable only to <TT>
+<FONT COLOR="#0000ff">root</FONT></TT> and
+to users belonging to the <TT>
+<FONT COLOR="#0000ff">floppy</FONT></TT> group, since we
+obviously don't want an arbitrary user to be able to log in
+(remotely) and overwrite a floppy disk.
+
+<P>
+In fact, this is the reason for having devices represented as
+files in the first place. U<SMALL>NIX</SMALL> files naturally support group
+access control, and therefore so do devices.
+
+<P>
+To create devices that are missing from your <TT>
+<FONT COLOR="#0000ff">/dev</FONT></TT>
+directory (some esoteric devices will not be present by
+default), simply look up the device's major and minor number in
+<TT>
+<FONT COLOR="#0000ff">/usr/src/linux/Documentation/devices.txt</FONT></TT> and use the
+<TT>
+<FONT COLOR="#0000ff">mknod</FONT></TT> command. This procedure is, however, somewhat tedious, and
+the script <TT>
+<FONT COLOR="#0000ff">/dev/MAKEDEV</FONT></TT> is usually available for convenience.
+<I>You must be in the <TT>
+<FONT COLOR="#0000ff">/dev</FONT></TT> directory before you run this
+script.</I>
+
+<P>
+Typical usage of <TT>
+<FONT COLOR="#0000ff">MAKEDEV</FONT></TT> is
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>cd&nbsp;/dev</code><br>
+<code>./MAKEDEV&nbsp;-v&nbsp;fd0</code><br>
+<code>./MAKEDEV&nbsp;-v&nbsp;fd1</code><br>
+</FONT></TD></TR></TABLE><P>
+to create a complete set of floppy disk devices.
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">man</FONT></TT> page for <TT>
+<FONT COLOR="#0000ff">MAKEDEV</FONT></TT> contains more
+details. In particular, it states:
+
+<P>
+
+<BLOCKQUOTE><FONT SIZE="-1">Note that programs giving the error ``ENOENT: No such file
+       or  directory''  normally  means  that  the device file is
+       missing, whereas ``ENODEV: No such device'' normally means
+       the  kernel does not have the driver configured or loaded.
+</FONT></BLOCKQUOTE>
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html2062"
+  HREF="node22.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2058"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2052"
+  HREF="node20.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2060"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2063"
+  HREF="node22.html">19. Partitions, File Systems,</A>
+<B> Up:</B> <A NAME="tex2html2059"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2053"
+  HREF="node20.html">17. Overview of the</A>
+ &nbsp <B>  <A NAME="tex2html2061"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+
+</BODY>
+</HTML>

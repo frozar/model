@@ -1,0 +1,130 @@
+<html><title>[Mis a jour Juin 2002] Virer les banners de pub - differentes facons de faire.</title><pre>
+
+
+- Gagner en anonymat
+- Gagner en bande passante et en rapidite (ad servers souvent lent a repondre)
+- Virer ces putains de pubs !
+
+
+---
+
+  Helpers            : http://www.accs-net.com/hosts/get_hosts.html
+                       http://www.smartin-designs.com/downloads/
+                       http://www.smartin-designs.com/submit_form.htm
+                       http://www.junkbusters.com/ijb.html
+
+---
+
+<b>Le plus simple :</b> JunkBuster sous unix/linux (Il existe aussi sous win)
+-> copier le JunkFile genere par l'<a href=http://cybz.madchat.org/?page=antipubizator>AntiPubizator</a> dans /etc/junkbuster/blockfile
+et mettre localhost, port 5865 en manual proxy config de votre navigateur :) 
+C'est tout et ca marche super.
+
+---
+
+Interdire les hosts avec ipchains
+EXTIP="`ifconfig ppp0|grep inet|awk '{print $2}'|awk -F":" '{print $2}'`"
+
+#ad.doubleclick.net
+ipchains -A input -i ppp0 -p tcp -s 204.253.104.95 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 204.253.104.110 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 205.138.3.22 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 205.138.3.42 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 205.138.3.82 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 205.138.3.142 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 205.138.4.42 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 206.65.183.95 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 206.65.183.110 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 206.65.183.140 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 206.65.183.155 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 208.184.29.50 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 208.184.29.70 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 208.184.29.90 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 208.184.29.110 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 208.184.29.130 -d $EXTIP/32 -j DENY
+ipchains -A input -i ppp0 -p tcp -s 208.184.29.150 -d $EXTIP/32 -j DENY
+
+----
+
+Ca consiste à passer par un proxy (squid pour ne pas le nommer)
+configuré pour passer toutes les pages à un script qui va se charger
+de les expurger.
+
+Donc il faut deux trucs:
+* Squid (www.squid-cache.org). Ca se compile les doigts dans le nez sur
+toutes les distribs.
+* Adzap (www.zip.com.au/~cs/adzap/). C'est un script, rien à compiler
+donc (faut juste rajouter une directive dans le squid.conf, de toute
+manière tout est expliqué sur la page).
+
+Voilà. Avec ca, vous pourrez enfin visiter les pages multimania sans
+vous taper tous les popups de merde (parce que le script ferme les
+popups tout seul).
+En plus le script est facile à updater pour virer de nouvelles pubs.
+
+Le seul inconvénient que j'ai constaté jusque là: il a l'air de mal
+digérer le AD de adobe.com, et il zappe la moitié des graphismes.
+C'est pas grave, perso je glande pas des heures sur adobe.com. :)
+
+---
+
+
+Sinon il y a la methode du fichier "hosts" qui fonctionne bien sur tout
+systeme unix (/etc/hosts)
+win9x (c:\windows\hosts) et NT (c:\windows\system32\drivers\etc\hosts).
+
+[nd tobozo:]
+Sur certaines machines (et quand le fichier HOSTS commence a
+atteindre une taille respectable) l'usage de l'adresse 0.0.0.0
+peut améliorer les performances.
+Il est aussi possible d'installer un serveur web en local
+et de spécifier 127.0.0.1 dans le fichier HOSTS au lieu de
+192.168.0.255
+
+
+192.168.0.255   ad.doubleclick.net      # Fuck doubleclick ads
+192.168.0.255   ad.fr.doubleclick.net   # Fuck doubleclick france
+192.168.0.255   *!fr.doubleclick.net    # Fuck doubleclick france
+192.168.0.255   m.doubleclick.net
+192.168.0.255   view.avenuea.com
+192.168.0.255   ads.enliven.com
+192.168.0.255   xb.xoom.com             # Fuck xoom ads
+192.168.0.255   www.multimania.fr       # Fuck multimania ads
+192.168.0.255   rd.yahoo.com            # Fuck Yahoo ads
+192.168.0.255   a32.g.a.yimg.com        # Fuck yahoo ads -part II-
+192.168.0.255   images.go2net.com       # Fuck go2net ads
+192.168.0.255   click.go2net.com        # Fuck go2net ads -part II-
+192.168.0.255   adforce.imgis.com       # Fuck adforce ads
+192.168.0.255   ad.caramail.com         # Fuck Caramail ads
+192.168.0.255   pub.chez.com            # Fuck Chez.com ads
+192.168.0.255   comtrack.comclick.com   # Fuck Comtrack ads
+192.168.0.255   ads15.focalink.com      # Fuck Whatever ad banner
+192.168.0.255   reply.mediatris.net     # Fuck zataz ads
+192.168.0.255   a331.g.akamai.net
+192.168.0.255   mediaserv.247media.com
+192.168.0.255   icache.247media.com
+192.168.0.255   ads.topcities.com
+192.168.0.255   www.comclick-web.ad.psiweb.com
+192.168.0.255   adcontent.gamespy.com
+192.168.0.255   ads.ngenuity.com
+192.168.0.255   realmedia-a592.d4p.net
+192.168.0.255   sfads.osdn.com
+192.168.0.255   kansas.valueclick.com
+192.168.0.255   ads200.focalink.com
+192.168.0.255   ads1.ad-flow.com
+192.168.0.255   ad.ie.doubleclick.net
+192.168.0.255   adserver.ugo.com
+192.168.0.255   servedby.advertising.com
+192.168.0.255   www12.valueclick.com
+192.168.0.255   www.click-fr.com
+192.168.0.255   advert.hi-media.com
+192.168.0.255   altfarm.mediaplex.com
+192.168.0.255   ad.ad2-one.com
+192.168.0.255	images.wanadooregie.com
+192.168.0.255	ads.wanadooregie.com
+
+
+
+
+
+

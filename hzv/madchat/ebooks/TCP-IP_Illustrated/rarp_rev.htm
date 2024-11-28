@@ -1,0 +1,256 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 5. RARP: Reverse Address Resolution Protocol</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="5_0"><H1><I>RARP: Reverse Address Resolution Protocol</I></H1></a>
+<a name="5_1"><H3>5.1 Introduction</H3></a>
+<P>
+When a system with a local disk is bootstrapped it normally obtains
+its IP address from a configuration file that's read from a disk
+file. But a system without a disk, such as an X terminal or a
+diskless workstation, needs some other way to obtain its IP address.
+<P>
+Each system on a network has a unique hardware address, assigned
+by the manufacturer of the network interface. The principle of
+RARP is for the diskless system to read its unique hardware address
+from the interface card and send an RARP request (a broadcast
+frame on the network) asking for someone to reply with the diskless
+system's IP address (in an RARP reply).
+<P>
+While the concept is simple, the implementation is often harder
+than ARP for reasons described later in this chapter. The official
+specification of RARP is RFC 903 [Finlayson et al. 1984].
+<a name="5_2"><H3>5.2 RARP Packet Format</H3></a>
+<P>
+The format of an RARP packet is almost identical to an ARP packet
+(<a href="javascript:if(confirm('http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ARP_Addr.ht,  \n\nThis file was not retrieved by Teleport Pro, because the server reports that this file cannot be found.  \n\nDo you want to open it from the server?'))window.location='http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ARP_Addr.ht%2C#fig_4_3'" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ARP_Addr.ht%2C#fig_4_3">Figure 4.3</a>). The only differences are that the <I>frame
+type</I> is <TT>0x8035</TT> for an RARP request or reply, and
+the <I>op</I> field has a value of 3 for an RARP request and 4
+for an RARP reply.
+<P>
+As with ARP, the RARP request is broadcast and the RARP reply
+is normally unicast.
+<a name="5_3"><H3>5.3 RARP Examples</H3></a>
+<P>
+In our internet we can force the host sun to bootstrap from the
+network, instead of its local disk. If we run an RARP server and
+tcpdump on the host bsdi we get the output shown in Figure 5.1.
+We use the -e flag to have tcpdump print the hardware addresses:
+<P>
+</CENTER>
+<a name="fig_5_1"><TABLE ></a>
+<TR><TD WIDTH=33>1</TD><TD WIDTH=101><TT>0.0</TT></TD><TD WIDTH=449><TT>8:0:20:3:f6:42 ff:ff:ff:ff:ff:ff <BR>
+rarp 60: rarp who-is 8:0:20:3:f6:42 tell 8:0:20:3:f6:42</TT>
+</TD></TR>
+<TR><TD WIDTH=33>2 </TD><TD WIDTH=101><TT>0.13 (0.13)</TT>
+</TD><TD WIDTH=449><TT>0:0:c0:6f:2d:40 8:0:20:3:f6:42 rarp 42:
+<BR>
+rarp reply 8:0:20:3:f6:42 at sun</TT>
+</TD></TR>
+<TR><TD WIDTH=33>3 </TD><TD WIDTH=101><TT>0.14 (0.01)</TT></TD>
+<TD WIDTH=449><TT>8:0:20:3:f6:42 0:0:c0:6f:2d:40 ip 65: <BR>
+>sun.26999 &gt; bsdi.tftp: 23 RRQ &quot;8CFCOD21.SUN4C&quot;</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<CENTER><B>Figure 5.1</B> RARP request and reply.</CENTER>
+<P>
+The RARP request is broadcast (line 1) and the RARP reply on line
+2 is unicast. The output on line 2, at <TT>sun</TT>, means the
+RARP reply contains the IP address for the host <TT>sun</TT> (140.252.13.33).
+<P>
+On line 3 we see that once sun receives its IP address, it issues
+a TFTP read-request (RRQ) for the file <TT>8CFCOD21.SUN4C</TT>.
+(TFTP is the Trivial File Transfer Protocol. We describe it in
+more detail in <A HREF="tftp_tri.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tftp_tri.htm">Chapter 15</A>.) The eight
+hexadecimal digits in the filename are the hex representation
+of the IP address 140.252.13.33 for the host <TT>sun</TT>. This
+is the IP address that was returned in the RARP reply. The remainder
+of the filename, <TT>SUN4C</TT>, indicates the type
+of system being bootstrapped.
+<P>
+<TT>tcpdump</TT> says that line 3 is an IP datagram
+of length 65, and not a UDP datagram (which it really is), because
+we are running <TT>tcpdump</TT> with the <TT>-e
+</TT>flag, to see the hardware-level addresses. Another
+point to notice in Figure 5.1 is that the length of the Ethernet
+frame on line 2 appears to be shorter than the minimum (which
+we said was 60 bytes in Section 4.5.) The reason is that we are
+running <TT>tcpdump</TT> on the system that
+is sending this Ethernet frame (<TT>bsdi</TT>).
+The application, <TT>rarpd</TT>, writes 42
+bytes to the BSD Packet Filter device (14 bytes for the Ethernet
+header and 28 bytes for the RARP reply) and this is what tcpdump
+receives a copy of. But the Ethernet device driver pads this short
+frame to the minimum size for transmission (60). Had we been running
+tcpdump on another system, the length would have been 60.
+<P>
+We can see in this example that when this diskless system
+receives its IP address in an RARP reply, it issues a TFTP request
+to read a bootstrap image. At this point we won't go into additional
+detail about how diskless systems bootstrap themselves. (<A HREF="bootp.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/bootp.htm">Chapter 16</A>
+describes the bootstrap sequence of a diskless X terminal using
+RARP, BOOTP, and TFTP.)
+<P>
+Figure 5.2 shows the resulting packets if there is no RARP
+server on the network. The destination address of each packet
+is the Ethernet broadcast address. The Ethernet address following<TT>
+who-is</TT> is the target hardware address, and the
+Ethernet address following <TT>tell</TT> is
+the sender's hardware address.
+<P>
+<CENTER>
+<a name="fig_5_2"><TABLE></a>
+<TR><TD WIDTH=36><TT>1</TT></TD><TD WIDTH=132><TT>0.0</TT></TD>
+<TD WIDTH=387><TT>8:0:20:3:f6:42 ff:ff:ff:ff:ff:ff rarp 60: <BR>
+rarp who-is 8:0:20:3:f6:42 tell 8:0:20:3;f6:42</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>2</TT></TD><TD WIDTH=132><TT>6.55 ( 6.55)</TT>
+</TD><TD WIDTH=387><TT>8:0:20:3:f6:42 ff:ff:ff:ff:ff:ff rarp 60:
+<BR>
+rarp who-is 8:0:20:3:f6:42 tell 8:0:20:3:f6:42</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>3</TT></TD><TD WIDTH=132><TT>15.52 ( 8.97)</TT>
+</TD><TD WIDTH=387><TT>8:0:20:3:f6:42 ff:ff:ff:ff:ff:ff rarp 60:
+<BR>
+rarp who-is 8:0:20:3:f6:42 tell 8:0:20:3:f6:42</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>4</TT></TD><TD WIDTH=132><TT>29.32 (13.80)</TT>
+</TD><TD WIDTH=387><TT>8:0:20:3:f6:42 ff:ff:ff;ff:ff:ff rarp 60:
+<BR>
+rarp who-is 8:0:20:3:f6:42 tell 8:0:20:3:f6:42</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>5</TT></TD><TD WIDTH=132><TT>52.78 (23.46)</TT>
+</TD><TD WIDTH=387><TT>8:0:20:3:f6:42 ff:ff:ff:ff:ff:ff rarp 60:
+<BR>
+rarp who-is 8:0:20:3:f6:42 tell 8:0:20:3:f6:42</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>6</TT></TD><TD WIDTH=132><TT>95.58 (42.80)</TT>
+</TD><TD WIDTH=387><TT>8:0:20:3:f6:42 ff:ff:ff:ff:ff:ff rarp 60:
+<BR>
+rarp who-is 8:0:20:3:f6:42 tell 8:0;20:3:f6:42</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>7</TT></TD><TD WIDTH=132><TT>100.92 ( 5.34)</TT>
+</TD><TD WIDTH=387><TT>8:0:20:3:f6:42 ff:ff:ff:ff:ff:ff rarp 60:
+<BR>
+rarp who-is 8:0:20:3;f6:42 tell 8:0:20:3:f6:42</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>8</TT></TD><TD WIDTH=132><TT>107.47 ( 6.55)</TT>
+</TD><TD WIDTH=387><TT>8:0:20:3:f6:42 ff:ff:ff:ff:ff:ff rarp 60:
+<BR>
+rarp who-is 8:0:20:3:f6:42 tell 8:0:20:3:f6:42</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>9</TT></TD><TD WIDTH=132><TT>116.44 ( 8.97)</TT>
+</TD><TD WIDTH=387><TT>8:0:20:3:f6:42 ff:ff:ff:ff:ff:ff rarp 60:
+<BR>
+rarp who-is 8:0:20:3:f6:42 tell 8:0:20:3:f6:42</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>10</TT></TD><TD WIDTH=132><TT>130.24 (13.80)</TT>
+</TD><TD WIDTH=387><TT>8:0:20:3:f6:42 ff:ff:ff:ff:ff:ff rarp 60:
+<BR>
+rarp who-is 8:0:20:3:f6:42 tell 8:0:20:3:f6:42</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>11</TT></TD><TD WIDTH=132><TT>153.70 (23.46)</TT>
+</TD><TD WIDTH=387><TT>8:0:20:3:f6:42 ff:ff:ff:ff:ff:ff rarp 60:
+<BR>
+rarp who-is 8:0:20:3:f6:42 tell 8:0:20:3:f6:42</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>12</TT></TD><TD WIDTH=132><TT>196.49 (42.79)</TT>
+</TD><TD WIDTH=387><TT>8:0:20:3:f6:42 ff:ff:ff:ff:ff:ff rarp 60:
+<BR>
+rarp who-is 8:0;20:3:f6:42 tell 8:0:20:3:f6:42</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<CENTER><B>Figure 5.2</B> RARP requests with no RARP server on
+the network.</CENTER>
+<P>
+Note the frequency of the retransmissions. The first retransmission
+occurs after 6.55 seconds and then increases to 42.80 seconds,
+then goes down to 5.34 seconds, then 6.55, and then works its
+way back to 42.79 seconds. This continues indefinitely. If we
+calculate the differences between each timeout interval we see
+a doubling effect: from 5.34 to 6.55 is 1.21 seconds, from 6.55
+to 8.97 is 2.42 seconds, from 8.97 to 13.80 is 4.83 seconds, and
+so on. When the timeout interval reaches some limit (greater than
+42.80 seconds) it's reset to 5.34 seconds.
+<P>
+Increasing the timeout value like this is a better approach than
+using the same value each time. In <a href="icmp_int.htm#fig_6_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#fig_6_8">Figure 6.8</a> we'll see one wrong
+way to perform timeout and retransmission, and in <A HREF="tcp_time.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_time.htm">Chapter 21</A>
+we'll see TCP's method.
+<a name="5_4"><H3>5.4 RARP Server Design</H3></a>
+<P>
+While the concept of RARP is simple, the design of an RARP server
+is system dependent and complex. Conversely, providing an ARP
+server is simple, and is normally part of the TCP/IP implementation
+in the kernel. Since the kernel knows its IP addresses and hardware
+addresses, when it receives an ARP request for one of its IP addresses,
+it just replies with the corresponding hardware address.
+<H4>RARP Servers as User Processes</H4>
+<P>
+The complication with an RARP server is that the server normally
+provides the mapping from a hardware address to an IP address
+for many hosts (all the diskless systems on the network). This
+mapping is contained in a disk file (normally <TT>/etc/ethers</TT>
+on Unix systems). Since kernels normally don't read and parse
+disk files, the function of an RARP server is provided as a user
+process, not as part of the kernel's TCP/IP implementation.
+<P>
+To further complicate matters, RARP requests are transmitted as
+Ethernet frames with a specific Ethernet frame type field (<TT>0x8035</TT>
+from <A HREF="link_lay.htm#fig_2_1" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#fig_2_1">Figure 2.1</A>.) This means an
+RARP server must have some way of sending and receiving Ethernet
+frames of this type. In <A HREF="append_a.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_a.htm">Appendix A</A> we
+describe how the BSD Packet Filter, Sun's Network Interface Tap,
+and the SVR4 Data Link Provider Interface can be used to receive
+these frames. Since the sending and receiving of these frames
+is system dependent, the implementation of an RARP server is tied
+to the system.
+<H4>Multiple RARP Servers per Network</H4>
+<P>
+Another complication is that RARP requests are sent as hardware-level
+broadcasts, as shown in <a href="#fig_5_2">Figure 5.2</a>. This means they are not forwarded
+by routers. To allow diskless systems to bootstrap even when the
+RARP server host is down, multiple RARP servers are normally provided
+on a single network (e.g., a single cable).
+<P>
+As the number of servers increases (to provide redundancy), the
+network traffic increases, since every server sends an RARP reply
+for every RARP request. The diskless system that sent the RARP
+request normally uses the first RARP reply that it receives. (We
+never had this problem with ARP, because only a single host sends
+an ARP reply.) Furthermore, there is a chance that each RARP server
+can try to respond at about the same time, increasing the probability
+of collisions on an Ethernet.
+<a name="5_5"><H3>5.5 Summary</H3></a>
+<P>
+RARP is used by many diskless systems to obtain their IP address
+when bootstrapped. The RARP packet format is nearly identical
+to the ARP packet. An RARP request is broadcast, identifying the
+sender's hardware address, asking for anyone to respond with the
+sender's IP address. The reply is normally unicast.
+<P>
+Problems with RARP include its use of a link-layer broadcast,
+preventing most routers from forwarding an RARP request, and the
+minimal information returned: just the system's IP address. In
+Chapter 16 we'll see that BOOTP returns more information for the
+diskless system that is bootstrapping: its IP address, the name
+of a host to bootstrap from, and so on.
+<P>
+While the RARP concept is simple, the implementation of an RARP
+server is system dependent. Hence not all TCP/IP implementations
+provide an RARP server.
+<H4>Exercises</H4>
+<P>
+<B>5.1</B> Is a separate<I> frame type</I> field required for
+RARP? Could the same value be used for ARP and RARP <TT>0x0806</TT>?
+<P>
+<B>5.2</B> With multiple RARP servers on a network, how can they
+prevent their responses from colliding with each on the network?
+</BODY>
+</HTML>

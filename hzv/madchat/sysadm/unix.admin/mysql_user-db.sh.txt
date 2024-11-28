@@ -1,0 +1,45 @@
+# script create database + utilisateur MYSQL automatise
+# mysqld version: mysql  Ver 12.18 Distrib 4.0.12, for pc-linux (i686)
+# 
+# les docs et scripts sur le net ne fonctionnant pas (vieilles versions?) ...
+#
+# le probleme venait de la table 'user' sur la DB 'mysql'
+# il ne faut pAs se fier au simple dump de cette table
+# et bien mettre un ESPACE pour la colonne 'ssl_type' (type ENUM) :
+# dump table user: 21 N, puis:  ;;;;;"0";"0";"0"
+#  inserer plutot: 21 N, puis:  ' ','','','','0','0','0') 
+#  _______remarquez bien l'espace^ ici, que le dump ne montre pas
+#
+# voila donc un script qui marche :)
+
+#!/bin/sh
+
+local="serverhost.net"                                                                                             
+
+echo -n "Entrez le NOM user/db : "; 
+read login
+echo -n "Entrez le PASS de l'user: "; 
+read password; 
+echo -n "Entrez le pass ROOT mysql : ";
+read passroot; 
+
+# creation du compte + db + droits dans mySQL
+/usr/mysql/bin/mysqladmin -u root --password=$passroot create $login
+
+/usr/mysql/bin/mysql -u root --password=$passroot mysql <<END_COMMANDS
+INSERT INTO db VALUES
+('$local','$login','$login','Y','Y','Y','Y','Y','Y','Y','Y','Y','Y','Y','Y');
+INSERT INTO user VALUES
+('$local','$login',PASSWORD('$password'),'N','N','N','N','N','N','N','N','N','N','N','N','N','N','N','N','N','N','N','N','N',' ','','','','0','0','0');
+END_COMMANDS
+
+/usr/mysql/bin/mysqladmin -u root --password=$passroot reload
+echo "privileges reloaded"
+
+echo " "
+echo "MySQL infos:"
+echo "host: $local"
+echo "base: $login"
+echo "user: $login"
+echo "pass: $password"
+echo "l'user $login a TOUS les privileges sur la Dbase $login"

@@ -1,0 +1,151 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+
+<head>
+<title>Daemon News : Booting FreeBSD with grub</title>
+<link rel="stylesheet" type="text/css" href="../textes/dn.css">
+<link rel="shortcut icon" href="../textes/daemon.ico">
+</head>
+
+<body bgcolor="#FFFFFF">
+
+<p><font face="Verdana" size="2"><b>Booter FreeBSD avec Grub</b></font></p>
+<p><font face="Verdana" size="2">Georg Wagner<br>
+Translate by <a href="mailto:eberkut@nexen.net">eberkut</a> - <a href="http://www.chez.com/keep">http://www.chez.com/keep</a></font></p>
+<p><font face="Verdana" size="2"><b><a name="tth_sEc1">1</a>&nbsp;&nbsp;Qu'est-ce
+que Grub ?</b></font></p>
+<p font><font face="Verdana" size="2"><b>Grub</b></font>
+<ul>
+  <li>
+    <p font><font face="Verdana" size="1">est un bootloader qui est conforme au
+    standard multiboot.</font>
+  <li>
+    <p font><font face="Verdana" size="1">comprend les systèmes de fichier
+    (FFS, FAT16, FAT32, minixfs, ext2fs)</font>
+  <li>
+    <p font><font face="Verdana" size="1">est capable de booter une multitude
+    d'OS.</font>
+  <li>
+    <p font><font face="Verdana" size="1">est capable de booter depuis un
+    réseau (RARP, BOOTP, DHCP)</font>
+  <li>
+    <p font><font face="Verdana" size="1">vient à bout de la limitation de 1024
+    cylindres.</font>
+  <li>
+    <p font><font face="Verdana" size="1">a un menu de boot, qui peut être
+    configuré en éditant un fichier.</font>
+  <li>
+    <p font><font face="Verdana" size="1">a aussi une interface de ligne de
+    commande, qui est accessible durant le processus de boot.</font>
+  <li>
+    <p font><font face="Verdana" size="1">a un système d'aide intégré ; quand
+    vous pressez la touche tab, des compléments potentiels des commandes
+    entrées sont suggérés.</font>
+</ul>
+<p><font face="Verdana" size="2"><b><a name="tth_sEc2">2</a>&nbsp;&nbsp;Préparer
+l'installation de Grub</b></font></p>
+<p><font face="Verdana" size="2"><b><a name="tth_sEc2.1">2.1</a>&nbsp;&nbsp;Obtenir
+Grub</b></font></p>
+<p font><font face="Verdana" size="1">Je n'ai jamais à compiler grub depuis les
+sources sur système FreeBSD avant la release 4.0. Par conséquent, j'avais
+l'habitude de ripper grub à partir d'une distribution Debian Linux. De nos
+jours vous pouvez télécharger une copie précompilée à <a href="ftp://alpha.gnu.org/gnu/grub/">ftp://alpha.gnu.org/gnu/grub/</a>.</font>
+<p font><font face="Verdana" size="1">La dernière version utilisée est :
+grub-0.5.96.1-i386-pc.tar.gz<br>
+Il y a même un port fonctionnant dans le port collection maintenant.</font>
+<p><font face="Verdana" size="2"><b><a name="tth_sEc2.2">2.2</a>&nbsp;&nbsp;Installer
+les fichiers</b></font></p>
+<p font><font face="Verdana" size="1">Unzippez et détarez le tarball avec :</font>
+<dl compact>
+  <dd><font size="2" face="Courier New">#&nbsp;tar&nbsp;zxvf&nbsp;./grub-0.5.96.1-i386-pc.tar.gz</font>
+</dl>
+<p font><font face="Verdana" size="1">Maintenant modifiez le répertoire /boot,
+créez un sous-répertoire nommé grub et copiez les fichiers stage1, stage2, et
+menu.lst dans le nouveau répertoire.</font>
+<dl compact>
+  <dd><font size="2" face="Courier New">$&nbsp;cd&nbsp;/boot<br>
+    #&nbsp;su&nbsp;toor<br>
+    #&nbsp;mkdir&nbsp;grub<br>
+    #&nbsp;cd&nbsp;grub<br>
+    #&nbsp;cp&nbsp;/path_to_grub/grub-0.5.96.1-i386-pc/stage1&nbsp;.<br>
+    #&nbsp;cp&nbsp;path_to_grub/grub-0.5.96.1-i386-pc/stage2&nbsp;.<br>
+    #&nbsp;cp&nbsp;/path_to_grub/grub-0.5.96.1-i386-pc/menu.lst&nbsp;.</font>
+</dl>
+<p><font face="Verdana" size="2"><b><a name="tth_sEc2.3">2.3</a>&nbsp;&nbsp;Éditer
+menu.1st</b></font></p>
+<p font><font face="Verdana" size="1">Éditez le fichier /boot/grub/menu. Il
+devrait contenir ceci :</font>
+<dl compact>
+  <dd><font size="2" face="Courier New">#&nbsp;For&nbsp;booting&nbsp;FreeBSD&nbsp;<br>
+    title&nbsp;FreeBSD&nbsp;<br>
+    root&nbsp;(hd1,a)&nbsp;<br>
+    kernel&nbsp;/boot/loader<br>
+    #&nbsp;For&nbsp;booting&nbsp;Windows&nbsp;NT&nbsp;or&nbsp;Windows95&nbsp;<br>
+    title&nbsp;Windows&nbsp;NT&nbsp;/&nbsp;Windows&nbsp;95&nbsp;boot&nbsp;menu&nbsp;<br>
+    root&nbsp;(hd0,0)&nbsp;<br>
+    makeactive&nbsp;<br>
+    chainloader&nbsp;+1&nbsp;<br>
+    boot<br>
+    #&nbsp;For&nbsp;loading&nbsp;DOS&nbsp;if&nbsp;Windows&nbsp;NT&nbsp;is&nbsp;installed&nbsp;<br>
+    #&nbsp;chainload&nbsp;/bootsect.dos<br>
+    The&nbsp;same&nbsp;as&nbsp;the&nbsp;above,&nbsp;just&nbsp;for&nbsp;Windows.&nbsp;<br>
+    #&nbsp;For&nbsp;installing&nbsp;GRUB&nbsp;into&nbsp;the&nbsp;hard&nbsp;disk&nbsp;<br>
+    title&nbsp;Install&nbsp;GRUB&nbsp;into&nbsp;the&nbsp;hard&nbsp;disk&nbsp;<br>
+    root&nbsp;(hd0,0)&nbsp;<br>
+    setup&nbsp;(hd0)</font>
+</dl>
+<p font><font face="Verdana" size="1"><b>Remarques :</b> La string
+d'installation devrait refléter votre système personnel. Sur ma machine,
+FreeBSD réside sur le deuxième disque sd1 SCSI et je préfère le booter à
+partir d'une disquette.</font>
+<p font><font face="Verdana" size="1">Les anciennes version de grub peuvent ne
+pas charger le nouveau ELF_kernel de FreeBSD. Par conséquent il était
+nécessaire d'amorcer le kernel indirectement par /boot/loader. Même maintenant
+c'est la méthode préférée, en raison du nombre de dispositifs utiles de
+/boot/loader.</font>
+<p><font face="Verdana" size="2"><b><a name="tth_sEc2.4">2.4</a>&nbsp;&nbsp;Générer
+le disque d'installation bootable</b></font></p>
+<p font><font face="Verdana" size="1">Depuis que je ne peut plus compiler le
+grub sous FreeBSD, l'installation finale doit être faite par l'intermédiaire
+du disque de boot (d'autre part vous pourriez utiliser le grub shell
+directement).</font>
+<p font><font face="Verdana" size="1">Insérez une disquette dans votre lecteur,
+su en root, puis entrez les commandes :</font>
+<dl compact>
+  <dd>
+    <p font><font size="2" face="Courier New">#&nbsp;cd&nbsp;/boot/grub<br>
+    #&nbsp;dd&nbsp;if=stage1&nbsp;of=/dev/fd0&nbsp;bs=512&nbsp;count=1<br>
+    #&nbsp;dd&nbsp;if=stage2&nbsp;of&nbsp;/dev/fd0&nbsp;bs=512&nbsp;seek=1</font>
+</dl>
+<p font><font face="Verdana" size="1">Si tout fonctionne vous devriez avoir
+maintenant un disque d'installation bootable depuis la disquette.</font>
+<p><font face="Verdana" size="2"><b><a name="tth_sEc3">3</a>&nbsp;&nbsp;</b></font><font face="Verdana" size="2"><b>Installer
+Grub</b></font></p>
+<p font><font face="Verdana" size="1">Rebootez votre machine et attendez
+jusqu'à ce que vous soyez dans le grub shell. Entrez alors (tout sur une ligne)
+:</font>
+<dl compact>
+  <dd><font size="2" face="Courier New">install=(hd1,a)/boot/grub/stage1&nbsp;d(fd0)<br>
+    (hd1,a)/boot/grub/stage2&nbsp;0x8000&nbsp;p&nbsp;<br>
+    (hd1,a)/boot/grub/menu.lst</font>
+</dl>
+<p font><font face="Verdana" size="1">La première partie indique à grub où
+trouver son stage1. La 2ème partie indique au grub d'installer son secteur de
+boot sur une disquette (fd0) (insérez en une neuve avant de taper
+&quot;entrée&quot;, si vous voulez conserver votre disque d'installation). La
+3ème partie indique où trouver stage2 et la dernière partie indique où le
+fichier menu réside. J'ai omis la partie avec 0x8000 p, si vous voulez en
+savoir plus lisez le manuel. Un point intéressant : le d devant (fd0) est
+décrit comme facultatif dans le manuel, mais toutes les installations que j'ai
+essayées échouaient quand cette option était omise.</font>
+<p><font face="Verdana" size="2"><b><a name="tth_sEc4">4</a>&nbsp;&nbsp;Références</b></font></p>
+<ol style="font-size: 8 pt; font-family: Verdana">
+  <li><font face="Verdana" size="1">Grub's Home: <a href="http://www.gnu.org/software/grub/grub.en.html">http://www.gnu.org/software/grub/grub.en.html</a></font>
+  <li><font face="Verdana" size="1">Download grub: <a href="ftp://alpha.gnu.org/gnu/grub/">ftp://alpha.gnu.org/gnu/grub/</a></font>
+  <li><font face="Verdana" size="1">The grub manual: <a href="http://www.mcc.ac.uk/grub/grub_toc.html">http://www.mcc.ac.uk/grub/grub_toc.html</a></font>
+  <li><font face="Verdana" size="1">Erik Boleyn's original grub: <a href="http://www.uruk.org/~erich/grub/">http://www.uruk.org/~erich/grub/</a></font>
+</ol>
+
+</body>
+
+</html>

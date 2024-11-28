@@ -1,0 +1,916 @@
+----------------------------------------------------------------------------------------
+Quick Unofficial AddOn:
+Get Sqwebmail to run as  vpopmail.vchkpw  and not as root.root
+
+With default install, if this fits your case...
+> Chown the directory which contains the socket to authdaemon.
+> (Remember to check that the suid bit is still set after)
+chown vpopmail.vchkpw /usr/(local)/share/sqwebmail/var/authdaemon
+chown vpopmail.vchkpw .../cgi-bin/sqwebmail
+chmod +s .../cgi-bin/sqwebmail
+
+(/usr en 755 (drwxr-xr-x root root) else if 711 authdaemon fails)
+
+or rather don't use authdaemon at all ! it's not needed, changepass is enabled by default.
+./configure --enable-mimetypes=/etc/apache/mime.types --enable-cgibindir=/var/www/cgi-bin --enable-https=auto \
+--enable-maxpurge=60 --enable-autopurge=30 --with-cachedir=/var/cache/sqwebmail --with-cacheowner=vpopmail \
+--without-authdaemon
+
+qmail scanner install et patch: http://lea-linux.org/reseau/qmail.html [FR]
+----------------------------------------------------------------------------------------
+
+
+
+Qmail-HOWTO 1.2
+===============
+by Simarpreet Singh Bajaj / egcs 
+simbajaj@slackwarelinux.net
+simbajaj@enixus.com.sg
+15/03/2002
+
+Contents
+--------
+
+1. About this Document
+2. Why use Qmail ?
+3. What You Need
+4. Optional Components
+5. Quick n Dirty Installation
+6. Full Tutorial
+7. Administration Information
+8. IMP/Horde Installation *NEW* - Contributed by Nazman
+
+1. About this Document
+----------------------
+
+I wrote this document because of the severe lack of *GOOD* documentation for a full Qmail 
+setup. I tried to make this document as generic as possible and as broad so that it will cater to 
+all needs but I am bound to miss out many key factors. If there is anything else you would 
+like to know that I haven't mentioned in this document please feel free to e-mail me at 
+simbajaj@slackwarelinux.net so that I can update the document as necessary.
+
+This document is free to the public and to anyone in fact but please let me know if you make 
+any modifications so I may update my copy as well =). Please feel free to add-on 
+redistribute or do what ever you want with but PLEASE don't claim it as yours, I have a 
+personal grudge against hypocrites. I don't know much, or rather I'm too lazy to check, on how 
+I'd get this on the GPL but I do hope you guys realise this document is somewhere along those 
+lines. 
+
+If you want to know more about me, which is highly unlikely, please proceed to 
+http://www.slackwarelinux.net
+
+This document is split into 2 parts. One is the quick and dirty section for those who just 
+want to get the show on the road, the second part is a full explaination of other options 
+available. If you need your Qmail up and running within half and hour and you think you can 
+handle the really vague instructions feel free to go with the quick and dirty. If you do 
+have a lot of time please just relax and read through the document. Most things are generic 
+to most Unix OS's but I haven't had the opportunity to test this on all Unix OS's but I will 
+try and keep this document as generic and as current as possible. All the commands are 
+usually Linux-based so if you encounter any problems I humbly apologise for any 
+inconvenience caused. Now on with it!
+
+2. Why use Qmail ?
+------------------
+
+The question you should be asking yourself is why not ? Qmail is one of the most powerful 
+MTA's available on the market as well as the most secure unlike sendmail which I daresay is 
+bug ridden.
+
+Qmail is the best solution for any ISP and the only bad thing that I found in Qmail is lack 
+of documentation, hence this HOWTO. Whether you are an ISP or just someone that wants to use 
+his box as a mail server Qmail is by far an excellent choice. 
+
+3. What You Need
+----------------
+
+All the software listed below is available on my web site at http://www.slackwarelinux.net/downloads.html. You can 
+however visit the below links to obtain the software or to obtain updated versions of the software.
+
+a) tcprules 0.88 from http://cr.yp.to/ucspi-tcp.html
+b) Qmail 1.03 from http://www.qmail.org
+c) autorespond 1.0.0 from http://www.vpopmail.cx/autorespond-1.0.0.tar.gz
+d) ezmlm 0.53 from http://www.ezmlm.org/
+e) ezmlm 0.40-idx from http://www.ezmlm.org/
+f) vpopmail 4.9.10 from http://www.inter7.com/vpopmail
+
+4. Optional Components
+----------------------
+
+a) qmailadmin 0.45 from http://www.inter7.com/qmailadmin
+b) sqwebmail 2.11 from http://www.courier-mta.org/download.php#sqwebmail
+c) ezmlm 0.40-idx from http://www.ezmlm.org/
+d) courier-imap-1.3.8.1 from http://www.courier-mta.org/download.php
+
+5. Quick and Dirty Installation
+-------------------------------
+
+Please make sure you've downloaded all the above source packages. I don't deal with binaries 
+in this section. Compiling is a good habit to have after all ;).
+
+I've tried to make everything as modular as possible so you could possibly try one instruction 
+at a time if you already have an existing copy of qmail installed. Anything that is contained 
+within "< >" will have to be added in manually by yourself. Good luck!
+
+tcprules 0.88
++++++++++++++
+
+a. tar zxvf ucspi-tcp-0.88.tar.gz
+b. cd ucspi-tcp-0.88
+c. make
+d. make setup check
+
+Qmail 1.03
+++++++++++
+
+a. tar zxvf qmail-1.03.tar.gz
+b. cd qmail-1.03
+c. mkdir /var/qmail
+d. groupadd nofiles
+e. useradd -g nofiles -d /var/qmail/alias alias
+f. useradd -g nofiles -d /var/qmail qmaild
+g. useradd -g nofiles -d /var/qmail qmaill
+h. useradd -g nofiles -d /var/qmail qmailp
+i. groupadd qmail
+j. useradd -g qmail -d /var/qmail qmailq
+k. useradd -g qmail -d /var/qmail qmailr
+l. useradd -g qmail -d /var/qmail qmails
+m. make setup check
+n. ./config-fast <your.full.host.name>
+o. touch ~alias/.qmail-postmaster ~alias/.qmail-mailer-daemon ~alias/.qmail-root
+p. chmod 644 ~alias/.qmail*
+q. cp /var/qmail/bin/sendmail /usr/bin /usr/lib /usr/sbin
+r. cp /var/qmail/boot/home /var/qmail/rc
+s. Edit /var/qmail/rc and change the word Mailbox to Maildir.
+t. touch /var/qmail/smtpd
+u. Edit /var/qmail/smtpd and add in the following script :-
+
+#!/bin/sh
+
+/usr/local/bin/tcpserver -x /etc/tcp.smtp.cdb -v -u <uid of qmaild> -g <uid of nofiles> 0 
+smtp /var/qmail/bin/qmail-smtpd 2>&1 | /var/qmail/bin/splogger smtpd 3 &
+
+Make sure all the above is in one line.
+v. chmod +x /var/qmail/rc 
+w. chmod +x /var/qmail/smtpd
+
+* The useradd syntax is different for other Unix-based OS's. If you really don't know how it's 
+done just e-mail me or check out the INSTALL.ids file in the qmail-1.03 directory. This also 
+applies to all steps where you have to add users and/or groups like the vpopmail one below.
+
+autorespond-1.0.0
++++++++++++++++++
+
+a. tar zxvf autorespond-1.0.0
+b. cd autorespond-1.0.0
+c. gcc -Wall -o autorespond autorespond.c
+d. cp autorespond /usr/local/bin
+
+ezmlm 0.53
+++++++++++
+
+a. tar zxvf ezmlm-0.53.tar.gz
+b. tar zxvf ezmlm-idx-0.40.tar.gz
+c. cd ezmlm-idx-0.40
+d. cp * ../ezmlm-0.53
+e. cd ../ezmlm-0.53
+f. patch < idx.patch
+g. make
+h. make man
+i. make setup
+
+vpopmail 4.9.10
++++++++++++++++
+
+a. tar zxvf vpopmail-4.9.10.tar.gz
+b. cd vpopmail-4.9.10
+c. groupadd vchkpw
+d. useradd -g vchkpw -d <path to vpopmail> vpopmail
+e. Edit /etc/tcp.smtp to reflect the following
+
+127.0.0.:allow,RELAYCLIENT=""
+
+Add in any other IP ranges you see fit as this will allow you to put in IPs that are allowed 
+to relay.
+f. tcprules /etc/tcp.smtp.cdb /etc/tcp.smtp.tmp < /etc/tcp.smtp
+g. ./configure --enable-tcprules-prog=/usr/local/bin/tcprules --enable-logging=e --enable-tcpserver-file=/etc/tcp.smtp
+h. make
+i. make install-strip
+j. Edit /var/qmail/pop3d to reflect the following :
+
+#!/bin/sh
+
+/usr/local/bin/tcpserver 0 pop3 /var/qmail/bin/qmail-popup <your.full.host.name> 
+/var/vpopmail/bin/vchkpw /var/qmail/bin/qmail-pop3d Maildir &
+
+Make sure this is all in one line.
+k. chmod +x /var/qmail/pop3d
+
+Optional Components
++-+-+-+-+-+-+-+-+-+
+
+SQWebmail 2.11
+++++++++++++++
+
+a. tar zxvf sqwebmail-2.11.tar.gz
+b. cd sqwebmail-2.11
+c. ./configure --with-htmllibdir=<path to where you want the HTML files to be> 
+--enable-cgibindir=<path to where you want the CGI to be> --enable-mimetypes=<path to 
+Apache/conf/mimetypes> --with-module=authvchkpw --enable-imagedir=<path to where the images 
+for sqwebmail are to be stored> --enable-webpass=vpopmail
+d. make configure-check
+e. make
+f. make check
+g. make install-strip
+
+QmailAdmin 0.45
++++++++++++++++
+
+a. tar zxvf qmailadmin-0.45.tar.gz
+b. cd qmailadmin-0.45
+c. If the files <path to vpopmail>/etc/inc_deps and <path to vpopmail>/etc/lib_deps don't 
+exist please run this command, if they do exist then just skip until step (e).
+
+echo "-I</path/to/vpopmail>/include" > <path to vpopmail>/etc/inc_deps
+d. echo "-L<path to vpopmail>/lib -lvpopmail" > <path to vpopmail>/etc/lib_deps
+e. ./configure --enable-cgibindir=<path to CGI-Bin directory> --enable-htmllibdir=<path to 
+HTML location>
+
+Note that for the htmllibdir, it should not be web accessible.
+f. make
+g. make install-strip
+
+Courier-IMAP 1.3.8.1
+++++++++++++++++++++
+
+a. tar zxvf courier-imap-1.3.8.1.tar.gz
+b. cd courier-imap-1.3.8.1
+c. ./configure --with-module=authvchkpw
+d. make
+e. make install
+
+Thats all there is to it =). Just type 
+
+a. /var/qmail/rc &
+b. /var/qmail/smtpd &
+c. /var/qmail/pop3d &
+d. /usr/lib/courier-imap/libexec/imapd.rc start
+
+And this will start up all the servers. Add the above 3 commands to all the startup scripts 
+and you should be well on your way.
+
+6. Full Tutorial
+----------------
+
+tcprules 0.88
++++++++++++++
+
+The first step to installing Qmail is by installing ucspi-tcp package or more often called the 
+tcprules program. tcprules is sort of a replacement for inetd, the traditional Unix super 
+server. 
+
+tcprules is used almost the same way as inetd as in it listens to a port and whenever a 
+conneciton is made, it activates the necessary daemon which in this case is either POP3d or 
+SMTP. Vpopmail requires tcprules so that is why we're going to install that first =). 
+
+tcprules does not use the /etc/hosts.allow or /etc/hosts.deny files but instead it's own 
+format of cdb files. This I will explain at a later part when we have to create one for use 
+with the SMTP server.
+
+There's not much controversy or arguements when setting up the tcprules program, there's only 
+one way to do it so no one will argue with you about this one.
+
+a. tar zxvf ucspi-tcp-0.88.tar.gz
+b. cd ucspi-tcp-0.88
+c. make
+d. make setup check
+
+Now that you have tcprules installed we can continue with installing of the actual mail 
+software. Bear in mind that tcprules is installed in /usr/local/bin, so if anyone asks it's 
+there unless of course you made some changes to it.
+
+The next step is to install Qmail itself. Qmail comes with a whole suite of applications like 
+a POP3 server and an SMTP server. I will tell you where these are once the install is 
+complete.
+
+Qmail 1.03
+++++++++++
+
+a. tar zxvf qmail-1.03.tar.gz
+b. cd qmail-1.03
+c. mkdir /var/qmail
+
+The main security features in Qmail lie in the below. Qmail, unlike sendmail, runs as a normal 
+user and not as a super user or anything so it becomes really tough for any hacker (or cracker 
+as it may seem) to hack it because normal users really can't do that much.
+
+Bear in mind that when you create the below users assign a bogus shell to them because we 
+don't want anyone logging in using those accounts. The commands below are pretty general and 
+are Linux-based. If you want to know how to add them other OS's please use the INSTALL.ids 
+file in the Qmail source directory.
+
+d. groupadd nofiles
+e. useradd -g nofiles -d /var/qmail/alias alias
+f. useradd -g nofiles -d /var/qmail qmaild
+g. useradd -g nofiles -d /var/qmail qmaill
+h. useradd -g nofiles -d /var/qmail qmailp
+i. groupadd qmail
+j. useradd -g qmail -d /var/qmail qmailq
+k. useradd -g qmail -d /var/qmail qmailr
+l. useradd -g qmail -d /var/qmail qmails
+
+This is the actual installation of Qmail. It will install all the files to /var/qmail, the 
+directory that was created in the first step. There is a directory called /var/qmail/bin, in 
+this directory there are several binaries such as qmail-smtp and qmail-popup. These are what 
+we will be using later to setup our initialisation scripts.
+
+m. make setup check
+
+If your DNS is configured correctly you can just use ./config and it will setup your hostname 
+automatically without worry. But if on the other other hand you haven't setup the DNS right 
+and you just want to get on with the installation just type the below command with your full 
+hostname. For example, if I'm hosting the domain test.com and I haven't set up my DNS right I 
+would just type ./config-fast test.com and it will add in the necessary.
+
+n. ./config-fast <your.full.host.name>
+
+The below commands are pretty interesting, well I find them interesting anyway. Whenever you 
+create a .qmail-* it will forward all mails that come in for that account to the main 
+Postmaster account on Qmail. It is basically a mail forwarder. Since Qmail (in this instance) 
+does not work with the /etc/passwd and /etc/shadow files the usernames in those files do not 
+really matter so all mail that comes in for any usernames in those files will automatically be 
+bounced normally. But in this case if a mail comes in for root@yourdomain.com it will 
+automatically be sent to the Postmaster account because the .qmail-root forward has been 
+created.
+
+This will eliminate all the bounce messages that usually would occur if such an account didn't 
+actually exist.
+
+o. touch ~alias/.qmail-postmaster ~alias/.qmail-mailer-daemon ~alias/.qmail-root
+p. chmod 644 ~alias/.qmail*
+
+Since there is a very high percentage of sendmail users on this planet still, Qmail has a 
+binary that works under the same pretext as sendmail. This binary is located in 
+/var/qmail/bin/sendmail.
+
+A lot of CGI scripts would find this binary very useful, scripts such as Matt's FormMail. So 
+it would be best if you copied the sendmail binary into all the necessary directories as 
+stated below.
+
+q. cp /var/qmail/bin/sendmail /usr/bin /usr/lib /usr/sbin
+
+This command copies the Qmail initialisation file to /var/qmail for easy access and makes it 
+much easier to start Qmail. Command (s) is something more intricate. By making the change in 
+the /var/qmail/rc file, Qmail will use the Maildir format instead of the traditional Mailbox 
+format.
+
+Sounds confusing ? Well not really. Most mail daemons such as sendmail use Mailbox format. 
+Mailbox is a rather stupid idea when it comes to reliability. What Mailbox format does is that 
+when a messages comes in it is stored in a SINGLE file along with all other messages.
+
+For instance if anonymous@test.com receives a message it is stored in a file called Mailbox 
+and soon enough he receives another message that is also stored in the same file. Assuming the 
+file gets corrupted all is lost and that is a severe pain in the ass.
+
+To go around this problem Qmail has introduced something called the Maildir format. Using the 
+Maildir format, every new message is stored in it's own file so if there is a corruption in 
+that file the only thing lost is that one message and not all the messages, in view of this I 
+would suggest that everyone use the Maildir format as it is much more reliable. Qmail does 
+support the Mailbox format but I don't think you'd like it very much.
+
+r. cp /var/qmail/boot/home /var/qmail/rc
+s. Edit /var/qmail/rc and change the word Mailbox to Maildir.
+
+With the below commands we will setup an initialization script using Qmail's native SMTP 
+server. As you can see from the file below it has a mention of tcp.smtp.cdb, this is the file 
+that is used for all relaying information. It basically stores a list of IP addresses that are 
+allowed to relay mail from your server. I will delve deeper into this later on when the file 
+is to be created.
+
+t. touch /var/qmail/smtpd
+u. Edit /var/qmail/smtpd and add in the following script :-
+
+#!/bin/sh
+
+/usr/local/bin/tcpserver -x /etc/tcp.smtp.cdb -v -u <uid of qmaild> -g <uid of nofiles> 0 
+smtp /var/qmail/bin/qmail-smtpd 2>&1 | /var/qmail/bin/splogger smtpd 3 &
+
+Make sure all the above is in one line.
+
+These commands simply make the scripts that we have ready executable for future use.
+
+v. chmod +x /var/qmail/rc 
+w. chmod +x /var/qmail/smtpd
+
+
+autorespond-1.0.0
++++++++++++++++++
+
+Autorespond, as it's name suggests, adds autoresponding functionality to Qmail. It's really 
+easy to install but there are no Makefiles so just follow the commands below as it's pretty 
+staightforward
+
+a. tar zxvf autorespond-1.0.0
+b. cd autorespond-1.0.0
+
+If you receive any warnings or errors don't be alarmed, it's perfectly fine. Just follow the 
+instructions.
+
+c. gcc -Wall -o autorespond autorespond.c
+d. cp autorespond /usr/local/bin
+
+ezmlm 0.53
+++++++++++
+
+There are 2 packages to EZMLM. EZMLM basically stands for EZ Mailing List Manager. You don't 
+really HAVE to have this package but it's nice to have mailing list support =). The second 
+package ezmlm-idx is actually an add-on for ezmlm and provides manu advanced features. You can 
+check out the website if you want to know, I won't go into it right now. Just head on down to 
+http://www.ezmlm.org/.
+
+If you only want a basic version of EzMLM just skip steps (b), (c), (d), (e) and (f).
+
+a. tar zxvf ezmlm-0.53.tar.gz
+b. tar zxvf ezmlm-idx-0.40.tar.gz
+c. cd ezmlm-idx-0.40
+d. cp * ../ezmlm-0.53
+e. cd ../ezmlm-0.53
+
+This command basically patches EzMLM to support the enhanced idx functionality.
+
+f. patch < idx.patch
+g. make
+h. make man
+i. make setup
+
+vpopmail 4.9.10
++++++++++++++++
+
+Vpopmail is another one Inter7's create creations. Vpopmail allows Qmail to handle several 
+virtual domains and this is excellent for web hosting companies or anything else along those 
+lines. 
+ 
+I'd recommend vpopmail for several reasons including it's Maidlir support as well as support 
+for web-based mail readers like SQWebmail (below) and QmailAdmin for Mail administration (also 
+below.
+
+a. tar zxvf vpopmail-4.9.10.tar.gz
+b. cd vpopmail-4.9.10
+
+The same rule applies where the below groupadd and useradd commands change for different OS's.
+
+c. groupadd vchkpw
+
+All virtual domains as well as mails will be stored in the vpopmail user's home directory so I 
+suggest you find a nice place for this with enough disk space. /home will be fine but I 
+usually put it in /var
+
+d. useradd -g vchkpw -d <path to vpopmail> vpopmail
+
+The below step is very important as it will allow relaying via your SMTP server. Just create a 
+file called /etc/tcp.smtp and all in all the IPs that are required in the format shown below. 
+This is a plain text file but the tcprules program in step (f) will allow it to be changed to 
+cdb format and therework work! =)
+
+e. Edit /etc/tcp.smtp to reflect the following
+
+127.0.0.:allow,RELAYCLIENT=""
+
+Add in any other IP ranges you see fit as this will allow you to put in IPs that are allowed 
+to relay.
+f. tcprules /etc/tcp.smtp.cdb /etc/tcp.smtp.tmp < /etc/tcp.smtp
+
+There are several configuration options for vpopmail. For the --enable-logging tag it is set 
+to "e" which means it would just log errors and nothing else. "y" would make it simply log 
+everything which would be a real pain on your log files, "n" would turn off logging 
+completely and "p" would log everything including wrong passwords entered.
+
+If you are intending to install sqwebmail along with vpopmail I would suggest you use the tag 
+--enable-sqwebmail-pass=y , this will allow Sqwebmail users to change their password via their 
+e-mail interface. It is disabled by default so if you don't want it just follow the below.
+
+If you have created your vpopmail user with any other username be sure to add it into the 
+below with --enable-vpopuser=username and the same goes for the group with 
+--enable-vpopgroup=groupname.
+
+The tag --enable-roaming-users will allow authentication-after-pop. Essentially what this does 
+is that if a user authenticates via the POP server he will be allowed to relay through the 
+server's SMTP without the need for his IP address in the /etc/tcp.smtp. I haven't got this to 
+work before for some reason but I think it's pretty neat. I'll update this document as soon as 
+I've had more time to play with it. 
+
+g. ./configure --enable-tcprules-prog=/usr/local/bin/tcprules --enable-logging=e --enable-tcpserver-file=<path to tcp.smtp>
+h. make
+i. make install-strip
+
+The below is another startup script for the POP3 server. If you don't need a POP3 then there's 
+really no problem with this. If you do just follow the instructions and everything will be 
+fine.
+
+j. Edit /var/qmail/pop3d to reflect the following :
+
+#!/bin/sh
+
+/usr/local/bin/tcpserver 0 pop3 /var/qmail/bin/qmail-popup <your.full.host.name> 
+/var/vpopmail/bin/vchkpw /var/qmail/bin/qmail-pop3d Maildir &
+
+Make sure this is all in one line.
+k. chmod +x /var/qmail/pop3d
+
+SQWebmail 2.11
+++++++++++++++
+
+a. tar zxvf sqwebmail-2.11.tar.gz
+b. cd sqwebmail-2.11
+
+Make sure you have Apache or whichever web server setup for Sqwebmail. There's not much to be 
+done really, just make sure you know where you want the files to be and fill in the blanks.
+
+As for the --with-module option, it is essential that you put down authvchkpw so that 
+SQwebmail is aware that Vpopmail is being used as the virtual domain manager. 
+
+There are some other interesting options. If you have fastcgi installed in Apache you can 
+maximise it by adding the --with-fcgi option.
+
+If you are really security conscious and don't want passwords being transmitted without 
+encryption you can use SSL with SQWebmail. To do this simple add the --with-https option. If 
+you want only the passwords and logins sent using encryption and the rest of the session to be 
+without encryption just put in --with-https=login.
+
+If you want a spell check in SQWebmail simply install ispell or if it's already installed just 
+add in the --with-ispell=<path to ispell>
+
+c. ./configure --with-htmllibdir=<path to where you want the HTML files 
+to be> --enable-cgibindir=<path to where you want the CGI to be> --enable-mimetypes=<path to 
+Apache/conf/mimetypes> --with-module=authvchkpw --enable-imagedir=<path to where the images 
+for sqwebmail are to be stored> --enable-webpass=vpopmail
+
+d. make configure-check
+e. make
+f. make check
+g. make install-strip
+
+Please note that to log onto SQWebmail or to setup any POP3 accounts your username will be 
+your FULL e-mail address. 
+
+QmailAdmin 0.45
++++++++++++++++
+
+QmailAdmin is a neat software. It allows domain owners to administer domains via a web 
+interface. It's not really made for system administrators as it doesn't allow you to add new 
+domains and stuff like that so this will be pretty much useless for root users unless you are 
+really lazy =).
+
+QmailAdmin has built-in support for many things like EzMLM and AutoRespond. One of the 
+drawbacks is the quota support which I am so eagerly waiting for, I will they'd get it up and 
+running soon!
+
+a. tar zxvf qmailadmin-0.45.tar.gz
+b. cd qmailadmin-0.45
+
+There is this weird bug in Vpopmail which does not include to files in the vpopmail/etc 
+directory. These files are essential to QmailAdmin's installation. Check to see if the files 
+lib_deps and inc_deps exist in vpopmail/etc and if it doesn't please follow th below steps.
+
+If the file exists just skip on to step (e).
+
+c. If the files <path to vpopmail>/etc/inc_deps and <path to vpopmail>/etc/lib_deps don't 
+exist please run this command, if they do exist then just skip until step (e).
+
+echo "-I</path/to/vpopmail>/include" > <path to vpopmail>/etc/inc_deps
+d. echo "-L<path to vpopmail>/lib -lvpopmail" > <path to vpopmail>/etc/lib_deps
+
+The below is pretty much standard and if you have installed all the programs in different 
+directories please type ./configure --help | more for further options. 
+
+e. ./configure --enable-cgibindir=<path to CGI-Bin directory> --enable-htmllibdir=<path to 
+HTML location>
+
+Note that for the htmllibdir, it should not be web accessible.
+
+f. make
+g. make install-strip
+
+Courier-IMAP 1.3.8.1
+++++++++++++++++++++
+
+a. tar zxvf courier-imap-1.3.8.1.tar.gz
+b. cd courier-imap-1.3.8.1
+c. ./configure --with-module=authvchkpw
+d. make
+e. make install
+
+Finishing Up
+++++++++++++
+
+a. /var/qmail/rc &
+b. /var/qmail/smtpd &
+c. /var/qmail/pop3d &
+d. /usr/lib/courier-imap/libexec/imapd.rc start
+
+And this will start up all the servers. Add the above 3 commands to all the startup scripts 
+and you should be well on your way.
+
+7. Administration Information
+-----------------------------
+
+Qmail Information
++++++++++++++++++
+
+There's really not much administration to be done. This is just to tell you stuf like how to 
+add users or domains and all that nonsense.
+
+Somethings you might want to know is that all messages are kept in a queue before they are 
+sent out their respective users. This queue is located at /var/qmail/queue. Not that hard was 
+it ?
+
+Vpopmail Information
+++++++++++++++++++++
+
+There are several things to note with vpopmail. Vpopmail is a VIRTUAL pop manager which means 
+it can support several domains without using several IPs or any /etc/passwd files. 
+
+There are a few things that you will probably use when you use vpopmail. Firstly you'd 
+probably add domains if you have more than one. To do this go to /var/vpopmail/bin or wherever 
+your vpopmail/bin directory is and type vadddomain domain.com . It's really simple. This will 
+create a domain directory in /var/vpopmail/domains/domain.com. This domain will be dedicated 
+to that domain and there is always a default domain "super user" which is Postmaster. 
+Postmaster has the ability to remove and create accounts and forwards and other such things.
+
+Secondly, you would probably want to create more users =) If you haven't installed QmailAdmin 
+you can do this manually by going to Vpopmail's bin directory and typing ./vadduser 
+username@domain.com. This will create the user's Maildir in 
+vpopmail/domains/domain.com/username/
+
+This is a very important point you have to note when using Vpopmail is that when you configure 
+your POP3 client or try to log on to SQWebmail or any other web interface your username is 
+your FULL e-mail address. So if your e-mail is username@domain.com your username is also 
+username@domain.com and not just username.
+
+Thats about all really =) Good luck with everything. If you have any other problems please 
+feel free to contact me at simbajaj@slackwarelinux.net.
+
+
+8. IMP/Horde Installation
+-------------------------
+
+This the continuation of Mr Simar's Qmail-HOWTO 1.2. This document provide a simple guide install IMP/Horde 
+as webmail client alternatively to Sqwebmail. IMP is a PHP script to display e-mail messages and 
+use MYSQL to store e-mail messages. For further reading please go to www.horde.org/imp. 
+Users must also carry out task in Apache-HOWTO since there is guide to install PHP
+and MYSQL. The system I am using Redhat 7.2 and  these are component (rpm) installed in the machine. 
+
+php-imap-4.1.2
+php-ldap-4.1.2
+php-mysql-4.1.2
+mysqlclient9
+php-devel-4.2.2
+mysql-server
+Alternatively you can find a tarball for the above components.
+
+The applications
+
+Horde 2.1  is a PHP Framework from www.horde.org/horde
+PEAR 4.1.0 is a Horde library from www.horde.org/pear
+IMP 3.1 is   Horde webmail Client from www.horde.org/imp
+Turba 1.1 is address book from www.horde.org/turba
+You might wanna try Kronolith, the Horde calendaring system from
+www.horde.org/kronolith
+
+1.0 Create necessary directories
+# mkdir -p /var/www/html/mail/
+# mkdir -p /var/log/httpd/mail/
+
+2.0 Install Horde 2.1
+# tar xzf horde-2.1.tar.gz -C /var/www/html/mail
+# cd /var/www/html/mail
+# mv horde-2.1 horde
+
+3.0 Install Pear 4.1.0
+# tar xzf pear-4.1.0.tar.gz -C /usr/share
+# cd /usr/share
+# mv pear-4.1.0 pear
+# chown root.root -R pear
+
+4.0 Configure mysql
+Create the horde database:
+# cd horde/scripts/db
+# vi mysql_create.sql # >>>Important<<< edit the default password
+# mysql < mysql_create.sql   (This process will create tables)
+Test to see if you can connect to the database:
+# mysql -h localhost -D horde -u horde -p
+Exit mysql with the command 'exit'
+
+
+5.0 Configure Horde config files
+Go to:
+# cd horde/config
+and make a copy of the default configuration files:
+For all files with *.dist copy to *.php only; 
+    example  horde.php.dist copy to horde.php and do it to all files.
+
+5.1 /horde/config/horde.php
+horde/config/horde.php 
+// Optional. RedHat's 7.3 PHP does have zlib support. Depends on your distro
+$conf['compress_pages'] = true;
+
+// use IMAP to authenticate users
+$conf['auth']['driver'] = 'imap';
+$conf['auth']['params']['dsn'] = '{localhost/imap:143}INBOX';
+
+// use MySQL to store Horde Stuff
+$conf['prefs']['driver'] = 'sql';
+$conf['prefs']['params']['phptype'] = 'mysql';
+$conf['prefs']['params']['hostspec'] = 'localhost';
+$conf['prefs']['params']['username'] = 'horde';
+$conf['prefs']['params']['password'] = '******'; /* <- edit this line  as in step
+number 4.0*/
+$conf['prefs']['params']['database'] = 'horde';
+$conf['prefs']['params']['table'] = 'horde_prefs';
+
+// SMTP to send emails
+$conf['mailer']['type'] = 'smtp'
+
+
+5.2   /horde/config/lang.php
+Configure the default language for Horde
+horde/config/lang.php 
+// look down for the list of aliases
+$nls['defaults']['language'] = 'en_US';
+//$nls['defaults']['language'] = 'es_ES';
+4.5 Test Horde
+Test the initial configuration of horde by browsing:
+http://mail.example.com/horde/test.php
+
+Then try this page:
+http://mail.example.com/horde/
+
+6.0 Install IMP:
+# tar xzf imp-3.1.tar.gz -C /var/www/html/mail/horde
+# cd /var/www/html/mail/horde
+# mv imp-3.1 imp
+
+
+7.0 Configure IMP config files
+Go to:
+# cd horde/imp/config
+and make a copy of the default configuration files:
+For all files with *.dist copy to *.php only; 
+    example  html.php.dist copy to html.php and do it to all files.
+
+
+7.1 Now, edit this IMP config files in /horde/imp/config  
+horde/imp/config/servers.php 
+There are several options in this files,pop3 ,imap , exchange & cyrus. 
+Edit the only protocols you want user to choose and to use.
+
+// edit this lines
+$servers['imap'] = array(
+'name' => 'IMAP Server',
+'server' => 'localhost',
+'protocol' => 'imap/notls',
+'port' => 143,
+'folders' => 'mail/',
+'namespace' => '',
+'maildomain' => 'example.com',
+'smtphost' => 'mail.example.com',
+'realm' => '',
+'preferred' => 'true'
+
+7.2 /horde/imp/config/pref.php
+Optional, edit this file for better customization
+horde/imp/config/prefs.php 
+// user language
+// look at /horde/config/lang.php for language aliases
+$_prefs['language'] = array(
+'value' => 'en_US',
+'locked' => false,
+'shared' => true,
+'type' => 'select',
+'desc' => _("Select your preferred language:")
+);
+
+// user default mailbox
+// the default inbox canot be changed
+$_prefs['mailbox'] = array(
+'value' => 'INBOX',
+'locked' => true,
+'shared' => false,
+'type' => 'implicit'
+);
+
+// use IMAP subscribe?
+// show only folders subscribed by IMAP
+$_prefs['subscribe'] = array(
+'value' => 1,
+'locked' => true,
+'shared' => false,
+'type' => 'checkbox',
+'desc' => _("Use IMAP folder subscriptions")
+);
+
+// sent mail folder
+// Use the same name as in Mozilla, Outlook Express, etc
+$_prefs['sent_mail_folder'] = array(
+'value' => 'Sent',
+'locked' => false,
+'shared' => true,
+'type' => 'implicit'
+);
+
+// trash folder
+// Use the same name as in Mozilla, Outlook Express, etc
+$_prefs['trash_folder'] = array(
+'value' => 'Trash',
+'locked' => false,
+'shared' => false,
+'type' => 'implicit'
+);
+
+
+7.3 Test IMP
+Now is time to test IMP, browse to:
+http://mail.example.com/horde/imp/test.php
+and login with a valid username/passwd.
+Try sending and email to another server and to yourself.
+
+
+8. Configuring Turba
+Now we have up and running Horde and IMP and we need a contact manager, alias,
+Address Book.
+
+8.1 Download and Install Turba
+# cd /tmp
+# wget -c --passive-ftp ftp://ftp.horde.org/pub/turba/tarballs/turba-1.1.tar.gz
+# tar xzf turba-1.1.tar.gz -C /var/www/html/mail/horde
+# cd /var/www/html/mail/horde
+# mv turba-1.1 turba
+
+8.2 Configure Turba config files
+# cd horde/turba/config
+and make a copy of all the default config files:
+# for foo in *.dist; do cp -v $foo `basename $foo .dist`; done
+
+8.3 Configure Horde for Turba
+Edit this files to allow Turba to run under Horde.
+
+8.4 /horde/config/registry.php
+Register Turba in Horde
+horde/config/registry.php// uncoment this
+$this->applications['turba'] = array(
+    'fileroot' => dirname(__FILE__) . '/../turba',
+    'webroot' => $this->applications['horde']['webroot'] . '/turba',
+    'icon' => $this->applications['horde']['webroot'] . '/turba/graphics/turba.gif',
+    'name' => _("Addressbook"),
+    'allow_guests' => false,
+    'show' => true
+);
+
+8.5 /horde/imp/config/conf.php
+Configure in IMP an icon for Turba
+horde/imp/config/conf.php$conf['menu']['apps'] = array('turba');
+6.2.3 /horde/turba/config/conf.php
+Configure in Turba an icon for IMP
+horde/turba/config/conf.php$conf['menu']['apps'] = array('imp');
+6.2.4 /horde/turba/config/prefs.php
+horde/turba/config/prefs.php// user language
+// set the same default language as Horde and IMP
+$_prefs['language'] = array(
+    'value' => 'en_US',
+    'locked' => false,
+    'shared' => true,
+    'type' => 'select',
+    'desc' => _("Select your preferred language:")
+);
+
+8.6 /horde/turba/config/sources.php
+Configure Turba to use MySQL to store all the contact data
+horde/turba/config/sources.php// complete this part of the config with the data
+// of the database as in /horde/config/horde.php
+// Also config the title to a know name in your locale
+$cfgSources['localsql'] = array(
+    'title' => 'My Addressbook',
+    'type' => 'sql',
+    'params' => array(
+        'phptype' => 'mysql',
+        'hostspec' => 'localhost',
+        'username' => 'horde',
+        'password' => '******', /*Edit this line!!!*/
+        'database' => 'horde',
+        'table' => 'turba_objects'
+    ),
+    ... 
+
+8.7 Configure MySQL for Turba
+Now create the table in MySQL that Turba will use:
+# cd /horde/turba/scripts/drivers/
+# mysql < turba.sql
+If the root user in MySQL needs a password to connect to the DB, use:
+# mysql -u root -p < turba.sql
+
+8.8 Test Turba
+To test turba, browse to this address and login in the Turba link:
+http://mail.example.com/horde/
+Create a new entry in the address book and then go to IMP, then Options
+and select to use the address book with name "IMP Address Book".
+
+

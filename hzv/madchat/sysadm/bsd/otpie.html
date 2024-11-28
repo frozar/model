@@ -1,0 +1,407 @@
+<html>
+<head>
+	<title>O'Reilly Network: One-Time Passwords</title>
+        <script language="javascript" src="/common.js"></script>
+</head>
+<body  bgcolor="#ffffff" text="#000000">
+<a href="http://www.oreillynet.com/"><img src="http://www.oreillynet.com/images/hub/sm-hub_logo.jpg" width="110" height="80" align="left" alt="O'Reilly Network" border="0" /></a>
+
+
+<br clear="all" />
+&nbsp;<font face="verdana,arial,helvetica" size="1">Published on <b><a href="http://www.oreillynet.com/">The O'Reilly Network</a></b> (<a href="http://www.oreillynet.com/">http://www.oreillynet.com/</a>)<br />
+&nbsp;<a href="/pub/a/bsd/2003/02/06/FreeBSD_Basics.html">http://www.oreillynet.com/pub/a/bsd/2003/02/06/FreeBSD_Basics.html</a><br />
+&nbsp;<a href="/pub/a/general/print_code.html">See this</a> if you're having trouble printing code examples</font><br clear="all" />
+<!-- CS_PAGE_BREAK -->
+<h2>
+<a href="/pub/ct/15"></a>
+
+
+
+
+
+
+
+
+
+
+
+One-Time Passwords</h2>
+by <a href="/pub/au/73">Dru Lavigne</a><br />
+02/06/2003<br clear="all">
+<!--  sidebar begins  -->
+<!--  don't move sidebars  -->
+<!--  sidebar ends  -->
+
+<p> Earlier in this series, I wrote about creating password policies and
+using password cracking utilities. (See <a
+href="/pub/a/bsd/2001/01/17/FreeBSD_Basics.html"> Establishing Good
+Password Policies</a> and <a
+href="/pub/a/bsd/2001/01/24/FreeBSD_Basics.html"> Cracking Passwords to
+Enhance Security</a>.) You may recall that it can be challenging to create
+a password policy that balances ease of use with effectiveness. Also,
+utilities exist which are capable of cracking even the most hard to guess
+passwords. In today's article, I'd like to demonstrate an alternative
+authentication system which is available on your FreeBSD system.  </p>
+
+<p>By default, when you login to your FreeBSD system, you are prompted for
+a password. This is known as a "reusable password" because you can input
+the same password whenever you login, until you either change the password
+on your own or are forced to change an expired password. This provides a
+measure of security: someone who doesn't know your password won't be able
+to access the resources on your system. However, this security is
+jeopardized if another user discovers your password.  </p>
+
+<p> There is another authentication system known as One Time Passwords
+(OTP).  As the name suggests, you can only use a password once; you aren't
+allowed to reuse it. An OTP system ensures that a discovered password is
+useless to the person who discovers it. This can provide a bit more
+security in a world that contains password crackers, packet sniffers, and
+<a href="http://www.microspy.com/">keyloggers</a>.  </p>
+
+<h3>Introducing OTP</h3>
+
+<p>OTP was developed at Bellcore (now Telcordia). Originally, it was a
+freely available software program known as S/Key. If you're interested,
+you can read <a href="http://citeseer.nj.nec.com/haller94skey.html">the
+original paper on S/Key</a>.  </p>
+
+<!--  sidebar begins  -->
+<table width="140" border="1" cellspacing="2" cellpadding="10" align="right" style="border: 1px solid #333333; margin: 8px;"><tr>
+<td width="140" valign="top" bgcolor="#ffffff" style="border: none;">
+<p class="headline">Related Reading</p>
+
+<a href="http://www.oreilly.com/catalog/puis3/index.html?CMP=IL7015"><img src="http://www.oreilly.com//catalog/covers/puis3.s.gif" alt="Practical Unix & Internet Security, 3rd Edition" border="0" /></a>
+<p class="medlist"><span class="title"><a href="http://www.oreilly.com/catalog/puis3/index.html?CMP=IL7015">Practical Unix & Internet Security, 3rd Edition</a></span><strong><br />
+
+By <a href="http://www.oreillynet.com/cs/catalog/view/au/355?x-t=book.view&CMP=IL7015">Simson Garfinkel</a>, <a href="http://www.oreillynet.com/cs/catalog/view/au/65?x-t=book.view&CMP=IL7015">Gene Spafford</a>, <a href="http://www.oreillynet.com/cs/catalog/view/au/483?x-t=book.view&CMP=IL7015">Alan Schwartz</a></strong>
+</p>
+<div class="secondary">
+<!--  builds links to list in sidebar  -->
+
+
+
+
+</div>
+</td>
+</tr></table>
+<!--  sidebar ends  -->
+
+
+
+<p>Bellcore went on to trademark the term S/Key in order to develop a
+commercial product. Software development continued elsewhere under the
+name One-time Passwords In Everything (OPIE). OTP eventually evolved into
+hardware products as well. For an overview of the development of both
+software and hardware OTP, see <a
+href="http://www.deer-run.com/~hal/ns2000/otp.pdf">this overview</a>
+(PDF).  </p>
+
+<p> I won't show you how to integrate hardware OTP with your FreeBSD
+system as I'll assume that, like me, you don't have the budget to go out
+and purchase hardware tokens and proprietary authentication servers.</p>
+
+<p>Fortunately, software OTP comes with your FreeBSD system and is easily
+configured. If you're using FreeBSD 4.x or lower, you already have both
+<code>s/key</code> and <code>opie</code> installed.  <code>opie</code> is
+considered to be more secure as it uses MD5, whereas <code>s/key</code>
+uses the less secure MD4.  (See <a
+href="/pub/a/bsd/2002/10/31/FreeBSD_Basics.html">Cryptographic Terminology
+101</a>.)  Starting with FreeBSD 5.0, <code>s/key</code> will be phased
+out and only <code>opie</code> will be supported.  I will cover the
+configuration of <code>opie</code> in this article.  </p>
+
+<h3>Starting OTP</h3>
+
+<p> Before you can begin to use <code>opie</code>, you must add yourself
+to the <code>opie</code> database in <code>/etc/opiekeys</code>. By
+default this database is empty, which means you should just get your
+prompt back if you run this command: </p>
+
+<pre><code>$ more /etc/opiekeys</code></pre>
+
+<p> To add yourself to the database, use the <code>opiepasswd</code>
+command with the console switch: </p>
+
+<pre><code>$ opiepasswd -c
+Adding dlavigne6:
+Only use this method from the console; NEVER from remote. If you are using
+telnet, xterm, or a dial-in, type ^C now or exit with no password.
+Then run opiepasswd without the -c parameter.
+Using MD5 to compute responses.
+Enter new secret pass phrase: 
+Secret pass phrases must be between 10 and 127 characters long.
+Enter new secret pass phrase: 
+Again new secret pass phrase: 
+
+ID dlavigne6 OTP key is 499 dh0391
+CHUG ROSA HIRE MALT DEBT EBEN</code></pre>
+
+<!--  sidebar begins  -->
+<table width="170" border="0" cellspacing="12" cellpadding="6" align="right"><tr><td width="170" valign="top" bgcolor="#efefef">
+<p class="headline">Also in FreeBSD Basics:</p>
+<p class="smalltext"><a href="/pub/a/bsd/2003/01/23/FreeBSD_Basics.html">Odds and Ends</a></p><p class="smalltext"><a href="/pub/a/bsd/2003/01/09/FreeBSD_Basics.html">Cryptosystems:  Debugging IPSec</a></p><p class="smalltext"><a href="/pub/a/bsd/2002/12/26/FreeBSD_Basics.html">Cryptosystems:  Configuring IPSec</a></p><p class="smalltext"><a href="/pub/a/bsd/2002/12/12/FreeBSD_Basics.html">VPNs and IPSec Demystified</a></p><p class="smalltext"><a href="/pub/a/bsd/2002/11/28/FreeBSD_Basics.html">Cryptosystems:  Configuring SSH</a></p>
+</td></tr></table>
+<!--  sidebar ends  -->
+
+<p>Let's take a closer look at what happened when I ran this
+command. Notice the warning at the beginning. When you run
+<code>opiepasswd -c</code> you want to be either physically sitting at the
+machine you normally login to or connected to the machine via
+<code>ssh</code>. Otherwise, your secret pass phrase and resulting
+one-time password will be sent over the network in clear text, defeating
+the purpose of the exercise.</p>
+
+<p> I was then prompted for a secret pass phrase, and I received a warning
+because my original pass phrase was too short. This pass phrase is similar
+in concept to the pass phrase we saw when we generated a public/private
+key pair in <a href="/pub/a/bsd/2002/11/14/FreeBSD_Basics.html">The SSH
+Cryptosystem</a>. This pass phrase isn't used as a password per se;
+instead, it is used to prove that I am the person who added the
+<code>dlavigne6</code> account to the database and the rightful owner of
+the resulting "response" or one-time password. That response is comprised
+of those six uppercase nonsense words.  </p>
+
+<p> At this point, I can verify that I am indeed in the <code>opie</code>
+database: </p>
+
+<pre><code>$ more /etc/opiekeys
+dlavigne6 0499 dh0391           669a4a62db6714f3  Jan 18,2003 15:25:44</code></pre>
+
+<p> Notice that there is one entry in the database which contains my username,
+followed by a counter (499), followed by a seed (dh0391), followed by a key
+(669a4a62db6714f3), followed by the date and time the entry was added to the
+database. The counter and the seed are very important as they are used whenever
+I need to generate a one-time password.  </p>
+
+<p> If I ever need to verify my counter and seed, I should use this
+command:
+</p>
+
+<pre><code>$ opieinfo
+498 dh0391</code></pre>
+
+<p> The <code>opieinfo</code> command displays the count that will be used
+the next time I login. Note that it is expecting the response associated
+with "498", but I only know the response for "499". To figure out what
+response is expected, I use an OTP calculator, which is really the
+<code>opiekey</code> command.  </p>
+
+<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td><p class="secondary">
+<!-- CS_PAGE_INDEX -->
+</p></td><td><p class="secondary" align="right">
+<a href="<!--CS_NEXT_REF-->">
+ </a></p></td></tr></table>
+
+
+
+<!-- CS_PAGE_BREAK -->
+
+<p>
+
+
+
+
+<!-- CS_PAGE_INDEX -->
+</p>
+
+<h3>Logging In</h3>
+
+<p>At this point I also have a choice: I can either use the calculator
+from a separate terminal every time I login, or I can print myself a list
+of responses and regenerate a new list whenever I run out of
+responses. Let's try both methods, starting with the first: </p>
+
+<pre><code>login: dlavigne6
+otp-md5 498 dh0391 ext
+Password:</code></pre>
+
+<p>Notice that when I login, I receive an OTP challenge.
+<code>opie</code> is waiting for the response, or one-time password,
+associated with counter 498. By default, users can decide whether or not
+to use OTP when they login. If I decide instead to type in my reusable
+password, it will be accepted and I'll login as usual.  </p>
+
+<p>If I decide to login using OTP, I'll first need to calculate the
+correct response. It doesn't matter where I use the calculator, <strong>as
+long as i don't use it over a non-encrypted network connection</strong>. I
+could use the calculator from another virtual terminal; for example, I
+could press Alt-F3, login locally and run the calculator. Alternately, if
+I have access to another computer in the room, or even a Palm Pilot
+running the calculator software, I could calculate the response there.
+</p>
+
+<p> In order to use the calculator I need to know three things: </p>
+
+<ul>
+<li>the current counter</li>
+<li>my seed</li>
+<li>my secret pass phrase</li>
+</ul>
+
+<p>The current counter and seed are displayed in the challenge. However,
+it is important that only I know my secret pass phrase; otherwise, anyone
+could calculate the response and login as if they were me.  </p>
+
+<p>When I use the calculator, I include the count I need the response for
+as well as my seed: </p>
+
+<pre><code>$ opiekey 498 dh0391
+Using the MD5 algorithm to compute response.
+Reminder: Don't use opiekey from telnet or dial-in sessions.
+Enter secret pass phrase:
+MASK BALM COL HER RIFT TERM</code></pre>
+
+<p>Note that I was prompted for my secret pass phrase, then given the
+response associated with counter 498: <code>MASK BALM COL HER RIFT
+TERM</code>.  </p>
+
+<p>Now that I know the correct response, I can return to my login prompt:
+</p>
+
+<pre><code>login: dlavigne6
+otp-md5 498 dh0391 ext
+Password: (here I pressed enter)
+otp-md5 498 dh0391 ext
+Password [echo on]: mask balm col her rift term</code></pre>
+
+<p>This time, instead of typing my reusable password, I pressed Enter
+which turned on echo. This allowed me to see the response as I typed
+it. Echo is a bad thing with reusable passwords which is why it is always
+off. However, with a one-time password, it doesn't matter if anyone sees
+me typing it as it can't be reused. Also, unlike a reusable password, the
+response is not case sensitive so it doesn't matter if I type it in upper
+or lower case.  </p>
+
+<p>Now if I do an <code>opieinfo</code>, I'll see that the next expected
+response will be for counter 497. That is, every time I use a one-time
+password, the counter is decreased by one. I can merrily continue to
+calculate and use up my responses; I need only be careful that I never let
+my counter decrease to 0.  </p>
+
+<h3>Generating Multiple Keys</h3>
+
+<p> It may not always be convenient to use the calculator every time you
+want to login. Let's demonstrate the second method, where a list of
+responses is generated.  </p>
+
+<p>This time, I'll use the number or <code>n</code> switch with the
+calculator, to indicate how many responses I'd like to calculate. Here,
+I'll generate a list of 10 responses, starting at the next expected count
+of 497:</p>
+
+<pre><code>$ opiekey -n 10 497 dh0391
+
+Using the MD5 algorithm to compute response.
+Reminder: Don't use opiekey from telnet or dial-in sessions.
+Enter secret pass phrase: 
+488: COIN LO DOG GOLF ACTA FULL
+489: SOD STUN SINK DRAW LAWN TILT
+490: MALT STAY MASH CAR DEBT WAST
+491: HOWE DRY WALL TOO BUDD SWIM
+492: ROOT SPY BOND JEST HAIL SCAR
+493: MEAN ADD NEON CAIN LION LAUD
+494: LYLE HOLD HIGH HOME ITEM MEL
+495: WICK BALI MAY EGO INK TOOK
+496: RENT ARM WARN ARC LICE DOME
+497: LEAD JAG MUCH MADE NONE WRIT</code></pre>
+
+<p> I now know what my next ten passwords will be. At this point, I could
+copy them to a piece of paper and store them in a safe place such as my
+wallet.  Alternately, when you generate your own list, you could send the
+output to a file like so: </p>
+
+<pre><code>$ opiekey -n 10 497 dh0391 > secretlist</code></pre>
+
+<p> and print the list. Be careful to remove that file from your hard drive once
+you've printed it as you don't want to keep a copy of your next ten passwords
+on your hard drive.  </p>
+
+<p> If my counter gets dangerously low, say around 10, I should reset it using
+the <code>opiepasswd</code> command. Once you're in the password database, use
+the <code>n</code> or number switch in combination with the <code>s</code> or
+seed switch instead of the <code>c</code> switch. In the next example, I'll
+reset the counter back to 499 and change my seed to dh1357. When I do so, I'll
+be prompted for the response associated with my current counter, which happens
+to be 8: </p>
+
+<pre><code>$ opiepasswd -n 499 -s dh1357
+Updating dlavigne6:
+You need the response from an OTP generator.
+Old secret pass phrase:
+	otp-md5 8 dh0391 ext
+	Response: loot omit safe eric jolt dark
+New secret pass phrase:
+	otp-md5 499 dh1357
+	Response: hewn as dot mel mali mann</code></pre>
+
+<h3>Finishing Up</h3>
+
+<p> At this point, you may be wondering when would be the best time to
+actually use OTP, since you have a choice of using either OTP or a
+reusable password whenever you receive a login prompt. You probably won't
+use OTP when you login to a remote computer as you should use SSH for that
+purpose. Since SSH ensures that all of your information is encrypted, it
+has no need for OTP and hence does not support OTP. However, OTP can be
+appropriate when you need to login to your computer and you are concerned
+about "shoulder surfing" or someone else noticing your password as you
+type it in. For example, you may be in a crowded area with your
+laptop. Your computer may happen to be located in a high traffic area,
+which increases the possibility of someone noticing what password you use
+to login.  </p>
+
+<p>It is convenient to leave users with the choice of using or not using
+OTP depending upon the likelihood of someone else noticing their password
+when they need to login. It is also possible to change this default and
+configure your FreeBSD system to force users to always use OTP. The
+original way to do this was to create a file called
+<code>/etc/opieaccess</code>. However, this method is considered to be a
+security hole and is even cautioned against in <code>man
+opieaccess</code>.  </p>
+
+<p> The preferred method is to use Pluggable Authentication Modules
+(PAM). Since I want to spend a fair bit of time on PAM, I will end this
+week's article here. In the next article, I'll introduce PAM, then carry
+on by configuring OTP as an example.  </p>
+
+<p><i>
+<a href="/pub/au/73">Dru Lavigne</a> 
+is a networking instructor at a private technical college in Kingston,
+ON, where
+she teaches the fundamentals of TCP/IP networking, routing, and security.
+
+</i></p>
+
+<hr size="1" noshade />
+
+<p><i>Read more <a href="/pub/ct/15"><b>FreeBSD Basics</a></b> columns</i>.</p>
+
+
+
+
+
+
+
+
+
+
+
+<p>Return to the <a href="/bsd/">BSD DevCenter</a>.</p>
+
+
+
+
+
+<p><font face="verdana,arial,helvetica" size="1"><b>oreillynet.com</b> Copyright &copy; 2003 O'Reilly &amp; Associates, Inc.</font></p></body>
+
+</html>
+
+
+
+
+
+
+
+
+
+
+

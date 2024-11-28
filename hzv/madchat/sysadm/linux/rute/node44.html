@@ -1,0 +1,1160 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 99.2beta8 (1.46)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>41. Point-to-Point Protocol -- Dialup Networking</TITLE>
+<META NAME="description" CONTENT="41. Point-to-Point Protocol -- Dialup Networking">
+<META NAME="keywords" CONTENT="rute">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v99.2beta8">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="rute.css">
+
+<LINK REL="next" HREF="node45.html">
+<LINK REL="previous" HREF="node43.html">
+<LINK REL="up" HREF="rute.html">
+<LINK REL="next" HREF="node45.html">
+</HEAD>
+
+<BODY BGCOLOR=#FFFFFF >
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD align=left bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-purchase.html"><FONT COLOR=white>Purchase</FONT></A>&nbsp;
+</FONT>
+</TD><TD align=center bgcolor="#000000">
+<FONT COLOR=white>
+Copyright&nbsp;&#169;&nbsp;2002&nbsp;Paul Sheer. <A HREF="copying.html"><FONT COLOR=white>Click here for copying permissions.</FONT></A>
+</FONT>
+</TD><TD align=right bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-home.html"><FONT COLOR=white>Home</FONT></A>&nbsp;
+</FONT>
+</TD></TR>
+<TR><TD colspan=2 align=left bgcolor="#ECEBF4">
+<IMG SRC="va-btn-small-light-60.png">
+</TD><TD align=right bgcolor="#ECEBF4">
+<IMG SRC="sflogo2-steel-60.png">
+</TD></TR>
+</TABLE><BR>
+
+<!--Navigation Panel-->
+<A NAME="tex2html2803"
+  HREF="node45.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2799"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2793"
+  HREF="node43.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2801"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2804"
+  HREF="node45.html">42. The LINUX Kernel</A>
+<B> Up:</B> <A NAME="tex2html2800"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2794"
+  HREF="node43.html">40. named  </A>
+ &nbsp <B>  <A NAME="tex2html2802"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html2805"
+  HREF="#SECTION004410000000000000000">41.1 Basic Dialup</A>
+<UL>
+<LI><A NAME="tex2html2806"
+  HREF="#SECTION004411000000000000000">41.1.1 Determining your <TT>
+<FONT COLOR="#0000ff">chat</FONT></TT> script</A>
+<LI><A NAME="tex2html2807"
+  HREF="#SECTION004412000000000000000">41.1.2 CHAP and PAP</A>
+<LI><A NAME="tex2html2808"
+  HREF="#SECTION004413000000000000000">41.1.3 Running <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT></A>
+</UL>
+<LI><A NAME="tex2html2809"
+  HREF="#SECTION004420000000000000000">41.2 Demand-Dial, Masquerading</A>
+<LI><A NAME="tex2html2810"
+  HREF="#SECTION004430000000000000000">41.3 Dialup DNS</A>
+<LI><A NAME="tex2html2811"
+  HREF="#SECTION004440000000000000000">41.4 Dial-in Servers</A>
+<LI><A NAME="tex2html2812"
+  HREF="#SECTION004450000000000000000">41.5 Using <TT>
+<FONT COLOR="#0000ff">tcpdump</FONT></TT></A>
+<LI><A NAME="tex2html2813"
+  HREF="#SECTION004460000000000000000">41.6 ISDN Instead of Modems</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION004400000000000000000">
+41. Point-to-Point Protocol -- Dialup Networking</A>
+</H1>
+
+<P>
+<A NAME="chap:pppdialup"></A>
+<P>
+Dialup networking is
+unreliable and difficult to configure. The reason is
+simply that telephones were not designed for data. However,
+considering that the telephone network is by far the largest
+electronic network on the globe, it makes sense to make use of
+it. This is why modems were created. On the other hand, the
+advent of ISDN is slightly more expensive and a better
+choice for all but home dialup. See Section <A HREF="node44.html#sec:isdn">41.6</A>
+for more information.
+
+<P>
+
+<H1><A NAME="SECTION004410000000000000000">
+41.1 Basic Dialup</A>
+</H1>
+
+<P>
+<A NAME="sec:basicdialup"></A>For home use, dialup networking is not all that difficult to
+configure. The PPP HOWTO contains lots on this (see Section <A HREF="node19.html#chap:alldoc">16</A>).
+For my machine this boils down to creating the files
+<TT>
+<FONT COLOR="#0000ff">/etc/ppp/chap-secrets</FONT></TT>
+and <TT>
+<FONT COLOR="#0000ff">/etc/ppp/pap-secrets</FONT></TT>,
+both containing the following line of text:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&#060;username&#062;&nbsp;&nbsp;*&nbsp;&nbsp;&#060;password&#062;&nbsp;&nbsp;*</code><br>
+</FONT></TD></TR></TABLE><P>
+although only one of the files will be used,
+then running the following command at a shell
+prompt: <FONT COLOR="#ffa500">[This example
+assumes that an initialization string
+of <TT>
+<FONT COLOR="#0000ff">AT&#38;F1</FONT></TT> is
+sufficient. See Section <A HREF="node6.html#sec:hardwaremodem">3.5</A>.]</FONT>
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>pppd&nbsp;connect&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"chat&nbsp;-S&nbsp;-s&nbsp;-v&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;''&nbsp;'AT&#038;F1'&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;OK&nbsp;ATDT&#060;tel-number&#062;&nbsp;CONNECT&nbsp;''&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;name:&nbsp;&#060;username&#062;&nbsp;assword:&nbsp;'\q&#060;password&#062;'&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;con:&nbsp;ppp"&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;/dev/&#060;modem&#062;&nbsp;57600&nbsp;debug&nbsp;crtscts&nbsp;modem&nbsp;lock&nbsp;nodetach&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;hide-password&nbsp;defaultroute&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;user&nbsp;&#060;username&#062;&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;noauth</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+This is a minimalist's dial-in
+command and it's specific to <I>my</I> ISP
+only. Don't use the exact command unless you have an account with the
+Internet Solution ISP in South Africa, before January 2000.
+
+<P>
+The command-line options are explained as follows:
+<DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">connect &lt;script&gt;</FONT></TT></STRONG></DT>
+<DD>Specifies the script that <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT> must use to start things
+up. When you use a modem manually (as is shown further below), you need
+to go through the steps of initializing the modem, causing a dial, connecting,
+logging in, and finally telling the remote computer that you would like to set the
+connection to ``data communication'' mode, called the <I>point-to-point protocol</I>,
+or <I>PPP</I>. The <TT>
+<FONT COLOR="#0000ff">&lt;script&gt;</FONT></TT> is the automation of this
+manual procedure.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">chat -S -s -v &lt;expect&gt; &lt;send&gt; &lt;expect&gt; &lt;send&gt; ...</FONT></TT></STRONG></DT>
+<DD>The <TT>
+<FONT COLOR="#0000ff">&lt;script&gt;</FONT></TT> proper. <TT>
+<FONT COLOR="#0000ff">chat</FONT></TT> has a man page
+and uses other than modem communication. <TT>
+<FONT COLOR="#0000ff">-S</FONT></TT> means to
+log messages to the terminal and not to <TT>
+<FONT COLOR="#0000ff">syslog</FONT></TT>; <TT>
+<FONT COLOR="#0000ff">-s</FONT></TT>
+means to log to stderr; <TT>
+<FONT COLOR="#0000ff">-v</FONT></TT> means verbose output. After
+the options comes a list of things the modem is likely to say,
+alternated with appropriate responses. This is called an
+<I>expect-send</I> sequence. The
+sequence <TT>
+<FONT COLOR="#0000ff">AT&amp;F1</FONT></TT> is the modem
+initialization string. <FONT COLOR="#ffa500">[This example
+assumes that an initialization string of <TT>
+<FONT COLOR="#0000ff">AT&#38;F1</FONT></TT> is
+sufficient. See Section <A HREF="node6.html#sec:hardwaremodem">3.5</A>.]</FONT><TT>
+<FONT COLOR="#0000ff">&#92;q</FONT></TT> means to <I>not</I> print the
+password amid the debug output--very important.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/tty</FONT></TT><I>?</I><I>?</I></STRONG></DT>
+<DD>Specifies the device you are going to use.
+This will usually be <TT>
+<FONT COLOR="#0000ff">/dev/ttyS0</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">/dev/ttyS1</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">/dev/ttyS2</FONT></TT>, or <TT>
+<FONT COLOR="#0000ff">/dev/ttyS3</FONT></TT>.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">57600</FONT></TT></STRONG></DT>
+<DD>The speed the modem is to be set to. This is only the speed
+between the PC and the modem and has nothing to do with the
+actual data throughput. It should be set as high as possible
+except in the case of very old machines whose serial ports
+may possibly only handle <TT>
+<FONT COLOR="#0000ff">38400</FONT></TT>. It's best to choose
+<TT>
+<FONT COLOR="#0000ff">115200</FONT></TT> unless this doesn't work.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">debug</FONT></TT></STRONG></DT>
+<DD>Output debug information. This option is useful for
+diagnosing problems.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">crtscts</FONT></TT></STRONG></DT>
+<DD>Use hardware flow control.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">modem</FONT></TT></STRONG></DT>
+<DD>Use modem control lines. This is actually the default.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">lock</FONT></TT></STRONG></DT>
+<DD>Create a UUCP lock file in <TT>
+<FONT COLOR="#0000ff">/var/lock/</FONT></TT>.
+As explained in Section <A HREF="node37.html#sec:ttylockfile">34.4</A>, this is
+a file of the form <TT>
+<FONT COLOR="#0000ff">/var/lock/LCK..tty</FONT></TT><I>?</I><I>?</I>
+that tells other applications that the serial device is in use. For this
+reason, you <I>must not</I> call the device <TT>
+<FONT COLOR="#0000ff">/dev/modem</FONT></TT> or
+<TT>
+<FONT COLOR="#0000ff">/dev/cua</FONT></TT><I>?</I>.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">nodetach</FONT></TT></STRONG></DT>
+<DD>Remain always a foreground process. This allows you
+to watch <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT> run and stop it with <TT>
+<FONT COLOR="#0000ff">&#94;C</FONT></TT>.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">defaultroute</FONT></TT></STRONG></DT>
+<DD>Create an IP route after PPP comes
+alive. Henceforth, packets will go to the right place.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">hide-password</FONT></TT></STRONG></DT>
+<DD>Hide the password from the
+logs. This is important for security.
+
+<P>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">user &lt;username&gt;</FONT></TT></STRONG></DT>
+<DD>Specifies the line from the
+<TT>
+<FONT COLOR="#0000ff">/etc/ppp/chap-secrets</FONT></TT>
+and <TT>
+<FONT COLOR="#0000ff">/etc/ppp/pap-secrets</FONT></TT>
+file to use. For a home PC there is usually only one line.
+</DD>
+</DL>
+
+<P>
+
+<H2><A NAME="SECTION004411000000000000000">
+41.1.1 Determining your <TT>
+<FONT COLOR="#0000ff">chat</FONT></TT> script</A>
+</H2>
+
+<P>
+<A NAME="sec:diptest"></A>
+To determine the list of expect-send sequences, you need to
+do a manual dial-in. The command
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>dip&nbsp;-t</code><br>
+</FONT></TD></TR></TABLE><P>
+stands for <I>dial-IP</I> and talks directly to your modem.
+
+<P>
+The following session demonstrates a manual dial for user
+<TT>
+<FONT COLOR="#0000ff">psheer</FONT></TT>. Using <TT>
+<FONT COLOR="#0000ff">dip</FONT></TT>
+manually like this is a game of trying to get the garbage lines
+you see below: this is PPP starting to talk. When you get this junk,
+you have won and can press <TT>
+<FONT COLOR="#0000ff">&#94;C</FONT></TT>.
+Then, copy and paste your session for future reference.
+
+<P>
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>20</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>25</code></font><code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>[root@cericon]#&nbsp;<font color="navy"><B>dip&nbsp;-t</B></font></code><br>
+<code>DIP:&nbsp;Dialup&nbsp;IP&nbsp;Protocol&nbsp;Driver&nbsp;version&nbsp;3.3.7o-uri&nbsp;(8&nbsp;Feb&nbsp;96)</code><br>
+<code>Written&nbsp;by&nbsp;Fred&nbsp;N.&nbsp;van&nbsp;Kempen,&nbsp;MicroWalt&nbsp;Corporation.</code><br>
+<code>&nbsp;</code><br>
+<code>DIP&#062;&nbsp;<font color="navy"><B>port&nbsp;ttyS0</B></font></code><br>
+<code>DIP&#062;&nbsp;<font color="navy"><B>speed&nbsp;57600</B></font></code><br>
+<code>DIP&#062;&nbsp;<font color="navy"><B>term</B></font></code><br>
+<code>[&nbsp;Entering&nbsp;TERMINAL&nbsp;mode.&nbsp;&nbsp;Use&nbsp;CTRL-]&nbsp;to&nbsp;get&nbsp;back&nbsp;]</code><br>
+<code><font color="navy"><B>AT&#38;F1</B></font></code><br>
+<code>OK</code><br>
+<code><font color="navy"><B>ATDT4068500</B></font></code><br>
+<code>CONNECT&nbsp;26400/ARQ/V34/LAPM/V42BIS</code><br>
+<code>Checking&nbsp;authorization,&nbsp;please&nbsp;wait...</code><br>
+<code>name:<font color="navy"><B>psheer</B></font></code><br>
+<code>password:</code><br>
+<code>&nbsp;</code><br>
+<code>c2-ctn-icon:<font color="navy"><B>ppp</B></font></code><br>
+<code>Entering&nbsp;PPP&nbsp;mode.</code><br>
+<code>Async&nbsp;interface&nbsp;address&nbsp;is&nbsp;unnumbered&nbsp;(FastEthernet0)</code><br>
+<code>Your&nbsp;IP&nbsp;address&nbsp;is&nbsp;196.34.157.148.&nbsp;MTU&nbsp;is&nbsp;1500&nbsp;bytes</code><br>
+<code>&nbsp;</code><br>
+<code>~y}#A!}!e}&nbsp;}3}"}&#038;}&nbsp;}*}&nbsp;}&nbsp;}~}&#038;4}2Iq}'}"}(}"N$~~y}#A!}!r}&nbsp;}4}"}&#038;}&nbsp;}</code><br>
+<code>[&nbsp;Back&nbsp;to&nbsp;LOCAL&nbsp;mode.&nbsp;]</code><br>
+<code>DIP&#062;&nbsp;<font color="navy"><B>quit</B></font></code><br>
+<code>[root@cericon]#</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Now you can modify the above <TT>
+<FONT COLOR="#0000ff">chat</FONT></TT> script as you
+need. The kinds of things that will differ are trivial: like having
+<TT>
+<FONT COLOR="#0000ff">login:</FONT></TT> instead of <TT>
+<FONT COLOR="#0000ff">name:</FONT></TT>. Some systems also require you to
+type something instead of <TT>
+<FONT COLOR="#0000ff">ppp</FONT></TT>, and some require nothing to be
+typed after your password. Some further require nothing to be typed
+at all, thus immediately entering PPP mode.
+
+<P>
+Note that <TT>
+<FONT COLOR="#0000ff">dip</FONT></TT> also creates UUCP lock files as explained in
+Section <A HREF="node37.html#sec:ttylockfile">34.4</A>.
+
+<P>
+
+<H2><A NAME="SECTION004412000000000000000">
+41.1.2 CHAP and PAP</A>
+</H2>
+
+<P>
+You may ask why there are <TT>
+<FONT COLOR="#0000ff">/etc/ppp/chap-secrets</FONT></TT> and
+<TT>
+<FONT COLOR="#0000ff">/etc/ppp/pap-secrets</FONT></TT> files if a user name and password are already
+specified inside the the <TT>
+<FONT COLOR="#0000ff">chat</FONT></TT> script. <I>CHAP</I> (Challenge Handshake
+Authentication Protocol) and <I>PAP</I> (Password Authentication Protocol)
+are authentication mechanisms used <I>after</I> logging in--in other
+words, somewhere amid the
+<BR><A NAME="ppp:protogarbage"></A><FONT SIZE="-1"><TT>
+<FONT COLOR="#0000ff">~&#121;&#125;&#35;&#65;&#33;&#125;&#33;&#101;&#125;&nbsp;&#125;&#51;&#125;&#34;&#125;&#38;&#125;&nbsp;&#125;&#42;&#125;&nbsp;&#125;&nbsp;&#125;~&#125;&#38;&#52;&#125;&#50;&#73;&#113;&#125;&#39;&#125;&#34;&#125;&#40;&#125;&#34;&#78;&#36;~~&#121;&#125;&#35;&#65;&#33;&#125;&#33;&#114;&#125;&nbsp;&#125;&#52;&#125;&#34;&#125;&#38;&#125;&nbsp;&#125;</FONT></TT></FONT>.
+
+<P>
+
+<H2><A NAME="SECTION004413000000000000000">
+41.1.3 Running <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT></A>
+</H2>
+
+<P>
+If you run the <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT> command above, you will get output something like this:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red size="-1">
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>20</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>25</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>30</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>35</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>40</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>45</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>50</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>55</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue size="-1">
+<code>send&nbsp;(AT&#038;F1^M)</code><br>
+<code>expect&nbsp;(OK)</code><br>
+<code>AT&#038;F1^M^M</code><br>
+<code>OK</code><br>
+<code>&nbsp;--&nbsp;got&nbsp;it</code><br>
+<code>&nbsp;</code><br>
+<code>send&nbsp;(ATDT4068500^M)</code><br>
+<code>expect&nbsp;(CONNECT)</code><br>
+<code>^M</code><br>
+<code>ATDT4068500^M^M</code><br>
+<code>CONNECT</code><br>
+<code>&nbsp;--&nbsp;got&nbsp;it</code><br>
+<code>&nbsp;</code><br>
+<code>send&nbsp;(^M)</code><br>
+<code>expect&nbsp;(name:)</code><br>
+<code>&nbsp;45333/ARQ/V90/LAPM/V42BIS^M</code><br>
+<code>Checking&nbsp;authorization,&nbsp;Please&nbsp;wait...^M</code><br>
+<code>username:</code><br>
+<code>&nbsp;--&nbsp;got&nbsp;it</code><br>
+<code>&nbsp;</code><br>
+<code>send&nbsp;(psheer^M)</code><br>
+<code>expect&nbsp;(assword:)</code><br>
+<code>psheer^M</code><br>
+<code>password:</code><br>
+<code>&nbsp;--&nbsp;got&nbsp;it</code><br>
+<code>&nbsp;</code><br>
+<code>send&nbsp;(??????)</code><br>
+<code>expect&nbsp;(con:)</code><br>
+<code>^M</code><br>
+<code>^M</code><br>
+<code>c2-ctn-icon:</code><br>
+<code>&nbsp;--&nbsp;got&nbsp;it</code><br>
+<code>&nbsp;</code><br>
+<code>send&nbsp;(ppp^M)</code><br>
+<code>Serial&nbsp;connection&nbsp;established.</code><br>
+<code>Using&nbsp;interface&nbsp;ppp0</code><br>
+<code>Connect:&nbsp;ppp0&nbsp;&#060;--&#062;&nbsp;/dev/ttyS0</code><br>
+<code>sent&nbsp;[LCP&nbsp;ConfReq&nbsp;id=0x1&nbsp;&#060;asyncmap&nbsp;0x0&#062;&nbsp;&#060;magic&nbsp;0x88c5a54f&#062;&nbsp;&#060;pcomp&#062;&nbsp;&#060;accomp&#062;]</code><br>
+<code>rcvd&nbsp;[LCP&nbsp;ConfReq&nbsp;id=0x3d&nbsp;&#060;asyncmap&nbsp;0xa0000&#062;&nbsp;&#060;magic&nbsp;0x3435476c&#062;&nbsp;&#060;pcomp&#062;&nbsp;&#060;accomp&#062;]</code><br>
+<code>sent&nbsp;[LCP&nbsp;ConfAck&nbsp;id=0x3d&nbsp;&#060;asyncmap&nbsp;0xa0000&#062;&nbsp;&#060;magic&nbsp;0x3435476c&#062;&nbsp;&#060;pcomp&#062;&nbsp;&#060;accomp&#062;]</code><br>
+<code>rcvd&nbsp;[LCP&nbsp;ConfAck&nbsp;id=0x1&nbsp;&#060;asyncmap&nbsp;0x0&#062;&nbsp;&#060;magic&nbsp;0x88c5a54f&#062;&nbsp;&#060;pcomp&#062;&nbsp;&#060;accomp&#062;]</code><br>
+<code>sent&nbsp;[IPCP&nbsp;ConfReq&nbsp;id=0x1&nbsp;&#060;addr&nbsp;192.168.3.9&#062;&nbsp;&#060;compress&nbsp;VJ&nbsp;0f&nbsp;01&#062;]</code><br>
+<code>sent&nbsp;[CCP&nbsp;ConfReq&nbsp;id=0x1&nbsp;&#060;deflate&nbsp;15&#062;&nbsp;&#060;deflate(old#)&nbsp;15&#062;&nbsp;&#060;bsd&nbsp;v1&nbsp;15&#062;]</code><br>
+<code>rcvd&nbsp;[IPCP&nbsp;ConfReq&nbsp;id=0x45&nbsp;&#060;addr&nbsp;168.209.2.67&#062;]</code><br>
+<code>sent&nbsp;[IPCP&nbsp;ConfAck&nbsp;id=0x45&nbsp;&#060;addr&nbsp;168.209.2.67&#062;]</code><br>
+<code>rcvd&nbsp;[IPCP&nbsp;ConfRej&nbsp;id=0x1&nbsp;&#060;compress&nbsp;VJ&nbsp;0f&nbsp;01&#062;]</code><br>
+<code>sent&nbsp;[IPCP&nbsp;ConfReq&nbsp;id=0x2&nbsp;&#060;addr&nbsp;192.168.3.9&#062;]</code><br>
+<code>rcvd&nbsp;[LCP&nbsp;ProtRej&nbsp;id=0x3e&nbsp;80&nbsp;fd&nbsp;01&nbsp;01&nbsp;00&nbsp;0f&nbsp;1a&nbsp;04&nbsp;78&nbsp;00&nbsp;18&nbsp;04&nbsp;78&nbsp;00&nbsp;15&nbsp;03&nbsp;2f]</code><br>
+<code>rcvd&nbsp;[IPCP&nbsp;ConfNak&nbsp;id=0x2&nbsp;&#060;addr&nbsp;196.34.157.131&#062;]</code><br>
+<code>sent&nbsp;[IPCP&nbsp;ConfReq&nbsp;id=0x3&nbsp;&#060;addr&nbsp;196.34.157.131&#062;]</code><br>
+<code>rcvd&nbsp;[IPCP&nbsp;ConfAck&nbsp;id=0x3&nbsp;&#060;addr&nbsp;196.34.157.131&#062;]</code><br>
+<code>local&nbsp;&nbsp;IP&nbsp;address&nbsp;196.34.25.95</code><br>
+<code>remote&nbsp;IP&nbsp;address&nbsp;168.209.2.67</code><br>
+<code>Script&nbsp;/etc/ppp/ip-up&nbsp;started&nbsp;(pid&nbsp;671)</code><br>
+<code>Script&nbsp;/etc/ppp/ip-up&nbsp;finished&nbsp;(pid&nbsp;671),&nbsp;status&nbsp;=&nbsp;0x0</code><br>
+<code>&nbsp;Terminating&nbsp;on&nbsp;signal&nbsp;2.</code><br>
+<code>Script&nbsp;/etc/ppp/ip-down&nbsp;started&nbsp;(pid&nbsp;701)</code><br>
+<code>sent&nbsp;[LCP&nbsp;TermReq&nbsp;id=0x2&nbsp;"User&nbsp;request"]</code><br>
+<code>rcvd&nbsp;[LCP&nbsp;TermAck&nbsp;id=0x2]</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+You can see the expect-send sequences working, so it's easy to correct
+them if you made a mistake somewhere.
+
+<P>
+At this point you might want to type
+<TT>
+<FONT COLOR="#0000ff">route -n</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">ifconfig</FONT></TT>
+in another terminal:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>20</code></font><code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>[root@cericon]#&nbsp;<font color="navy"><B>route&nbsp;-n</B></font></code><br>
+<code>Kernel&nbsp;IP&nbsp;routing&nbsp;table</code><br>
+<code>Destination&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Gateway&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Genmask&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Flags&nbsp;Metric&nbsp;Ref&nbsp;&nbsp;&nbsp;&nbsp;Use&nbsp;Iface</code><br>
+<code>168.209.2.67&nbsp;&nbsp;&nbsp;&nbsp;0.0.0.0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;255.255.255.255&nbsp;UH&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;ppp0</code><br>
+<code>127.0.0.0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0.0.0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;255.0.0.0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;U&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;lo</code><br>
+<code>0.0.0.0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;168.209.2.69&nbsp;&nbsp;&nbsp;&nbsp;0.0.0.0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UG&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;ppp0</code><br>
+<code>[root@cericon]#&nbsp;<font color="navy"><B>ifconfig</B></font></code><br>
+<code>lo&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Link&nbsp;encap:Local&nbsp;Loopback&nbsp;&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;inet&nbsp;addr:127.0.0.1&nbsp;&nbsp;Mask:255.0.0.0</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UP&nbsp;LOOPBACK&nbsp;RUNNING&nbsp;&nbsp;MTU:3924&nbsp;&nbsp;Metric:1</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;RX&nbsp;packets:2547933&nbsp;errors:0&nbsp;dropped:0&nbsp;overruns:0&nbsp;frame:0</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TX&nbsp;packets:2547933&nbsp;errors:0&nbsp;dropped:0&nbsp;overruns:0&nbsp;carrier:0</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;collisions:0&nbsp;txqueuelen:0&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>ppp0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Link&nbsp;encap:Point-to-Point&nbsp;Protocol&nbsp;&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;inet&nbsp;addr:196.34.25.95&nbsp;&nbsp;P-t-P:168.209.2.67&nbsp;&nbsp;Mask:255.255.255.255</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UP&nbsp;POINTOPOINT&nbsp;RUNNING&nbsp;NOARP&nbsp;MULTICAST&nbsp;&nbsp;MTU:1500&nbsp;&nbsp;Metric:1</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;RX&nbsp;packets:7&nbsp;errors:0&nbsp;dropped:0&nbsp;overruns:0&nbsp;frame:0</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TX&nbsp;packets:7&nbsp;errors:0&nbsp;dropped:0&nbsp;overruns:0&nbsp;carrier:0</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;collisions:0&nbsp;txqueuelen:10&nbsp;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+This clearly shows what <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT> has done: created a network device
+and a route to it.
+
+<P>
+If your name server is configured, you should now be able to
+<TT>
+<FONT COLOR="#0000ff">ping metalab.unc.edu</FONT></TT> or some well-known host.
+
+<P>
+
+<H1><A NAME="SECTION004420000000000000000">
+41.2 Demand-Dial, Masquerading</A>
+</H1>
+
+<P>
+<A NAME="sec:demandmasq"></A>
+<P>
+Dial-on-demand
+really just involves adding the <TT>
+<FONT COLOR="#0000ff">demand</FONT></TT>
+option to the <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT> command-line above. The other way of doing
+dial-on-demand is to use the <TT>
+<FONT COLOR="#0000ff">diald</FONT></TT> package, but here we
+discuss the <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT> implementation. The <TT>
+<FONT COLOR="#0000ff">diald</FONT></TT> package
+is, however, a far more thorough solution.
+
+<P>
+With the <TT>
+<FONT COLOR="#0000ff">demand</FONT></TT> option, you will notice that spurious dialouts
+take place. You need to add some filtering rules to ensure that
+only the services you are interested in cause a dialout. These services
+should only make outgoing connections when absolutely necessary.
+
+<P>
+A firewall script might look as follows. This example uses the old
+<TT>
+<FONT COLOR="#0000ff">ipfwadm</FONT></TT> command, possibly called
+<TT>
+<FONT COLOR="#0000ff">/sbin/ipfwadm-wrapper</FONT></TT>
+on your machine. <FONT COLOR="#ffa500">[The newer <TT>
+<FONT COLOR="#0000ff">ipchains</FONT></TT>
+command is now superseded by a completed different
+packet filtering system in
+kernel <TT>
+<FONT COLOR="#0000ff">2.4</FONT></TT>.]</FONT> See the <TT>
+<FONT COLOR="#0000ff">Firewall-HOWTO</FONT></TT>
+for more information on building a firewall.
+
+<P>
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>20</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>25</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>30</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>#&nbsp;Enable&nbsp;ip&nbsp;forwarding&nbsp;and&nbsp;dynamic&nbsp;address&nbsp;changing:</code><br>
+<code>echo&nbsp;1&nbsp;&#062;&nbsp;/proc/sys/net/ipv4/ip_forward</code><br>
+<code>echo&nbsp;1&nbsp;&#062;&nbsp;/proc/sys/net/ipv4/ip_dynaddr</code><br>
+<code>&nbsp;</code><br>
+<code>#&nbsp;Clear&nbsp;all&nbsp;firewall&nbsp;rules:</code><br>
+<code>/sbin/ipfwadm&nbsp;-O&nbsp;-f</code><br>
+<code>/sbin/ipfwadm&nbsp;-I&nbsp;-f</code><br>
+<code>/sbin/ipfwadm&nbsp;-F&nbsp;-f</code><br>
+<code>&nbsp;</code><br>
+<code>/sbin/ipfwadm&nbsp;-O&nbsp;-p&nbsp;deny</code><br>
+<code>/sbin/ipfwadm&nbsp;-I&nbsp;-p&nbsp;deny</code><br>
+<code>&nbsp;</code><br>
+<code>#&nbsp;Allow&nbsp;all&nbsp;local&nbsp;communications:</code><br>
+<code>/sbin/ipfwadm&nbsp;-O&nbsp;-a&nbsp;accept&nbsp;-D&nbsp;192.168.0.0/16&nbsp;-S&nbsp;0.0.0.0/0</code><br>
+<code>/sbin/ipfwadm&nbsp;-O&nbsp;-a&nbsp;accept&nbsp;-D&nbsp;127.0.0.0/24&nbsp;&nbsp;&nbsp;-S&nbsp;127.0.0.0/24</code><br>
+<code>/sbin/ipfwadm&nbsp;-O&nbsp;-a&nbsp;accept&nbsp;-S&nbsp;192.168.0.0/16&nbsp;-D&nbsp;127.0.0.0/24</code><br>
+<code>/sbin/ipfwadm&nbsp;-O&nbsp;-a&nbsp;accept&nbsp;-S&nbsp;192.168.0.0/16&nbsp;-D&nbsp;192.168.0.0/16</code><br>
+<code>/sbin/ipfwadm&nbsp;-I&nbsp;-a&nbsp;accept&nbsp;-S&nbsp;192.168.0.0/16&nbsp;-D&nbsp;0.0.0.0/0</code><br>
+<code>/sbin/ipfwadm&nbsp;-I&nbsp;-a&nbsp;accept&nbsp;-S&nbsp;127.0.0.0/24&nbsp;&nbsp;&nbsp;-D&nbsp;127.0.0.0/24</code><br>
+<code>/sbin/ipfwadm&nbsp;-I&nbsp;-a&nbsp;accept&nbsp;-D&nbsp;192.168.0.0/16&nbsp;-S&nbsp;127.0.0.0/24</code><br>
+<code>/sbin/ipfwadm&nbsp;-I&nbsp;-a&nbsp;accept&nbsp;-D&nbsp;192.168.0.0/16&nbsp;-S&nbsp;192.168.0.0/16</code><br>
+<code>&nbsp;</code><br>
+<code>#&nbsp;Allow&nbsp;ports&nbsp;outgoing:</code><br>
+<code>/sbin/ipfwadm&nbsp;-O&nbsp;-a&nbsp;accept&nbsp;-P&nbsp;tcp&nbsp;-S&nbsp;0.0.0.0/0&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-D&nbsp;0.0.0.0/0&nbsp;20&nbsp;21&nbsp;22&nbsp;25&nbsp;53&nbsp;80&nbsp;110&nbsp;119&nbsp;143</code><br>
+<code>/sbin/ipfwadm&nbsp;-O&nbsp;-a&nbsp;accept&nbsp;-P&nbsp;udp&nbsp;-S&nbsp;0.0.0.0/0&nbsp;-D&nbsp;0.0.0.0/0&nbsp;53</code><br>
+<code>&nbsp;</code><br>
+<code>#&nbsp;#&nbsp;Add&nbsp;this&nbsp;line&nbsp;to&nbsp;allow&nbsp;FTP&nbsp;from&nbsp;masqueraded&nbsp;machines:</code><br>
+<code>#&nbsp;/sbin/ipfwadm&nbsp;-O&nbsp;-a&nbsp;accept&nbsp;-P&nbsp;tcp&nbsp;-S&nbsp;0.0.0.0/0&nbsp;-D&nbsp;0.0.0.0/0&nbsp;1024:65535</code><br>
+<code>&nbsp;</code><br>
+<code>#&nbsp;Allow&nbsp;ports&nbsp;incoming:</code><br>
+<code>/sbin/ipfwadm&nbsp;-I&nbsp;-a&nbsp;accept&nbsp;-P&nbsp;tcp&nbsp;-S&nbsp;0.0.0.0/0&nbsp;-D&nbsp;0.0.0.0/0&nbsp;20&nbsp;113</code><br>
+<code>/sbin/ipfwadm&nbsp;-I&nbsp;-a&nbsp;accept&nbsp;-P&nbsp;tcp&nbsp;-S&nbsp;0.0.0.0/0&nbsp;-D&nbsp;0.0.0.0/0&nbsp;1024:65535</code><br>
+<code>/sbin/ipfwadm&nbsp;-I&nbsp;-a&nbsp;accept&nbsp;-P&nbsp;udp&nbsp;-S&nbsp;0.0.0.0/0&nbsp;-D&nbsp;0.0.0.0/0&nbsp;1024:65535</code><br>
+</FONT></TD></TR></TABLE><P>
+The ports we are using
+are
+
+<P>
+<IMG
+ WIDTH="100" HEIGHT="234" ALIGN="BOTTOM" BORDER="0"
+ SRC="img74.png"
+ ALT="\begin{longtable}[l]{l \vert l}
+20 &amp; ftp-data \\
+21 &amp; ftp \\
+22 &amp; ssh \\
+25 &amp;...
+...\\
+110 &amp; pop3 \\
+113 &amp; auth \\
+119 &amp; nntp \\
+143 &amp; imap2 \\
+\end{longtable}">
+<BR>
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">auth</FONT></TT> service is not needed but
+should be kept open so that connecting
+services get a failure instead of waiting for a timeout. You
+can comment out the <TT>
+<FONT COLOR="#0000ff">auth</FONT></TT> line in <TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT>
+for security.
+
+<P>
+If you have a LAN of machines that needs to share the same dialup
+link, then you can give them all <TT>
+<FONT COLOR="#0000ff">192.168.</FONT></TT> addresses and
+<I>masquerade</I> the LAN through the PPP interface.
+IP masquerading or NAT (<I>network address translation</I>)
+can be done with:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>#&nbsp;Masquerading&nbsp;for&nbsp;ftp&nbsp;requires&nbsp;special&nbsp;handling&nbsp;on&nbsp;older&nbsp;kernels:</code><br>
+<code>/sbin/modprobe&nbsp;ip_masq_ftp</code><br>
+<code>&nbsp;</code><br>
+<code>#&nbsp;Masquerade&nbsp;the&nbsp;domain&nbsp;192.168.2.0/255.255.128.0</code><br>
+<code>/sbin/ipfwadm&nbsp;-F&nbsp;-f</code><br>
+<code>/sbin/ipfwadm&nbsp;-F&nbsp;-p&nbsp;deny</code><br>
+<code>/sbin/ipfwadm&nbsp;-F&nbsp;-a&nbsp;m&nbsp;-S&nbsp;192.168.0.0/17&nbsp;-D&nbsp;0.0.0.0/0</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT> script becomes (note that you need <TT>
+<FONT COLOR="#0000ff">pppd-2.3.11</FONT></TT>
+or later for this to work as I have it here):
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>pppd&nbsp;connect&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"chat&nbsp;-S&nbsp;-s&nbsp;-v&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;''&nbsp;'AT&#038;F1'&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;OK&nbsp;ATDT&#060;tel-number&#062;&nbsp;CONNECT&nbsp;''&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;name:&nbsp;&#060;username&#062;&nbsp;assword:&nbsp;'\q&#060;password&#062;'&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;con:&nbsp;ppp"&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;/dev/ttyS0&nbsp;57600&nbsp;debug&nbsp;crtscts&nbsp;modem&nbsp;lock&nbsp;nodetach&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;hide-password&nbsp;defaultroute&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;user&nbsp;&#060;username&#062;&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;demand&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;:10.112.112.112&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;idle&nbsp;180&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;holdoff&nbsp;30</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H1><A NAME="SECTION004430000000000000000">
+41.3 Dialup DNS</A>
+</H1>
+
+<P>
+Your DNS service, to be
+used on a dialup server, requires some customization.
+Replace your <TT>
+<FONT COLOR="#0000ff">options</FONT></TT> section from the DNS configurations
+in Chapter <A HREF="node43.html#chap:name">40</A> with the following:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>options&nbsp;{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;forwarders&nbsp;{&nbsp;196.7.173.2&#059;&nbsp;/*&nbsp;example&nbsp;only&nbsp;*/&nbsp;}&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;listen-on&nbsp;{&nbsp;192.168.2.254&#059;&nbsp;}&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;directory&nbsp;"/var/cache/bind"&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dialup&nbsp;yes&#059;&nbsp;notify&nbsp;no&#059;&nbsp;forward&nbsp;only&#059;</code><br>
+<code>}&#059;</code><br>
+</FONT></TD></TR></TABLE><P>
+The options <TT>
+<FONT COLOR="#0000ff">dialup yes; notify no; forward only;</FONT></TT> tell
+<TT>
+<FONT COLOR="#0000ff">bind</FONT></TT> to use the link as little as possible; not send notify
+messages (there are no slave servers on our LAN to notify) and
+to forward requests to <TT>
+<FONT COLOR="#0000ff">192.168.2.254</FONT></TT> rather than
+trying to answer them itself; respectively. The option
+<TT>
+<FONT COLOR="#0000ff">listen-on</FONT></TT> causes the name server to bind to the network
+interface <TT>
+<FONT COLOR="#0000ff">192.168.2.254</FONT></TT> only. In this example, the interface
+<TT>
+<FONT COLOR="#0000ff">192.168.2.254</FONT></TT> is our Ethernet card which routes packets from
+the local LAN. This is important for security, because
+it prevents any possible connection from the outside.
+
+<P>
+There is also a DNS package written specifically for use by dialup
+servers. It is called <TT>
+<FONT COLOR="#0000ff">dnrd</FONT></TT> and is much easier to configure
+than <TT>
+<FONT COLOR="#0000ff">bind</FONT></TT>.
+
+<P>
+
+<H1><A NAME="SECTION004440000000000000000">
+41.4 Dial-in Servers</A>
+</H1>
+
+<P>
+<A NAME="sec:dialinppp"></A>
+<P>
+<TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT> is really just a way
+to initiate a network device over a serial port, regardless
+of whether you initiate or listen for a connection.
+As long as there is a serial connection between two
+machines, <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT> will negotiate a link.
+
+<P>
+To <I>listen</I> for a <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT> dial-<I>in</I>, you
+need just add the following line to your <TT>
+<FONT COLOR="#0000ff">/etc/inittab</FONT></TT>
+file:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>S0:2345:respawn:/sbin/mgetty&nbsp;-s&nbsp;115200&nbsp;ttyS0</code><br>
+</FONT></TD></TR></TABLE><P>
+and then the line
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/AutoPPP/&nbsp;-&nbsp;a_ppp&nbsp;&nbsp;&nbsp;/usr/sbin/pppd</code><br>
+</FONT></TD></TR></TABLE><P>
+to the file <TT>
+<FONT COLOR="#0000ff">/etc/mgetty+sendfax/login.config</FONT></TT>
+(<TT>
+<FONT COLOR="#0000ff">/etc/mgetty/login.config</FONT></TT> for Debian). For security,
+you would probably want to run <TT>
+<FONT COLOR="#0000ff">chmod a-s /usr/sbin/pppd</FONT></TT>,
+since <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> runs <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT> as root anyway. Your
+<TT>
+<FONT COLOR="#0000ff">/etc/ppp/options</FONT></TT> file could contain
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>proxyarp&nbsp;mtu&nbsp;552&nbsp;mru&nbsp;552&nbsp;require-chap&nbsp;&#060;hostname&#062;:</code><br>
+</FONT></TD></TR></TABLE><P>
+Note that we dispense with the serial line options (i.e., speed
+and flow control) because <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> would have already
+initialized the serial line. <TT>
+<FONT COLOR="#0000ff">&lt;hostname&gt;</FONT></TT> is just the name
+of the local machine.
+The proxyarp setting adds the remote client to the
+ARP tables. This enables your client to connect through to the
+Internet on the other side of the line without extra routes.
+The file <TT>
+<FONT COLOR="#0000ff">/etc/ppp/chap-secrets</FONT></TT>
+can be filled with lines like,
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>dialup&nbsp;*&nbsp;&#060;passwd&#062;&nbsp;192.168.254.123</code><br>
+</FONT></TD></TR></TABLE><P>
+to specify the IP address and password of each user.
+
+<P>
+Next, add a user <TT>
+<FONT COLOR="#0000ff">dialup</FONT></TT> and perhaps set its
+password to that in the <TT>
+<FONT COLOR="#0000ff">chap-secrets</FONT></TT> file. You can then test
+your configuration from a remote machine with <TT>
+<FONT COLOR="#0000ff">dip&nbsp;-t</FONT></TT>
+as above. If that works (i.e., <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> answers, and
+you get your garbage lines as on page
+<A HREF="node44.html#ppp:protogarbage"><IMG  ALIGN="BOTTOM" BORDER="1" ALT="[*]" SRC="crossref.png"></A>), then a proper <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT> dial-in
+should also work. The <TT>
+<FONT COLOR="#0000ff">/etc/ppp/chap-secrets</FONT></TT> file can contain:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>dialup&nbsp;*&nbsp;&#060;passwd&#062;&nbsp;*</code><br>
+</FONT></TD></TR></TABLE><P>
+and you can dial out using a typical <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT> command, like this:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>pppd&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;connect&nbsp;"chat&nbsp;-S&nbsp;-s&nbsp;-v&nbsp;''&nbsp;'AT&#038;F1'&nbsp;OK&nbsp;ATDT&#060;telephone&#062;&nbsp;CONNECT&nbsp;''"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;/dev/&#060;modem&#062;&nbsp;57600&nbsp;debug&nbsp;crtscts&nbsp;modem&nbsp;lock&nbsp;nodetach</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;hide-password&nbsp;defaultroute&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;user&nbsp;dialup&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;noauth</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+You should be carefully to have a proper DNS configuration
+for forward and reverse lookups of your <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT> IP addresses.
+This is so that no services block with long timeouts and also
+so that other Internet machines will be friendly to your user's
+connections.
+
+<P>
+Note that the above also supports faxes,
+logins, voice, and <TT>
+<FONT COLOR="#0000ff">uucp</FONT></TT> (see Section <A HREF="node37.html#sec:dialinuucp">34.3</A>) on the
+same modem because <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> only starts <TT>
+<FONT COLOR="#0000ff">pppd</FONT></TT> if it sees an
+LCP request (part of the PPP protocol). If you just want PPP, read the
+config files in <TT>
+<FONT COLOR="#0000ff">/etc/mgetty+sendfax/</FONT></TT>
+(Debian <TT>
+<FONT COLOR="#0000ff">/etc/mgetty/</FONT></TT>)
+to disable the other services.
+
+<P>
+
+<H1><A NAME="SECTION004450000000000000000">
+41.5 Using <TT>
+<FONT COLOR="#0000ff">tcpdump</FONT></TT></A>
+</H1>
+
+<P>
+<A NAME="sec:tcpdumpppp"></A>
+<P>
+If a dialout does occur unexpectedly, you can run
+<TT>
+<FONT COLOR="#0000ff">tcpdump</FONT></TT> to dump packets going to your
+<TT>
+<FONT COLOR="#0000ff">ppp0</FONT></TT> device.
+This output will probably highlight the error. You can then look
+at the TCP port of the service and try to figure out what
+process the packet might have come from. The command is:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>tcpdump&nbsp;-n&nbsp;-N&nbsp;-f&nbsp;-i&nbsp;ppp0</code><br>
+</FONT></TD></TR></TABLE><P>
+<TT>
+<FONT COLOR="#0000ff">tcpdump</FONT></TT> is also discussed in
+Section <A HREF="node28.html#sec:tcpdump">25.10.3</A>.
+
+<P>
+
+<H1><A NAME="SECTION004460000000000000000">
+41.6 ISDN Instead of Modems</A>
+</H1>
+
+<P>
+<A NAME="sec:isdn"></A>
+<P>
+For those who are not familiar with ISDN, this paragraph gives
+you a quick summary. ISDN stands for <I>Integrated
+Services Digital Network</I>. ISDN lines are like regular telephone
+lines, except that an ISDN line comes with two analog and two
+digital channels. The analog channels are regular telephone
+lines in every respect--just plug your phone in and start
+making calls. The digital lines each support 64 kilobits/second
+data transfer; only ISDN communication equipment is meant
+to plug in to these and the charge rate is the same as that of
+a telephone call. To communicate over the digital line, you need
+to dial an ISP just as with a regular telephone. PPP runs over
+ISDN in the same way as a modem connection. It used to
+be that only very expensive ISDN routers could work with ISDN,
+but ISDN modems and ISDN ISA/PCI cards have become cheap
+enough to allow anyone to use ISDN, and most telephone
+companies will install an ISDN line as readily as a regular
+telephone line. So you may ask what's with the ``Integrated
+Services.'' I suppose it was thought that this service, in
+allowing both data and regular telephone, would be the
+ubiquitous communications service. It remains to be seen, however,
+if video conferencing over 64-Kb lines becomes
+mainstream.
+
+<P>
+ISDN is not covered in detail here, although ample HOWTOs exists
+on the subject. Be wary when setting up ISDN. ISDN dials
+<I>really</I> fast. It can dial out a thousand times in a
+few minutes, which is expensive.
+
+<P>
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html2803"
+  HREF="node45.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2799"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2793"
+  HREF="node43.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2801"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2804"
+  HREF="node45.html">42. The LINUX Kernel</A>
+<B> Up:</B> <A NAME="tex2html2800"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2794"
+  HREF="node43.html">40. named  </A>
+ &nbsp <B>  <A NAME="tex2html2802"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+
+</BODY>
+</HTML>

@@ -1,0 +1,440 @@
+<!DOCTYPE html PUBLIC "-//w3c//dtd html 4.0 transitional//en"><html><head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Generator" content="Paws">
+   <meta name="keywords" content="Assembler, assembly, tutorial, memory, stack, push, pop, GoAsm, asm, programming"><title>Understand the stack Part 2</title><!--Copyright Jeremy Gordon 2002-2003-->
+   
+   
+   <style>
+   <!--
+   A {color: #0000FF; font: bold 10pt times}
+   A:Visited {color: #333399}
+   A:Hover {color: #009900}
+   -->
+   </style></head>
+
+<body>
+
+<a name="top"></a>
+<center><table width="90%" cellpadding="4">
+<tbody><tr><td>
+<br><a href="http://www.godevtool.com/"><img src=".usstack2_files/GoLogo50.gif" border="0" height="22" width="50">The "Go" tools</a>
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/GoAsm.htm">The GoAsm manual</a>
+<p><b><font face="Century Gothic"><font size="+3">understand .... </font>
+<br><i><font color="#ff0000"><font size="+4">
+<dir><dir>the stack (part 2)</dir></dir></font></font></i><font color="#ff0000"></font></font></b>
+</p><p><font face="Century Gothic"><b><font size="+1">by </font></b><font size="+1">Jeremy Gordon - </font>
+<img src=".usstack2_files/mail6sblue.gif" height="13" width="93" align="top" vspace="6">
+
+</font></p><p><font face="Century Gothic"><i>This file is intended for those interested in 32 bit assembler 
+programming, in particular for Windows.</i>
+
+<a name="contents"></a>
+</font></p><p><font face="Century Gothic">In <b>Part 2</b> you will find information which 
+is not essential reading for assembler programmers but may be of interest.
+
+</font></p><p>
+<table align="center" width="100%"><tbody><tr><td width="50%" valign="top">
+<b>Part 2 (not essential):-</b>
+<font size="-1">
+<br><a href="#virtual">Stack is in virtual address space</a>
+<br><a href="#startc">The stack at start-up: contents</a>
+<br><a href="#starta">The stack at start-up: amount</a>
+<br><a href="#enlarge">Enlargement of the stack at run-time</a>
+<br><a href="#usable">Permitted usable stack area</a>
+<br><a href="#datas">Using the stack to keep data streams</a>
+<br><a href="#multi">The stack in multi-thread applications</a>
+<br><a href="#local">The stack frame and local data</a>
+<br><a href="#addressl">Addressing the local data</a>
+<br><a href="#params">Accessing parameters from the stack</a>
+<br><a href="#callbacks">Use of the stack in Window's callback procedures</a>
+</font></td>
+<td width="50%" valign="top">
+<b>Part 1 (essential)</b>
+<font size="-1">
+<br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack1.htm#features"><font color="#909090">Features and advantages of the stack</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack1.htm#pract"><font color="#909090">Practical uses for the stack</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack1.htm#point"><font color="#909090">The stack pointer: ESP register</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack1.htm#pushpop"><font color="#909090">PUSHing data onto, and POPing data from, the stack</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack1.htm#presr"><font color="#909090">Preserving register values in functions</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack1.htm#presd"><font color="#909090">Preserving data in memory</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack1.htm#movd"><font color="#909090">Move data around without using registers</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack1.htm#revd"><font color="#909090">Reverse data order</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack1.htm#callr"><font color="#909090">How CALL and RET use the stack</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack1.htm#equil"><font color="#909090">Importance of stack equilibrium</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack1.htm#passp"><font color="#909090">Using the stack to pass parameters</font></a>
+</font></font></font></font></font></font></font></font></font></font></font></td></tr></tbody></table>
+
+<font face="Century Gothic"><a name="virtual"></a>
+</font></p><h3><font face="Century Gothic">Stack is in virtual address space</font></h3>
+<font face="Century Gothic">The value in ESP is a <i>virtual address</i>.  If it is for example, a value
+of 64FE3Ch at start up, we are not talking here of this address in real
+physical memory.  To obtain the actual physical memory address the system 
+needs to convert (or "map") the 64FE3Ch according to its own internal records.
+For example this address might in reality be 2FE3Ch in real physical memory.
+A virtual address is therefore just a convenient representation of a 
+position in memory.  It is often said that each application runs in its 
+own virtual address space.  In theory the whole range of
+32-bit addresses (zero to 4GB) is available to each application.  In practice
+this is not the case, but it is true that each application running on the
+system may use the same range of virtual addresses.  There is no conflict
+between them because the system knows which application is addressing
+memory at any one time and can therefore point the application to the correct
+place in physical memory.  So at any one time it is likely that there
+are several applications with the same value in ESP.  But this value will
+actually point to different parts of physical memory.
+
+<a name="startc"></a></font><h3><font face="Century Gothic">The stack at start-up: contents<a href="#contents"><img src=".usstack2_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">In Windows the main thread is allocated its own stack area by the system
+when it loads.  The system itself uses this thread and the stack area for 
+its own purposes prior to calling the program's starting address. You can 
+see this in the debugger.  Start your program up to the starting address 
+and look at the value of ESP.  Now open an inspector window for
+the value of ESP.  Now you might expect it to be at the bottom of the
+memory area, but it is not. If you scroll the inspector to the bottom of the 
+memory area (scroll to the highest address) you see that there has
+already been a lot of activity in the stack where the system has prepared
+for its call to the program's starting address.  Of interest is that 
+(in W98 anyway) the last value on the stack before the application was 
+called is a return address in Kernel32.dll.  This indicates that a function
+within Kernel32.dll called the application.  Because of this return address
+it is possible to use a simple RET to end a process, rather than calling
+ExitProcess.  Of course this only works if the stack is in equilibrium so
+that code execution continues in the caller function in Kernel32.dll.
+<br>
+A little further down
+the stack we can see the filename of the application, and much further
+down we can see the address of the of the system's own exception handler for the
+application's main thread has been put on the stack.  These things all show that
+the application's own stack area (and own thread) is used by the system to 
+prepare for a call to the application.
+
+<a name="starta"></a></font><h3><font face="Century Gothic">The stack at start-up: amount<a href="#contents"><img src=".usstack2_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">In Windows, when memory is reserved for the use of an application
+a range of virtual addresses is <i>allocated</i> by the system.  This
+allocation preserves those addresses for the application's use.  If the 
+application asks for more memory the same addresses cannot be reused.
+No physical memory is actually used until the memory is <i>committed</i>.
+At that point the virtual addresses which have been allocated are mapped
+to the area or areas of physical memory the system has available.
+<br>Obviously for this arrangement to work, the system needs to know
+the maximum size of contiguous memory which may have to be committed.
+This is then the allocated range of addresses.  
+<br>When preserving memory for stack use the same applies.  On an 
+application's start-up the system needs to know how much memory to allocate
+for the stack, and how much to commit in the first instance.  These two
+amounts are contained within the executable at +48h and +4Ch respectively
+in the optional header (to understand exactly where this is in the
+executable, you need to know the PE file format).  As we see below they 
+apply not only to the application's
+main thread but also to new threads made by the application.  
+<br>Most linkers use a default of 1MB and 4K (the normal page size) for 
+these values respectively.
+With GoLink you can alter the defaults using the <b>/stacksize</b> switch and
+<b>/stackinit</b> switches respectively (see the GoLink manual how to
+use these).
+
+<a name="enlarge"></a></font><h3><font face="Century Gothic">Enlargement of the stack at run-time<a href="#contents"><img src=".usstack2_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">The system senses whether an application is attempting to read or write 
+outside the committed stack area by using exception handling.  Providing 
+(in W9x) the attempt is within the permitted usable stack area new memory 
+will be committed as required.  Even if an attempt is made to enlarge the
+stack beyond the allocated area, under NT (but not W9x) the system will 
+try to allocate further memory, but this will not be possible if the 
+virtual addresses then required have been allocated to other memory areas.
+
+<a name="usable"></a></font><h3><font face="Century Gothic">Permitted usable stack area<a href="#contents"><img src=".usstack2_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">The stack is not considered suitable for keeping large amounts of data
+and this view is enforced by Windows by its exception mechanism.  In W9x
+the permitted usable stack area is between the current ESP and the next 
+page boundary plus the page size.  For example if ESP is 64FE3Ch, then
+the next page boundary is 64F000h and the extra page (which is usually
+set at 4K by the system) takes you to 64E000h:-
+<br>
+<table border="1" cellpadding="0" cellspacing="0" bordercolor="#ffffff">
+
+<tbody><tr><td width="20%" height="30"></td>
+<td width="10%">
+</td><td width="30%" valign="bottom"><font size="-1">&nbsp;64D000h</font></td></tr>
+
+<tr>
+<td width="20%" height="60" align="right"></td>
+<td width="10%" bordercolor="#000000" align="center"><font size="-1">4K page
+<br><font color="#ff0000">unavailable</font></font></td>
+<td width="30%" valign="bottom"><font size="-1">&nbsp;64E000h</font></td>
+</tr>
+<tr><td height="60">
+</td>
+<td bordercolor="#000000" align="center"><font size="-1">4K page
+<br><font color="#009000">available</font></font></td>
+<td valign="bottom"><font size="-1">&nbsp;64F000h</font></td>
+</tr>
+<tr><td height="60" align="right"><font size="-1">&nbsp;<br>ESP (64FE3Ch) is here &#8594;
+</font></td>
+<td bordercolor="#000000" align="center"><font size="-1">4K page
+<br><font color="#009000">available</font></font></td>
+<td valign="bottom"><font size="-1">&nbsp;650000h</font></td>
+</tr>
+
+</tbody></table>
+</font><p><font face="Century Gothic">So if ESP is 64FE3Ch you will find that the instruction
+</font></p><pre><font face="Century Gothic">MOV D[ESP-1E40h],0
+</font></pre>
+<font face="Century Gothic">will cause an exception, because the actual point on the stack being 
+addressed here is 64DFFCh which area is unavailable because it has not
+been committed by the system.
+<br>And you can't get round this by moving ESP either.  In W9x the system 
+allows you to move ESP only up to the next page boundary + the page size
+less four bytes.  For example if ESP is 64FE3C a single instruction will 
+only be permitted to move ESP by 1E38h (in decimal this is 7836 bytes).
+This means that the instruction
+</font><pre><font face="Century Gothic">SUB ESP,1E38h 
+</font></pre>
+<font face="Century Gothic">causes ESP to become 64E004h and is permitted. But the instruction
+</font><pre><font face="Century Gothic">SUB ESP,1E3Ch
+</font></pre><font face="Century Gothic"> 
+will cause an exception.  The difference in 4 bytes in the position
+which triggers the exception suggests that there are two different
+protection mechanisms at work here.
+</font><p><font face="Century Gothic">From the above it might appear that the size of data which might be put on the stack 
+is limited to 4K, but this is not true.  There are two ways to avoid these 
+exceptions from occurring and thereby to use the stack for larger data areas. 
+<br>The first way is to move and use ESP <i>incrementally</i>.  This will 
+ensure that the system commits the memory progressively as intended.  The
+following code safely creates an area of 40K bytes on the stack:-
+</font></p><pre><font face="Century Gothic">MOV ECX,10
+L0:
+SUB ESP,1000h
+MOV D[ESP],0
+LOOP L0
+</font></pre>
+<font face="Century Gothic">Here the system is made to commit ten 4K chunks of stack memory.  ESP
+then ends up at the top of this stack area. This will not be particularly
+quick since the system has to commit memory ten times.  A quicker method
+is to instruct the system to commit a larger than usual area of memory 
+for the stack when the application is loaded.  With GoLink you can do
+this using the /stackinit switch.  For example:-
+</font><pre><font face="Century Gothic">/stackinit 0A000
+</font></pre>
+<font face="Century Gothic">will ensure that 40K of memory is committed on the stack at start-up.
+You will then be able safely to move ESP using the instruction:-
+</font><pre><font face="Century Gothic">SUB ESP,0A000h
+</font></pre>
+<font face="Century Gothic">giving you 40K of memory on the stack to play with.
+
+<a name="datas"></a></font><h3><font face="Century Gothic">Using the stack to keep data streams<a href="#contents"><img src=".usstack2_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">Provided precautions are taken, the stack can be used to hold
+a fairly large stream of data.  The things to remember are:-
+</font><ul>
+<li><font face="Century Gothic">Always restore ESP to equilibrium when you have finished with the stack.
+</font></li><li><font face="Century Gothic">Never write to [ESP] unless you have subtracted at least 4 bytes from
+the original value of ESP because that holds the return address for the 
+procedure.  Never write to [ESP+n] unless a sufficient number of bytes
+have been subtracted from ESP to avoid overwriting other important data.
+</font></li><li><font face="Century Gothic">If you do not move ESP to the top of the data area then you need
+to write the data <i>in reverse direction</i> that is to say into progressively
+decreasing values.  This can be done in various ways, the most convenient
+is probably to set the direction flag using STD and then to use the
+MOVS instruction, for example:-
+</font><pre><font face="Century Gothic">MOV ECX,8000
+MOV EDI,ESP
+SUB EDI,4
+STD                     ;set direction flag
+REP MOVSD               ;move ECX dwords from [ESI] to [EDI]
+CLD                     ;clear direction flag
+</font></pre>
+<font face="Century Gothic">This code writes 8,000 dwords to the stack.  Note how SUB EDI,4 avoids the 
+write over [ESP] which holds the return address for the procedure.  There
+is no problem with enlargement of memory since the write is incremental, so
+the system properly creates new 4K memory areas as it needs to.
+</font></li><li><font face="Century Gothic">If you do move ESP to the top of the data area you must take the 
+precautions referred to in <a href="#usable">permitted usable stack area</a>.
+Having done this you can write to the stack in a <i>forward</i> direction.
+</font></li></ul>
+
+<font face="Century Gothic"><a name="multi"></a></font><h3><font face="Century Gothic">The stack in multi-thread applications<a href="#contents"><img src=".usstack2_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">Each thread in your application has its own registers and its own stack.
+That is to say, when the system gives processor-time to a thread, it will
+switch to the <i>register context</i> for the thread.  This holds all the 
+values of the registers when processor-time was last removed from the 
+thread.  Since the registers include ESP, its value will also be
+correctly switched so that the correct area of physical memory will be used 
+by the thread as its stack.  The result is that a thread can rely on the fact
+that it can use its stack as a discrete area of memory which will not be
+interfered with by other threads.  You can see this in the debugger.  You can
+see that the ESP always changes substantially when execution changes
+from thread to thread.
+</font><p><font face="Century Gothic">When a thread starts it is allocated its stack
+area.  As a practical example, it was found under W98 that the stack of
+the main thread of an application ran from 64FE3Ch (downwards) and when a 
+new thread was made its stack ran from 75FF9Ch (downwards).  In another
+test, when six new threads were made their stacks started at 19DEF9Ch,
+1AFFF9Ch, 1C1FF9Ch, 1D3FF9Ch, 1E5FF9Ch and 1F7FF9Ch respectively.  Here
+you can see that the system is separating the virtual address of each 
+stack area by 128KB more than the default 1MB area.  This is probably to allow
+room for the system's own use of the stack and also some extra leeway.
+Changing the allocation stack size to 200000h (2MB) using the /stacksize 
+switch and then creating six new threads resulted in the stack areas 
+being separated by 128KB more than 2MB.
+
+<a name="local"></a></font></p><h3><font face="Century Gothic">The stack frame and local data<a href="#contents"><img src=".usstack2_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">A stack frame is a discrete area of the stack which holds a return
+address of a function and data used by that function without risk of
+overwrite because the value of ESP has been decreased.  The data kept in a stack
+frame is called "local data".  That's because it is intended only for
+use within the stack frame concerned and is not intended to be addressed
+by the program generally.  Lets take this simple example:-
+</font><pre><font face="Century Gothic">PROCEDURE1:
+SUB ESP,20h                ;make space on stack for local data
+;                          ;use local data area
+CALL PROCEDURE2
+;                          ;return from PROCEDURE2
+;                          ;continue to use local data
+ADD ESP,20h                ;restore ESP to equilibrium
+RET
+</font></pre>
+<font face="Century Gothic">and
+</font><pre><font face="Century Gothic">PROCEDURE2:
+PUSH EAX,EBX,ECX
+;                          ;carry out various calculations
+POP ECX,EBX,EAX
+RET
+</font></pre>
+<font face="Century Gothic">Here the stack frame is created using the SUB ESP,20h instruction.  This
+decreases the value of ESP by 32 bytes creating space on the stack for 8
+dwords.  Now because ESP has been moved, whatever happens in PROCEDURE2
+will not overwrite these 8 dwords.  Lets check this visually assuming
+that ESP is 64FE38h at the start of PROCEDURE1:-
+
+</font><p>
+<table align="center" border="1" cellpadding="6" cellspacing="0" bordercolor="#ffffff">
+<tbody><tr>
+<td width="24%"></td>
+<td width="10%" bordercolor="#000000" align="center"><font size="-1">64FE08h</font></td>
+<td width="36%" align="left"><font size="-1">holds value in ECX inserted by PROCEDURE2</font></td>
+</tr>
+<tr><td>
+</td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE0Ch</font></td>
+<td><font size="-1">holds value in EBX inserted by PROCEDURE2</font></td>
+</tr>
+<tr><td>
+</td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE10h</font></td>
+<td><font size="-1">holds value in EAX inserted by PROCEDURE2</font></td>
+</tr>
+<tr><td align="right"><font size="-1">ESP here at start of PROCEDURE2&#8594;</font></td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE14h</font></td>
+<td><font size="-1">holds return address from PROCEDURE2</font></td>
+</tr>
+<tr>
+<td valign="middle" align="center" bgcolor="#d0d0d0" rowspan="2">
+<font size="-1">PROCEDURE1's stack frame</font></td>
+<td height="100" width="10%" bordercolor="#000000" align="center" bgcolor="#d0d0d0">
+<font size="-1">64FE18h<br>to<br>64FE34h</font></td>
+<td height="100" width="30%"><font size="-1">8 dwords for local data</font></td>
+</tr>
+<tr>
+<td bordercolor="#000000" align="center" bgcolor="#d0d0d0"><font size="-1">64FE38h</font></td>
+<td><font size="-1">holds return address from PROCEDURE1</font></td>
+</tr>
+</tbody></table>
+
+<font face="Century Gothic"><a name="addressl"></a></font></p><h3><font face="Century Gothic">Addressing the local data<a href="#contents"><img src=".usstack2_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic"><i>Note: this is automated in GoAsm using FRAME..ENDF and in MASM using 
+PROC..ENDP</i>.
+<br>Since ESP points to the top of the local data area you can address the data 
+using ESP.  So in the example above the first
+dword of local data would be available at [ESP] immediately after the
+SUB ESP,20h.  But using ESP to keep track of the local data on the stack can be 
+difficult because ESP will move on each CALL or PUSH within the procedure.
+For this reason the EBP register tends to be used for this purpose instead.  
+This is usually set early in the stack frame to the <i>bottom</i> of the 
+local data and it will not be changed until execution leaves the stack
+frame.  In this way you can be confident that the local data can always
+be addressed using a particular offset from EBP.
+<br>So the code for a typical stack frame now looks like this:-
+</font><pre><font face="Century Gothic">TypicalStackFrame:
+PUSH EBP          ;save the value of ebp which will be altered    }
+MOV EBP,ESP       ;give current value of stack pointer to ebp     } "prologue"
+SUB ESP,0Ch       ;make space for local data                      }
+;                 ;POINT "X"
+;
+;                 ;code within the procedure
+;
+MOV ESP,EBP       ;restore the stack pointer to previous value    }
+POP EBP           ;restore the value of ebp                       } "epilogue"
+RET               ;return to caller adjusting the stack pointer   }
+</font></pre>
+<font face="Century Gothic">Here we have moved the stack pointer by 12 bytes.  At point "X" the stack
+by reference to EBP actually looks like this:- 
+</font><p>
+<table border="1" cellpadding="2" cellspacing="0" bordercolor="#ffffff">
+<tbody><tr><td width="36%">&nbsp;</td>
+<td width="24%" bordercolor="#000000" align="center"><font size="-1">ebp-10h</font></td>
+<td width="40%"><font size="-1">the next push will go here</font></td></tr>
+<tr><td align="right"><font size="-1">ESP here at point "X"&#8594;
+</font></td><td bordercolor="#000000" align="center" bgcolor="#e8e8e8"><font size="-1">ebp-0Ch</font></td>
+<td><font size="-1">holds space for local data</font></td></tr>
+<tr><td></td><td bordercolor="#000000" align="center" bgcolor="#e8e8e8"><font size="-1">ebp-8h</font></td>
+<td><font size="-1">holds space for local data</font></td></tr>
+<tr><td></td><td bordercolor="#000000" align="center" bgcolor="#e8e8e8"><font size="-1">ebp-4h</font></td>
+<td><font size="-1">holds space for local data</font></td></tr>
+<tr><td></td><td bordercolor="#000000" align="center" bgcolor="#e8e8e8"><font size="-1">ebp</font></td>
+<td><font size="-1">holds saved value of ebp</font></td></tr>
+<tr><td></td><td bordercolor="#000000" align="center" bgcolor="#e8e8e8"><font size="-1">ebp+4h</font></td>
+<td><font size="-1">holds return address from TypicalStackFrame</font></td></tr>
+</tbody></table>
+<font face="Century Gothic"><br>Now throughout the stack frame, whatever happens to ESP the local 
+data will always be accessible at [EBP-4h], [EBP-8h] and [EBP-0Ch].
+<br>Note how ESP is restored to equilibrium automatically by the use of
+MOV ESP,EBP just before returning to the caller.  
+<br>You don't have to use EBP for this purpose, any register will do. But
+EBP is traditionally used for this and your code will be more understandable
+to others if you stick to this.
+
+<a name="params"></a></font></p><h3><font face="Century Gothic">Accessing parameters from the stack<a href="#contents"><img src=".usstack2_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">We have already seen how to pass parameters on the stack to other procedures.
+Now we are going to see how to use parameters passed to procedures in
+your own code.  Basically these parameters are further down the stack so
+they will not be overwritten under any normal circumstances.  For this 
+reason it is not necessary to
+retrieve and save them at all.  Upon entry to a procedure ESP will point
+to the return address of the procedure (inserted by CALL).  So the parameters
+will be at [ESP+4h], [ESP+8h], [ESP+0Ch] and so on, depending on how many
+parameters there are.  But it may be difficult to keep track of exactly
+where the parameters are using ESP because it will change upon the next
+PUSH or CALL.  So again you can use EBP to point to the parameters.
+<br>If you have the prologue code:-
+</font><pre><font face="Century Gothic">PUSH EBP          ;save the value of ebp which will be altered    }
+MOV EBP,ESP       ;give current value of stack pointer to ebp     } "prologue"
+SUB ESP,0Ch       ;make space for local data                      }
+</font></pre>
+<font face="Century Gothic">When ESP is given to EBP it is 4 bytes less in value than at the beginning of the 
+call (this is because of the first "PUSH EBP").  Therefore the parameters 
+can now be accessed using [EBP+8h], [EBP+0Ch], 
+[EBP+10h] and so on, depending on how many parameters there are.
+
+<a name="callbacks"></a></font><h3><font face="Century Gothic">Use of the stack in Window's callback procedures<a href="#contents"><img src=".usstack2_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">The two techniques just dealt with (making space for local data and 
+addressing parameters) are required in Windows callback procedures.
+The callback procedure most frequently found in Windows programs is the
+window procedure.  It is to this procedure that Windows sends "messages" 
+and Windows expects the correct reply.  What is happening here is that
+Windows <i>calls</i> the windows procedure using the program's own thread.
+This usually happens while the program is in the message loop either waiting 
+for a return from the API GetMessage, or whilst executing the API 
+DispatchMessage.
+<br>Luckily in GoAsm you can use FRAME..ENDF to retrieve the parameters
+sent by windows and to address them by name.  You can also easily
+make local data areas addressable by name.  And you can preserve registers
+and also restore the stack to equilibrium automatically too.  See
+the <a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/GoAsm.htm#frame">GoAsm manual</a> for a full description of 
+how to do this or go back to <a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack1.htm">understanding the
+stack (part 1)</a>.
+
+</font><p></p><hr>
+<center><p><font face="Century Gothic">Copyright © Jeremy Gordon 2002-2003
+<br><a href="#top">Back to top</a>
+</font></p></center></td></tr>
+</tbody></table></center>
+</body></html>

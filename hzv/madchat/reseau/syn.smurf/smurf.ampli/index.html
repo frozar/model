@@ -1,0 +1,941 @@
+http://www.isoc.org/isoc/conferences/inet/00/cdproceedings/1f/1f_2.htm
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta name="generator" content="HTML Tidy, see www.w3.org">
+<title>Detection, Defense, and Tracking of Internet-Wide Illegal Access in a
+Distributed Manner</title>
+
+<link rel="stylesheet" href="../paper.css">
+
+<!-- Editing and HTML coding by EEI Communications, http://www.eeicommunications.com -->
+<!-- 2000412 -->
+
+</head>
+<body bgcolor="#f6f6ff" text="#000000" link="#0000ff" vlink="#800080" alink="#ff0000">
+<p class="nav"><a href="../index.htm"><img src="../inet00sm.gif" alt="[INET 2000]" border="0" align="middle"></a>
+<a href="index.htm"><img src="../up.gif" alt="[ Up ]" border="0" align="middle"></a>
+<a href="../1f/1f_1.htm"><img src="../prev.gif" alt="[Prev]" border="0" align="middle"></a>
+<a href="../1g/1g_1.htm"><img src="../next.gif" alt="[Next]" border="0" align="middle"></a></p>
+
+<h1>Detection, Defense, and Tracking of Internet-Wide Illegal Access in a
+Distributed Manner</h1>
+
+<p class="author"><strong>Kohei OHTA</strong> <small>
+&lt;kohei@cysols.com&gt;</small><br>
+<strong>Glenn MANSFIELD</strong> <small>&lt;glenn@cysols.com&gt;</small><br>
+<i>Cyber Solutions Inc.</i><br>
+Japan</p>
+
+<p class="author"><strong>Yohsuke TAKEI</strong> <small>
+&lt;takei@nemoto.ecei.tohoku.ac.jp&gt;</small><br>
+<strong>Nei KATO</strong> <small>
+&lt;kato@nemoto.ecei.tohoku.ac.jp&gt;</small><br>
+<strong>Yoshiaki NEMOTO</strong> <small>
+&lt;nemoto@nemoto.ecei.tohoku.ac.jp&gt;</small><br>
+<i>Tohoku University</i><br>
+Japan</p>
+
+<h2>Abstract</h2>
+
+<p>The community and tools for illegal access are getting well organized and
+sophisticated. However, widely deployed defense systems like firewalls are
+moving toward isolating networks and sites. Attackers and intruders can be
+anywhere on the earth and deploy collaborating agents to attack any site on the
+Internet. To counter the threat posed, we need to develop technology and
+framework that allows collaborative defenses, and maybe even offensive
+measures, against the mischief makers. In this paper, we discuss the necessity
+and potential of a distributed system for Internet-wide illegal access
+detection, which employs distributed information collection, sharing, and
+correlation techniques. We have developed and evaluated a prototype of the
+distributed application.</p>
+
+<div class="contents">
+<h2>Contents</h2>
+
+<ul>
+<li><a href="#sec.1">1. Introduction</a></li>
+
+<li><a href="#sec.2">2. Recent Internet-wide illegal activities and
+IDS</a></li>
+
+<li><a href="#sec.3">3. Distributed security system for Internet-wide illegal
+access</a> 
+
+<ul>
+<li><a href="#s1">3.1. Basic distributed system architecture</a></li>
+
+<li><a href="#s2">3.2. Inter-system communication</a></li>
+
+<li><a href="#s3">3.3. Distributed security applications</a></li>
+</ul>
+</li>
+
+<li><a href="#sec.4">4. Distributed SCAN detection</a> 
+
+<ul>
+<li><a href="#s4">4.1. SCAN detection</a></li>
+
+<li><a href="#s5">4.2. Minimal SCAN action</a></li>
+
+<li><a href="#s6">4.3. Reaction packets</a></li>
+
+<li><a href="#s7">4.4. Correlation of information from multiple points</a></li>
+</ul>
+</li>
+
+<li><a href="#sec.5">5. Tracking the attacker</a> 
+
+<ul>
+<li><a href="#s8">5.1. Definition of traffic pattern</a></li>
+
+<li><a href="#s9">5.2. Correlation the traffic pattern</a></li>
+
+<li><a href="#s10">5.3. Path selection of traffic pattern</a></li>
+</ul>
+</li>
+
+<li><a href="#sec.6">6. Experimental evaluation of distributed system for
+illegal access</a> 
+
+<ul>
+<li><a href="#s11">6.1. SCAN detection</a> 
+
+<ul>
+<li><a href="#s12">SCAN detection with reaction packet</a></li>
+
+<li><a href="#s13">Information correlation for distributed SCAN
+detection</a></li>
+</ul>
+</li>
+
+<li><a href="#s14">6.2. Tracking <i>smurf</i> attack</a></li>
+
+<li><a href="#s15">6.3. Cooperated defense</a></li>
+
+<li><a href="#s16">6.4. Combination with Network MAP</a></li>
+</ul>
+</li>
+
+<li><a href="#sec.7">7. Conclusion</a></li>
+
+<li><a href="#s17">References</a></li>
+</ul>
+</div>
+
+<h2><a name="sec.1">1. Introduction</a></h2>
+
+<p>The battle against attackers is getting tougher. To avoid IDSs and other
+defenses, attackers are using more varied and devious techniques. The latest
+the latest technique is distributed attacks. Attackers may target simultaneous
+attacks to a single victim from various points of the Internet. A denial of
+service (DoS) attack on network bandwidth and/or some network service will be
+very effective when done by a group of collaborating agents. Toward this end,
+attackers may use some hosts that have been penetrated or compromised and are
+located in various points of the network and the globe. Distributed probes are
+very effective for mapping the topology of a network or sub-network.
+Topological information is the primary input in devising a strategy to attack a
+network or some host contained within the network.&nbsp; The next step is
+probing for vulnerable services, once again in a distributed manner.</p>
+
+<p>The present widely deployed defense systems like firewalls are moving
+towards isolating networks and sites. The focus seems to be on protecting the
+"internal" network.&nbsp; But there will always be open networking, otherwise
+the basic philosophy and driving force of the Internet will collapse. There is
+no escaping from the issue of defending this open Internet from hackers and
+intruders. Attackers and intruders can be anywhere on the earth and deploy
+collaborating agents to attack any site on the Internet. To counter the threat
+posed, we need to develop technology and framework that allow collaborative
+defenses and maybe even offensive measures against the mischief makers,</p>
+
+<p>In other words, to maintain the rule of law in the Internet, it is necessary
+to look beyond local defenses, to wide area attack detection and elimination
+systems including attacker-tracking techniques. In this work, we propose a
+cooperative system for Internet-wide illegal access detection, targeted toward
+network exchange points.&nbsp; It envisages a group of sensitive sensors, the
+facility of rapid information sharing, and organized reaction.</p>
+
+<p>For the information exchange framework, we are in sync with IDWG (Intrusion
+Detection Message Exchange Format [IDMEF]) working group [<a href=
+"#ref.1">1</a>] of IETF, which is working on format of information to exchange
+illegal access related information. The IDMEF will enable communication between
+IDSs in a heterogeneous environment.</p>
+
+<p>In this paper, we discuss the necessity and potential of a distributed
+system for Internet-wide illegal access detection, which employs distributed
+information collection, information sharing, and information correlation
+techniques. We have developed a prototype of the distributed application. It
+does SCAN detection, attacker tracking, and cooperative defense against
+attacks. We have evaluated the prototype in an operational network environment
+and have discussed the results.</p>
+
+<h2><a name="sec.2">2. Recent Internet-wide illegal activities and IDS</a></h2>
+
+<p>IDSs have focused on serious security intrusions like exploit of root
+accounts. However, that is the line of defense in the war against attackers.
+For proactive defense and early response, it is important to move the front
+line farther into from home and closer to the attacker. In other words, the
+coverage of the IDS should be expanded.</p>
+
+<p>The well-known network mapping tool "nmap"[<a href="#ref.2">2</a>]
+implements various techniques to find services and vulnerabilities in a
+network, e.g., stealth scanning, or to bypasses packet filters and monitors.
+Those scanning tools are likely to be distributed both in time and space to
+avoid detection systems and carrying out very slow scans of randomly selected
+targets. As an example of a co-operated SCAN activity, distributed traceroutes
+may be carried out to find out the entry point (router) of an Intranet [<a
+href="#ref.3">3</a>].</p>
+
+<p>DoS attacks are a major issue these days. The signature of a DoS may not
+seem to be serious locally, but it may affect one or more neighboring
+organizations and/or ISPs. The well-known <i>smurf</i>[<a href="#ref.4">4</a>]
+attack often traverses several wide-area networks and its potential impact may
+be felt anywhere in the worldwide Internet. And "Tribe Flood Network" and
+"Trenoo"[<a href="#ref.5">5</a>] are well-organized distributed DoS attacks.
+They organize and control compromised hosts to make the effect of DoS
+devastating. CERT Coordination Center published a report on recent cooperated
+attacks.</p>
+
+<p>There is a report of how smart attackers are collaborating Internet-wide in
+their attacks [<a href="#ref.6">6</a>] [<a href="#ref.7">7</a>].</p>
+
+<p>Most of the current security systems are independent, local and
+concentrating on application/OS log or specialized packet tracing, to
+investigate attacks on local targets however small the footprints of attackers
+may be. It is difficult for such systems to have a global view of the
+relationship of an insignificant abnormality that is observed locally with that
+that is being seen elsewhere.</p>
+
+<p>To raise the security level of the Internet, it is necessary to develop new
+security applications based on a standard framework to ensure interoperability
+and collaboration of IDS, firewall and other security systems.</p>
+
+<h2><a name="sec.3">3. Distributed security system for Internet-wide illegal
+access</a></h2>
+
+<p>A distributed security system would comprise some security agents and a
+communication system. Security agents would be IDSs, firewalls, and other
+management systems, which work on information collection, sharing, and
+correlation.</p>
+
+<h3><a name="s1">3.1. Basic distributed system architecture</a></h3>
+
+<p>Figure 1 shows the concept of our distributed system architecture. Sensors
+or security agents are deployed on the links of an inter-network, at an
+appropriate point for traffic monitoring and information exchange.</p>
+
+<p><img border="0" src="1f_2a.gif" alt=
+"Security application on distributed framework"><br>
+<b>Fig. 1 Security application on distributed framework</b></p>
+
+<h3><a name="s2">3.2. Inter-system communication</a></h3>
+
+<p>The requirements [<a href="#ref.8">8</a>] and data model [<a href=
+"#ref.9">9</a>] are discussed at IDWG to include details for the multi-vendor
+environment. In this paper, we adopted SNMP and MIB for information exchange.
+The further details are discussed in [<a href="#ref.10">10</a>], [<a href=
+"#ref.11">11</a>].</p>
+
+<p>It is important to have an idea of the communications mode(s) that will be
+used by intrusion detection systems when choosing an intrusion detection alert
+format, because some formats may support certain modes better than others.</p>
+
+<p>Network management involves monitoring and manipulating information about
+the elements to be managed.&nbsp; These bits and pieces of information are
+abstracted as Managed Objects (MO). A detailed introduction to the current SNMP
+Management Framework can be found in [<a href="#SNMPv3">12</a>].</p>
+
+<h3><a name="s3">3.3. Distributed security applications</a></h3>
+
+<p>In this paper, we propose three types of distributed applications:</p>
+
+<ul>
+<li>Distributed attacker detection system. As an example we use the case of a
+SCAN</li>
+
+<li>Attacker tracking system</li>
+
+<li>Cooperative defense to raise the security level of the Internet</li>
+</ul>
+
+<h2><a name="sec.4">4. Distributed SCAN detection</a></h2>
+
+<p>To avoid IDSs, a scanner may send a probe packet sneakily, slowly, randomly,
+or distributed. In other words, all the effort to do that is how to distribute
+probes in time and spaces widely. For early detection of these attackers, a
+wide area must be covered.</p>
+
+<h3><a name="s4">4.1. SCAN detection</a></h3>
+
+<p>The basic model of SCAN is based on a one-to-many access model (Figure 2).
+SCAN detection involves detecting such a pattern.</p>
+
+<p><img border="0" src="1f_2b.gif" alt="Typical SCAN behavior"><br>
+<b>Fig. 2 Typical SCAN behavior</b></p>
+
+<p>The pattern detection is based on the following categories of
+information:</p>
+
+<ol>
+<li><b>Statistical information:</b> Inter access interval and address/port
+number distributions are basic statistical information. In the simplest case,
+the probing actions are periodic and address/port numbers are sequential.</li>
+
+<li><b>Packet type:</b> There are various types of packets for SCAN, e.g., ICMP
+echo request, TCP SYN, TCP FIN, UDP Echo, etc. Among them, there are obvious
+protocol violations, and/or suspicious packets like those with all TCP flag set
+and/or source port set to 65535. SCANs which use such packets can be detected
+with relatively ease. But SCANs by normal packet are masked by normal
+activities</li>
+</ol>
+
+<p>Thus, carefully distributed probes with normal packets don't leave enough
+samples in local scope. In this paper, we propose a distributed information
+collection and correlation system using reaction packets to detect wide-area
+SCAN detection.</p>
+
+<h3><a name="s5">4.2. Minimal SCAN action</a></h3>
+
+<p>Figure 3 shows a minimal communication model of SCAN. The scanners generate
+<i>probe packets</i>. They can generate arbitrary packets. For example, TCP-SYN
+packet, which is a part of TCP 3-way handshake, is normal but it can be used
+for stealth scan. Reaction packets are automatically generated by network
+element like routers, firewalls, or end hosts. There is information in the
+errors (or absence thereof) reported in the <i>reaction packets</i>. SCAN
+generally attempts exhaustive address-space probing. In such cases, most of the
+attempts will result in reaction packets indicating "error" fail.</p>
+
+<p><img border="0" src="1f_2c.gif" alt="Minimal action of SCAN"><br>
+<b>Fig. 3 Minimal action of SCAN</b></p>
+
+<h3><a name="s6">4.3. Reaction packets</a></h3>
+
+<p>In this paper, to detect behavior of SCAN, reaction packets are focused.
+Almost all TCP/IP equipment could generate reaction packets like ICMP
+destination unreachable [<a href="#ref.12">13</a>]. That means those are
+built-in sensors already deployed. Those good signs should not be lost.
+However, to make use of them, a distributed security agent must intercept them
+and report their existence. Figure 4 shows a concept of reaction packet
+collection.</p>
+
+<p><img border="0" src="1f_2d.gif" alt="Reaction packet collection"><br>
+<b>Fig. 4 Reaction packet collection</b></p>
+
+<h3><a name="s7">4.4. Correlation of information from multiple points</a></h3>
+
+<p>To make a sensor sensitive and make its coverage wide, it is useful to
+correlate information from multiple security agents. Figure 5 shows a model of
+distributed SCAN detection, collected information of reaction packets are
+informed to NMS by SNMP inform message, then aggregated and correlated.</p>
+
+<p><img border="0" src="1f_2e.gif" alt="Distributed SCAN detection"><br>
+<b>Fig. 5 Distributed SCAN detection</b></p>
+
+<h2><a name="sec.5">5. Tracking the attacker</a></h2>
+
+<p>We proposed a traffic pattern-based attacker tracking mechanism at RAID'99
+Conference [<a href="#ref.13">14</a>]. That is, using the traffic pattern as
+the footprint of the attacker; the correlation coefficient is used to correlate
+and track the footprint.</p>
+
+<p>Packet contents are examined to determine the source, destination, and
+protocol-related details to determine the traffic profile. However, this
+mechanism in traffic profiling has limited applicability, as</p>
+
+<ul>
+<li>A clever hacker will manipulate the packet contents, e.g, spoof the source
+addresses whenever possible, particularly in the case of a denial of dervice
+(DoS) attack.</li>
+
+<li>The packet contents may be encrypted, making it difficult if not impossible
+to decode and analyze the contents.</li>
+
+<li>The traffic volume itself may be very large, making it a difficult task to
+analyze the contents of each and every packet.</li>
+</ul>
+
+<p>Moreover, if the source address is spoofed the attack may be detected by
+whatever means, but still the issue of tracing the attacker remains wide
+open.</p>
+
+<p>In such cases, profiling traffic-flow characteristics is a more appropriate
+choice. Essentially, one looks for distinguishing features of the traffic
+profile. For example, if there is a DoS attack in the form of a flood of
+TCP-SYN packets, this can be easily detected by the entity receiving the
+TCP-SYNS or by an RMON type device placed at an appropriate point in the
+network. Then the source of the malicious packets may be traced by looking for
+the presence of a similar flow at all the inputs of the concerned network.</p>
+
+<h3><a name="s8">5.1. Definition of traffic pattern</a></h3>
+
+<p>Traffic pattern is defined by the sequence of number of packets at time
+slots at each monitoring point [<a href="#ref.14">15</a>], which is modeled by
+size of time slot d, size of window D and metric of each slot (Figure 6).</p>
+
+<p><img border="0" src="1f_2f.gif" alt="Model of traffic pattern"><br>
+<b>Fig. 6 Model of traffic pattern</b></p>
+
+<p>All incoming and outgoing traffic patterns are modeled as following vector
+data.</p>
+
+<p><img alt="" border="0" src="1f_2g.gif"></p>
+
+<h3><a name="s9">5.2. Correlation the traffic pattern</a></h3>
+
+<p>Traffic pattern correlation is based on correlation coefficient, calculated
+as follow. Here, <b><i>A</i></b> is incoming pattern, then <b><i>B</i></b> is
+outgoing.</p>
+
+<p><img alt="" border="0" src="1f_2h.gif"></p>
+
+<p>In case that<b><i>r(A,B)</i></b> is close to 1, the traffic <b><i>A</i></b>
+went through as traffic <b><i>B</i></b>. One of the advantages of correlation
+coefficient is that absolute value of the metric can be neglected. The
+difference of size is represented as amplifier rate as follows. Large value of
+a means the volume of traffic is amplified a times.</p>
+
+<p><img alt="" border="0" src="1f_2i.gif"></p>
+
+<h3><a name="s10">5.3. Path selection of traffic pattern</a></h3>
+
+<p>By correlation of the traffic pattern, we can determine the direction of
+traffic. In Figure 7, a network is showed as bi-directional graph, so each link
+can have two patterns at duration, uplink/downlink. When a pattern a observed,
+which flowed from <b><i>A</i></b> to <b><i>B</i></b>, the same or amplified
+pattern might be observed at <b><i>BD</i></b> or <b><i>BC</i></b>. In such, a
+has direction. In this paper, a threshold to correlate patterns is value <b><i>
+r &gt; 0.7</i></b>. At that time, the value of a &gt; 2, it represents the
+traffic was amplified at node <b><i>B</i></b></p>
+
+<p><img border="0" src="1f_2j.gif" alt="Direction of traffic"><br>
+<b>Fig. 7 Direction of traffic</b></p>
+
+<h2><a name="sec.6">6. Experimental evaluation of distributed system for
+illegal access</a></h2>
+
+<p>Figure 8 shows our experimental environment. A FDDI loop IX is the target
+network, which is monitored by a monitor-PC running TCPDUMP. At the same time,
+all links connected to IX have their own RMON [16] like probes, which monitor
+the uplinks and downlinks separately. In this paper, all the evaluations are
+carried out by comparing results with the complete traffic log captured by
+TCPDUMP. Network IX has 25 networks of academic organizations, A to Y.</p>
+
+<p><img border="0" src="1f_2k.gif" alt="Environment of experiment"><br>
+<b>Fig. 8 Environment of experiment</b></p>
+
+<h3><a name="s11">6.1. SCAN detection</a></h3>
+
+<p>Evaluation was carried out by generating artificial SCANs with random
+addresses. In one case TCP-SYN probes, which is a popular way for stealth SCANs
+using "normal" probe packets, were generated. In the other case, UDP probe
+packets were generated. All probe packets are generated in the network
+illustrated in Figure 8.</p>
+
+<h4><a name="s12">SCAN detection with reaction packet</a></h4>
+
+<p>Table 1 shows a result of HTTP service SCANs with TCP-SYN. There are two
+types of reactions. One is TCP, the other is ICMP. Totally 1589 probe packets
+are generated.</p>
+
+<p>Thirty-four TCP SYN/ACK packets are normal behavior from a HTTP server;
+these probes reveal the server/service existence. This type of probe/reaction
+pair is normal, making it difficult to monitor the behavior. TCP ACK/RST and
+ICMP type 3 (unreachable) packets indicate some error condition, probably
+resulting from some mistake somewhere.</p>
+
+<div class="table">
+<table cellpadding="5" cellspacing="0" border="1">
+<caption><b>Table 1 HTTP service SCAN with TCP-SYN probe</b></caption>
+
+<tr>
+<th colspan="5">Scanner -&gt; Target (probe packet)</th>
+</tr>
+
+<tr>
+<th>Protocol</th>
+<th colspan="2">Flag</th>
+<th>Destination Port</th>
+<th>[Hosts]</th>
+</tr>
+
+<tr>
+<th>TCP</th>
+<td colspan="2" align="center">SYN</td>
+<td align="right">80</td>
+<td align="right">1589</td>
+</tr>
+
+<tr>
+<th colspan="5">Target -&gt; Scanner (reaction packet)</th>
+</tr>
+
+<tr>
+<th rowspan="3">TCP</th>
+<td colspan="2" align="center">SYN/ACK</td>
+<td align="right">51916</td>
+<td align="right">34</td>
+</tr>
+
+<tr>
+<td colspan="2" align="center">ACK/RST</td>
+<td align="right">51916</td>
+<td align="right">92</td>
+</tr>
+
+<tr>
+<td colspan="2" align="center">No response</td>
+<td align="right">--</td>
+<td align="right">26 [Hosts]</td>
+</tr>
+
+<tr>
+<th colspan="4">Number of alive hosts</th>
+<th align="right">152</th>
+</tr>
+
+<tr>
+<th rowspan="5">ICMP</th>
+<th>Type</th>
+<th>Code</th>
+<th>Name</th>
+<th>[Packets]</th>
+</tr>
+
+<tr>
+<td align="right">3</td>
+<td align="right">1</td>
+<td>Host unreachable</td>
+<td align="right">53</td>
+</tr>
+
+<tr>
+<td align="right">3</td>
+<td align="right">2</td>
+<td>Protocol unreachable</td>
+<td align="right">1</td>
+</tr>
+
+<tr>
+<td align="right">3</td>
+<td align="right">3</td>
+<td>Port unreachable</td>
+<td align="right">2</td>
+</tr>
+
+<tr>
+<td align="right">3</td>
+<td align="right">13</td>
+<td>Prohibited by filtering</td>
+<td align="right">4</td>
+</tr>
+</table>
+</div>
+
+<p>Table 2 shows a result in case of UDP probe. In this case, ICMP could be
+used to detect trails of SCAN. Probes were generated for 1550 different hosts,
+and 149 were living hosts. Among other 1401, only 50 ICMP "host unreachable"
+were observed.</p>
+
+<div class="table">
+<table cellpadding="5" cellspacing="0" border="1">
+<caption><b>Table 2 DNS service SCAN with UDP probe</b></caption>
+
+<tr>
+<th colspan="5">Scanner -&gt; Target(probe packet)</th>
+</tr>
+
+<tr>
+<th>Protocol</th>
+<th colspan="2">&nbsp;</th>
+<th>Destination Port</th>
+<th>[Hosts]</th>
+</tr>
+
+<tr>
+<th>UDP</th>
+<td colspan="2">&nbsp;</td>
+<td align="right">53</td>
+<td align="right">1550</td>
+</tr>
+
+<tr>
+<th colspan="5">Target -&gt; Scanner(reaction packet)</th>
+</tr>
+
+<tr>
+<th rowspan="7">ICMP</th>
+<th>Type</th>
+<th>Code</th>
+<th>Name</th>
+<th>[Packets]</th>
+</tr>
+
+<tr>
+<td align="right">3</td>
+<td align="right">2</td>
+<td>Protocol unreachable</td>
+<td align="right">1</td>
+</tr>
+
+<tr>
+<td align="right">3</td>
+<td align="right">3</td>
+<td>Port unreachable</td>
+<td align="right">108</td>
+</tr>
+
+<tr>
+<td colspan="3">No response</td>
+<td align="right">36 [Hosts]</td>
+</tr>
+
+<tr>
+<td align="right">3</td>
+<td align="right">13</td>
+<td>Prohibited by filtering</td>
+<td align="right">4</td>
+</tr>
+
+<tr>
+<th colspan="3">Number of alive hosts</th>
+<th align="right">149</th>
+</tr>
+
+<tr>
+<td align="right">3</td>
+<td align="right">1</td>
+<td>Host unreachable</td>
+<td align="right">50</td>
+</tr>
+</table>
+</div>
+
+<p>In both cases, the number of reaction packets is much smaller than the
+number of probe packets. This is a result of filtering by firewall. Many
+routers and firewalls are configured to keep silent to the network about
+prohibited actions. If they generated a proper message, like "Prohibited by
+filtering" [<a href="#ref.15">16</a>], and a security agent intercepted and
+collected them, information on scan detection would be enriched.</p>
+
+<h4><a name="s13">Information correlation for distributed SCAN
+detection</a></h4>
+
+<p>To evaluate the ability of distributed cooperated SCAN detection, we
+collected information on reaction packets from each subnet. In this experiment,
+about 1500 hosts were scanned with random address, distributed over 118
+subnets.</p>
+
+<p>Figure 9 shows an effect of distributed cooperated SCAN detection. Each mark
+indicates the detection of some reaction packets on time-axis. The upper orange
+marks represent observed reaction packets on a subnet segment. The lower blue
+marks represent all packets detected and collected from all subnet segments. It
+is clear that the orange marks are too few to detect SCAN characteristics; but
+the aggregated blue marks provide a rich source of information. The result
+clearly shows that widely distributed SCAN behavior is nicely and effectively
+aggregated by distributed sensors.</p>
+
+<p><img border="0" src="1f_2l.gif" alt="Co-operated SCAN detection"><br>
+<b>Fig. 9 Co-operated SCAN detection</b></p>
+
+<h3><a name="s14">6.2. Tracking <i>smurf</i> attack</a></h3>
+
+<p>We evaluated our proposed pattern-based attacker tracking in an operational
+network for a period of six months. A typical <i>smurf</i> attack consists of
+three components (Figure 10):</p>
+
+<ul>
+<li>IP broadcasting of ICMP echo request (spoofed)</li>
+
+<li>Amplifier by network</li>
+
+<li>High volume ICMP echo reply</li>
+</ul>
+
+<p>In this experiment, we tried to correlate and track that traffic.</p>
+
+<p><img border="0" src="1f_2m.gif" alt="Typical smurf attack"><br>
+<b>Fig. 10 Typical <i>smurf</i> attack</b></p>
+
+<p>Totally 85 <i>smurf</i> attacks were detected, and all of them could be
+tracked. But two attacks resulted in ambiguous tracking results. (Table 3).</p>
+
+<div class="table">
+<table cellpadding="5" cellspacing="0" border="1">
+<caption><b>Table 3 Tracking result</b></caption>
+
+<tr>
+<th rowspan="2">Number of <i>smurf</i> attacks</th>
+<td rowspan="2" align="right">85</td>
+<td>certain</td>
+<td align="right">83</td>
+</tr>
+
+<tr>
+<td>uncertain</td>
+<td align="right">2</td>
+</tr>
+</table>
+</div>
+
+<p>Table 4 shows a sample result of culculated correlation
+coefficient/amplifier rate. The highlighted line represents correlated
+patterns, which means traffic patterns from Network-M to Network-O are
+correlated, the similarity r = 0.99 and amplifier rate a = 0.96.</p>
+
+<div class="table">
+<table border="0" cellpadding="0">
+<tr>
+<td>
+<p align="center"><b>Table 4. Propagation of ICMP echo requests</b></p>
+</td>
+</tr>
+
+<tr>
+<td>
+<p><img border="0" src="1f_2n.gif" alt="Propagation of ICMP echo requests"></p>
+</td>
+</tr>
+</table>
+</div>
+
+<p>Table 5 shows similarity and the rate of amplifier between inbound and
+outbound of Network-O. The traffic to Network-O amplified about 24.6 times and
+went out from Network-O.</p>
+
+<div class="table">
+<table border="0" cellpadding="0">
+<tr>
+<td>
+<p align="center"><b>Table 5 Traffic amplifier</b></p>
+</td>
+</tr>
+
+<tr>
+<td>
+<p><img border="0" src="1f_2o.gif" alt="Traffic amplifier"></p>
+</td>
+</tr>
+</table>
+</div>
+
+<p>Table 6 shows the same values as Table 4, which represents from Network-O to
+Network-M.</p>
+
+<div class="table">
+<table border="0" cellpadding="0">
+<tr>
+<td>
+<p align="center"><b>Table 6. Propagation of ICMP echo reply
+(amplified)</b></p>
+</td>
+</tr>
+
+<tr>
+<td>
+<p><img border="0" src="1f_2p.gif" alt=
+"Propagation of ICMP echo reply&#13;&#13; (amplified)"></p>
+</td>
+</tr>
+</table>
+</div>
+
+<p>Totally, these above examples represent a successful traffic pattern
+tracking, which is a result of traffic pattern correlation obtained at four
+independent monitoring points illustrated in Figure 11.</p>
+
+<p><img border="0" src="1f_2q.gif" alt="Information correlation example"><br>
+<b>Fig. 11 Information correlation example</b></p>
+
+<h3><a name="s15">6.3. Cooperated defense</a></h3>
+
+<p>Table 7 shows a summary and estimation of influence of above 85 <i>
+smurf</i>s. ICMP echo reply packet of <i>smurf</i> attack is generally high
+volume, and goes across many networks all over the world. The table shows a
+large number of bursty and persistent traffic was generated by <i>smurf</i>
+attacks and many networks and hosts are related. Especially, the last row is an
+estimation of number of AS-hops between the site used for packet amplification
+and the victim. The estimation is based on Internet Routing Registry (IRR)[<a
+href="#ref.16">17</a>]. If related sites did share the information, they could
+certainly defend their resources effectively.</p>
+
+<div class="table">
+<table cellpadding="5" cellspacing="0" border="1">
+<caption><b>Table 7 Influence of <i>smurf</i> attack</b></caption>
+
+<tr>
+<th>&nbsp;</th>
+<th>Minimum</th>
+<th>Mean</th>
+<th>Maximum</th>
+</tr>
+
+<tr>
+<th>Number of packets used for attack</th>
+<td align="right">2469</td>
+<td align="right">1178737.8</td>
+<td align="right">7650056</td>
+</tr>
+
+<tr>
+<th>Elapsed time (min.)</th>
+<td align="right">1</td>
+<td align="right">32.2</td>
+<td align="right">637</td>
+</tr>
+
+<tr>
+<th>Number of packets/minutes</th>
+<td align="right">2469</td>
+<td align="right">47985.9</td>
+<td align="right">94244.7</td>
+</tr>
+
+<tr>
+<th>Rate of packet amplification</th>
+<td align="right">11.8</td>
+<td align="right">23.6</td>
+<td align="right">26.5</td>
+</tr>
+
+<tr>
+<th>Number of networks used for amplify</th>
+<td align="right">1</td>
+<td align="right">3.4</td>
+<td align="right">30</td>
+</tr>
+
+<tr>
+<th>Number of hosts replied</th>
+<td align="right">25</td>
+<td align="right">255</td>
+<td align="right">56.9</td>
+</tr>
+
+<tr>
+<th>Number of related ASs</th>
+<td align="right">2</td>
+<td align="right">4.5</td>
+<td align="right">7</td>
+</tr>
+</table>
+</div>
+
+<h3><a name="s16">6.4. Combination with Network MAP</a></h3>
+
+<p>Attacker tracking across several ISPs or ASs requires connectivity
+information; we used the information from IRR. Figure 12 shows a demonstration
+of attacker tracking with Internet MAP. A mechanism for sharing connectivity
+information and rapid intrusion information results in an effective proactive
+defense system.</p>
+
+<p><img border="0" src="1f_2r.gif" alt="Tracking attackers on the MAP"><img
+border="0" src="1f_2s.gif" alt="Tracking attackers on the MAP"><br>
+<b>Fig. 12 Tracking attackers on the MAP</b></p>
+
+<h2><a name="sec.7">7. Conclusion</a></h2>
+
+<p>Currently, administrators and mangers of network are coordinating, if at
+all, at the human level.&nbsp; Thus, the propagation of security information is
+slow and constrained. Furthermore, if the administrator/manager does not have
+enough knowledge and skills, appropriate reaction may not happen. An automatic
+and standard framework for rapid information sharing and coordinated actions is
+necessary to supplement that of the manual activities. In this paper, we
+proposed a distributed system for Internet-wide illegal access detection. We
+have discussed its effectiveness in SCAN detection, attacker tracking, and
+cooperative defense. We have carried out experiments with a prototype in an
+operational network environment. The results establish the effectiveness and
+potential of distributed systems.</p>
+
+<h2><a name="s17">References</a></h2>
+
+<ol>
+<li><a name="ref.1">"Intrusion Detection Exchange Format,"</a> work in
+progress, <a href="http://www.ietf.org/html.charters/idwg-charter.html">
+http://www.ietf.org/html.charters/idwg-charter.html</a></li>
+
+<li><a name="ref.2">"NMAP -- The Network Mapper,"</a> <a href=
+"http://www.insecure.org/nmap/index.html">
+http://www.insecure.org/nmap/index.html</a></li>
+
+<li><a name="ref.3">Stephen Northcutt, <i>Network Intrusion Detection: An
+Analyst's Handbook</i>, 1999, New Rider.</a></li>
+
+<li><a name="ref.4">CERT Advisory CA-96.21: "TCP SYN Flooding and IP Spoofing
+Attacks," 24 September 1996.</a></li>
+
+<li><a name="ref.5">CERT Advisory CA-2000-01: "Denial-of-Service Developments,"
+3 January 2000</a></li>
+
+<li><a name="ref.6">CERT Coordination Center, <i>Result of the
+Distributed-Systems Intruder Tools Workshop,</i> Pittsburgh, Pennsylvania USA,
+2-4 November 1999.</a></li>
+
+<li><a name="ref.7">Torsten Busse, "Hackers team up for large-scale attacks,"
+<i>Computerworld,</i> September 1998</a></li>
+
+<li><a name="ref.8">M. Wood, &nbsp;"Intrusion Detection Message Exchange
+Requirements,"</a> <a href=
+"http://www.ietf.org/internet-drafts/draft-ietf-idwg-requirements-02.txt">
+http://www.ietf.org/internet-drafts/draft-ietf-idwg-requirements-02.txt</a>,
+work in progress, October 1999</li>
+
+<li><a name="ref.9">Herve Debar, Ming-Yuh Huang, David J. Donahoo, "Intrusion
+Detection Exchange Format Data Model,"</a> work in progress, <a href=
+"http://www.ietf.org/internet-drafts/draft-ietf-idwg-data-model-00.txt">
+http://www.ietf.org/internet-drafts/draft-ietf-idwg-data-model-01.txt</a>,
+October 1999.</li>
+
+<li><a name="ref.10">Glenn Mansfield, Dipankar Gupta, "Intrusion Detection
+Message MIB,"</a> work in progress, <a href=
+"http://www.ietf.org/internet-drafts/draft-glenn-id-notification-mib-01.txt">
+http://www.ietf.org/internet-drafts/draft-glenn-id-notification-mib-02.txt</a>,
+23 October 1999.</li>
+
+<li><a name="ref.11">G. Mansfield, D. Curry, "Intrusion Detection Message
+Exchange Format Comparison of SMI and XML Implementations,"</a> work in
+progress, <a href=
+"http://www.ietf.org/internet-drafts/draft-mansfield-curry-idmef-xmlsmi-00.txt">
+http://www.ietf.org/internet-drafts/draft-mansfield-curry-idmef-xmlsmi-00.txt</a></li>
+
+<li><a name="SNMPv3">J. Case, &nbsp;R. Mundy, D. Partain, and B. Stewart,</a>
+"Introduction to Version 3 of the Internet-standard Network Management," <a
+href="../rfc/rfc2570.txt">RFC 2570</a>, April 1999</li>
+
+<li><a name="ref.12">J. Postel,</a> "Internet Control Message Protocol," <a
+href="../rfc/rfc792.txt">RFC 792</a>, September 1981.</li>
+
+<li><a name="ref.13">Glenn Mansfield, Kohei Ohta, Y. Takei, N. Kato, Y. Nemoto,
+"Towards trapping wily intruders in the large," <i>Recent Advances in Intrusion
+Detection</i> (1999).</a></li>
+
+<li><a name="ref.14">Kohei Ohta, Yohsuke Takei, Nei Kato, Glenn Mansfield, and
+Yoshiaki Nemoto, "Synchronizing Management Information Using Traffic Pattern
+Matching Technique," <i>Proceedings</i> of 1999 Symposium on Performance
+Evaluation of Computer and Telecommunication Systems, pp. 349-354
+(1999).</a></li>
+
+<li><a name="ref.15">F. Baker, "Requirements for IP Version 4 Routers,"</a> <a
+href="../rfc/rfc1812.txt">RFC 1812</a>, June 1995.</li>
+
+<li><a name="ref.16">Glenn Mansfield, et al., "Network Maps: Synthesis and
+Applications," <i>Proceedings</i> of 1999 Asia Pacific Symposium on Information
+and Telecommunication Technologies, August 1999.</a></li>
+</ol>
+<hr>
+<p class="nav"><a href="../index.htm"><img src="../inet00sm.gif" alt="[INET 2000]" border="0" align="middle"></a>
+<a href="index.htm"><img src="../up.gif" alt="[ Up ]" border="0" align="middle"></a>
+<a href="../1f/1f_1.htm"><img src="../prev.gif" alt="[Prev]" border="0" align="middle"></a>
+<a href="../1g/1g_1.htm"><img src="../next.gif" alt="[Next]" border="0" align="middle"></a></p>
+
+<pre>
+
+
+
+
+
+
+
+</pre></body>
+</html>
+

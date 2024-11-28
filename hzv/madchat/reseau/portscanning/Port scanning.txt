@@ -1,0 +1,271 @@
+Port Scanning Unscanned by Ankit Fadia ankit@bol.net.in
+
+________________________________________________________________
+
+
+
+Port Scanning is one of the most commonly carried out process amongst Hackers. Almost always, the first thing that a hacker would do on his quest to get root on a remote system is to conduct a port scan on the target system and get a list of open ports. But what exactly happens when you click on the ‘scan’ button of your favorite port scanner? How does the port scanner deduce whether a particular port on the remote system is closed or open? Well, this manual is just about that and a lot more.
+
+ 
+
+NOTE: In this manual, I assume that the reader has some basic knowledge and understanding of TCP/IP. I suggest you read RFC 793 as reference documentation. 
+
+ 
+
+There are different types of port scanning techniques employed by various port scanners. We all know how a manual Port Scan works. You launch Telnet and manually Telnet to each Port jotting down information that you think is important.  In a manual Port Scan, when you telnet to a port of a remote host, a full three way handshake takes place, which means that a complete TCP connection opens. 
+
+ 
+
+However, this indeed is not the most convenient method of getting a list of open ports on a remote system. One would not really want to telnet to thousands and thousands of remote ports. Right? On top of the convenience factor, such manual port scanning is highly and easily detectable. As in a manual port scan, a full TCP three-way handshake takes place; they are easily logged by the remote system. So, with the need to make port scanning a more convenient i.e. to make work for hackers easier, a number of different other port scanning techniques were developed. 
+
+ 
+
+Let us now, discuss the various Port Scanning techniques one by one. 
+
+ 
+
+Port Scanning TCP Ports
+
+ 
+
+Before we move on to discussing the various techniques, we need to make clear in our mind, some basic things. 
+
+ 
+
+Almost all Port Scans are based on the client sending a packet to the target port of the remote system, containing a particular flag. A TCP Packet header, contains six different types of flags, which are-:
+
+ 
+
+URG                                  The Urgent Flag indicates that some urgent data has been placed.
+
+ACK                                  The Acknowledgement Number is Valid.
+
+PSH                                   The data should be passed to the Application as soon as possible.
+
+RST                                   It resets the connection.
+
+SYN                                   It synchronizes Sequence Numbers to initiate a connection.
+
+FIN                                    It means that the sender of the flag has finished sending data.
+
+ 
+
+Now, the underlying rule of all port scans is the fact that a RST or a reset packet is sent by a system, whenever the system receives a packet that is not correct or contains information which is either wrong or not enough to initiate a proper connection.
+
+ 
+
+Although, this introduction might seem a bit too short, but I assure you, that is all one needs to know to easily understand this entire manual. For those of you who want to go into more detail, I suggest that you read RFC 793.
+
+ 
+
+TCP Connect Scan
+
+ 
+
+The earliest and the oldest version of Port Scanners used the same technique. They connected to each port and established a full three-way handshake for a complete TCP connection. The downside of such port scanners was the fact that as a full TCP connection was being established, the system administrator could easily detect that someone is trying to port scan his systems to find vulnerability. However such port scanning methods also had a bright side, as an actual TCP connection was being established, the port scanning software did not have to build a Fake Internet Protocol Packet. (This IP Packet is used to scan the remote systems.) Such TCP scanners too relied on the three-way TCP handshake to detect if a port is open or not. The Basic process of detecting whether a port is open or not has been described below:
+
+ 
+
+1.)      You send a TCP Packet containing the SYN flag (which in turn contains the Port Number to remote host.
+
+2.)      Now the remote host checks whether the port is open or not. If the port is open then it replies with a TCP packet containing both an ACK message confirming that the port is open and a SYN flag. On the other hand if the port is closed then the remote host sends the RST flag which resets the connection, in short closes the connection.
+
+3.)      This third phase is optional and involves the sending of an ACK message by the client.
+
+ 
+
+***********************
+
+HACKING TRUTH: Not only the TCP Connect Scan, but all other TCP/IP connections between two systems across the network is initiated with the three-way handshake. The basic structure or the basic process that happens in a TCP three-way handshake can be described as:
+
+ 
+
+1.        Client sends a SYN packet to the server.
+
+2.        The server replies with a SYN packet and acknowledges the Client’s SYN packet, by sending an ACK packet.
+
+3.        The client then acknowledges the SYN sent by the sever.
+
+ 
+
+This above process is called a TCP three-way handshake.
+
+*********************
+
+ 
+
+TCP SYN Scan (or Half Open Scanning)
+
+ 
+
+As TCP Scanners were detectable, programmers around the world developed a new kind of port scanner, the SYN Scanner, which did not establish a complete TCP connection. These kinds of port scanners remain undetectable by only sending the first single TCP Packet containing the SYN flag and establishing a half TCP Connection. To understand the working of a SYN or Half SYN Port Scanner simply read its 4 step working-:
+
+ 
+
+1.        SYN Port Scanner sends the first TCP packet containing the SYN flag (which in turn contains the port number) to the remote host.
+
+2.        The remote system replies with either a SYN/ACK or a RST/ACK.
+
+3.        If the client receives a SYN/ACK from the server, then it means that the port is in listening state. However, if the client receives a RST/ACK then it means that the port is not listening or in other words there is no service running on that particular remote port.
+
+4.        When the SYN Port scanner receives one of the above responses, it knows whether the respective port is open or not and whether a daemon is ready listening for connections.
+
+ 
+
+TCP SYN Scans or Half Open Scanning is a stealth method of port scanning, because a full TCP three-way handshake does not take place. Thus, they are less detectable as compared to traditional TCP connect Scans. However, newer version of various firewalls has no problems in detecting such scans.
+
+ 
+
+TCP Fin Scan 
+
+ 
+
+In this type of a port scan, the client sends a FIN packet to the target port. The correct behavior of an open port is not to respond to a FIN Packet. However, if no service is running or if no daemon is listening i.e. if the port is closed, then the remote system replies with either of the following:
+
+ 
+
+1.)      In case of UDP ports, the remote system replies with an ICMP message.(More later in the manual)
+
+2.)      In case of TCP ports, the target system sends a RST or reset.
+
+ 
+
+So, basically if the client gets a RST for a particular port, then it means that particular port is closed. Else, it is open and listening. Such a Port Scan is based on the golden rule that we discussed earlier in the manual:
+
+ 
+
+“……the underlying rule of all port scans is the fact that a RST or a reset packet is sent by a system, whenever the system receives a packet that is not correct or contains information which is either wrong or not enough to initiate a proper connection……”
+
+ 
+
+So, according to this rule, when we send a FIN Packet to a closed port, then the remote system is actually receiving a packet, which does not contain enough information to establish a proper connection. (Because the port to which it is addressed does not have a service running.) Thus, the remote system replies with a RST for all closed ports. 
+
+ 
+
+Although TCP Fin Scans are very popular they are mostly used on Unix Systems. 
+
+ 
+
+TCP Null Scan
+
+ 
+
+Earlier, we had discussed the various flags, which are available in TCP. Now, if we send a packet to a remote system in which all the flags are turned off (That is, set to NULL), then the remote system would actually not know what to do with the packet or in other words, it would not know what this packet was meant for.
+
+ 
+
+You see, each flag is supposed to perform a particular function. According to the function that you wish to perform, the various TCP flags are turned on and turned off. Now, when the client sends a packet with all the flags turned off, then the server has absolutely no idea as to what it has to do with the packet or as to why the client sent the packet. If the NULL packet is directed to an open port, then the service running on that port replies with a error message. However, if the NULL packet is directed to a closed port, then the remote system replies with a RST or reset because the NULL packet it received did not contain enough information to establish a connection.
+
+ 
+
+TCP Xmas Tree Scan
+
+ 
+
+In this port scan technique, FIN, URG and PUSH packets are sent to target ports. If the target port is closed, then the remote system replies with a RST. 
+
+ 
+
+********************
+
+HACKING TRUTH: Some Port scanners use the ‘ACK Packet Scan’. This technique involves sending a ACK packet and if the Time To Live or ttl of the returning packets is lower than the RST packets received (earlier), or if the windows size is greater than zero, then the port is probably open and listening.
+
+****************
+
+ 
+
+Port Scanning UDP Ports
+
+ 
+
+For port scanning UDP Ports, a technique called the UDP Port Scanning is used, which involves the following procedure:
+
+ 
+
+1.)      A UDP Packet is sent to the target port. 
+
+2.)      The typical behavior is that if the remote port is closed, then the server replies with an ICMP error message of ‘Port Unreachable’. [Such an error message has a type value of 3 and code value of 3.] 
+
+3.)      However, if the port is open, then no such error message is generated. This tells the client that the remote port is open.
+
+ 
+
+In UDP, if the server receives a UDP datagram, whose destination port does not correspond to a port, which has a service running, then it replies with an ICMP Port Unreachable Error Message.
+
+ 
+
+The format of a typical ICMP Port Unreachable message is as follows:
+
+ 
+
+0                         7    8                                     15      16                                                             31
+
+_________________________________________________________________
+
+|                               |                                               |                                                                      |        
+
+|     type(3)              |               code(3)                   |               16-Bit Checksum                         |
+
+|                               |                                               |                                                                      |
+
+|_____________ |____________________|______________________________ |        
+
+|                                                                                                                                                      |
+
+|                               Unused (Should be 0)                                                                                |
+
+|                                                                                                                                                      |
+
+|________________________________________________________________|                         
+
+|                                                                                                                                                      |        
+
+|               IP Header (including options) + first 8 bytes of original IP packet data           |
+
+|________________________________________________________________ |
+
+ 
+
+ 
+
+However, the downside of UDP Scanning is the fact that UDP is a connection less protocol, hence it accuracy depends on a number of factors, which often make the result of the UDP scan inaccurate.
+
+ 
+
+Now, that we know how most port scanning techniques work, the question as to how to fight against port scans arises. Although there is simply no way that one can prevent or stop clients from port scanning your machine, it is however highly advisable that one uses software like the below to detect and track down Port Scanning Attempts. 
+
+ 
+
+For Unix Systems-------Scanlogd
+
+For Windows Systems--------BlackICE
+
+ 
+
+Nowadays, almost all firewalls too detect and filter out most port scanning attempts. But, whatever software one uses, it always pays to disable those services, which are not in use.
+
+ 
+
+On this note, we come to the end of this manual. Hope you liked it and till next time bye!!!!
+
+ 
+
+ Ankit Fadia
+
+ankit@bol.net.in
+
+http://hackingtruths.box.sk
+
+ 
+
+To receive tutorials written by Ankit Fadia on everything you ever dreamt of in your Inbox, join his mailing list by sending a blank email to: programmingforhackers-subscribe@egroups.com
+
+ 
+
+Wanna ask a question? Got a comment to make? Criticize, Comment and more…..by sending me an Instant Message on MSN Messenger. The ID that I use is: ankit_fadia@hotmail.com
+
+ 
+
+Do you live in New Delhi? Wanna learn Hacking? Wanna attend monthly lectures and discussions on various Networking/Hacking topics? Well, then simply join by The Hacking Truths Club by clicking Here
+
+ 

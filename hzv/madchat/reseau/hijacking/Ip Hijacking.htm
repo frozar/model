@@ -1,0 +1,147 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD><TITLE>Ip Hijacking</TITLE>
+<META content=fr http-equiv=Content-Language>
+<META content="text/html; charset=windows-1252" http-equiv=Content-Type>
+<META content="MSHTML 5.00.2920.0" name=GENERATOR>
+<META content=FrontPage.Editor.Document name=ProgId>
+<STYLE type=text/css>A:hover {
+	COLOR: #3399ff; TEXT-DECORATION: none
+}
+</STYLE>
+</HEAD>
+<BODY aLink=#000000 link=#000000 vLink=#000000>
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT 
+color=#000000 face=Verdana size=5>Ip Hijacking</FONT></B> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2><BR><B>Présentation:</B><BR><BR>Nous allons montrer au 
+travers d un exemple une faiblesse de TCP/IP. Le but est de désynchroniser une 
+connection utilisant le protocole TCP et de la reprendre à son compte. Pour ce 
+faire il faut qu'une des deux stations dialoguant sois sur le meme sous réseau 
+que la machine attaquante.<BR>(ou que ses paquets soient routes par votre sous 
+réseau, les routeurs ont parfois des problémes avec leur table de routages ;) 
+).<BR>Note:<BR>la machine attaquante est la station qui va provoquer la 
+désynchronisation.<BR>Préambule:<BR>Il est nécessaire de parfaitement maitriser 
+le protocole TCP/IP pour comprendre cette méthode(notemment l'evolution des 
+numéros de séquences au cours du temps).<BR><BR><B>Rappel:<BR><ALIGN>a.Méthode 
+de synchronisation d'une connection</B><BR>(Three Way Handshake).<BR></FONT>
+<DIV align=justify><PRE style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 face=Verdana size=2>		A ------SYN: Ox0F-(0)-------------------&gt; B  Phase 1 
+		
+		A &lt;------SYN: 0x0A---ACK: 0X0F---(0) --- B  Phase 2 				       
+
+		A  ------ACK: OXOA--(0)-----------------&gt;B Phase 3 
+		   
+			<B>Schema A.</B>
+
+
+		Note: A Machine cliente faisant la demande de synchronisation.	
+
+		      B Machine Serveur , répondant a la demande de
+		      synchronisation de A.
+</FONT></PRE></DIV>
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>La machine A initialise une connection avec la machine B. 
+C'est la phase 1, elle envoie son numéro de séquence initiale(NSI) a la machine 
+B en activant le flag SYN(valeur hexa 0X02) et 0 octets de datas. La machine B 
+réceptionne ce paquet et l'accepte. Ceci est confirmé par la phase 2.<BR>En 
+phase 2 la machine B acknowledge le paquet reçu en phase 1(elle a active son 
+flag ACK(valeur hexa 0X10) et le numero de sequence associe a l'ACK correspond a 
+celui envoye par la machine A en phase 1). La machine B transmet également son 
+NSI lors de cette phase.<BR>En phase 3 La machine A acknowledge le paquet envoyé 
+en phase 2 par la machine B. A l'issu de ces trois phases les deux machines ont 
+synchronisés leur numéros de séquences et peuven initialiser une communication 
+en TCP.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT 
+color=#000000 face=Verdana size=2>b.Evolution des numeros de séquences dans le 
+temps.</FONT></B><FONT color=#000000 face=Verdana size=2><BR></FONT>
+<DIV align=justify><PRE style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 face=Verdana size=2>		A --------SEQ: 0X01--ACK/PSH: 0X02---(10)----&gt; B Etape 1
+
+		A &lt;-------SEQ: 0X02--ACK/PSH: OXOB--(20)-----  B Etape 2
+
+		A --------SEQ: 0X0B--ACK/PSH: OX16--(15)-----&gt; B Etape 3
+
+		Etc ...
+
+		    <B>Schema B.</B>
+		    Note: Nous supposons que la phase de synchronisation
+		    est passée, les stations A et B se transmettent des datas.
+</FONT></PRE></DIV>
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Nous remarquons un nouveau type de flag le flag PSH(Push, 
+valeur hexa 0X08), il signifie que les datas doivent etre remontés a la couche 
+applicative.</FONT></P>
+<UL>
+  <LI>
+  <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+  color=#000000 face=Verdana size=2>A l'ETAPE 1 la machine A envoi 10 octets de 
+  datas a la machine B.</FONT> </P>
+  <LI>
+  <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+  color=#000000 face=Verdana size=2>La machine B a accepter ce paquet, ceci est 
+  confirme a l'ETAPE 2: Valeur de l'ACK: 0X01+10=0X0B<BR>Lors de l'ETAPE 2 la 
+  machine B transmet 20 octets de datas a la machine A.<BR></FONT></P>
+  <LI>
+  <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+  color=#000000 face=Verdana size=2>A l'ETAPE 3 la machine valide le fait 
+  qu'elle a accepte le paquet envoyé par la machine B a l'ETAPE 2. 
+  ACK=0X02+20=0X16</FONT> 
+  <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT 
+  color=#000000 face=Verdana size=2>Description de l'attaque en elle 
+  meme:</FONT></B><FONT color=#000000 face=Verdana size=2><BR></FONT>
+  <DIV align=justify><PRE style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 face=Verdana size=2>	A --------SEQ: 0X01--ACK/PSH: 0X02---(10)----&gt; B Etape 1
+
+	A &lt;-------SEQ: 0X02--ACK/PSH: OXOB--(20)-----  B Etape 2
+
+	A --------SEQ: 0X0B--ACK/PSH: OX16--(15)-----&gt; B Etape 3
+
+	A &lt;------SEQ: 0X16----ACK/PSH: 0X1A--(0)---- B Etape 4 	
+
+	Wk ------SEQ: 0X1A---ACK/PSH: 0X16--(5)-----&gt; B Etape 5 Blurp
+
+	A &lt;-----SEQ: 0X1B----ACK/PSH: 0X1A (3)------ B Etape 6
+
+	Wk -----SEQ: 0X1A ----ACK/PSH: 0X1E (12)----&gt; B Etape 7
+
+			[......]
+
+		Note:La machine Wk fait de l'ecoute passive sur le
+		reseau et usurpe l'identite de la machine A.
+		Nous supposons que la phase de synchronisation est passee.	
+		       <B>Schema C.</B>
+</FONT></PRE></DIV>
+  <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+  color=#000000>&nbsp;</FONT></P>
+  <LI>
+  <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+  color=#000000 face=Verdana size=2>De l'etape 1 a 4 il s'agit d'une 
+  communication normale entre la station A et la station B.<BR></FONT></P>
+  <LI>
+  <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+  color=#000000 face=Verdana size=2>A l'ETAPE 5 la station Wk intervient et 
+  envoi un paquet a la station B en se faisant passer pour la station A. La 
+  station Wk base ses numeros de sequences sur ceux envoyes par la station B a 
+  l'ETAPE 4.</FONT> </P>
+  <LI>
+  <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+  color=#000000 face=Verdana size=2>La station B en observant les numeros de 
+  sequences envoyes a l'ETAPE 5, va penser qu'il s'agit d'un paquet 
+  effectivement envoye par la station A. Elle va donc le traiter.<BR></FONT></P>
+  <LI>
+  <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+  color=#000000 face=Verdana size=2>A l'ETAPE 6 la station B acknowledge le 
+  paquet envoye a l'ETAPE 5. A cette etape la station A est desynchronise par 
+  rapport a la station B. Par contre la station Wk possede les bons numeros de 
+  sequences.</FONT> </P>
+  <LI>
+  <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+  color=#000000 face=Verdana size=2>A l'etape 7 et suivante la staion Wk 
+  continue le transfert de ses donnes.<BR></FONT>
+  <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT 
+  color=#000000 face=Verdana size=2>Contre:</FONT></B><FONT color=#000000 
+  face=Verdana size=2><BR>Le seul contre possible consisterais a crypter toute 
+  la couche TCP.<BR></FONT>
+  <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+  color=#000000><FONT face=Verdana size=2>Je ne peut en aucun cas etre tenu 
+  responsable de l utilisation que vous ferez de ces 
+  informations.<BR></FONT><B><FONT face=Verdana size=2><BR><BR>Auteur:<BR><A 
+  href="mailto:patrice.salnot@bsdfr.org">Patrice 
+  SALNOT</A></FONT></B></FONT></P></LI></UL></BODY></HTML>

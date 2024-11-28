@@ -1,0 +1,137 @@
+<HTML>
+<BODY>
+<PRE>
+<!-- Manpage converted by man2html 3.0.1 -->
+     <B>#include</B> <B>&lt;sys/vnode.h&gt;</B>
+     <B>#include</B> <B>&lt;sys/acl.h&gt;</B>
+
+     In the kernel configuration file:
+     <B>options</B> <B>UFS_ACL</B>
+
+
+</PRE>
+<H2>DESCRIPTION</H2><PRE>
+     Access control lists, or ACLs, allow fine-grained specification of rights
+     for vnodes representing files and directories.  However, as there are a
+     plethora of file systems with differing ACL semantics, the vnode inter-
+     face is aware only of the syntax of ACLs, relying on the underlying file
+     system to implement the details.  Depending on the underlying file sys-
+     tem, each file or directory may have zero or more ACLs associated with
+     it, named using the <I>type</I> field of the appropriate vnode ACL calls:
+     <B>VOP_ACLCHECK(9)</B>, <B>VOP_GETACL(9)</B>, and <B>VOP_SETACL(9)</B>.
+
+     Currently, each ACL is represented in-kernel by a fixed-size <I>acl</I> struc-
+     ture, defined as follows:
+
+	   struct acl {
+		   int			   acl_cnt;
+		   struct acl_entry	   acl_entry[ACL_MAX_ENTRIES];
+	   };
+
+     An ACL is constructed from a fixed size array of ACL entries, each of
+     which consists of a set of permissions, principal namespace, and princi-
+     pal identifier.
+
+     Each individual ACL entry is of the type <I>acl</I><B>_</B><I>entry</I><B>_</B><I>t</I>, which is a struc-
+     ture with the following members:
+
+     <I>acl</I><B>_</B><I>tag</I><B>_</B><I>t</I> <I>ae</I><B>_</B><I>tag</I>
+	 The following is a list of definitions of ACL types to be set in
+	 <I>ae</I><B>_</B><I>tag</I>:
+
+	       ACL_UNDEFINED_FIELD  Undefined ACL type.
+	       ACL_USER_OBJ	    Discretionary access rights for processes
+				    whose effective user ID matches the user
+				    ID of the file's owner.
+	       ACL_USER 	    Discretionary access rights for processes
+				    whose effective user ID matches the ACL
+				    entry qualifier.
+	       ACL_GROUP_OBJ	    Discretionary access rights for processes
+				    whose effective group ID or any supplemen-
+				    tal groups match the group ID of the
+				    file's owner.
+	       ACL_GROUP	    Discretionary access rights for processes
+				    whose effective group ID or any supplemen-
+				    tal groups match the ACL entry qualifier.
+	       ACL_MASK 	    The maximum discretionary access rights
+				    that can be granted to a process in the
+				    file group class.
+
+	 has for accessing the associated file.
+
+	 ACL_EXECUTE	   The process may execute the associated file.
+
+	 ACL_WRITE	   The process may write to the associated file.
+
+	 ACL_READ	   The process may read from the associated file.
+
+	 ACL_PERM_NONE	   The process has no read, write or execute permis-
+			   sions to the associated file.
+
+
+</PRE>
+<H2>IMPLEMENTATION NOTES</H2><PRE>
+     typedef mode_t  *acl_permset_t;
+
+     /* internal ACL structure */
+     struct acl {
+	     int		     acl_cnt;
+	     struct acl_entry	     acl_entry[ACL_MAX_ENTRIES];
+     };
+
+     /* external ACL structure */
+     struct acl_t_struct {
+	     struct acl 	     ats_acl;
+	     int		     ats_cur_entry;
+     };
+     typedef struct acl_t_struct *acl_t;
+
+     /*
+      * Possible valid values for ae_tag field.
+      */
+     #define ACL_UNDEFINED_TAG	     0x00000000
+     #define ACL_USER_OBJ	     0x00000001
+     #define ACL_USER		     0x00000002
+     #define ACL_GROUP_OBJ	     0x00000004
+     #define ACL_GROUP		     0x00000008
+     #define ACL_MASK		     0x00000010
+     #define ACL_OTHER		     0x00000020
+     #define ACL_OTHER_OBJ	     ACL_OTHER
+
+     /*
+      * Possible valid values for acl_type_t arguments.
+      */
+     #define ACL_TYPE_ACCESS	     0x00000000
+     #define ACL_TYPE_DEFAULT	     0x00000001
+     #define ACL_TYPE_AFS	     0x00000002
+     #define ACL_TYPE_CODA	     0x00000003
+     #define ACL_TYPE_NTFS	     0x00000004
+     #define ACL_TYPE_NWFS	     0x00000005
+
+     /*
+      * Possible flags in ae_perm field.
+      */
+      * Undefined value in ae_id field
+      */
+     #define ACL_UNDEFINED_ID	     ((uid_t)-1)
+
+
+</PRE>
+<H2>SEE ALSO</H2><PRE>
+     <B>acl(3)</B>, <B>vaccess_acl_posix1e(9)</B>, <B>VFS(9)</B>, <B>vnaccess(9)</B>, <B>VOP_ACLCHECK(9)</B>,
+     <B>VOP_GETACL(9)</B>, <B>VOP_SETACL(9)</B>
+
+
+</PRE>
+<H2>AUTHORS</H2><PRE>
+     This man page was written by Robert Watson.
+
+FreeBSD 5.1		       December 23, 1999		   FreeBSD 5.1
+</PRE>
+<HR>
+<ADDRESS>
+Man(1) output converted with
+<a href="http://www.oac.uci.edu/indiv/ehood/man2html.html">man2html</a>
+</ADDRESS>
+</BODY>
+</HTML>

@@ -1,0 +1,777 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Appendix E: Configurable Options</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="E_0"><H1><I>Configurable Options</I></H1></a>
+<P>
+We've seen many features of TCP/IP that we've had
+to describe with the qualifier &quot;it depends on the configuration.&quot;
+Typical examples are whether or not UDP checksums are enabled
+(<a href="udp_user.htm#11_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_3">Section 11.3</a>), whether destination IP addresses with the same
+network ID but a different subnet ID are local or nonlocal (<a href="tcp_conn.htm#18_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#18_4">Section 18.4</a>),
+and whether directed broadcasts are forwarded or not (<a href="broadcas.htm#12_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm#12_4">Section 12.3</a>).
+Indeed, many operating characteristics of a given TCP/IP
+implementation can be modified by the system administrator.
+<P>
+This appendix lists some of the configurable options
+for the various TCP/IP implementations that have been used throughout
+the text. As you might expect, every vendor does things differently
+from all others. Nevertheless, this appendix gives an idea of
+the types of parameters different implementations allow one to
+modify. A few options that are highly implementation specific,
+such as the low-water mark for the memory buffer pool, are not
+described.
+<P>
+<I>These variables are described for informational
+purposes only. Their names, default values, or interpretation
+can change from one release to the next. Always check your vendor's
+documentation (or bug them for adequate documentation) for the
+final word on these variables.</I>
+<P>
+This appendix does not cover the initialization that
+takes place every time the system is bootstrapped: the initialization
+of each network interface using <TT>ifconfig</TT>
+(setting the IP address, the subnet mask, etc.), entering static
+routes into the routing table, and the like. Instead, this appendix
+focuses on the configuration options that affect how TCP/IP operates.
+<a name="E_1"><H3>E.1 BSD/386 Version 1.0</H3></a>
+<P>
+This system is an example of the &quot;classical&quot;
+BSD configuration that has been used since 4.2BSD. Since the source
+code is distributed with the system, configuration options are
+specified by the administrator, and the kernel is recompiled.
+There are two types of options: constants that are defined in
+the kernel configuration file (see the <TT>config</TT>(8)
+manual page), and variable initializations in various C source
+files. Brave and knowledgeable administrators can also change
+the values of these C variables in either the running kernel or
+the kernel's disk image, using a debugger, to avoid rebuilding
+the kernel. Here are the constants that can be changed in the
+kernel's configuration file.
+<P>
+<TT>IPFORWARDING<BR>
+</TT>The value of this constant initializes the kernel
+variable <TT>ipforwarding</TT>. If 0 (default),
+IP datagrams are not forwarded. If 1, forwarding is always enabled.
+<P>
+<TT>GATEWAY<BR>
+</TT>If defined, causes <TT>IPFORWARDING</TT>
+to be set to 1. Additionally, defining this constant causes certain
+system tables (the ARP cache and the routing table) to be larger.
+<P>
+<TT>SUBNETSARELOCAL<BR>
+</TT>The value of this constant initializes the kernel
+variable <TT>subnetsarelocal</TT>. If 1 (default),
+a destination IP address with the same network ID as the sending
+host but a different subnet ID is considered local. If 0, only
+destination IP addresses on an attached subnet are considered
+local. This is summarized in Figure E.1.
+<P>
+<CENTER>
+<a name="fig_E_1"><TABLE BORDER=1></a>
+<TR><TD WIDTH=125><CENTER>Network IDs</CENTER></TD><TD WIDTH=101><CENTER>Subnet IDs</CENTER>
+</TD><TD COLSPAN=2 WIDTH=137><TT>subnetsarelocal</TT></TD><TD WIDTH=210><CENTER>Comment</CENTER>
+</TD></TR>
+<TR><TD WIDTH=125></TD><TD WIDTH=101></TD><TD WIDTH=56><CENTER>1</CENTER>
+</TD><TD WIDTH=81><CENTER>0</CENTER></TD><TD WIDTH=210></TD>
+</TR>
+<TR><TD WIDTH=125><CENTER>same
+<BR>
+same<BR>
+different</CENTER>
+</TD><TD WIDTH=101><CENTER>same<br>different<br>-</CENTER></TD>
+<TD WIDTH=56><CENTER>local<br>local<br>nonlocal</CENTER>
+</TD><TD WIDTH=81><CENTER>local<BR>
+nonlocal<BR>
+nonlocal</CENTER>
+</TD><TD WIDTH=210>always local<BR>
+depends on configuration<BR>
+always nonlocal
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure E.1</B> Interpretation
+of subnetsarelocal kernel variable.</CENTER>
+<P>
+This affects the MSS selected by TCP. When sending
+to local destinations, TCP chooses the MSS based on the MTU of
+the outgoing interface. When sending to nonlocal destinations,
+TCP uses the variable <TT>tcp_mssdflt</TT>
+as the MSS.
+<P>
+<TT>IPSENDREDIRECTS<BR>
+</TT>The value of this constant initializes the kernel
+variable <TT>ipsendredirects</TT>. If 1 (default),
+the host will send ICMP redirects when forwarding IP datagrams.
+If 0, ICMP redirects are not sent.
+<P>
+<TT>DIRECTED_BROADCAST<BR>
+</TT>If 1 (default), received datagrams whose destination
+address is the directed broadcast address of an attached interface
+are forwarded as a link-layer broadcast. If 0, these datagrams
+are silently discarded.
+<P>
+The following variables can also be modified. These
+variables are spread throughout different files in the <TT>/usr/src/sys/netinet</TT>
+directory.
+<P>
+<TABLE BORDER="1">
+<TR><TD WIDTH=149><TT>tcprexmtthresh</TT></TD><TD WIDTH=550>The number of consecutive ACKs that triggers the fast retransmit and fast recovery algorithm. The default value is 3.
+</TD></TR>
+<TR><TD WIDTH=149><TT>tcp_ttl</TT></TD><TD WIDTH=550>The default value for the TTL field for TCP segments. Default value is 60.
+</TD></TR>
+<TR><TD WIDTH=149><TT>tcp_mssdflt</TT></TD><TD WIDTH=550>The default TCP MSS for nonlocal destinations. Default value is 512.
+</TD></TR>
+<TR><TD WIDTH=149><TT>tcp_keepidle</TT></TD><TD WIDTH=550>Number of 500-ms clock ticks before sending a keepalive probe. Default value is 14400 (2 hours).
+</TD></TR>
+<TR><TD WIDTH=149><TT>tcp_keepintvl</TT></TD><TD WIDTH=550>Number of 500-ms clock ticks between successive keepalive probes, when no response is received. Default value is 150 (75 seconds).
+</TD></TR>
+<TR><TD WIDTH=149><TT>tcp_sendspace</TT></TD><TD WIDTH=550>The default size of the TCP send buffer. Default value is 4096.
+</TD></TR>
+<TR><TD WIDTH=149><TT>tcp_recvspace</TT></TD><TD WIDTH=550>The default size of the TCP receive buffer. This affects the window size that is offered. Default value is 4096.
+</TD></TR>
+<TR><TD WIDTH=149><TT>udpcksum</TT></TD><TD WIDTH=550>If nonzero, UDP checksums are calculated for outgoing UDP datagrams, and incoming UDP datagrams containing nonzero checksums have their checksum verified. If 0, outgoing UDP datagrams do not contain a checksum, and no checksum verification is performed on incoming UDP datagrams, even if the sender calculated a checksum. Default is 1.
+</TD></TR>
+<TR><TD WIDTH=149><TT>udp_ttl</TT></TD><TD WIDTH=550>The default value for the TTL field in UDP datagrams. Default value is 30.
+</TD></TR>
+<TR><TD WIDTH=149><TT>udp_sendspace</TT></TD><TD WIDTH=550>The default size of the UDP send buffer. Defines the maximum UDP datagram that can be sent. Default is 9216.
+</TD></TR>
+<TR><TD WIDTH=149><TT>udp_recvspace</TT></TD><TD WIDTH=550>The default size of the UDP receive buffer. The default is 41600, allowing for 40 1024-byte datagrams.
+</TD></TR>
+</TABLE>
+<a name="E_2"><H3>E.2 SunOS 4.1.3</H3></a>
+<P>
+The method used with SunOS 4.1.3 is similar to what
+we saw with BSD/386. Since most of the kernel sources are not
+distributed, all the C variable initializations are contained
+in a single C source file that is provided.
+<P>
+The administrator's kernel configuration file (see
+the <TT>config</TT>(8) manual page) can define
+the following variables. After modifying your configuration file,
+a new kernel must be made and rebooted.
+<P>
+<TT>IPFORWARDING<BR>
+</TT>The value of this constant initializes the kernel
+variable <TT>ip_forwarding</TT>. If -1, IP
+datagrams are never forwarded. Furthermore, the variable is never
+changed. If 0 (default), IP datagrams are not forwarded, but the
+variable's value is changed to 1 if multiple interfaces are up.
+If 1, forwarding is always enabled.
+<P>
+<TT>SUBNETSARELOCAL<BR>
+</TT>The value of the kernel variable <TT>ip_subnetsarelocal</TT>
+is initialized from this constant. If 1 (default), a destination
+IP address with the same network ID as the sending host but a
+different subnet ID is considered local. If 0, only destination
+IP addresses on an attached subnet are considered local. This
+is summarized in <a href="#fig_E_1">Figure E.1</a>. When sending to local destinations,
+TCP chooses the MSS based on the MTU of the outgoing interface.
+When sending to nonlocal destinations, TCP uses the variable <TT>tcp_default_mss</TT>.
+<P>
+<TT>IPSENDREDIRECTS<BR>
+</TT>The value of this constant initializes the kernel
+variable <TT>ip_sendredirects</TT>. If 1 (default),
+the host will send ICMP redirects when forwarding IP datagrams.
+If 0, ICMP redirects are not sent.
+<P>
+<TT>DIRECTED_BROADCAST<BR>
+</TT>The value of this constant initializes the kernel
+variable <TT>ip_dirbroadcast</TT>. If 1 (default),
+received datagrams whose destination .address is the directed
+broadcast address of an attached interface are forwarded as a
+link-layer broadcast. If 0, these datagrams are silently discarded.
+<P>
+The file <TT>/usr/kvm/sys/netinet/in_proto.c</TT>
+defines the following variables that can be changed. Once these
+variables are changed, a new kernel must be made and rebooted.
+<P>
+<TABLE BORDER="1">
+<TR><TD WIDTH=140><TT>tcp_default_mss</TT></TD><TD WIDTH=550>The default TCP MSS for nonlocal destinations. Default value is 512.
+</TD></TR>
+<TR><TD WIDTH=140><TT>tcp_sendspace</TT></TD><TD WIDTH=550>The default size of the TCP send buffer. Default value is 4096.
+</TD></TR>
+<TR><TD WIDTH=140><TT>tcp_recvspace</TT></TD><TD WIDTH=550>The default size of the TCP receive buffer. This affects the window size that is offered. Default value is 4096.
+</TD></TR>
+<TR><TD WIDTH=140><TT>tcp_keeplen</TT></TD><TD WIDTH=550>A keepalive probe to a 4.2BSD host must contain a single byte of data to get a response. Set the variable to 1 for compatibility with these older implementations. Default value is 1.
+</TD></TR>
+<TR><TD WIDTH=140><TT>tcp_ttl</TT></TD><TD WIDTH=550>The default value for the TTL field for TCP segments. Default value is 60.
+</TD></TR>
+<TR><TD WIDTH=140><TT>tcp_nodelack</TT></TD><TD WIDTH=550>If nonzero, ACKs are not delayed. Default value is 0.
+</TD></TR>
+<TR><TD WIDTH=140><TT>tcp_keepidle</TT></TD><TD WIDTH=550>Number of 500-ms clock ticks before sending a keepalive probe. Default value is 14400 (2 hours).
+</TD></TR>
+<TR><TD WIDTH=140><TT>tcp_keepintvl</TT></TD><TD WIDTH=550>Number of 500-ms clock ticks between successive keepalive probes, when no response is received. Default value is 150 (75 seconds).
+</TD></TR>
+<TR><TD WIDTH=140><TT>udp_cksum</TT></TD><TD WIDTH=550>If nonzero, UDP checksums are calculated for outgoing UDP datagrams, and incoming UDP datagrams containing nonzero checksums have their checksum verified. If 0, outgoing UDP datagrams do not contain a checksum, and no checksum verification is performed on incoming UDP datagrams, even if the sender calculated a checksum. Default is 0.
+</TD></TR>
+<TR><TD WIDTH=140><TT>udp_ttl</TT></TD><TD WIDTH=550>The default value for the TTL field in UDP datagrams. Default value is 60.
+</TD></TR>
+<TR><TD WIDTH=140><TT>udp_sendspace</TT></TD><TD WIDTH=550>The default size of the UDP send buffer. Defines the maximum UDP datagram that can be sent. Default is 9000.
+</TD></TR>
+<TR><TD WIDTH=140><TT>udp recvspace</TT></TD><TD WIDTH=550>The default size of the UDP receive buffer. The default is 18000, allowing for two 9000-byte datagrams.
+</TD></TR>
+</TABLE>
+<a name="E_3"><H3>E.3 System V Release 4</H3></a>
+<P>
+The TCP/IP configuration of SVR4 is similar to the
+previous two systems, but fewer options are available. In the
+file <TT>/etc/conf/pack.d/ip/space.c</TT>
+two constants can be defined, and the kernel must then be rebuilt
+and rebooted.
+<P>
+<TT>IPFORWARDING<BR>
+</TT>The value of this constant initializes the kernel
+variable <TT>ipforwarding</TT>. If 0 (default),
+IP datagrams are not forwarded. If 1, forwarding is always enabled.
+<P>
+<TT>IPSENDREDIRECTS<BR>
+</TT>The value of this constant initializes the kernel
+variable <TT>ipsendredirects</TT>. If 1 (default),
+the host will send ICMP redirects when forwarding IP datagrams.
+If 0, ICMP redirects are not sent.
+<P>
+Many of the variables that we've described in the
+previous two sections are defined in the kernel, but one must
+patch the kernel to modify them. For example, there is a variable
+named <TT>tcp_keepidle</TT> with a value of
+14400.
+<a name="E_4"><H3>E.4 Solaris 2.2</H3></a>
+<P>
+Solaris 2.2 is typical of the newer Unix systems
+that provide a program for the administrator to run to change
+the configuration options of the TCP/IP system. This allows reconfiguration
+without having to modify source files and rebuild a kernel.
+<P>
+The configuration program is <TT>ndd</TT>(l).
+We can run the program to see what parameters we can examine or
+modify in the UDP module:
+<TABLE>
+<TR><TD COLSPAN=2 WIDTH=432><TT>solaris % <B>ndd /dev/udp \?</B></TT>
+</TD></TR>
+<TR><TD WIDTH=234><TT>udp_wroff_extra</TT></TD><TD WIDTH=198><TT>(read and write)</TT>
+</TD></TR>
+<TR><TD WIDTH=234><TT>udp_def_ttl</TT></TD><TD WIDTH=198><TT>(read and write)</TT>
+</TD></TR>
+<TR><TD WIDTH=234><TT>udp_first_anon_port</TT></TD><TD WIDTH=198><TT>(read and write)</TT>
+</TD></TR>
+<TR><TD WIDTH=234><TT>udp_trust_optlen</TT></TD><TD WIDTH=198><TT>(read and write)</TT>
+</TD></TR>
+<TR><TD WIDTH=234><TT>udp_do_checksum</TT></TD><TD WIDTH=198><TT>(read and write)</TT>
+</TD></TR>
+<TR><TD WIDTH=234><TT>udp_status</TT></TD><TD WIDTH=198><TT>(read only)</TT>
+</TD></TR>
+</TABLE>
+<P>
+There are five modules we can specify: <TT>/dev/ip</TT>,
+<TT>/dev/icmp</TT>, <TT>/dev/arp</TT>,
+<TT>/dev/udp</TT>, and <TT>/dev/tcp</TT>.
+The question mark argument (which we have to prevent the shell
+from interpreting by preceding it with a backslash) tells the
+program to list all the parameters for that module. An example
+that queries the value of a variable is:
+<P>
+<TT>solaris % <B>ndd /dev/tcp
+tcp_mss_def<BR>
+</B>536</TT>
+<P>
+To change the value of a variable we need superuser
+privilege and type:
+<P>
+<TT>solaris # <B>ndd -set /dev/ip
+ip_forwarding 0</B></TT>
+<P>
+These variables can be divided into three categories:
+<OL>
+<LI>Configuration variables that a system administrator
+can change (e.g., <TT>ip_forwarding</TT>).
+<LI>Status variables that can only be displayed (e.g.,
+the ARP cache). Normally this information is provided in an easier
+to understand format by the commands <TT>ifconfig</TT>,
+<TT>netstat</TT>, and <TT>arp</TT>.
+<LI>Debugging variables intended for those with kernel
+source code. Enabling some of these generates kernel debug output
+at runtime, which can degrade performance.
+</OL>
+<P>
+We now describe the parameters in each module. All
+parameters are read-write, unless marked &quot;(Read only).&quot;
+The read-only parameters are the status variables from case 2
+above. We also mark the &quot;(Debug)&quot; variables from case
+3. Unless otherwise noted, all the timing variables are specified
+in milliseconds, which differs from the other systems that normally
+specify times as some number of 500-ms clock ticks.
+<H4>/dev/ip</H4>
+<P>
+<TT>ip_cksum_choice<BR>
+</TT>(Debug) Selects between two independent implementations
+of the IP checksum algorithm.
+<P>
+<TT>ip_debug<BR>
+</TT>(Debug) Enables printing of debug output by
+the kernel, if greater than 0. Larger values generate more output.
+Default is 0.
+<P>
+<TT>ip_def_ttl<BR>
+</TT>Default TTL for outgoing IP datagrams, if not
+specified by transport layer. Default is 255.
+<P>
+<TT>ip_forward_directed_broadcasts<BR>
+</TT>If 1 (default), received datagrams whose destination
+address is the directed broadcast address of an attached interface
+are forwarded as a link-layer broadcast. If 0, these datagrams
+are silently discarded.
+<P>
+<TT>ip_forward_src_routed<BR>
+</TT>If 1 (default), received datagrams containing
+a source route option are forwarded. If 0, these datagrams are
+discarded.
+<P>
+<TT>ip_forwarding<BR>
+</TT>Specifies whether the system forwards incoming
+IP datagrams: 0 means never forward, 1 means always forward, and
+2 (default) means only forward when two or more interfaces are
+up.
+<P>
+<TT>ip_icmp_return_data_bytes<BR>
+</TT>The number of bytes of data beyond the IP header
+that are returned in an ICMP error. Default is 64.
+<P>
+<TT>ip_ignore_delete_time<BR>
+</TT>(Debug) Minimum lifetime of an IP routing table
+entry (IRE). Default is 30 seconds. (This parameter is in seconds,
+not milliseconds.)
+<P>
+<TT>ip_ill_status<BR>
+</TT>(Read only) Displays the status of each IP lower
+layer data structure. There is one lower layer structure for each
+interface.
+<P>
+<TT>ip_ipif_status<BR>
+</TT>(Read only) Displays the status of each IP interface
+data structure (IP address, subnet mask, etc.). There is one of
+these structures for each interface.
+<P>
+<TT>ip_ire_cleanup_interval<BR>
+</TT>(Debug) The interval at which the IP routing
+table entries are scanned for possible deletions. Default is 30000
+ms (30 seconds).
+<P>
+<TT>ip_ire_flush_interval<BR>
+</TT>The interval at which ARP information in unconditionally
+flushed from the IP routing table. Default is 1200000 ms (20 minutes).
+<P>
+<TT>ip_irepathmtu_interval<BR>
+</TT>The interval at which the path MTU discovery
+algorithm tries to increase the MTU. Default is 30000 ms (30 seconds).
+<P>
+<TT>ip_ire_redirect_interval<BR>
+</TT>The interval at which IP routing table entries
+that are from ICMP redirects are deleted. Default is 60000 ms
+(60 seconds).
+<P>
+<TT>ip_ire_status<BR>
+</TT>(Read only) Displays all the IP routing table
+entries.
+<P>
+<TT>ip_local_cksum<BR>
+</TT>If 0 (default), IP does not calculate the IP
+checksum or the higher layer protocol checksum (i.e., TCP, UDP,
+ICMP, or IGMP) for datagrams sent or received through the loopback
+interface. If 1, these checksums are calculated.
+<P>
+<TT>ip_mrtdebug<BR>
+</TT>(Debug) Enables printing of debug output concerning
+multicast routing by the kernel, if 1. Default is 0.
+<P>
+<TT>ip_path_mtu_discovery<BR>
+</TT>If 1 (default), path MTU discovery is performed
+by IP. If 0, IP never sets the &quot;don't fragment&quot; bit
+in outgoing datagrams.
+<P>
+<TT>ip_respond_to_address_mask<BR>
+</TT>If 0 (default), the host does not respond to
+ICMP address mask requests. If 1, it does respond.
+<P>
+<TT>ip_respond_to_echo_broadcast<BR>
+</TT>If 1 (default), the host responds to ICMP echo
+requests that are sent to a broadcast address. If 0, it does not
+respond.
+<P>
+<TT>ip_respond_to_timestamp<BR>
+</TT>If 0 (default), the host does not respond to
+ICMP timestamp requests. If 1, the host responds.
+<P>
+<TT>ip_respond_to_timestamp_broadcast<BR>
+</TT>If 0 (default), the host does not respond to
+ICMP timestamp requests that are sent to a broadcast address.
+If 1, it does respond.
+<P>
+<TT>ip_rput_pullups<BR>
+</TT>(Debug) Count of number of buffers from the
+network interface driver that needed to be pulled up to access
+the full IP header. Initialized to 0 at bootstrap time, and can
+be reset to 0.
+<P>
+<TT>ip_send_redirects<BR>
+</TT>If 1 (default), the host sends ICMP redirects
+when acting as a router. If 0, these are not sent.
+<P>
+<TT>ip_send_source_quench<BR>
+</TT>If 1 (default), the host generates ICMP source
+quench errors when incoming datagrams are discarded. If 0, these
+are not generated.
+<P>
+<TT>ip_wroff_extra<BR>
+</TT>(Debug) Number of bytes of extra space to allocate
+in buffers for IP headers. Default is 32.
+<H4>/dev/icmp</H4>
+<P>
+<TT>icmp_bsd_compat<BR>
+</TT>(Debug) If 1 (default), the length field in
+the IP header of received datagrams is adjusted to exclude the
+length of the IP header. This is compatible with Berkeley-derived
+implementations and is for applications reading raw IP or raw
+ICMP packets. If 0, the length field is not changed.
+<P>
+<TT>icmp_def_ttl<BR>
+</TT>The default TTL for outgoing ICMP messages.
+Default is 255.
+<P>
+<TT>icmp_wroff_extra<BR>
+</TT>(Debug) Number of bytes of extra space to allocate
+in buffers for IP options and data-link headers. Default is 32.
+<H4>/dev/arp</H4>
+<P>
+<TT>arp_cache_report<BR>
+</TT>(Readonly) The ARP cache.
+<P>
+<TT>arp_cleanup_interval<BR>
+</TT>The interval after which ARP entries are discarded
+from ARP's cache. Default is 300000 ms (5 minutes). (IP maintains
+its own cache of completed ARP translations; see ip_ire flush_interval.)
+<P>
+<TT>arp_debug<BR>
+</TT>(Debug) If 1, enables printing of debug output
+by the ARP driver. Default is 0.
+<H4>/dev/udp</H4>
+<P>
+<TT>udp_def_ttl<BR>
+</TT>The default TTL for outgoing UDP datagrams.
+Default value is 255.
+<P>
+<TT>udp_do_checksum<BR>
+</TT>If 1 (default), UDP checksums are calculated
+for outgoing UDP datagrams. If 0, outgoing UDP datagrams do not
+contain a checksum. (Unlike most other implementations, this UDP
+checksum flag does not affect incoming datagrams. If a received
+datagram has a nonzero checksum, it is always verified.)
+<P>
+<TT>udp_largest_anon_port<BR>
+</TT>Largest port number to allocate for UDP ephemeral
+ports. Default is 65535.
+<P>
+<TT>udp_smallest_anon_port<BR>
+</TT>Starting port number to allocate for UDP ephemeral
+ports. Default is 32768.
+<P>
+<TT>udp_smallest_nonpriv_port<BR>
+</TT>A process requires superuser privilege to assign
+itself a port number less than this. Default is 1024.
+<P>
+<TT>udp_status<BR>
+</TT>(Read only) The status of all local UDP end
+points: local IP address and port, foreign IP address and port.
+<P>
+<TT>udp_trust_optlen<BR>
+</TT>(Debug) No longer used.
+<P>
+<TT>udp_wroff_extra<BR>
+</TT>(Debug) Number of bytes of extra space to allocate
+in buffers for IP options and data-link headers. Default is 32.
+<H4>/dev/tcp</H4>
+<P>
+<TT>tcp_close_wait_interval<BR>
+</TT>The 2MSL value: the time spent in the TIME_WAIT
+state. Default is 240000 ms (4 minutes).
+<P>
+<TT>tcp_conn_grace_period<BR>
+</TT>(Debug) Additional time added to the timer interval
+when sending a SYN. Default is 500 ms.
+<P>
+<TT>tcp_conn_req_max<BR>
+</TT>The maximum number of pending connection requests
+queued for any listening end point. Default is 5.
+<P>
+<TT>tcp_cwnd_max<BR>
+</TT>The maximum value of the congestion window.
+Default is 32768.
+<P>
+<TT>tcp_debug<BR>
+</TT>(Debug) If 1, enables printing of debug output
+by TCP. Default is 0.
+<P>
+<TT>tcp_deferred_ack_interval<BR>
+</TT>The time to wait before sending a delayed ACK.
+Default is 50 ms.
+<P>
+<TT>tcp_dupack_fast_retransmit<BR>
+</TT>The number of consecutive duplicate ACKs that
+triggers the fast retransmit, fast recovery algorithm. Default
+is 3.
+<P>
+<TT>tcp_eager_listeners<BR>
+</TT>(Debug) If 1 (default), TCP completes the three-way
+handshake before returning a new connection to an application
+with a pending passive open. &quot;This is the way most TCP implementations
+operate. If 0, TCP passes an incoming connection request (received
+SYN) to the application, and does not complete the three-way handshake
+until the application accepts the connection. (Setting this to
+0 might break many existing applications.)
+<P>
+<TT>tcp_ignore_path_mtu<BR>
+</TT>(Debug) If 1, path MTU discovery ignores received
+ICMP fragmentation needed messages. If 0 (default), path MTU discovery
+is enabled for TCP.
+<P>
+<TT>tcp_ip abort_cinterval<BR>
+</TT>The total retransmit timeout value when TCP
+is performing an active open. Default is 240000 ms (4 minutes).
+<P>
+<TT>tcp_ip_abort_interval<BR>
+</TT>The total retransmit timeout value for a TCP
+connection after it is established. Default is 120000 ms (2 minutes).
+<P>
+<TT>tcp_ip_notify_cinterval<BR>
+</TT>The timeout value when TCP is performing an
+active open after which TCP notifies IP to find a new route. Default
+is 10000 ms (10 seconds).
+<P>
+<TT>tcp_ip_notify_interval<BR>
+</TT>The timeout value for an established connection
+after which TCP notifies IP to find a new route. Default is 10000
+ms (10 seconds).
+<P>
+<TT>tcp_ip_ttl<BR>
+</TT>The TTL to use for outgoing TCP segments. Default
+is 255.
+<P>
+<TT>tcp_keepalive_interval<BR>
+</TT>The time that a connection must be idle before
+a keepalive probe is sent. Default is 7200000 ms (2 hours).
+<P>
+<TT>tcp_largest_anon_port<BR>
+</TT>Largest port number to allocate for TCP ephemeral
+ports. Default is 65535.
+<P>
+<TT>tcp_maxpsz_multiplier<BR>
+</TT>(Debug) Specifies the multiple of the MSS into
+which the stream head packetizes the application's write data.
+Default is 1.
+<P>
+<TT>tcp_mss_def<BR>
+</TT>Default MSS for nonlocal destinations. Default
+is 536.
+<P>
+<TT>tcp_mss_max<BR>
+</TT>The maximum MSS. Default is 65495.
+<P>
+<TT>tcp_mss_min<BR>
+</TT>The minimum MSS. Default is 1.
+<P>
+<TT>tcp_naglim_def<BR>
+</TT>(Debug) Maximum value of the per-connection
+Nagle algorithm threshold. Default is 65535. The per-connection
+value starts out as the minimum of the MSS or this value. The
+per-connection value is set to 1 by the TCP_NODELAY socket option,
+which disables the Nagle algorithm.
+<P>
+<TT>tcp_old_urp_interpretation<BR>
+</TT>(Debug) If 1 (default), the older (but more
+common) BSD interpretation of the urgent pointer is used: it points
+1 byte beyond the last byte of urgent data. If 0, the Host Requirements
+RFC interpretation is used; it points to the last byte of urgent
+data.
+<P>
+<TT>tcp_rcv_push_wait<BR>
+</TT>(Debug) Maximum number of bytes received without
+the PUSH flag set before the data is passed to the application.
+Default is 16384.
+<P>
+<TT>tcp_rexmit_interval_initial<BR>
+</TT>(Debug) Initial retransmit timeout interval.
+Default is 500 ms.
+<P>
+<TT>tcp_rexmit_interval_max<BR>
+</TT>(Debug) Maximum retransmit timeout interval.
+Default is 60000 ms (60 seconds).
+<P>
+<TT>tcp_rexmit_interval_min<BR>
+</TT>(Debug) Minimum retransmit timeout interval.
+Default is 200 ms.
+<P>
+<TT>tcp_rwin_credit_pct<BR>
+</TT>(Debug) Percentage of receive window that must
+be buffered before flow control is checked on every received segment.
+Default is 50%.
+<P>
+<TT>tcp_smallest_anon_port<BR>
+</TT>Starting port number to allocate for TCP ephemeral
+ports. Default is 32768.
+<P>
+<TT>tcp_smallest_nonpriv_port<BR>
+</TT>A process requires superuser privilege to assign
+itself a port number less than this. Default is 1024.
+<P>
+<TT>tcp_snd_lowat_fraction<BR>
+</TT>(Debug) If nonzero, the send buffer low-water
+mark is the send buffer size divided by this value. Default is
+0 (disabled).
+<P>
+<TT>tcp_status<BR>
+</TT>(Read only) Information on all TCP connections.
+<P>
+<TT>tcp_sth_rcv_hiwat<BR>
+</TT>(Debug) If nonzero, the value to set the stream
+head high-water mark to. Default is 0.
+<P>
+<TT>tcp_sth_rcv_lowat<BR>
+</TT>(Debug) If nonzero, the value to set the stream
+head low-water mark to. Default is 0.
+<P>
+<TT>tcp_wroff_xtra<BR>
+</TT>(Debug) Number of bytes of extra space to allocate
+in buffers for IP options and data-link headers. Default is 32.
+<a name="E_5"><H3>E.5 AIX 3.2.2</H3></a>
+<P>
+AIX 3.2.2 allows network options to be set at runtime
+using the no command. It can display the value of an option, set
+the value of an option, or set an option value back to its default.
+For example, to display an option we type:
+<P>
+<TT>aix % <B>no -o udp_ttl<BR>
+</B>udp_ttl = 30</TT>
+<P>
+The following options can be modified.
+<P>
+<TT>arpt_killc<BR>
+</TT>The time (in minutes) before an inactive completed
+ARP entry is removed. Default is 20.
+<P>
+<TT>ipforwarding<BR>
+</TT>If 1 (default), IP datagrams are always forwarded.
+If 0, forwarding is disabled.
+<P>
+<TT>ipfragttl<BR>
+</TT>The time to live (in seconds) for IP fragments
+awaiting reassembly. Default is 60.
+<P>
+<TT>ipsendredirects<BR>
+</TT>If 1 (default), the host will send ICMP redirects
+when forwarding IP datagrams. If 0, ICMP redirects are not sent.
+<P>
+<TT>loop_check_sum<BR>
+</TT>If 1 (default), the IP checksum is calculated
+for datagrams sent through the loop-back interface. If 0, this
+checksum is not calculated.
+<P>
+<TT>nonlocsrcroute<BR>
+</TT>If 1 (default), received datagrams containing
+a source route option are forwarded. If 0, these datagrams are
+discarded.
+<P>
+<TT>subnetsarelocal<BR>
+</TT>If 1 (default), a destination IP address with
+the same network ID as the sending host but a different subnet
+ID is considered local. If 0, only destination IP addresses on
+an attached subnet are considered local. This is summarized in
+<a href="#fig_E_1">Figure E.1</a>. When sending to local destinations, TCP chooses the
+MSS based on the MTU of the outgoing interface. When sending to
+nonlocal destinations, TCP uses the default (536) as the MSS.
+<P>
+<TT>tcp_keepidle<BR>
+</TT>Number of 500-ms clock ticks before sending
+a keepalive probe. Default value is 14400 (2 hours).
+<P>
+<TT>tcp_keepintvl<BR>
+</TT>Number of 500-ms clock ticks between successive
+keepalive probes, when no response is received. Default value
+is 150 (75 seconds).
+<P>
+<TT>tcp_recvspace<BR>
+</TT>The default size of the TCP receive buffer.
+This affects the window size that is offered. Default value is
+16384.
+<P>
+<TT>tcp_sendspace<BR>
+</TT>The default size of the TCP send buffer. Default
+value is 16384.
+<P>
+<TT>tcp_ttl<BR>
+</TT>The default value for the TTL field for TCP
+segments. Default value is 60.
+<P>
+<TT>udp_recvspace<BR>
+</TT>The default size of the UDP receive buffer.
+The default is 41600, allowing for 40 1024-byte datagrams.
+<P>
+<TT>udp_sendspace<BR>
+</TT>The default size of the UDP send buffer. Defines
+the maximum UDP datagram that can be sent. Default is 9216.
+<P>
+<TT>udp_ttl<BR>
+</TT>The default value for the TTL field in UDP datagrams.
+Default value is 30.
+<a name="E_6"><H3>E.6 4.4BSD</H3></a>
+<P>
+4.4BSD is the first of the Berkeley releases to provide
+dynamic configuration for numerous kernel parameters. The <TT>sysctl</TT>(8)
+command is used. The names for the parameters were chosen to look
+like MIB names from SNMP. To examine a parameter we type:
+<P>
+<TT>vangogh % <B>sysctl net.inet.ip.forwarding
+<BR>
+</B>net.inet.ip.forwarding = 1</TT>
+<P>
+To change a parameter we need superuser privilege
+and then type:
+<P>
+<TT>vangogh # <B>sysctl -w nat.inet.ip.ttl=128</B></TT>
+<P>
+The following parameters can be changed.
+<P>
+<TT>net.inet.ip.forwarding<BR>
+</TT>If 0 (default), IP datagrams are not forwarded.
+If 1, forwarding is enabled.
+<P>
+<TT>net.inet.ip.redirect<BR>
+</TT>If 1 (default), the host will send ICMP redirects
+when forwarding IP datagrams. If 0, ICMP redirects are not sent.
+<P>
+<TT>net.inet.ip.tti<BR>
+</TT>The default TTL for both TCP and UDP. The default
+is 64.
+<P>
+<TT>net.inet.icmp.maskrepi<BR>
+</TT>If 0 (default), the host does not respond to
+ICMP address mask requests. If 1, it does respond.
+<P>
+<TT>net.inet.udp.checksum<BR>
+</TT>If 1 (default), UDP checksums are calculated
+for outgoing UDP datagrams, and incoming UDP datagrams containing
+nonzero checksums have their checksum verified. If 0, outgoing
+UDP datagrams do not contain a checksum, and no checksum verification
+is performed on incoming UDP datagrams, even if the sender calculated
+a checksum.
+<P>
+Additionally, numerous variables that we've described
+earlier in this appendix are scattered among various source files
+(<TT>tcp_keepidle</TT>, <TT>subnetsarelocal</TT>,
+etc.) and can be modified.
+</BODY>
+</HTML>

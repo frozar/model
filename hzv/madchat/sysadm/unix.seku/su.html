@@ -1,0 +1,149 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Draft//EN">
+<HTML>
+<HEAD>
+<TITLE>Fiche s&eacute;curit&eacute; SU</TITLE>
+</HEAD>
+<BODY>
+<H1>Fiche s&eacute;curit&eacute; SU</H1>
+
+<H2>C. Pelissier et membres du groupe, remis en forme par Tristan Debeaupuis</H2>Version 4
+<H2><A NAME="s1">1. Introduction</A></H2>
+
+<P>Cette fiche a pour but donner des conseils concernant SU.
+<P>
+<H2><A NAME="s2">2. Conseils</A></H2>
+
+<P>
+<OL>
+<LI>Permet de prendre l'identite d'un autre utilisateur y compris celle de
+l'UID 0.
+</LI>
+<LI>Le su vers l'UID zero n'est possible que pour les membres du groupe
+0 (wheel) et pour tous si ce groupe est vide. Fonctionnalite d'origine
+BSD 4.3 mais presente sous SunOS 4, Risc/OS etc. (perdue helas dans SunOS 5)
+</LI>
+<LI>Les su sont enregistres par syslogd BSD ou dans le fichier /usr/adm/sulog.
+Exemples :
+<PRE>
+May 11 09:04:27 ra su: 'su root' succeeded for alfred on /dev/ttyp4
+May 11 09:52:58 ra su: 'su alfred' failed for maxime on /dev/ttyp3
+</PRE>
+
+</LI>
+<LI>Sur certains systemes /etc/su_people declare des utilisateurs autorises
+a faire su root sans fournir de mot de passe. Eviter cette fonctionnalite.
+</LI>
+<LI>Permet de lancer des commandes sous un autre UID que 0 dans les fichiers
+d'amorcage du systeme /etc/rc* et donc de lancer certains demons sous un
+UID banalise.
+<P>Utilise par exemple pour uucp :
+<HR>
+<PRE>
+su uucp -c /usr/lib/uucp/uusched &
+</PRE>
+<HR>
+<P>
+</LI>
+<LI>Eviter de faire su depuis le login d'un autre utilisateur qui vous le
+demande. Vous risquez d'etre victime d'un cheval de Troie destine a voler
+votre mot de passe.
+En shell faire au prealable afficher la variable PATH et IFS et les
+fonctions (sh ksh). Utiliser pour cela la commande set sans arguments.
+En C-shell faire au prealable afficher la variable PATH et les alias.
+<P>Il est donc plus simple de taper /bin/su et de verifier IFS si on travaille
+en shell ou Korn shell.
+<P>
+</LI>
+<LI>"su username" conserve l'environnement de depart sauf HOME et SHELL.
+Attention car le comportement pour PATH est different suivant les
+systemes. Sur certains systemes le PATH initial est conserve, sur
+d'autres il est remis ` une valeur raisonnable.
+<P>Exemple de SunOS 4.1.X 
+<UL>
+<LI>/usr/5bin/su
+<HR>
+<PRE>
+                  PATH=.:/bin:/usr/bin:/usr/ucb:/etc:/usr/etc
+</PRE>
+<HR>
+
+qui est un PATH dont rafolent les pirates car il commence
+par un point.
+</LI>
+<LI>/usr/bin/su
+<UL>
+<LI>en csh on obtient le PATH du fichier /.cshrc</LI>
+<LI>en sh pas de changement</LI>
+<LI>en ksh on obtient le PATH du fichier /.kshrc (a verifier)</LI>
+</UL>
+
+</LI>
+<LI>/usr/5bin/su username</LI>
+<LI>/usr/bin/su username
+<UL>
+<LI>en sh on conserve le PATH initial</LI>
+<LI>en csh on obtient le PATH du fichier &nbspusername/.cshrc</LI>
+</UL>
+
+</LI>
+</UL>
+<P>Il faut donc verifier le comportement de su sur tous les systemes.
+<P>Dans tous les cas il est preferable de faire "/bin/su - username". Il y a
+dans ce cas execution des fichiers initialisant l'environnement tels
+que : .login, .cshrc, /etc/profile, .profile, etc. 
+Rappelons que l'ordre d'execution est :
+<P>
+<OL>
+<LI>.cshrc puis .login pour le csh,
+</LI>
+<LI>/etc/profile .profile pour sh.</LI>
+</OL>
+</LI>
+</OL>
+
+Ici indiquer la possibilite du /etc/profile qui a un $0 egal au shell d'origine
+pour un login ou a -su pour un su :
+<P>
+<HR>
+<PRE>
+case &quot;$0&quot; in
+-sh | -ksh | -jsh )
+        .....
+-su )
+        .....
+esac
+</PRE>
+<HR>
+<P>Il faudrait completer par SVR4 (vu au travers de Solaris 2 par exemple)
+qui propose le fichier de parametrage du su : /etc/default/su.
+<P>
+<PRE>
+#ident  &quot;@(#)su.dfl     1.6     93/08/14 SMI&quot;   /* SVr4.0 1.2   */
+
+# SULOG determines the location of the file used to log all su attempts
+#
+SULOG=/var/adm/sulog
+
+# CONSOLE determines whether attempts to su to root should be logged
+# to the named device
+#
+CONSOLE=/dev/console
+
+# PATH sets the initial shell PATH variable
+#
+#PATH=
+
+# SUPATH sets the initial shell PATH variable for root
+#
+#SUPATH=/usr/sbin:/usr/bin
+
+# SYSLOG determines whether the syslog(3) LOG_AUTH facility should be used
+# to log all su attempts.  LOG_NOTICE messages are generated for su's to
+# root, LOG_INFO messages are generated for su's to other users, and LOG_CRIT
+# messages are generated for failed su attempts.
+#
+SYSLOG=YES
+</PRE>
+<P>
+</BODY>
+</HTML>

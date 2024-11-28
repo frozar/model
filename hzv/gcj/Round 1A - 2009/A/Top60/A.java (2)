@@ -1,0 +1,76 @@
+import java.util.*;
+import static java.lang.Math.*;
+
+public class A 
+{
+	void p(String s)
+	{
+		System.out.println(s);
+	}
+	public static void main(String[] args)
+	{
+		Scanner sc = new Scanner(System.in);
+		int T = sc.nextInt();
+		sc.nextLine();
+		for(int i= 0; i < isHappy.length;i++)
+			Arrays.fill(isHappy[i],-1);
+		//System.out.println(isHappy(3,2)+" "+isHappy(3,3));
+		//System.out.println(isHappy[3][2]+" "+isHappy[3][3]);
+		for(int i = 1; i <= T;i++)
+		{
+			String[] s = sc.nextLine().split(" ");
+			int[] bases = new int[s.length];
+			for(int j = 0; j < bases.length;j++)
+				bases[j] = Integer.parseInt(s[j]);
+			
+			for(int j = 2;  ;j++)
+			{
+				//if(j% 10000 == 0)
+				//	System.out.println(j);
+				boolean good = true;
+				for(int b: bases)
+				{
+					//System.out.println("test: "+j+" "+b);
+					if(!isHappy(j,b))
+					{
+						//System.out.println("UNHAPPY: "+j+" "+b);
+						good = false;
+						break;
+					}else{
+						//System.out.println("HAPPY: "+j+" "+b);
+					}
+				}
+				if(good)
+				{
+					System.out.println("Case #"+i+": "+j);
+					break;
+				}
+			}
+		}
+
+	}
+	static int[][] isHappy = new int [1000000][11];
+	public static boolean isHappy(int n, int b)
+	{
+		if(n == 1) return true;
+		if(isHappy[n][b] != -1)
+		{
+			return isHappy[n][b] == 1;
+		}
+		if(isHappy[n][b] == -2)
+		{
+			isHappy[n][b] = 0;
+			return false;
+		}
+		isHappy[n][b] = -2;
+		int nn = 0;
+		int temp = n;
+		while(temp != 0)
+		{
+			nn += (temp%b)*(temp%b);
+			temp /= b;
+		}
+		isHappy[n][b] = isHappy(nn,b) ? 1 : 0;
+		return isHappy[n][b] == 1;
+	}
+}

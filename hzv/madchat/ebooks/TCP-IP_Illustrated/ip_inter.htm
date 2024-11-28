@@ -1,0 +1,1204 @@
+<html>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/htm; charset=windows-1251">
+<TITLE>Chapter 3. IP: Internet Protocol</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="3_0"><H1><I>IP: Internet Protocol</I></H1></a>
+
+<a name="3_1"><H3>3.1 Introduction</H3></a>
+<P>
+IP is the workhorse protocol of the TCP/IP protocol
+suite. All TCP, UDP, ICMP, and IGMP data gets transmitted as IP
+datagrams (<a href="#introduc.htm#fig_1_4">Figure 1.4</a>). A fact that amazes many newcomers to TCP/IP,
+especially those from an X.25 or SNA background, is that IP provides
+an unreliable, connectionless datagram delivery service.
+<P>
+By <I>unreliable</I> we mean there are no guarantees
+that an IP datagram successfully gets to its destination. IP provides
+a best effort service. When something goes wrong, such as a router
+temporarily running out of buffers, IP has a simple error handling
+algorithm: throw away the datagram and try to send an ICMP message
+back to the source. Any required reliability must be provided
+by the upper layers (e.g., TCP).
+<P>
+The term <I>connectionless</I> means that IP does
+not maintain any state information about successive datagrams.
+Each datagram is handled independently from all other datagrams.
+This also means that IP datagrams can get delivered out of order.
+If a source sends two consecutive datagrams (first A, then B)
+to the same destination, each is routed independently and can
+take different routes, with B arriving before A.
+<P>
+In this chapter we take a brief look at the fields
+in the IP header, describe IP routing, and cover subnetting. We
+also look at two useful commands: <TT>ifconfig</TT>
+and <TT>netstat</TT>. We leave a detailed
+discussion of some of the fields in the IP header for later when
+we can see exactly how the fields are used. RFC 791 [Postel 1981a]
+is the official specification of IP.
+
+<a name="3_2"><H3>3.2 IP Header</H3></a>
+<P>
+Figure 3.1 shows the format of an IP datagram. The
+normal size of the IP header is 20 bytes, unless options are present.
+<P>
+<CENTER><a name="fig_3_1"><IMG SRC="f_3_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_3_1.gif"></a>
+<BR>
+<B>Figure 3.1</B> IP datagram,
+showing the fields in the IP header.</CENTER>
+<P>
+We will show the pictures of protocol headers in
+TCP/IP as in Figure 3.1. The most significant bit is numbered
+0 at the left, and the least significant bit of a 32-bit value
+is numbered 31 on the right.
+<P>
+The 4 bytes in the 32-bit value are transmitted in
+the order: bits 0-7 first, then bits 8-15, then 16-23, and bits
+24-31 last. This is called <I>big endian</I> byte ordering, which
+is the byte ordering required for all binary integers in the TCP/IP
+headers as they traverse a network. This is called the <I>network
+byte order.</I> Machines that store binary integers in other formats,
+such as the <I>little endian</I> format, must convert the header
+values into the network byte order before transmitting the data.
+<P>
+The current protocol <I>version</I> is 4, so IP is
+sometimes called IPv4. <a href="#3_10">Section 3.10</a> discusses some proposals for
+a new version of IP.
+<P>
+The <I>header length</I> is the number of 32-bit
+words in the header, including any options. Since this is a 4-bit
+field, it limits the header to 60 bytes. In <a href="tracerou.htm#8_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm#8_0">Chapter 8</a> we'll see
+that this limitation makes some of the options, such as the record
+route option, useless today. The normal value of this field (when
+no options are present) is 5.
+<P>
+The <I>type-of-service</I> field (TOS) is composed
+of a 3-bit precedence field (which is ignored today), 4 TOS bits,
+and an unused bit that must be 0. The 4 TOS bits are: minimize
+delay, maximize throughput, maximize reliability, and minimize
+monetary cost.
+<P>
+Only 1 of these 4 bits can be turned on. If all 4
+bits are 0 it implies normal service. RFC 1340 [Reynolds and Postel
+1992] specifies how these bits should be set by all the standard
+applications. RFC 1349 [Almquist 1992] contains some corrections
+to this RFC, and a more detailed description of the TOS feature.
+<P>
+Figure 3.2 shows the recommended values of the TOS
+field for various applications. In the final column we show the
+hexadecimal value, since that's what we'll see in the <TT>tcpdump</TT>
+output later in the text.
+<CENTER>
+<a name="fig_3_2"><TABLE BORDER=1></a>
+<TR><TD WIDTH=130>Application</TD><TD WIDTH=76><CENTER>Minimize delay</CENTER>
+</TD><TD WIDTH=85><CENTER>Maximize throughput</CENTER></TD><TD WIDTH=85><CENTER>Maximize reliability</CENTER>
+</TD><TD WIDTH=107><CENTER>Minimize <BR>
+monetary cost</CENTER>
+</TD><TD WIDTH=47><CENTER>Hex value</CENTER></TD></TR>
+<TR><TD WIDTH=130>Telnet/Rlogin</TD><TD WIDTH=76><CENTER>1</CENTER>
+</TD><TD WIDTH=85><CENTER>0</CENTER></TD><TD WIDTH=85><CENTER>0</CENTER>
+</TD><TD WIDTH=107><CENTER>0</CENTER></TD><TD WIDTH=47><CENTER><TT>0x10</TT></CENTER>
+</TD></TR>
+<TR><TD WIDTH=130>FTP
+<BR>
+control<BR>
+data</TD><TD WIDTH=76><BR>
+<CENTER>1<BR>
+0</CENTER>
+</TD><TD WIDTH=85><BR>
+<CENTER>0<BR>
+1</CENTER></TD><TD WIDTH=85><BR>
+<CENTER>0<BR>
+0</CENTER>
+</TD><TD WIDTH=107><BR>
+<CENTER>0<BR>
+0</CENTER></TD><TD WIDTH=47><BR>
+<CENTER><TT>0x10<BR>
+0x08</TT></CENTER>
+</TD></TR>
+<TR><TD WIDTH=130>any bulk data</TD><TD WIDTH=76><CENTER>0</CENTER>
+</TD><TD WIDTH=85><CENTER>1</CENTER></TD><TD WIDTH=85><CENTER>0</CENTER>
+</TD><TD WIDTH=107><CENTER>0</CENTER></TD><TD WIDTH=47><CENTER><TT>0x08</TT></CENTER>
+</TD></TR>
+<TR><TD WIDTH=130>TFTP</TD><TD WIDTH=76><CENTER>1</CENTER></TD>
+<TD WIDTH=85><CENTER>0</CENTER></TD><TD WIDTH=85><CENTER>0</CENTER>
+</TD><TD WIDTH=107><CENTER>0</CENTER></TD><TD WIDTH=47><CENTER><TT>0x10</TT></CENTER>
+</TD></TR>
+<TR><TD WIDTH=130>SMTP
+<BR>
+command phase<BR>
+data phase</TD>
+<TD WIDTH=76><BR>
+<CENTER>1<BR>
+0</CENTER></TD><TD WIDTH=85><BR>
+<CENTER>0<BR>
+1</CENTER>
+</TD><TD WIDTH=85><BR>
+<CENTER>0<BR>
+0</CENTER></TD><TD WIDTH=107><BR>
+<CENTER>0<BR>
+0</CENTER>
+</TD><TD WIDTH=47><BR>
+<CENTER><TT>0x10<BR>
+0x08</TT></CENTER>
+</TD></TR>
+<TR><TD WIDTH=130>DNS <BR>
+UDP query<BR>
+TCP query<BR>
+zone transfer
+</TD><TD WIDTH=76><BR>
+<CENTER>1<BR>
+0<BR>
+0</CENTER></TD>
+<TD WIDTH=85><BR>
+<CENTER>0<BR>
+0<BR>
+1</CENTER></TD><TD WIDTH=85><BR>
+<CENTER>0<BR>
+0<BR>
+0</CENTER>
+</TD><TD WIDTH=107><BR>
+<CENTER>0<BR>
+0<BR>
+0</CENTER></TD>
+<TD WIDTH=47><BR>
+<CENTER><TT>0x10<BR>
+0x00<BR>
+0x08</TT></CENTER>
+</TD></TR>
+<TR><TD WIDTH=130>ICMP<BR>
+error<BR>
+query</TD><TD WIDTH=76><BR>
+<CENTER>0<BR>
+0</CENTER>
+</TD><TD WIDTH=85><BR>
+<CENTER>0<BR>
+0</CENTER></TD><TD WIDTH=85><BR>
+<CENTER>0<BR>
+0</CENTER>
+</TD><TD WIDTH=107><BR>
+<CENTER>0<BR>
+0</CENTER></TD><TD WIDTH=47><BR>
+<CENTER><TT>0x00<BR>
+0x00</TT></CENTER>
+</TD></TR>
+<TR><TD WIDTH=130>any IGP</TD><TD WIDTH=76><CENTER>0</CENTER>
+</TD><TD WIDTH=85><CENTER>0</CENTER></TD><TD WIDTH=85><CENTER>1</CENTER>
+</TD><TD WIDTH=107><CENTER>0</CENTER></TD><TD WIDTH=47><CENTER><TT>0x04</TT></CENTER>
+</TD></TR>
+<TR><TD WIDTH=130>SNMP</TD><TD WIDTH=76><CENTER>0</CENTER></TD>
+<TD WIDTH=85><CENTER>0</CENTER></TD><TD WIDTH=85><CENTER>1</CENTER>
+</TD><TD WIDTH=107><CENTER>0</CENTER></TD><TD WIDTH=47><CENTER><TT>0x04</TT></CENTER>
+</TD></TR>
+<TR><TD WIDTH=130>BOOTP</TD><TD WIDTH=76><CENTER>0</CENTER></TD>
+<TD WIDTH=85><CENTER>0</CENTER></TD><TD WIDTH=85><CENTER>0</CENTER>
+</TD><TD WIDTH=107><CENTER>0</CENTER></TD><TD WIDTH=47><CENTER><TT>0x00</TT></CENTER>
+</TD></TR>
+<TR><TD WIDTH=130>NNTP</TD><TD WIDTH=76><CENTER>0</CENTER></TD>
+<TD WIDTH=85><CENTER>0</CENTER></TD><TD WIDTH=85><CENTER>0</CENTER>
+</TD><TD WIDTH=107><CENTER>1</CENTER></TD><TD WIDTH=47><CENTER><TT>0x02</TT></CENTER>
+</TD></TR>
+</TABLE>
+</CENTER>
+<CENTER><B>Figure 3.2</B> Recommended
+values for type-of-service field.</CENTER>
+<P>
+The interactive login applications, Telnet and Rlogin,
+want a minimum delay since they're used interactively by a human
+for small amounts of data transfer. File transfer by FTP, on the
+other hand, wants maximum throughput. Maximum reliability is specified
+for network management (SNMP) and the routing protocols. Usenet
+news (NNTP) is the only one shown that wants to minimize monetary
+cost.
+<P>
+The TOS feature is not supported by most TCP/IP implementations
+today, though newer systems starting with 4.3BSD Reno are setting
+it. Additionally, new routing protocols such as OSPF and IS-IS
+are capable of making routing decisions based on this field.
+<P>
+<FONT SIZE=2>In <a href="link_lay.htm#2_10" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_10">Section 2.10</a> we mentioned that SLIP drivers normally
+provide type-of-service queuing, allowing interactive traffic
+to be handled before bulk data. Since most implementations don't
+use the TOS field, this queuing is done ad hoc by SLIP, with the
+driver looking at the protocol field (to determine whether it's
+a TCP segment or not) and then checking the source and destination
+TCP port numbers to see if the port number corresponds to an interactive
+service. One driver comments that this &quot;disgusting hack&quot;
+is required since most implementations don't allow the application
+to set the TOS field.</FONT>
+<P>
+The <I>total length</I> field is the total length
+of the IP datagram in bytes. Using this field and the header length
+field, we know where the data portion of the IP datagram starts,
+and its length. Since this is a 16-bit field, the maximum size
+of an IP datagram is 65535 bytes. (Recall from <a href="link_lay.htm#fig_2_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#fig_2_5">Figure 2.5</a>
+that a Hyperchannel has an MTU of 65535. This means there
+really isn't an MTU-it uses the largest IP datagram possible.)
+This field also changes when a datagram is fragmented, which we
+describe in <a href="udp_user.htm#11_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_5">Section 11.5</a>.
+<P>
+Although it's possible to send a 65535-byte IP datagram,
+most link layers will fragment this. Furthermore, a host is not
+required to receive a datagram larger than 576 bytes. TCP divides
+the user's data into pieces, so this limit normally doesn't affect
+TCP. With UDP we'll encounter numerous applications in later chapters
+(RIP, TFTP, BOOTP, the DNS, and SNMP) that limit themselves to
+512 bytes of user data, to stay below this 576-byte limit. Realistically,
+however, most implementations today (especially those that support
+the Network File System, NFS) allow for just over 8192-byte IP
+datagrams.
+<P>
+The total length field is required in the IP header
+since some data links (e.g., Ethernet) pad small frames to be
+a minimum length. Even though the minimum Ethernet frame size
+is 46 bytes (<a href="link_lay.htm#fig_2_1" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#fig_2_1">Figure 2.1</a>), an IP datagram can be smaller. If the
+total length field wasn't provided, the IP layer wouldn't know
+how much of a 46-byte Ethernet frame was really an IP datagram.
+<P>
+The <I>identification</I> field uniquely identifies
+each datagram sent by a host. It normally increments by one each
+time a datagram is sent. We return to this field when we look
+at fragmentation and reassembly in <a href="udp_user.htm#11_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_5">Section 11.5</a>. Similarly, we'll
+also look at <I>the flags</I> field and <I>t</I>he fragmentation
+offset field when we talk about fragmentation.
+<P>
+<FONT SIZE=2>RFC 791 [Postel 1981a] says that the identification
+field should be chosen by the upper layer that is having IP send
+the datagram. This implies that two consecutive IP datagrams,
+one generated by TCP and one generated by UDP, can have the same
+identification field. While this is OK (the reassembly algorithm
+handles this), most Berkeley-derived implementations have the
+IP layer increment a kernel variable each time an IP datagram
+is sent, regardless of which layer passed the data to IP to send.
+This kernel variable is initialized to a value based on the time-of-day
+when the system is bootstrapped.</FONT>
+<P>
+The <I>time-to-live</I> field, or <I>TTL,</I> sets
+an upper limit on the number of routers through which a datagram
+can pass. It limits the lifetime of the datagram. It is initialized
+by the sender to some value (often 32 or 64) and decremented by
+one by every router that handles the datagram. When this field
+reaches 0, the datagram is thrown away, and the sender is notified
+with an ICMP message. This prevents packets from getting caught
+in routing loops forever. We return to this field in <a href="tracerou.htm#8_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm#8_0">Chapter 8</a>
+when we look at the Trace-route program.
+<P>
+We talked about the <I>protocol</I> field in <a href="introduc.htm#1_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#1_0">Chapter 1</a>
+and showed how it is used by IP to demultiplex incoming datagrams
+in <a href="introduc.htm#fig_1_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#fig_1_8">Figure 1.8</a>. It identifies which protocol gave the data for
+IP to send.
+<P>
+The <I>header checksum</I> is calculated over the
+IP header only. It does <I>not</I> cover any data that follows
+the header. ICMP, IGMP, UDP, and TCP all have a checksum in their
+own headers to cover their header and data.
+<P>
+To compute the IP checksum for an outgoing datagram,
+the value of the checksum field is first set to 0. Then the 16-bit
+one's complement sum of the header is calculated (i.e., the entire
+header is considered a sequence of 16-bit words). The 16-bit one's
+complement of this sum is stored in the checksum field. When an
+IP datagram is received, the 16-bit one's complement sum of the
+header is calculated. Since the receiver's calculated checksum
+contains the checksum stored by the sender, the receiver's checksum
+is all one bits if nothing in the header was modified. If the
+result is not all one bits (a checksum error), IP discards the
+received datagram. No error message is generated. It is up to
+the higher layers to somehow detect the missing datagram and retransmit.
+<P>
+ICMP, IGMP, UDP, and TCP all use the same checksum
+algorithm, although TCP and UDP include various fields from the
+IP header, in addition to their own header and data. RFC 1071
+[Braden, Borman, and Partridge 1988] contains implementation techniques
+for computing the Internet checksum. Since a router often changes
+only the TTL field (decrementing it by 1), a router can incrementally
+update the checksum when it forwards a received datagram, instead
+of calculating the checksum over the entire IP header again. RFC
+1141 [Mallory and Kullberg 1990] describes an efficient way to
+do this.
+<P>
+<FONT SIZE=2>The standard BSD implementation, however, does not
+use this incremental update feature when forwarding a datagram.</FONT>
+<P>
+Every IP datagram contains the <I>source IP address</I>
+and the <I>destination IP address. </I>These are the 32-bit values
+that we described in <a href="introduc.htm#1_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#1_4">Section 1.4</a>.
+<P>
+The final field, the <I>options,</I> is a variable-length
+list of optional information for the datagram. The options currently
+defined are:
+<UL>
+<LI>security and handling restrictions (for military
+applications, refer to RFC 1108 [Kent 1991] for details),
+<LI>record route (have each router record its IP
+address. <A HREF="pingprog.htm#7_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm#7_3" >Section 7.3</A>),
+<LI>timestamp (have each router record its IP address
+and time. <A HREF="pingprog.htm#7_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm#7_4" >Section 7.4</A>),
+<LI>loose source routing (specifying a list of IP
+addresses that must be traversed by the datagram. <A HREF="tracerou.htm#8_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm#8_5" >Section 8.5</A>),
+and
+<LI>strict source routing (similar to loose source
+routing but here only the addresses in the list can be traversed.
+<A HREF="tracerou.htm#8_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm#8_5" >Section 8.5</A>).
+</UL>
+<P>
+These options are rarely used and not all host and
+routers support all the options.
+<P>
+The options field always ends on a 32-bit boundary.
+Pad bytes with a value of 0 are added if necessary. This assures
+that the IP header is always a multiple of 32 bits (as required
+for the <I>header length</I> field).
+<a name="3_3"><H3>3.3 IP Routing</H3></a>
+<P>
+Conceptually, IP routing is simple, especially for
+a host. If the destination is directly connected to the host (e.g.,
+a point-to-point link) or on a shared network (e.g., Ethernet
+or token ring), then the IP datagram is sent directly to the destination.
+Otherwise the host sends the datagram to a default router, and
+lets the router deliver the datagram to its destination. This
+simple scheme handles most host configurations.
+<P>
+In this section and in <a href="ip_rout.htm#9_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_0">Chapter 9</a> we'll look at the
+more general case where the IP layer can be configured to act
+as a router in addition to acting as a host. Most multiuser systems
+today, including almost every Unix system, can be configured to
+act as a router. We can then specify a single routing algorithm
+that both hosts and routers can use. The fundamental difference
+is that a host <I>never</I> forwards datagrams from one of its
+interfaces to another, while a router forwards datagrams. A host
+that contains embedded router functionality should never forward
+a datagram unless it has been specifically configured to do so.
+We say more about this configuration option in <a href="ip_rout.htm#9_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_4">Section 9.4</a>.
+<P>
+In our general scheme, IP can receive a datagram
+from TCP, UDP, ICMP, or IGMP (that is, a locally generated datagram)
+to send, or one that has been received from a network interface
+(a datagram to forward). The IP layer has a routing table in memory
+that it searches each time it receives a datagram to send. When
+a datagram is received from a network interface, IP first checks
+if the destination IP address is one of its own IP addresses or
+an IP broadcast address. If so, the datagram is delivered to the
+protocol module specified by the protocol field in the IP header.
+If the datagram is not destined for this IP layer, then (1) if
+the IP layer was configured to act as a router the packet is forwarded
+(that is, handled as an outgoing datagram as described below),
+else (2) the datagram is silently discarded.
+<P>
+Each entry in the routing table contains the following
+information:
+<UL>
+<LI>Destination IP address. This can be either a
+complete <I>host address</I> or a <I>network address,</I> as specified
+by the flag field (described below) for this entry. A host address
+has a nonzero host ID (<a href="introduc.htm#fig_1_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#fig_1_5">Figure 1.5</a>) and identifies one particular
+host, while a network address has a host ID of 0 and identifies
+all the hosts on that network (e.g., Ethernet, token ring).
+<LI>IP address of a <I>next-hop router,</I> or the
+IP address of a directly connected network. A next-hop router
+is one that is on a directly connected network to which we can
+send datagrams for delivery. The next-hop router is not the final
+destination, but it takes the datagrams we send it and forwards
+them to the final destination.
+<LI>Flags. One flag specifies whether the destination
+IP address is the address of a network or the address of a host.
+Another flag says whether the next-hop router field is really
+a next-hop router or a directly connected interface. (We describe
+each of these flags in <a href="ip_rout.htm#9_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_2">Section 9.2</a>.)
+<LI>Specification of which network interface the
+datagram should be passed to for transmission.
+</UL>
+<P>
+IP routing is done on a hop-by-hop basis. As we can
+see from this routing table information, IP does not know the
+complete route to any destination (except, of course, those destinations
+that are directly connected to the sending host). All that IP
+routing provides is the IP address of the next-hop router to which
+the datagram is sent. It is assumed that the next-hop router is
+really &quot;closer&quot; to the destination than the sending
+host is, and that the next-hop router is directly connected to
+the sending host.
+<P>
+IP routing performs the following actions:
+<P>
+<OL>
+<LI>Search the routing table for an entry that matches
+the complete destination IP address (matching network ID and host
+ID). If found, send the packet to the indicated next-hop router
+or to the directly connected interface (depending on the flags
+field). Point-to-point links are found here, for example, since
+the other end of such a link is the other host's complete IP address.
+<P>
+<LI>Search the routing table for an entry that matches
+just the destination network ID. If found, send the packet to
+the indicated next-hop router or to the directly connected interface
+(depending on the flags field). All the hosts on the destination
+network can be handled with this single routing table entry All
+the hosts on a local Ethernet, for example, are handled with a
+routing table entry of this type.
+<P>
+This check for a network match must take into account
+a possible subnet mask, which we describe in the next section.
+<P>
+<LI>Search the routing table for an entry labeled
+&quot;default.&quot; If found, send the packet to the indicated
+next-hop router.
+</OL>
+<P>
+If none of the steps works, the datagram is undeliverable.
+If the undeliverable datagram was generated on this host, a &quot;host
+unreachable&quot; or &quot;network unreachable&quot; error is
+normally returned to the application that generated the datagram.
+<P>
+A complete matching host address is searched for
+before a matching network ID. Only if both of these fail is a
+default route used. Default routes, along with the ICMP redirect
+message sent by a next-hop router (if we chose the wrong default
+for a datagram), are powerful features of IP routing that we'll
+come back to in <a href="ip_rout.htm#9_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_0">Chapter 9</a>.
+<P>
+The ability to specify a route to a network, and
+not have to specify a route to every host, is another fundamental
+feature of IP routing. Doing this allows the routers on the Internet,
+for example, to have a routing table with thousands of entries,
+instead of a routing table with more than one million entries.
+<H4>Examples</H4>
+<P>
+First consider a simple example: our host bsdi has
+an IP datagram to send to our host sun. Both hosts are on the
+same Ethernet (see inside front cover). Figure 3.3 shows the delivery
+of the datagram.
+<P>
+When IP receives the datagram from one of the upper
+layers it searches its routing table and finds that the destination
+IP address (140.252.13.33) is on a directly connected network
+(the Ethernet 140.252.13.0). A matching network address is found
+in the routing table. (In the next section we'll see that because
+of subnetting the network address of this Ethernet is really 140.252.13.32,
+but that doesn't affect this discussion of routing.) The datagram
+is passed to the Ethernet device driver, and sent to sun as an
+Ethernet frame (Figure 2.1). The destination address in the IP
+datagram is Sun's IP address (140.252.13.33) and the destination
+address in the link-layer header is the 48-bit Ethernet address
+of sun's Ethernet interface. This 48-bit Ethernet address is obtained
+using ARP, as we describe in the next chapter. destination network
+= 140.252.13.0<BR>
+
+<P>
+<CENTER><a name="fig_3_3"><img src="f_3_3.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_3_3.gif"></a></CENTER>
+<CENTER><B>Figure 3.3</B> Delivery
+of IP datagram from <TT>bsdi</TT> to <TT>sun</TT>.</CENTER>
+<P>
+Now consider another example: <TT>bsdi</TT>
+has an IP datagram to send to the host <TT>ftp.uu.net</TT>,
+whose IP address is 192.48.96.9. <a href="#fig_3_4">Figure 3.4</a> shows the path of
+the datagram through the first three routers. First bsdi searches
+its routing table but doesn't find a matching host entry or a
+matching network entry. It uses its default entry, which tells
+it to send datagrams to sun, the next-hop router. When the datagram
+travels from bsdi to sun the destination IP address is the final
+destination (192.48.96.9) but the link-layer address is the 48-bit
+Ethernet address of sun's Ethernet interface. Compare this datagram
+with the one in Figure 3.3, where the destination IP address and
+the destination link-layer address specified the same host (<TT>sun</TT>).
+<P>
+When <TT>sun</TT> receives the
+datagram it realizes that the datagram's destination IP address
+is not one of its own, and sun is configured to act as a router,
+so it forwards the datagram. Its routing table is searched and
+the default entry is used. The default entry on <TT>sun</TT>
+tells it to send datagrams to the next-hop router netb, whose
+IP address is 140.252.1.183. The datagram is sent across the point-to-point
+SLIP link, using the minimal encapsulation we showed in <a href="link_lay.htm#fig_2_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#fig_2_2">Figure 2.2</a>.
+We don't show a link-layer header, as we do on the Ethernets,
+because there isn't one on a SLIP link.
+<P>
+When <TT>netb</TT> receives the
+datagram it goes through the same steps that <TT>sun</TT>
+just did: the datagram is not destined for one of its own IP addresses,
+and <TT>netb</TT> is configured to act as
+a router, so the datagram is forwarded. The default routing table
+entry is used, sending the datagram to the next-hop router <TT>gateway</TT>
+(140.252.1.4). ARP is used by <TT>netb</TT>
+on the Ethernet 140.252.1 to obtain the 48-bit Ethernet address
+corresponding to 140.252.1.4, and that Ethernet address is the
+destination address in the link-layer header.
+<P>
+<TT>gateway</TT> goes through the same steps as the
+previous two routers and its default routing table entry specifies
+140.252.104.2 as the next-hop router. (We'll verify that this
+is the next-hop router for gateway using Traceroute in <a href="tracerou.htm#fig_8_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm#fig_8_4">Figure 8.4</a>.)
+<P>
+<CENTER><a name="fig_3_4"><IMG SRC="f_3_4.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_3_4.gif"></a>
+<BR>
+<B>Figure 3.4</B> Initial path
+of datagram from <TT>bsdi</TT> to <TT>ftp.uu.net</TT>
+(192.48.96.9).</CENTER>
+<P>
+A few key points come out in this example.
+<OL>
+<LI>All the hosts and routers in this example used
+a default route. Indeed, most hosts and some routers can use a
+default route for everything other than destinations on local
+networks.
+<LI>The destination IP address in the datagram never
+changes. (In <A HREF="tracerou.htm#8_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm#8_5" >Section 8.5</A> we'll
+see that this is not true only if source routing is used, which
+is rare.) All the routing decisions are based on this destination
+address.
+<LI>A different link-layer header can be used on
+each link, and the link-layer destination address (if present)
+always contains the link-layer address of the next hop. In our
+example both Ethernets encapsulated a link-layer header containing
+the next-hop's Ethernet address, but the SLIP link did not. The
+Ethernet addresses are normally obtained using ARP.
+</OL>
+<P>
+In <A HREF="ip_rout.htm#9_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_0" >Chapter 9</A> we'll
+look at IP routing again, after describing ICMP. We'll also look
+at some sample routing tables and how they're used for routing
+decisions.
+<a name="3_4"><H3>3.4 Subnet Addressing</H3></a>
+<P>
+All hosts are now required to support subnet addressing
+(RFC 950 [Mogul and Postel 1985]). Instead of considering an IP
+address as just a network ID and host ID, the host ID portion
+is divided into a subnet ID and a host ID.
+<P>
+This makes sense because class A and class B addresses
+have too many bits allocated for the host ID: 2<SUP>24</SUP>-2
+and 2<SUP>16</SUP>-2, respectively. People don't attach that many
+hosts to a single network. (<A HREF="introduc.htm#fig_1_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#fig_1_5" >Figure 1.5</A> shows
+the format of the different classes of IP addresses.) We subtract
+2 in these expressions because host IDs of all zero bits or all
+one bits are invalid.
+<P>
+After obtaining an IP network ID of a certain class
+from the InterNIC, it is up to the local system administrator
+whether to subnet or not, and if so, how many bits to allocate
+to the subnet ID and host ID. For example, the internet used in
+this text has a class B network address (140.252) and of the remaining
+16 bits, 8 are for the subnet ID and 8 for the host ID. This is
+shown in Figure 3.5.
+<CENTER>
+<a name="fig_3_5"><TABLE></a>
+<TR><TD WIDTH=132></TD><TD WIDTH=132><CENTER>16 bits</CENTER>
+</TD><TD WIDTH=132><CENTER>8 bits</CENTER>
+</TD><TD WIDTH=113><CENTER>8 bits</CENTER>
+</TD></TR>
+<TR><TD WIDTH=132><CENTER>Class B</CENTER>
+</TD><TD WIDTH=132><CENTER>netid = 140.252</CENTER>
+</TD><TD WIDTH=132><CENTER>subnetid</CENTER>
+</TD><TD WIDTH=113><CENTER>hostid</CENTER>
+</TD></TR>
+</TABLE>
+</CENTER>
+<CENTER><B>Figure 3.5</B> Subnetting
+a class B address.</CENTER>
+<P>
+This division allows 254 subnets, with 254 hosts
+per subnet.
+<P>
+Many administrators use the natural 8-bit boundary
+in the 16 bits of a class B host ID as the subnet boundary. This
+makes it easier to determine the subnet ID from a dotted-decimal
+number, but there is no requirement that the subnet boundary for
+a class A or class B address be on a byte boundary.
+<P>
+Most examples of subnetting describe it using a class
+B address. Subnetting is also allowed for a class C address, but
+there are fewer bits to work with. Subnetting is rarely shown
+with a class A address because there are so few class A addresses.
+(Most class A addresses are, however, subnetted.)
+<P>
+Subnetting hides the details of internal network
+organization (within a company or campus) to external routers.
+Using our example network, all IP addresses have the class B network
+ID of 140.252. But there are more than 30 subnets and more than
+400 hosts distributed over those subnets. A single router provides
+the connection to the Internet, as shown in Figure 3.6.
+<P>
+In this figure we have labeled most of the routers
+as R<I>n</I>, where <I>n</I> is the subnet number. We show the
+routers that connect these subnets, along with the nine systems
+from the figure on the inside front cover. The Ethernets are shown
+as thicker lines, and the point-to-point links as dashed lines.
+We do <I>not</I> show all the hosts on the various subnets. For
+example, there are more than 50 hosts on the 140.252.3 subnet,
+and more than 100 on the 140.252.1 subnet.
+<P>
+The advantage to using a single class B address with
+30 subnets, compared to 30 class C addresses, is that subnetting
+reduces the size of the Internet's routing tables. The fact that
+the class B address 140.252 is subnetted is transparent to all
+Internet routers other than the ones within the 140.252 subnet.
+To reach any host whose IP
+<P>
+<CENTER><a name="fig_3_6"><img src="f_3_6.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_3_6.gif"></a></CENTER>
+<CENTER><B>Figure 3.6</B> Arrangement
+of most of the <TT>noao.edu</TT> 140.252 subnets.</CENTER>
+<P>
+address begins with 140.252, the external routers
+only need to know the path to the IP address 140.252.104.1. This
+means that only one routing table entry is needed for all the
+140.252 networks, instead of 30 entries if 30 class C addresses
+were used. Subnetting, therefore, reduces the size of routing
+tables. (In <a href="dynamic.htm#10_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dynamic.htm#10_8">Section 10.8</a> we'll look at a new technique that helps
+reduce the size of routing tables even if class C addresses are
+used.)
+<P>
+To show that subnetting is not transparent to routers
+within the subnet, assume in Figure 3.6 that a datagram arrives
+at <TT>gateway</TT> from the Internet with
+a destination address of 140.252.57.1. The router <TT>gateway</TT>
+needs to know that the subnet number is 57, and that datagrams
+for this subnet are sent to <TT>kpno</TT>.
+Similarly <TT>kpno</TT> must send the datagram
+to R55, who then sends it to R57.
+<a name="3_5"><H3>3.5 Subnet Mask</H3></a>
+<P>
+Part of the configuration of any host that takes
+place at bootstrap time is the specification of the host's IP
+address. Most systems have this stored in a disk file that's read
+at bootstrap time, and we'll see in <A HREF="rarp_rev.htm#5_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/rarp_rev.htm#5_0" >Chapter 5</A> how
+a diskless system can also find out its IP address when it's bootstrapped.
+<P>
+In addition to the IP address, a host also needs
+to know how many bits are to be used for the subnet ID and how
+many bits are for the host ID. This is also specified at bootstrap
+time using a <I>subnet mask.</I> This mask is a 32-bit value containing
+one bits for the network ID and subnet ID, and zero bits for the
+host ID. Figure 3.7 shows the formation of the subnet mask for
+two different partitions of a class B address. The top example
+is the partitioning used at <TT>noao.edu</TT>,
+shown in Figure 3.5, where the subnet ID and host ID are both
+8 bits wide. The lower example shows a class B address partitioned
+for a 10-bit subnet ID and a 6-bit host ID.
+<P>
+<CENTER><a name="fig_3_7"><img src="f_3_7.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_3_7.gif"></a></CENTER>
+<CENTER><B>Figure 3.7</B> Example
+subnet mask for two different class B subnet arrangements.</CENTER>
+<P>
+Although IP addresses are normally written in dotted-decimal
+notation, subnet masks are often written in hexadecimal, especially
+if the boundary is not a byte boundary, since the subnet mask
+is a bit mask.
+<P>
+Given its own IP address and its subnet mask, a host
+can determine if an IP datagram is destined for (1) a host on
+its own subnet, (2) a host on a different subnet on its own network,
+or (3) a host on a different network. Knowing your own IP address
+tells you whether you have a class A, B, or C address (from the
+high-order bits), which tells you where the boundary is between
+the network ID and the subnet ID. The subnet mask then tells you
+where the boundary is between the subnet ID and the host ID.
+<H4>Example</H4>
+<P>
+Assume our host address is 140.252.1.1 (a class B
+address) and our subnet mask is 255.255.255.0 (8 bits for the
+subnet ID and 8 bits for the host ID).
+<UL>
+<LI>If a destination IP address is 140.252.4.5, we
+know that the class B network IDs are the same (140.252), but
+the subnet IDs are different (1 and 4). Figure 3.8 shows how this
+comparison of two IP addresses is done, using the subnet mask.
+<LI>If the destination IP address is 140.252.1.22,
+the class B network IDs are the same (140.252), and the subnet
+IDs are the same (1). The host IDs, however, are different.
+<LI>If the destination IP address is 192.43.235.6
+(a class C address), the network IDs are different. No further
+comparisons can be made against this address.
+</UL>
+<P>
+<CENTER><a name="fig_3_8"><img src="f_3_8.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_3_8.gif"></a></CENTER>
+<CENTER><B>Figure 3.8</B> Comparison
+of two class B addresses using a subnet mask.</CENTER>
+<P>
+The IP routing function makes comparisons like this
+all the time, given two IP addresses and a subnet mask.
+<a name="3_6"><H3>3.6 Special Case IP Addresses</H3></a>
+<P>
+Having described subnetting we now show the seven
+special case IP addresses in Figure 3.9. In this figure, 0 means
+a field of all zero bits, -1 means a field of all one bits, and
+<I>netid,</I> subnetid, and <I>hostid</I> mean the corresponding
+field that is neither all zero bits nor all one bits. A blank
+subnet ID column means the address is not subnetted.
+<CENTER>
+<a name="fig_3_9"><TABLE BORDER=1></a>
+<TR><TD COLSPAN=3 WIDTH=169><CENTER>IP address</CENTER>
+</TD><TD COLSPAN=2 WIDTH=134><CENTER>Can appear as</CENTER>
+</TD><TD WIDTH=300><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=53><CENTER>net ID</CENTER></TD>
+<TD WIDTH=61><CENTER>subnet ID</CENTER></TD>
+<TD WIDTH=55><CENTER>host ID</CENTER></TD>
+<TD WIDTH=61><CENTER>source?</CENTER></TD>
+<TD WIDTH=73><CENTER>destination?</CENTER>
+</TD><TD WIDTH=300></TD></TR>
+<TR><TD WIDTH=53><CENTER>0
+<BR>
+0</CENTER>
+</TD><TD WIDTH=61></TD><TD WIDTH=55><CENTER>0<BR>
+<I>hostid</I></CENTER>
+</TD><TD WIDTH=61><CENTER>OK<BR>
+OK</CENTER>
+</TD><TD WIDTH=73><CENTER>never<BR>
+never</CENTER>
+</TD><TD WIDTH=300>this host on this net (see restrictions below)<BR>
+specified host on this net (see restrictions below)
+</TD></TR>
+<TR><TD WIDTH=53><CENTER>127</CENTER></TD>
+<TD WIDTH=61></TD><TD WIDTH=55><CENTER><I>anything</I></CENTER>
+</TD><TD WIDTH=61><CENTER>OK</CENTER></TD>
+<TD WIDTH=73><CENTER>OK</CENTER></TD><TD WIDTH=300>loopback address (<A HREF="link_lay.htm#2_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_7" >Section 2.7</A>)
+</TD></TR>
+<TR><TD WIDTH=53><CENTER>-1
+<BR>
+<I>netid<BR>
+netid<BR>
+netid</I></CENTER>
+</TD><TD WIDTH=61><BR>
+<BR>
+<CENTER><I>subnetid<BR>
+</I>1</CENTER>
+</TD><TD WIDTH=55><CENTER>-1
+<BR>
+-1<BR>
+-1<BR>
+-1</CENTER>
+</TD><TD WIDTH=61><CENTER>never<BR>
+never<BR>
+never<BR>
+never</CENTER>
+</TD><TD WIDTH=73><CENTER>OK<BR>
+OK<BR>
+OK<BR>
+OK</CENTER>
+</TD><TD WIDTH=300>limited broadcast (never forwarded)<BR>
+net-directed broadcast to <I>netid<BR>
+ </I>subnet-directed broadcast to <I>netid, subnetid<BR>
+</I>all-subnets-directed broadcast to <I>netid</I>
+</TD></TR>
+</TABLE>
+</CENTER>
+<CENTER><B>Figure 3.9</B> Special
+case IP addresses.</CENTER>
+<P>
+We have divided this table into three sections. The
+first two entries are special case source addresses, the next
+one is the special loopback address, and the final four are the
+broadcast addresses.
+<P>
+&quot;The first two entries in the table, with a
+network ID of 0, can only appear as the source address as part
+of an initialization procedure when a host is determining its
+own IP address, for example, when the BOOTP protocol is being
+used (<A HREF="bootp.htm#16_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/bootp.htm#16_0" >Chapter 16</A>). In <A HREF="broadcas.htm#12_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm#12_2" >Section 12.2</A>
+we'll examine the four types of broadcast addresses in more detail.
+<a name="3_7"><H3>3.7 A Subnet Example</H3></a>
+<P>
+This example shows the subnet used in the text, and
+how two different subnet masks are used. Figure 3.10 shows the
+arrangement.
+<P>
+<CENTER><a name="fig_3_10"><img src="f_3_10.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_3_10.gif"></a></CENTER>
+<CENTER><B>Figure 3.10</B> Arrangement
+of hosts and networks for author's subnet.</CENTER>
+<P>
+If you compare this figure with the one on the inside
+front cover, you'll notice that we've omitted the detail that
+the connection from the router sun to the top Ethernet in Figure
+3.10 is really a dialup SLIP connection. This detail doesn't affect
+our description of subnetting in this section. We'll return to
+this detail in <a href="arp_addr.htm#4_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#4_6">Section 4.6</a> when we describe proxy ARP.
+<P>
+The problem is that we have two separate networks
+within subnet 13: an Ethernet and a point-to-point link (the hardwired
+SLIP link). (Point-to-point links always cause problems since
+each end normally requires an IP address.) There could be more
+hosts and networks in the future, but not enough hosts across
+the different networks to justify using another subnet number.
+Our solution is to extend the subnet ID from 8 to II bits, and
+decrease the host ID from 8 to 5 bits. This is called <I>variable-length
+subnets</I> since most networks within the 140.252 network use
+an 8-bit subnet mask while our network uses an 11-bit subnet mask.
+<P>
+<FONT SIZE=2>RFC 1009 [Braden and Postel 1987] allows a subnetted
+network to use more than one subnet mask. The new Router Requirements
+RFC [Almquist 1993] requires support for this.
+<P>
+The problem, however, is that not all routing protocols
+exchange the subnet mask along with the destination network ID.
+We'll see in <a href="dynamic.htm#10_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dynamic.htm#10_0">Chapter 10</a> that RIP does not support variable-length
+subnets, while RIP Version 2 and OSPF do. We don't have a problem
+with our example, since RIP isn't required on the author's subnet.</FONT>
+<P>
+Figure 3.11 shows the IP address structure used within
+the author's subnet. The first 8 bits of the 11-bit subnet ID
+are always 13 within the author's subnet. For the remaining 3
+bits of the subnet ID, we use binary 001 for the Ethernet, and
+binary 010 for
+<P>
+<CENTER><a name="fig_3_11"><img src="f_3_11.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_3_11.gif"></a></CENTER>
+<CENTER><B>Figure 3.11</B> Using
+variable-length subnets.</CENTER>
+<P>
+the point-to-point SLIP link. This variable-length
+subnet mask does not cause a problem for other hosts and routers
+in the 140.252 network-as long as all datagrams destined for the
+subnet 140.252.13 are sent to the router sun (IP address 140.252.1.29)
+in <a href="#fig_3_10">Figure 3.10</a>, and if sun knows about the 11-bit subnet ID for
+the hosts on its subnet 13, everything is fine.
+<P>
+The subnet mask for all the interfaces on the 140.252.13
+subnet is 255.255.255.224, or 0<TT>xffffffe0</TT>.
+This indicates that the rightmost 5 bits are for the host ID,
+and the 27 bits to the left are the network ID and subnet ID.
+<P>
+Figure 3.12 shows the allocation of IP addresses
+and subnet masks for the interfaces shown in Figure 3.10.
+<CENTER>
+<a name="fig_3_12"><TABLE BORDER=1></a>
+<TR><TD WIDTH=47><CENTER>Host</CENTER></TD>
+<TD WIDTH=95><CENTER>IP address</CENTER></TD>
+<TD WIDTH=110><CENTER>Subnet mask</CENTER>
+</TD><TD WIDTH=95><CENTER>Net ID/Subnet ID</CENTER>
+</TD><TD WIDTH=42><CENTER>Host ID</CENTER>
+</TD><TD WIDTH=143><CENTER>Comment</CENTER>
+</TD></TR>
+<TR><TD WIDTH=47><TT>sun</TT></TD><TD WIDTH=95>140.252.1.29 140.252.13.33
+</TD><TD WIDTH=110>255.255.255.0 255.255.255.224
+</TD><TD WIDTH=95>140.252.1 140.252.13.32
+</TD><TD WIDTH=42><CENTER>29
+<BR>
+1</CENTER>
+</TD><TD WIDTH=143>on subnet 1<BR>
+on author's Ethernet
+</TD></TR>
+<TR><TD WIDTH=47><TT>svr4</TT></TD><TD WIDTH=95>140.252.13.34
+</TD><TD WIDTH=110>255.255.255.224</TD><TD WIDTH=95>140.252.13.32
+</TD><TD WIDTH=42><CENTER>2</CENTER></TD>
+<TD WIDTH=143></TD></TR>
+<TR><TD WIDTH=47><TT>bsdi</TT></TD><TD WIDTH=95>140.252.13.35 140.252.13.66
+</TD><TD WIDTH=110>255.255.255.224 255.255.255.224
+</TD><TD WIDTH=95>140.252.13.32 140.252.13.64
+</TD><TD WIDTH=42><CENTER>3
+<BR>
+2</CENTER>
+</TD><TD WIDTH=143>on Ethernet<BR>
+point-to-point
+</TD></TR>
+<TR><TD WIDTH=47><TT>slip</TT></TD><TD WIDTH=95>140.252.13.65
+</TD><TD WIDTH=110>255.255.255.224</TD><TD WIDTH=95>140.252.13.64
+</TD><TD WIDTH=42><CENTER>1</CENTER></TD>
+<TD WIDTH=143>point-to-point</TD></TR>
+<TR><TD WIDTH=47></TD><TD WIDTH=95>140.252.13.63
+</TD><TD WIDTH=110>255.255.255.224</TD><TD WIDTH=95>140.252.13.32
+</TD><TD WIDTH=42><CENTER>31</CENTER></TD>
+<TD WIDTH=143>broadcast addr on Ethernet</TD>
+</TR>
+</TABLE>
+</CENTER>
+<CENTER><B>Figure 3.12</B> IP
+addresses on author's subnet.</CENTER>
+<P>
+The first column is labeled &quot;Host,&quot; but
+both sun and bsdi also act as routers, since they are multihomed
+and route packets from one interface to another.
+<P>
+The final row in this table notes that the broadcast
+address for the Ethernet in <a href="#fig_3_10">Figure 3.10</a> is 140.252.13.63: it is
+formed from the subnet ID of the Ethernet (140.252.13.32) and
+the low-order 5 bits in <a href="#fig_3_11">Figure 3.11</a> set to 1 (16+8+4+2+1 = 31).
+(We'll see in <a href="broadcas.htm#12_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm#12_0">Chapter 12</a> that this address is called the subnet-directed
+broadcast address.)
+<a name="3_8"><H3>3.8 <TT>ifconfig</TT> Command</H3></a>
+<P>
+Now that we've described the link layer and the IP
+layer we can show the command used to configure or query a network
+interface for use by TCP/IP. The <TT>ifconfig</TT>(8)
+command is normally run at bootstrap time to configure each interface
+on a host.
+<P>
+For dialup interfaces that may go up and down (such
+as SLIP links), ifconfig must be run (somehow) each time the line
+is brought up or down. How this is done each time the SLIP link
+is brought up or down depends on the SLIP software being used.
+<P>
+The following output shows the values for the author's
+subnet. Compare these values with the values in <a href="#fig_3_12">Figure 3.12</a>.
+<TABLE>
+<TR><TD WIDTH=295><TT>sun % <B>/usr/etc/ifconfig -a</B></TT>
+</TD><TD WIDTH=295><I>SunOS -a option says report on all interfaces</I>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=590><TT>leO : flags=63&lt;UP, BROADCAST, NOTRAILERS, RUNNING&gt;
+<BR>
+inet 140.252.13.33 netmask ffffffe0 broadcast 140.252.13.63</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=590><TT>slO : flags=105KUP, POINTOPOINT, RUNNING, LINKO&gt;<BR>
+inet 140.252.1.29 -&gt; 140.252.1.183 netmask ffffff00</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=590><TT>loO: flags=49&lt;UP,LOOPBACK,RUNNING&gt;<BR>
+inet 127.0.0.1 netmask ff000000</TT>
+</TD></TR>
+</TABLE>
+<P>
+The loopback interface (<A HREF="link_lay.htm#2_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_7" >Section 2.7</A>)
+is considered a network interface. Its class A address is not
+subnetted.
+<P>
+Other things to notice are that trailer encapsulation
+(<A HREF="link_lay.htm#2_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_3" >Section 2.3</A>) is not used on
+the Ethernet, and that the Ethernet is capable of broadcasting,
+while the SLIP link is a point-to-point link.
+<P>
+The flag <TT>LINK0</TT> for the
+SLIP interface is the configuration option that enables compressed
+slip (CSLIP, <A HREF="link_lay.htm#2_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_5" >Section 2.5</A>). Other
+possible options are <TT>LINK1</TT>, which
+enables CSLIP if a compressed packet is received from the other
+end, and <TT>LINK2</TT>, which causes all
+outgoing ICMP packets to be thrown away. We'll look at the destination
+address of this SLIP link in <A HREF="arp_addr.htm#4_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#4_6" >Section 4.6</A>.
+<P>
+A comment in the installation instructions gives
+the reason for this last option: &quot;This shouldn't have to
+be set, but some cretin pinging you can drive your throughput
+to zero.&quot;
+<P>
+<TT>bsdi</TT> is the other router. Since the <TT>-a</TT>
+option is a SunOS feature, we have to execute <TT>ifconfig</TT>
+multiple times, specifying the interface name as an argument:
+<TABLE>
+<TR><TD WIDTH=584><TT>bsdi % <B>/sbin/ifconfig weO</B></TT>
+</TD></TR>
+<TR><TD WIDTH=584><TT>we0: flags=863&lt;UP, BROADCAST, NOTRAILERS, RUNNING, SIMPLEX&gt;
+<BR>
+inet 140.252.13.35 netmask ffffffe0 broadcast 140.252.13.63</TT>
+</TD></TR>
+<TR><TD WIDTH=584><TT>bsdi % <B>/sbin/ifconfig slO</B></TT>
+</TD></TR>
+<TR><TD WIDTH=584><TT>sl0 : flags=1011&lt;UP, POINTOPOINT, LINKO
+<BR>
+inet 140.252.13.66 -&gt; 140.252.13.65 netmask ffffffe0</TT>
+</TD></TR>
+</TABLE>
+<P>
+Here we see a new option for the Ethernet interface
+(<TT>we0</TT>): <TT>SIMPLEX</TT>.
+This 4.4BSD flag specifies that the interface can't hear its own
+transmissions. It is set in BSD/386 for all the Ethernet interfaces.
+When set, if the interface is sending a frame to the broadcast
+address, a copy is made for the local host and sent to the loopback
+address. (We show an example of this feature in <A HREF="icmp_int.htm#6_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#6_3" >Section 6.3</A>.)
+<P>
+On the host <TT>slip</TT> the
+configuration of the SLIP interface is nearly identical to the
+output shown above on bsdi, with the exception that the IP addresses
+of the two ends are swapped:
+<TABLE>
+<TR><TD WIDTH=590><TT>slip % <B>/sbin/ifconfig slO</B></TT>
+</TD></TR>
+<TR><TD WIDTH=590><TT>sl0 : flags=1011&lt;UP, POINTOPOINT, LINK0
+<BR>
+inet 140.252.13.65 --&gt; 140.252.13.66 netmask ffffffe0</TT>
+</TD></TR>
+</TABLE>
+<P>
+The final interface is the Ethernet interface on
+the host <TT>svr4</TT>. It is similar to the
+Ethernet output shown earlier, except that SVR4's version of <TT>ifconfig
+</TT>doesn't print the RUNNING flag:
+<TABLE>
+<TR><TD WIDTH=590><TT>svr4 % <B>/usr/sbin/ifconfig emdO</B></TT>
+</TD></TR>
+<TR><TD WIDTH=590><TT>emdO: flags=23&lt;UP, BROADCAST, NOTRAILERS&gt;
+<BR>
+inet 140.252.13.34 netmask ffffffe0 broadcast 140.252.13.63</TT>
+</TD></TR>
+</TABLE>
+<P>
+The <TT>ifconfig</TT> command
+normally supports other protocol families (other than TCP/IP)
+and has numerous additional options. Check your system's manual
+for these details.
+<a name="3_9"><H3><TT>3.9 netstat</TT> Command</H3></a>
+<P>
+The <TT>netstat</TT>(l) command
+also provides information about the interfaces on a system. The
+<TT>-i</TT> flag prints the interface information,
+and the <TT>-n</TT> flag prints IP addresses
+instead of hostnames.
+<TABLE>
+<TR><TD COLSPAN=10 WIDTH=659><TT>sun % <B>netstat -in</B></TT>
+</TD></TR>
+<TR><TD WIDTH=45><TT>Name</TT></TD><TD WIDTH=47><TT>Mtu</TT>
+</TD><TD WIDTH=113><TT>Net/Dest</TT></TD>
+<TD WIDTH=113>Address</TD>
+<TD WIDTH=57><TT>lpkts</TT></TD><TD WIDTH=57><TT>lerrs</TT>
+</TD><TD WIDTH=59><TT>Opkts</TT></TD><TD WIDTH=59><TT>Oerrs</TT>
+</TD><TD WIDTH=59><TT>Collis</TT></TD><TD WIDTH=49><TT>Queue</TT>
+</TD></TR>
+<TR><TD WIDTH=45><TT>leO</TT></TD><TD WIDTH=47><TT>1500</TT>
+</TD><TD WIDTH=113><TT>140.252.13.32</TT>
+</TD><TD WIDTH=113>140.252.13.33
+</TD><TD WIDTH=57><TT>67719</TT></TD><TD WIDTH=57><TT>0</TT>
+</TD><TD WIDTH=59><TT>92133</TT></TD><TD WIDTH=59><TT>0</TT>
+</TD><TD WIDTH=59><TT>1</TT></TD><TD WIDTH=49><TT>0</TT>
+</TD></TR>
+<TR><TD WIDTH=45><TT>slO</TT></TD><TD WIDTH=47><TT>552</TT>
+</TD><TD WIDTH=113><TT>140.252.1.183</TT>
+</TD><TD WIDTH=113>140.252.1.29
+</TD><TD WIDTH=57><TT>48035</TT></TD><TD WIDTH=57><TT>0</TT>
+</TD><TD WIDTH=59><TT>54963</TT></TD><TD WIDTH=59><TT>0</TT>
+</TD><TD WIDTH=59><TT>0</TT></TD><TD WIDTH=49><TT>0</TT>
+</TD></TR>
+<TR><TD WIDTH=45><TT>loO</TT></TD><TD WIDTH=47><TT>1536</TT>
+</TD><TD WIDTH=113><TT>127.0.0.0</TT></TD>
+<TD WIDTH=113>127.0.0.1
+</TD><TD WIDTH=57><TT>15548</TT></TD><TD WIDTH=57><TT>0</TT>
+</TD><TD WIDTH=59><TT>15548</TT></TD><TD WIDTH=59><TT>0</TT>
+</TD><TD WIDTH=59><TT>0</TT></TD><TD WIDTH=49><TT>0</TT>
+</TD></TR>
+</TABLE>
+<P>
+This command prints the MTU of each interface, the
+number of input packets, input errors, output packets, output
+errors, collisions, and the current size of the output queue.
+<P>
+We'll return to the <TT>netstat</TT>
+command in <A HREF="ip_rout.htm#9_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_0" >Chapter 9</A> when we use
+it to examine the routing table, and in <A HREF="igmp_int.htm#13_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/igmp_int.htm#13_0" >Chapter 13</A>
+when we use a modified version to see active multicast groups.
+<a name="3_10"><H3>3.10 IP Futures</H3></a>
+<P>
+There are three problems with IP. They are a result
+of the phenomenal growth of the Internet over the past few years.
+(See Exercise 1.2 also.)
+<OL>
+<LI>Over half of all class B addresses have already
+been allocated. Current estimates predict exhaustion of the class
+B address space around 1995, if they continue to be allocated
+as they have been in the past.
+<LI>32-bit IP addresses in general are inadequate
+for the predicted long-term growth of the Internet.
+<LI>The current routing structure is not hierarchical,
+but flat, requiring one routing table entry per network. As the
+number of networks grows, amplified by the allocation of multiple
+class C addresses to a site with multiple networks, instead of
+a single class B address, the size of the routing tables grows.
+</OL>
+<P>
+<I>CIDR</I> (Classless Interdomain
+Routing) proposes a fix to the third problem that will extend
+the usefulness of the current version of IP (IP version 4) into
+the next century. We discuss it in more detail in <A HREF="dynamic.htm#10_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dynamic.htm#10_8" >Section 10.8</A>.
+<P>
+Four proposals have been made for a new version of
+IP, often called <I>IPng,</I> for the next generation of IP. The
+May 1993 issue of <I>IEEE Network</I> (vol. 7, no. 3) contains
+overviews of the first three proposals, along with an article
+on CIDR. RFC 1454 [Dixon 1993] also compares the first three proposals.
+<OL>
+<LI>SIP, the Simple Internet Protocol. It proposes
+a minimal set of changes to IP that uses 64-bit addresses and
+a different header format. (The first 4 bits of the header still
+contain the version number, with a value other than 4.)
+<LI>PIP. This proposal also uses larger, variable-length,
+hierarchical addresses with a different header format.
+<LI>TUBA, which stands for &quot;TCP and UDP with
+Bigger Addresses,&quot; is based on the OSI CLNP (Connectionless
+Network Protocol), an OSI protocol similar to IP. It provides
+much larger addresses: variable length, up to 20 bytes. Since
+CLNP is an existing protocol, whereas SIP and PIP are just proposals,
+documentation already exists on CLNP. RFC 1347 [Gallon 1992] provides
+details on TUBA. Chapter 7 of [Periman 1992] contains a comparison
+of IPv4 and CLNP. Many routers already support CLNP, but few hosts
+do.
+<LI>TP/IX, which is described in RFC 1475 [Ullmann
+1993]. As with SIP, it uses 64 bits for IP addresses, but it also
+changes the TCP and UDP headers: 32-bit port number for both protocols,
+along with 64-bit sequence numbers, 64-bit acknowledgment numbers,
+and 32-bit windows for TCP.
+</OL>
+<P>
+The first three proposals use basically the same
+versions of TCP and UDP as the transport layers.
+<P>
+Since only one of these four proposals will be chosen
+as the successor to IPv4, and since the decision may have been
+made by the time you read this, we won't say any more about them.
+With the forthcoming implementation of CIDR to handle the short-term
+problem, it will take many years to implement the successor to
+IPv4.
+<a name="3_11"><H3>3.11 Summary</H3></a>
+<P>
+We started this chapter with a description of the
+IP header and briefly described all the fields in this header.
+We also gave an introduction to IP routing, and saw that host
+routing can be simple: the destination is either on a directly
+connected network, in which case the datagram is sent directly
+to the destination, or a default router is chosen.
+<P>
+Hosts and routers have a routing table that is used
+for all routing decisions. There are three types of routes in
+the table: host specific, network specific, and optional default
+routes. There is a priority to the entries in a routing table.
+A host route will be chosen over a network router, and a default
+route is used only when no other route exists to the destination.
+<P>
+IP routing is done on a hop-by-hop basis. The destination
+IP address never changes as the datagram proceeds through all
+the hops, but the encapsulation and destination link-layer address
+can change on each hop. Most hosts and many routers use a default
+next-hop router for all nonlocal traffic.
+<P>
+Class A and B addresses are normally subnetted. The
+number of bits used for the subnet ID is specified by the subnet
+mask. We gave a detailed example of this, using the author's subnet,
+and introduced variable-length subnets. The use of subnetting
+reduces the size of the Internet routing tables, since many networks
+can often be accessed through a single point. Information on the
+interfaces and networks is available through the <TT>ifconfig</TT>
+and <TT>netstat</TT> commands. This includes
+the IP address of the interface, its subnet mask, broadcast address,
+and MTU.
+<P>
+We finished the chapter with a discussion of potential
+changes to the Internet protocol suite-the next generation of
+IP.
+<H4>Exercises</H4>
+<P>
+<B>3.1</B> Must the loopback
+address be 127.0.0.1?
+<P>
+<B>3.2</B> Identify the routers
+in <a href="#fig_3_6">Figure 3.6</a> with more than two network interfaces.
+<P>
+<B>3.3</B> What's the difference
+in the subnet mask for a class A address with 16 bits for the
+subnet ID and a class B address with 8 bits for the subnet ID?
+<P>
+<B>3.4</B> Read RFC 1219 [Tsuchiya
+1991] for a recommended technique for assigning subnet IDs and
+host IDs.
+<P>
+<B>3.5</B> Is the subnet mask
+255.255.0.255 valid for a class A address?
+<P>
+<B>3.6</B> Why do you think the
+MTU of the loopback interface printed in <A HREF="#3_9" >Section 3.9</A>
+is set to 1536?
+<P>
+<B>3.7</B> The TCP/IP protocol
+suite is built on a datagram network technology, the IP layer.
+Other <BR>
+protocol suites are built on a connection-oriented network technology.
+Read [dark 1988] to<BR>
+discover the three advantages the datagram network layer provides.
+</BODY>
+</html>

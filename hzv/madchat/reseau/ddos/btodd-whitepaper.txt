@@ -1,0 +1,510 @@
+Distributed Denial of Service Attacks
+=====================================
+
+Bennett Todd <bet@oven.com>
+
+Distributed Denial of Service Attacks have recently emerged as one of
+the most newsworthy, if not the greatest, weaknesses of the Internet.
+This paper attempts to explain how they work, why they are hard to
+combat today, and what will need to happen if they are to be brought
+under control. It is divided into four sections. The first is an
+overview of the current situation. The second is a detailed
+description of exactly how this attack works, and why it is hard to
+cope with today; of necessity it includes a description of how the
+Internet works today. The third section describes the short-term
+prospects, what can be done today to help alleviate this problem; and
+the final section describes the long-term picture, what will change to
+bring this class of problem under control, if not eliminate it
+entirely. And finally there are some appendices: a bibliography,
+giving references to original research work and announcements; a brief
+article on securing servers; and acknowledgements for the many people
+who helped make this paper possible.
+
+Copyright 2000 OVEN Digital. You may reproduce this document as long
+as this copyright notice is left intact.
+
+1. Overview
+===========
+
+Distributed Denial of Service (DDoS) attacks are a relatively new
+development; they first appeared in the summer last year, and were
+first widely discussed a couple of months ago. During the week of
+February 7th through 11th, 2000, we saw them emerge as a major new
+category of attack on the Internet. They took out many sites,
+including Yahoo, Buy.com, eBay, Amazon, Datek, E*Trade, and CNN. The
+victims were unreachable for several hours each.
+
+What's worse, there's no current prospect of either tracking the
+perpetrators down, or of preventing similar attacks in the near
+future.
+
+This was a major event, covered in the major news media. They have
+done an excellent job in their coverage; as far as it has gone, their
+coverage has been accurate. The problem is, their coverage hasn't been
+sufficiently detailed to explain why we cannot track down the people
+committing these attacks, and why we can't defend against them.
+There's a good reason for these omissions: the attack is subtle, and
+understanding how it works well enough to understand why we can't cope
+today, and what will have to change before we can, requires a more
+detailed explanation of how the Internet is constructed than the mass
+media are prepared to deliver to their audiences.
+
+A brief note on usage: the network where these attacks are taking
+place is called the ``Internet'', with a capital ``I''; it is the
+public network shared by people all over the world. An ``internet'',
+with a lower-case ``i'', is a collection of networks interconnected;
+many organizations have private internets. The Internet is the result
+of inter-connecting a gigantic number of private internets.
+
+2. Detailed explanation of DDoS attacks
+=======================================
+
+DDoS attacks involve breaking into hundreds or thousands of machines
+all over the Internet. Then the attacker installs DDoS software on
+them, allowing them to control all these burgled machines to launch
+coordinated attacks on victim sites. These attacks typically exhaust
+bandwidth, router processing capacity, or network stack resources,
+breaking network connectivity to the victims.
+
+So the perpetrator starts by breaking into weakly-secured computers,
+using well-known defects in standard network service programs, and
+common weak configurations in operating systems. On each system, once
+they break in, they perform some additional steps. First, they install
+software to conceal the fact of the break-in, and to hide the traces
+of their subsequent activity. For example, the standard commands for
+displaying running processes are replaced with versions that fail to
+display the attacker's processes. These replacement tools are
+collectively called a ``rootkit'', since they are installed once you
+have ``broken root'', taken over system administrator privileges, to
+keep other ``root users'' from being able to find you. Then they
+install a special process, used to remote-control the burgled machine.
+This process accepts commands from over the Internet, and in response
+to those commands it launches an attack over the Internet against some
+designated victim site. And finally, they make a note of the address
+of the machine they've taken over. All these steps are highly
+automated. A cautious intruder will begin by breaking into just a few
+sites, then using them to break into some more, and repeating this
+cycle for several steps, to reduce the chance they are caught during
+this, the riskiest part of the operation. By the time they are ready
+to mount the kind of attacks we've seen recently (gigabytes per second
+of traffic dumped on Yahoo, according to reports in SANS) they have
+taken over thousands of machines and assembled them into a DDoS
+network; this just means they all have the attack software installed
+on them, and the attacker knows all their addresses (stored in a file
+on their control system).
+
+Now comes time for the attack. The attacker runs a single command,
+which sends command packets to all the captured machines, instructing
+them to launch a particular attack (from a menu of different varieties
+of flooding attacks) against a specific victim. When the attacker
+decides to stop the attack, they send another single command.
+
+Now to go into details of the attacks. While there are variations,
+they generally take a common form. The controlled machines being used
+to mount the attacks send a stream of packets. For most of the
+attacks, these packets are directed at the victim machine. For one
+variant (called ``smurf'', named after the first circulated program to
+perform this attack) the packets are aimed at other networks, where
+they provoke multiple echoes all aimed at the victim. To go into
+further detail, some background description of the Internet is in
+order.
+
+The Internet consists of hundreds of thousands or millions of small
+networks (called Local Area Networks, or LANs), all interconnected;
+attached to these LANs are many millions of separate computers.  Any
+of these computers can communicate with any other computer. This works
+by assigning every computer an address. The addresses are structured
+(organized into groups) so that special-purpose traffic-handling
+computers, called routers, can direct them in the right direction to
+reach their intended destination. A typical connection today may
+require 15 or more hops, crossing from one LAN to another, before it
+reaches its final destination. But most of these ``LANs'' are actually
+special-purpose links within and between network transport companies.
+These backbone providers handle the hard problems of routing traffic.
+
+Looking a little closer, when one computer wants to send a message to
+another, it divides it into fixed-size pieces, called ``packets''.
+Each of these packets is handled separately by the Internet, then the
+message (if it is larger than a single packet) is reassembled at the
+remote computer. So the traffic passing between machines consists
+entirely of packets of data. Each of these packets has a pair of
+addresses in it, called the Source and Destination IP (for Internet
+Protocol) addresses. These are the addresses of the originating
+machine, and the recipient. They are quite analogous to the address
+and return address on an envelope, in traditional mail.
+
+When such a packet is sent over the Internet, it is passed first to
+the nearest router; commonly this router is at the point where the
+local network connects to the Internet. This router is often called a
+border router. In larger organizations the story may be more complex;
+a large organization often assembles its own collection of LANs,
+interconnected into an in-house internet, cross-connected at one or
+more points (often with firewalls) with the Internet that we all know
+and love. But returning to our tale, when a packet leaves a computer,
+it is passed to a border router. This router passes it upstream to a
+core router, which interconnects with many other core routers all over
+the Internet; they pass the packet on until it reaches its
+destination. The source address is normally ignored by routers; it
+normally only tells the final destination machine where the request is
+coming from. That's an essential part of the problem we face today.
+
+The packets used in today's DDoS attacks use forged source addresses;
+they are lying about where the packet comes from. The very first
+router to receive the packet can very easily catch the lie; it has to
+know what addresses lie on every network attached to it, so that it
+can correctly route packets to them. If a packet arrives, and the
+source address doesn't match the network it's coming from, the router
+should discard the packet. This style of packet checking is called
+variously Ingress or Egress filtering, depending on the point of view;
+it is Egress from the customer network, or Ingress to the heart of the
+Internet. If the packet is allowed past the border, catching the lie
+is nearly impossible. Returning to our analogy, if you hand a letter
+to a letter-carrier who delivers to your home, there's a good chance
+he could notice if the return address is not your own. If you deposit
+a letter in the corner letter-box, the mail gets handled in sacks, and
+routed via high-volume automated sorters; it will never again get the
+close and individual attention required to make any intelligent
+judgments about the accuracy of the return address. Likewise with
+forged source addresses on internet packets: let them past the first
+border router, and they are unlikely to be detected.
+
+Now let's look at the situation from the victim's point of view. The
+first thing you know, the first sign that you may have a problem, is
+when thousands of compromised systems all over the world commence to
+flood you with traffic, all at once. The first symptom is likely to be
+a router crash, or to look a lot like one; traffic simply stops
+flowing between you and the Internet. When you look more closely you
+may discover that one or more targeted servers are being overloaded by
+the small fraction of the traffic that actually gets delivered, but
+the failures extend much further back.
+
+So you try and find out what's going wrong. After the first few quick
+checks don't solve the problem, you look at the traffic flowing
+through your network, and about then you realize you are a victim of a
+major denial of service attack. So you capture a sample of the packets
+flying over your net, as many as you can. What does each packet tell
+you? Well, it will have your address as its destination address, and
+it will have some random number as a source address. There's no trace
+of the compromised host that is busy attacking you now. All that's
+there is a low-level, hardware address of the last router that
+forwarded the packet; these low-level addresses are used to handle
+distribution of packets within a LAN. So you can see what router
+passed the packet to you, but nothing else. Identifying that router
+may identify the Internet carrier that passed the traffic to you, if
+you don't have a complex internet of your own, within your own
+organization. But either way, the next step is to capture another
+packet on the other side of the forwarding router, and see where that
+packet came from. Each step of the trace requires starting over,
+collecting fresh evidence.
+
+Every time the back-trace crosses an administrative boundary, between
+you and your Internet provider, between them and the next backbone
+provider on the path, all the way back to the compromised machine, you
+have to enlist the aid of another team of administrators to collect
+fresh evidence and carry the trace further back.
+
+Now remember that you have to do this in thousands of directions, to
+each of the thousands of compromised machines that are participating
+in this attack.
+
+Today there's no possibility of performing more than a few back-traces
+at most, in as little as a few hours. Even that would require some
+luck to favor your efforts. So as long as the attacker turns their
+attack off after at most a few hours, you are unlikely to find more
+than a few of the thousands of machines used to launch the attack; the
+remainder will remain available for further attacks. And the
+compromised machines that are found will contain no evidence that can
+be used to locate the original attacker; your trace will stop with
+them.
+
+3. Immediate prospects
+======================
+
+Here we discuss what can be done to avoid being part of the problem,
+what can be done if you are the victim, what can you do to make you a
+harder target to take down; and we mention the possibility of an alert
+system, currently under discussion, intended to speed the process of
+tracking down these attacks.
+
+First and most important, second to nothing else: secure your servers.
+This is not a complex or difficult procedure; a brief sketch of the
+steps involved can be found in Appendix B of this paper; more
+information is available in books on security and in many places
+online.
+
+It's easy to prioritize the machines to be secured, to determine which
+ones need attention most urgently. At the low end, dialup machines are
+the lowest worry. They may be used as relay points, as the attacker is
+trying to muddy his trail to prevent being caught while breaking into
+machines, but they won't play a noticeable part in mounting an actual
+attack. The traffic levels seen by Yahoo would require hundreds of
+thousands of the fastest available dialup connections operating in
+unison. Any machine with at least a T1 (1.5 million bits per second)
+connection to the Internet is far more of a worry; and machines with
+T3 (45 million bits per second) or faster connections are prime
+targets for people mounting these attacks. Secure your computers. You
+want to do this anyway; they are your machines, you don't want them
+broken into.  But these attacks couldn't be mounted if there weren't
+many, many thousands of poorly-secured systems with high-speed
+connectivity, available to mount such an attack.
+
+Second, ensure that packets are being filtered at the point where you
+connect to the Internet, to prevent forged source addresses. This
+provides protection in both directions; it prevents your machines from
+being used to mount these attacks, if any are broken into, and it
+prevents some attacks that might help intruders break into your
+machines. If this sort of filtering were universal, these attacks
+could only be leveled using legal source addresses; this would
+eliminate the entire slow step-by-step back-tracing currently
+required, and allow the victim to read the attacking machines'
+addresses right out of the attacking packets. This would make response
+far faster and easier.
+
+And a third defensive measure prevents you from being used to mount
+the smurf attacks that are part of this pattern of DDoS. Smurf attacks
+send packets to a ``smurf amplifier'' network. This is any network
+that allows such packets in. These packets come from outside the
+amplifier net, but are directed to its broadcast address. Such packets
+aren't used for any legitimate purpose; they are an oversight in the
+design of the internet protocol. They have a forged source address, to
+direct all the replies (from all the hosts on the amplifier network)
+to the victim; each such packet gets repeated by every machine in the
+net, amplifying the effect of the attack.  Packets directed at the
+broadcast address from outside the net are called IP Directed
+Broadcast packets, and should be blocked at the border. The command to
+do this for Cisco routers is ``no ip directed-broadcast''.
+
+The above measures help ensure that your systems won't be used to help
+mount one of these attacks, and they are the place where you can be
+most effective today. But they don't help you defend against an attack
+like this, they just ensure that you won't inadvertently assist in
+one.
+
+Today, there are only limited measures you can take to prevent from
+becoming a victim of DDoS. You can make yourself harder to target by
+distributing your website over multiple server farms, with multiple
+points of contact to the Internet; completely taking your site
+off-line (rather than making it seem slower) will require saturating
+every connection you have. The more places you connect to the
+Internet, and the more servers you have behind your connection, the
+harder you are to hit. But this is an expensive recourse, unless you
+are a very very large site; replicating servers and expensive Internet
+connections adds up very fast.
+
+A more practical defensive measure, particularly for smaller sites, is
+to discuss with your Internet connectivity provider what they would be
+able to do to help you in the face of such an attack. If they don't
+already have provisions in place for rapidly tracking these attacks,
+and placing filters to reduce their effect, then they need to be
+developing them now. If they don't have any current plans, you might
+direct them to some of the resources described in the Bibliography,
+particularly RFC 2267 on Ingress filtering, and Robert Stone's NANOG
+paper on CenterTrack (described in the next section).
+
+But in the final analysis, the only real defense against DDoS today is
+to not be sufficiently newsworthy to attract the attention of an
+attacker.
+
+4. Long-term prospects
+======================
+
+Now for the future; what will we do to eliminate this threat?
+
+Two major developments are currently actively underway, to help
+prevent DDoS attacks from remaining unmanageable. The major one is
+ingress filtering. Right now, well-administered networks practice this
+at their borders. If all networks were so well-administered, these
+attacks could be dealt with relatively quickly; mounting a single
+attack would deliver to the victim the addresses of all the conquered
+machines; their owners could be notified, and filters could be put in
+place near the machines to block the attacks while the machines are
+being shut down and fixed. What's more, the ``smurf'' variant of the
+attack, which achieves an additional amplification of traffic levels
+by exploiting network configuration problems elsewhere, would be
+impossible. Today some routers can be told to do ingress filtering
+completely automatically, and nearly all the rest can be manually
+configured to do it. All routers need to be able to do this filtering,
+and it needs to be enabled by default. It will be, and soon (but not
+``soon'' in the Internet, e-business time scale). Until today, such
+filtering wasn't considered required practice for participating in the
+Internet. This has changed.
+
+Something very similar happened a few years ago, in response to
+spammers. Until relatively recently, the normal way to configure email
+servers allowed ``open relaying''; anyone could send a message to any
+email server, and it would accept it and do its best to deliver it to
+its final destination. Spammers exploited this to relay their torrents
+of junk mail. Shortly thereafter, people learned how to modify email
+servers to prevent open relaying; the fixed servers would accept email
+from anyone for their local users, and would accept email from their
+local users for anyone, but would refuse to relay email from one
+stranger to another. Shortly thereafter, this configuration was
+shipped as the default for all new mail servers. Once it became the
+norm, the problem reduced to tracking down those people who were slow
+to upgrade. The last step was to introduce blacklists, databases used
+to track the remaining open email relays. Many Internet providers
+subscribe to these blacklists, and reject all email sent from machines
+listed on them. This provides a very very strong incentive to get your
+shop straightened out; if you allow open relaying, soon you won't be
+able to send email to most of the Internet.
+
+I expect ingress filtering to follow a very similar course. Soon it
+will be the default configuration for new routers, and eventually
+there will be blacklists of sites whose routers don't provide this
+protection, and people will have to fix their routers if they want to
+be able to reach most of the Internet.
+
+The other half of the solution comes in developing techniques for
+rapidly tracking these attacks to their source, and notifying the
+people who need to secure their broken servers, or the providers who
+need to put blocks in place to shut down an attack at its many
+sources. Robert Stone of UUNET presented a paper at the October NANOG
+(North American Network Operators Group) entitled ``CenterTrack: An IP
+Overlay Network for Tracking DoS Floods''. It describes a technique
+for designing a network, with a handful of extra diagnostic routers,
+to allow rapid tracking of these floods to their source, even in the
+face of forged source addresses. UUNET may have pioneered this
+research, but anyone else who doesn't develop comparable facilities
+will find their customers fleeing to providers who can. The minimum
+standard for service has just gone up.
+
+Possibly the hardest part of the problem lies in notification. How do
+you contact the people who need to help you solve one of these
+problems, rapidly? It can take days to find and speak to the
+responsible systems administrator for a given machine, knowing only
+that machine's address. People on the Bugtraq mailing list (described
+in the Bibliography, below) are working out the design for an alert
+notification system, to help speed response.
+
+A. Bibliography
+===============
+
+The Bugtraq mailing list carried the first public descriptions of the
+tools used in this attack, a series of articles in December, 1999 by
+David Dittrich. I'll be happy to email copies of these articles. The
+Bugtraq mailing list has archives available online, and subscription
+info available, at http://www.securityfocus.com/.
+
+Robert Stone of UUNET presented a paper at the October NANOG (North
+American Network Operators Group) entitled "CenterTrack: An IP Overlay
+Network for Tracking DoS Floods", describing a system developed at
+UUNET to assist in tracking these attacks to their sources quickly.
+The abstract is available at
+http://www.nanog.org/mtg-9910/robert.html. The paper is available from
+http://www.us.uu.net/gfx/projects/security/centertrack.pdf.
+
+The FBI has published an alert, including contact info for notifying
+them if you find any example of the attack in action, and tools for
+spotting the attacking software, at
+http://www.fbi.gov/nipc/trinoo.htm.
+
+David Dittrich of the University of Washington, who has done most of
+the published analysis of the attacking tools, has his papers and
+analyses available on the Internet at
+http://www.washington.edu/People/dad/.
+
+The SANS Institute has published articles on the Distributed Denial of
+Service (DDoS attack) and on the ingress filtering that should be
+deployed to help make it harder to implement and easier to track down
+and stop. The DDoS paper is at http://www.sans.org/y2k/DDoS.htm, and
+the Ingress Filtering article is at http://www.sans.org/y2k/egress.htm
+(the difference between ``ingress'' and ``egress'' is which side of
+the fence you are standing on; in this case different reporters have
+used different terms for the same concept. In both cases the filtering
+refers to ensuring that source addresses are accurate as packets leave
+their originating local area networks (LANs) and emerge into the core
+routers of the Internet.)
+
+The news and discussion website Slashdot http://www.slashdot.org/ has
+articles related to this topic, including an interview with David
+Dittrich and an update of the above-mentioned FBI website.
+
+The Internet Engineering Task Force (IETF) issued RFC 2267 in January
+of 1998 entitled "Network Ingress Filtering: Defeating Denial of
+Service Attacks which employ IP Source Address Spoofing".
+
+David Dittrich's talk for the Computer Emergency Response Team (CERT)
+Distributed Intruder Tools Workshop is available online at
+http://staff.washington.edu/dittrich/talks/cert/.
+
+The results of that workshop are available at
+http://www.cert.org/reports/dsit_workshop.pdf, and CERT also issued an
+Advisory about this attack at
+http://www.cert.org/advisories/CA-2000-01.html. These references were
+cut-n-pasted from an article posted by Elias Levy, the moderator of
+the Bugtraq list, to that list. The article, entitled ``DDOS Attack
+Mitigation'', is the best overview of the situation I've found online
+to date, and I'll be happy to forward a copy via email.
+
+Cisco has a page up describing various measures that can be taken with
+their equipment, to help protect against various aspects of these
+attacks, at
+http://www.cisco.com/warp/public/707/newsflash.html#overview.
+
+B. Securing servers
+===================
+
+Securing a computer system is always a tradeoff; to make it more
+secure, you disable services, making it less useful, and you carefully
+examine details of those services you leave running, making it more
+expensive to set up and maintain. Servers however are easy to secure;
+they are special-purpose machines, and need only offer a very limited
+range of services. So the bulk of the effort consists solely in
+disabling everything else.
+
+First, find out everything that's running on your server. List the
+processes, or better list the network ports that have servers
+listening on them. The commands to do this vary from one OS to
+another; under Unix processes can be listed with ``ps'', and open
+network ports can be listed with ``netstat''. A better tool, which
+lists open network ports together with which process is listening on
+each one, is ``lsof'', available from
+ftp://vic.cc.purdue.edu/pub/tools/unix/lsof/.
+
+Second, disable everything but the specific processes required to
+serve the content for which the machine is in use. For example, a web
+server should not be listening on any of the network ports for other
+services besides http (TCP port 80) or https (TCP port 443). For
+remote administration and content updates, use a remote login and file
+copy program with good encryption, such as ssh
+http://www.openssh.org/.
+
+Third, install packet filtering. Packet filtering comes with recent
+Linux releases, and is available for most other OSes. IPFilter
+http://coombs.anu.edu.au/~avalon/ip-filter.html works with most
+versions of Unix. Packet filtering gives you two benefits. First, it
+allows you to once again block off everything that doesn't need to be
+remotely accessible; this provides a second line of defense, in case
+any of the services you disabled should be inadvertently re-enabled.
+And second, it allows a machine to provide fine control over access to
+services. For example, a web server may need to run, or to access, a
+database server. That database server should not be accessible by
+random strangers over the Internet, but it needs to be accessible to
+the web server. This sort of control can be enforced by packet
+filtering.
+
+C. Acknowledgements
+===================
+
+I couldn't have done this paper without all the superb research work,
+published to the benefit of everyone in the industry; in particular
+David Dittrich, Marcus J. Ranum, and Elias Levy have provided my most
+valuable original sources.
+
+Adam Rothschild <asr@oven.com> found the online location for the
+CenterTrack paper.
+
+Lew Perin <perin@acm.org> helped with suggestions about elaborating
+the discussion of securing servers.
+
+Jeff Moore <jbm@oven.com> provided many helpful suggestions that
+substantially improved this paper.
+
+Patrick W. Gilmore <patrick@ianai.net> corrected some technical
+errors, and added the material about IP Directed Broadcast.
+
+Emerson Tan, of Arthur Andersen, provided the reference to Cisco's
+document on preventing DDoS attacks.
+
+
+

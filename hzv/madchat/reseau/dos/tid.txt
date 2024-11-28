@@ -1,0 +1,299 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!-- saved from url=(0038)http://www.antioffline.com/TID/TID.TXT -->
+<HTML><HEAD>
+<META http-equiv=Content-Type content="text/html; charset=iso-8859-1">
+<META content="MSHTML 5.50.4522.1800" name=GENERATOR></HEAD>
+<BODY><XMP>(still in progress)
+
+Theories on new DoS Attacks v.1
+
+
+i.	Intro
+ii.	Tools, etc.
+iii.	Open Shortest Path First
+iv.	Routed Information Protocol
+v.	Internet Control Messaging Protocal & Address Resolution Protocols
+vi.	Counter Measures
+vii.	Afterthoughts
+viii.	References & Links
+ix.	Shameless Shouts
+
+i.	Intro
+
+<Intro>
+
+While studying up on for the CCNA I noticed that minimal security related information
+is included in most of the Cisco Press books I own with the exception of access-lists
+which made my brain fluctuate into the security state of mind since I've long been
+interested in security whether its network based, application based or physically.
+
+As I write this I do not intend to create any sort of problems or chaos on anyone's
+network nor do I wish anyone else to. I simply wanted to get these thoughts out and if
+they've been addressed then please ignore the document entirely. If you'd care to
+share any relevant information then I'd gladly appreciate it, and if your intentions
+are to create chaos... DIE. Either way this document will introduce some negative
+"theories" on how information is passed on a router level based attack scheme as
+opposed to the typical push button kiddie (as defined by Gia of Packet Storm) DoS on
+the application level right down to the more annoying broadcast floods.
+
+Keep in mind these are only theories and have not been tested very well but I'm more
+than sure that someone else with more experience can gather a better infobase on what
+I'm trying to convey. Besides I'm sure someone will probably be able to test these
+theories since they most likely have more resources than I do at this time.
+
+Just imaging the thought of a TFN/trin00 based DoS client which implements the types
+of attacks is something I could imagine popping up in the future, and it doesn't seem
+like there are fixes for some. Sure you cuold block some with ingress filtering or
+block them via access-lists, but remember: Sometimes overworked Admins forget stuph.
+I've included references to some of the places where I've gathered information from
+for anyone else who cares to fix this document up, add to it, or reply with a solution.
+
+</Intro>
+
+
+ii	Tools used
+
+Sun Ultra Enterprise 1
+Solaris 2.7
+
+Pentium III 600 mhz 128
+OpenBSD 2.6 (greets to Theo... waiting on 2.7 cd's)
+
+DSniff
+http://www.w00w00.org/files/sectools/dsniff/
+(Only sniffer I found to parse OSPF and RIP... still in progress and needs tweaks)
+
+Nemesis Packet Injection Suite
+http://celerity.bartoli.org  || Projects section
+
+Libnet (as spikeman would say: "Rock mah fr0")
+www.packefactory.net
+
+Libpcap
+http://packetstorm.securify.com/sniffers/libpcap/
+
+Snoop (Solaris) capture information on packets on my local network.
+// standard Solaris software (for those that don't know)
+
+Snort (OpenBSD) testing whether or not certain DoS packets could be captured,
+as well as faked to avoid intrusion detection software.
+http://www.clark.net/~roesch/security.html
+
+
+iii.	OSPF
+
+While I'm still learning I have to wonder about Cisco's use of the Authentication
+process. While it may be password based why isn't this the default standard when
+routers connect to each other? It should only take an administrator a minute or so
+more pre-configuring a list with trusted hosts. Clear Text authentication or MD5.
+Obviously key creations should be by default encrypted or did someone somewhere
+along the line forget about programs like solsniff and linsniff?
+
+Beginning the thought process on how someone could screw things up. Lets see,
+Designated Router is the equivalent of the root router which is whats stated so
+lets tamper with this as well as costs on the network and any other illogical
+attack I could think of.
+
+Assuming you already know or slightly understand OSPF the following thoughts kept
+creeping into mind as a "What If" kind of scenario. Below are some quick
+abbreviations of the "What If Program":
+
+DR	Designated Router
+RP	Router Priority
+RDI	Router Dead Interval
+SRC	Source Address
+DST	Destination Address
+DEV	Ethernet Device
+RID	Router ID
+SMAC	Source MAC address
+DMAC	Destination Mac Address
+NHEL	Number of Hello Packets
+
+
+We'll start off this way for now and if anyone else wants to think of other ways
+to include other options such as Link State Updates, Link State Update, Link State
+Request feel free to comment to me or some other security forum.
+
+Someone wants to knock off the main Designated Router on a backbone for an unknown
+reason, could be a script kiddie, could be a competitor whoever he is he wants it
+offline at any cost. We'll call him EvilKiddie who is going to attack
+InnocentNetworkNetworks.com's backbone...
+
+Traceroute InnocentNetworkNetworks.com
+
+ 1  10.10.1.1 (10.10.1.1)  2.229 ms  2.042 ms  2.148 ms
+ 2  first.hop.com (10.10.4.1)  24.090 ms  125.044 ms  194.124 ms
+ 3  second.hop.com (10.10.6.6)  34.197 ms  29.297 ms  89.895 ms
+ 4  backbone.hop.com (10.10.7.1)  30.089 ms  99.225 ms  30.034 ms
+ 5  backbone.innocentnetworknetworks.com (192.168.4.1)  34.357 ms  30.036 ms  38.909 ms
+ 6  router1.innocentnetworknetworks.com (192.168.7.2)  34.275 ms  51.586 ms  50.699 ms
+ 7  router2.innocentnetworknetworks.com (192.168.8.2)  35.135 ms  50.123 ms  49.123 ms
+ 7  innocentnetworknetworks.com (192.168.9.69)  40.866 ms  60.118 ms  38.865 ms
+
+EvilKiddie sends the DoS... Router1 is the Designated Router on network. Would OSPF
+packets from Router2 cause problems by sending non stop HELLO packets with the RDI set
+to 1? Being that "Theoretically," Router1 would never get the information back in time
+since the RDI is bad and not only that, but it seems Router2's RouterID is now higher
+than Router1, shouldn't Router2 now be considered the DR? Weird...
+
+OSPF -DEV e0 -SMAC 0X:00:12:34 DMAC 9F:13:XS:69 -DST 192.168.7.2 -SRC 192.168.8.2 -RID 1 -RP 1 -NHEL 1000000000 -RDI 1
+
+I know of the MD5 Authentication features that are implemented and used between routers...
+well Cisco routers to pass on info from router to the next, but have shouldn't Cisco by
+default have _NOT_ supported any type of clear text password/key exchanges? Did someone
+forget about sniffers on the network? Why wasn't MD5 which is what is being used as the
+encryption by default?
+
+So in comes the sniffer:
+
+./sniffer router.host.f00.org | grep PACKETS_WITH_AuType 0
+./sniffer router.host.f00.org | grep PACKETS_WITH_AuType 1
+
+down goes the cipher, Voila... OSPF attack. Or the possibility of someone actually
+willing to take the time and brute force the password hash it and send the *dirt*
+right back up the route? As an administrator you would probably bitch and rant on
+but this is after all theory based ;)
+
+So many thoughts so little time.
+
+Lets see the typical environment which throws up a quick network...
+
+Quickly hired admins with little clues. Overworked admins who don't have the time nor
+manpower to configure the route path//company_network//etc as secure as it could be.
+Brute forcing can be easy in these types of environments.
+
+Easy passwords for easy adminstration...
+
+/* Router.SampleCompany.com */
+
+Possible pw's // note perl comes in handy to parse out every possible character combo
+c1scor0uter
+<!scOrOuteR
+s4mplec0mpany
+r0uter$ample
+
+We all know the routines neccessary to brute force or create _semi-decent_ password lists
+with well constructed word and character usage. So there should be no need to even go
+there on the password scenarios.
+
+These types of questions perplex me so after searching for weeks without a definitive answer
+I figured I'd throw these on the table and see other peoples thoughts on the subject and see
+if someone were willing to share any relevant links or documents they've found.
+
+
+to do:
+
+Finish first thoughts on attacks as well as include LSA examples and read up on NBMA things...
+Include documented packet captures and have someone test whether or not OSPF based packets
+can be forged unto other networks via some sort of datapipe to avoid internal --> external
+filtering...
+
+
+iv.	Routed Information Protocols
+
+15 hop count max?!?!?!
+
+There you go no authentication other than access-lists... Lets detail a recklessly constructed
+packet to send bouncing around the route(r(s)) path to see what we can and can't do. Count to
+Infinity? RIP Broadcasts which can be a nightmare. OUch.
+
+*Sigh* I wish I had about 3 2500's to test with. I wish someone at Cisco reads this and sends
+me some pimp ass Cisco 7000's...
+
+Sample network 
+-------------->
+bigbadwolf - router4.someco.com - router3.someco.com - router2.someco.com - someco.com
+192.1.11.8       10.10.4.1             10.10.7.1            10.10.8.1	    10.10.9.12
+
+RIP Abbreviations:
+DN	Dinstance to Net
+DST	Destination
+NUM	Number (0 = infinite)
+RES	Response Packet (type 2)
+SRC	Source
+
+10.10.4.1 (192.1.11.8*) -DN 16 -RES -SRC 10.10.4.1 -0 -DST 10.10.7.1
+
+Router4 floods Router3 with information saying: Hey dipshit your passing your
+max hopcount!
+
+Holddown Timer killer? Even with Triggered Updates I still think this can be a problem
+but then again these are only theories on what I believe will be the new trin00'ish like
+nightmare in the future. Kiddies playing with route(s(r/s))
+
+(needs to be finished)
+
+v.	ICMP theories
+
+What if EvilKiddie decided to cut off www.VictimOfDoS.com from the router level via ICMP?
+Sure you can ingress filter certain things from entering your network or leaving your network.
+But what would happen if EvilKiddie was within that routed network and decided to attack the
+router level network by issuing bad ARP or OSPF information? Are routers smart enough to
+determine what is right and wrong, what should and shouldn't be done? And how exactly can you
+minimize ICMP traffic. Abolish REDIR on the routers? You wish.
+
+EvilKiddie   == 192.168.0.2   0110.1423.5867
+VictimOfDoS  == 192.168.0.100 0101.1234.4321
+Router       == 192.168.0.0   0221.1123.2234
+
+
+ARP(EvilKiddie spoofs) 0101.1234.4321 == 127.0.0.1 --> Router (flooded 100 packets per second per se)
+
+Would the ensuing result be something similar to:
+Internet Surfer --> lynx VictimOfDoS --> router --> 127.0.0.1
+
+Now being that EvilKiddie is on the same network as VictimOfDoS how would you go about
+filtering this type of poisining? Is there a way because I sure as hell have never seen
+anything similar.
+
+Redirects
+
+Same scenario, EvilKiddie spoofs traffic to the router as SomeEvilSite with a flurry of
+ICMP Redirect packets. Can the router being on the same network filter this traffic to
+protect others on the same network from being DoS'ed in this fashion? Same with Parameter
+Problem packets, Destination Unreachable, and Time Exceeded ICMP packets. How can you stop
+something like this from totally screwing up your network in a time efficient manner. Or
+if I am mistaken kick me and call me JP. Is this also possible to filter on an incoming
+level, whereas EvilKiddie was not on your network but sending these types of packets?
+
+Of course I could've used 7F:00:00:01 and correct values but I didn't feel like it since
+after all it is "theory-based" so please excuse my bad habits.
+
+Anyways I don't feel like tossing out more as far as ICMP are concerned since most people
+will most likely see what I'm trying to convey and either flame me for not looking to
+deeply and see these attacks are either, impossible, have been addressed, a figment of my
+imagination, etc. But if they haven't then I wouldn't want to give some "EvilKiddie" any
+more ideas than I already have.
+
+(needs to be finished)
+
+vi.	Counter Measures
+
+Please bare with me as I am after all still studying some of these theories and how to block
+most of the abovementioned attack scenarios.
+
+Mainly filtering via access lists should stop most of the attacks with the exception of
+trusted traffic, that being traffic on your network. Now for some errat(a)ic reason many
+administrators forget about internal traffic and pass on the notion that users on their
+networks are all good old boys/girls/*its* who would never attempt to do something so
+dreaded as to sending Denials of Service attacks from their own networks which is not
+the case. Hey its a mad mad mad mad world.
+
+(will finish soon... too tired to type)
+http://www.cisco.com/warp/public/cc/cisco/mkt/security/iosfw/tech/firew_wp.htm
+
+viii	References and Links
+
+Sites
+http://www.cisco.com
+http://mental.deficiency.org						My Own Routing Protocol FAQ's
+http://www.isi.edu/in-notes/iana/					RFC notes
+http://www.faqs.org/rfcs/rfc2154.html					OSPF with Digital Signatures
+http://celerity.bartoli.org						Nemesis
+http://www.livingston.com/marketing/whitepapers/ospf_whitepaper.html	Basic OSPF 
+http://www.mot.com/MIMS/ISG/Products/ons/ospf/faqs/index.html		Motorola FAQ on OSPF
+http://cio.cisco.com/warp/public/459/13.html				Cisco's BGP Case Study Sect.1
+http://www.faqs.org/rfcs/rfc1163.html					RFC 1163 Border Gateway Protocol
+
+Books
+</XMP></BODY></HTML>

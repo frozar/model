@@ -1,0 +1,545 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 13. IGMP: Internet Group Management Protocol</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="13_0"><H1><I>IGMP: Internet Group Management Protocol</I></H1></a>
+<a name="13_1"><H3>13.1 Introduction</H3></a>
+<P>
+<a href="broadcas.htm#12_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm#12_4">Section 12.4</a> provided an overview of IP multicasting
+and described how class D IP addresses are mapped into Ethernet
+addresses. We briefly mentioned how multicasting occurs on a single
+physical network, but said complications occur when multiple networks
+are involved and the multicast datagrams must pass through routers.
+<P>
+In this chapter we'll look at the <I>Internet Group
+Management Protocol</I> (IGMP), which is used by hosts and routers
+that support multicasting. It lets all the systems on a physical
+network know which hosts currently belong to which multicast groups.
+This information is required by the multicast routers, so they
+know which multicast datagrams to forward onto which interfaces.
+IGMP is defined in RFC 1112 [Deering 1989].
+<P>
+Like ICMP, IGMP is considered part of the IP layer.
+Also like ICMP, IGMP messages are transmitted in IP datagrams.
+Unlike other protocols that we've seen, IGMP has a fixed-size
+message, with no optional data. Figure 13.1 shows the encapsulation
+of an IGMP message within an IP datagram.<BR>
+
+<P>
+<CENTER><a name="fig_13_1"><img src="f_13_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_13_1.gif"></a><br><B>Figure 13.1</B> Encapsulation
+of an IGMP message within an IP datagram.</CENTER>
+<P>
+IGMP messages are specified in the IP datagram with
+a protocol value of 2.
+<a name="13_2"><H3>13.2 IGMP Message</H3></a>
+<P>
+Figure 13.2 shows the format of the 8-byte IGMP message.
+<BR>
+
+<P>
+<CENTER><a name="fig_13_2"><img src="f_13_2.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_13_2.gif"></a><br><B>Figure 13.2</B> Format
+of fields in IGMP message.</CENTER>
+<P>
+The <I>IGMP version</I> is 1. An <I>IGMP type</I>
+of 1 is a query sent by a multicast router, and 2 is a response
+sent by a host. The <I>checksum</I> is calculated in the same
+manner as the ICMP checksum.
+<P>
+The <I>group address</I> is a class D IP address.
+In a query the group address is set to 0, and in a report it contains
+the group address being reported. We'll say more about it in the
+<a href="#13_3">next section</a> when we see how IGMP operates.
+<a name="13_3"><H3>13.3 IGMP Protocol</H3></a>
+<H4>Joining a Multicast Group</H4>
+<P>
+Fundamental to multicasting is the concept of a process
+joining a multicast group on a given interface on a host. (We
+use the term <I>process</I> to mean a program being executed by
+the operating system.) Membership in a multicast group on a given
+interface is dynamic-it changes over time as processes join and
+leave the group.
+<P>
+We imply here that a process must have a way of joining
+a multicast group on a given interface. A process can also leave
+a multicast group that it previously joined. These are required
+parts of any API on a host that supports multicasting. We use
+the qualifier &quot;interface&quot; because membership in a group
+is associated with an interface. A process can join the same group
+on multiple interfaces.
+<P>
+<FONT SIZE=-1>The release of IP multicasting for Berkeley Unix
+from Stanford University details these changes for the sockets
+API. These changes are also provided in Solaris 2.x and documented
+in the <TT>ip</TT>(7) manual pages.</FONT>
+<P>
+Implied here is that a host identifies a group by
+the group address <I>and</I> the interface. A host must keep a
+table of all the groups that at least one process belongs to,
+and a reference count of the number of processes belonging to
+the group.
+<H4>IGMP Reports and Queries</H4>
+<P>
+IGMP messages are used by multicast routers to keep
+track of group membership on each of the router's physically attached
+networks. The following rules apply.
+<OL>
+<LI>A host sends an IGMP report when the first process
+joins a group. If multiple processes on a given host join the
+same group, only one report is sent, the first time a process
+joins that group. This report is sent out the same interface on
+which the process joined the group.
+<LI>A host does not send a report when processes
+leave a group, even when the last process leaves a group. The
+host knows that there are no members in a given group, so when
+it receives the next query (next step), it won't report the group.
+<LI>A multicast router sends an IGMP query at regular
+intervals to see if any hosts still have processes belonging to
+any groups. The router must send one query out each interface.
+The group address in the query is 0 since the router expects one
+response from a host for every group that contains one or more
+members on that host.
+<LI>A host responds to an IGMP query by sending one
+IGMP report for each group that still contains at least one process.
+</OL>
+<P>
+Using these queries and reports, a multicast router
+keeps a table of which of its interfaces have one or more hosts
+in a multicast group. When the router receives a multicast datagram
+to forward, it forwards the datagram (using the corresponding
+multicast link-layer address) only out the interfaces that still
+have hosts with processes belonging to that group.
+<P>
+Figure 13.3 shows these two IGMP messages, reports
+sent by hosts, and queries sent by routers. The router is asking
+each host to identify each group on that interface.<BR>
+
+<P>
+<CENTER><a name="fig_13_3"><img src="f_13_3.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_13_3.gif"></a><br><B>Figure 13.3</B> IGMP
+reports and queries.</CENTER>
+<P>
+We talk about the TTL field later in this section.
+<H4>Implementation Details</H4>
+<P>
+There are many implementation details in this protocol
+that improve its efficiency. First, when a host sends an initial
+IGMP report (when the first process joins a group), there's no
+guarantee that the report is delivered (since IP is used as the
+delivery service). Another report is sent at a later time. This
+later time is chosen by the host to be a random value between
+0 and 10 seconds.
+<P>
+Next, when a host receives a query from a router
+it doesn't respond immediately, but schedules the responses for
+later times. (We use the plural &quot;responses&quot; because
+the host must send one report for each group that contains one
+or more members.) Since multiple hosts can be sending a report
+for the same group, each schedules its response using random delays.
+Also realize that all the hosts on a physical network receive
+all the reports from other hosts in the same group, because the
+destination address of the report in <a href="#fig_13_3">Figure 13.3</a> is the group's
+address. This means that, if a host is scheduled to send a report,
+but receives a copy of the same report from another host, the
+response can be canceled. This is because a multicast router doesn't
+care how many hosts belong to the group-only whether at least
+one host belongs to the group. Indeed, a multicast router doesn't
+even care which host belongs to a group. It only needs to know
+that at least one host belongs to a group on a given interface.
+<P>
+On a single physical network without any multicast
+routers, the only IGMP traffic is the reports issued by the hosts
+that support IP multicasting, when the host joins a new group.
+<H4>Time-to-Live Field</H4>
+<P>
+In <a href="#fig_13_3">Figure 13.3</a> we noted that the TTL field of the
+reports and queries is set to 1. This refers to the normal TTL
+field in the IP header. A multicast datagram with an initial TTL
+of 0 is restricted to the same host. By default, multicast datagrams
+are sent with a TTL of 1. This restricts the datagram to the same
+subnet. Higher TTLs can be forwarded by multicast routers.
+<P>
+Recall from <a href="#6_2">Section 6.2</a> that an ICMP error is never
+generated in response to a datagram destined to a multicast address.
+Multicast routers do not generate ICMP &quot;time exceeded&quot;
+errors when the TTL reaches 0.
+<P>
+<FONT SIZE=-1>Normally user processes aren't concerned with the
+outgoing TTL. One exception, however, is the Traceroute program
+(<a href="tracerou.htm#8_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm#8_0">Chapter 8</a>), which is based on setting the TTL field. Since multicasting
+applications must be able to set the outgoing TTL field, this
+implies that the programming interface must provide this capability
+to user processes.</FONT>
+<P>
+By increasing the TTL an application can perform
+an <I>expanding ring search</I> for a particular server. The first
+multicast datagram is sent with a TTL of 1. If no response is
+received, a TTL of 2 is tried, then 3, and so on. In this way
+the application locates the closest server, in terms of hops.
+<P>
+The special range of addresses 224.0.0.0 through
+224.0.0.255 is intended for applications that never need to multicast
+further than one hop. A multicast router should never forward
+a datagram with one of these addresses as the destination, regardless
+of the TTL.
+<H4>All-Hosts Group</H4>
+<P>
+In <a href="#fig_13_3">Figure 13.3</a> we also indicated that the router's
+IGMP query is sent to the destination IP address of 224.0.0.1.
+This is called the <I>all-hosts</I> group address. It refers to
+all the multicast-capable hosts and routers on a physical network.
+Each host automatically joins this multicast group on all multicast-capable
+interfaces, when the interface is initialized. Membership in this
+group is never reported.
+<a name="13_4"><H3>13.4 An Example</H3></a>
+<P>
+Now that we've gone through some of the details of
+IP multicasting, let's take a look at the messages involved. We've
+added IP multicasting support to the host <TT>sun</TT>
+and will use some test programs provided with the multicasting
+software to see what happens.
+<P>
+First we'll use a modified version of the <TT>netstat</TT>
+command that reports multicast group membership for each interface.
+(We showed the standard <TT>netstat -ni</TT>
+output for this host in <a href="ip_inter.htm#3_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_9">Section 3.9</a>.) In the following output
+we show the lines corresponding to multicast groups in a bold
+font:
+<TABLE>
+<TR><TD COLSPAN=9 WIDTH=586><TT>sun % <B>netstat -nia</B></TT>
+</TD></TR>
+<TR><TD WIDTH=45><tt>Name</tt></TD><TD WIDTH=47><tt>Mtu</tt>
+</TD><TD WIDTH=104><tt>Network</tt></TD><TD WIDTH=151><tt>Address</tt>
+</TD><TD WIDTH=56><tt>lpkts</tt></TD><TD WIDTH=41><tt>lerrs</tt>
+</TD><TD WIDTH=57><tt>Opkts</tt></TD><TD WIDTH=47><tt>Oerrs</tt>
+</TD><TD WIDTH=38><tt>Coll</tt></TD></TR>
+<TR><TD WIDTH=45><TT>le0</TT></TD><TD WIDTH=47><TT>1500</TT></TD>
+<TD WIDTH=104><TT>140.252.13.</TT></TD><TD WIDTH=151><TT>140.252.13.33</TT>
+</TD><TD WIDTH=56><TT>4370</TT></TD><TD WIDTH=41><TT>0</TT></TD>
+<TD WIDTH=57><TT>4924</TT></TD><TD WIDTH=47><TT>0</TT></TD><TD WIDTH=38><TT>0</TT>
+</TD></TR>
+<TR><TD WIDTH=45></TD><TD WIDTH=47></TD><TD WIDTH=104></TD><TD WIDTH=151><TT><B>224.0.0.1</B></TT>
+</TD><TD WIDTH=56></TD><TD WIDTH=41></TD><TD WIDTH=57></TD><TD WIDTH=47>
+</TD><TD WIDTH=38></TD></TR>
+<TR><TD WIDTH=45></TD><TD WIDTH=47></TD><TD WIDTH=104></TD><TD WIDTH=151><TT>08;00:20:03:f6:42</TT>
+</TD><TD WIDTH=56></TD><TD WIDTH=41></TD><TD WIDTH=57></TD><TD WIDTH=47>
+</TD><TD WIDTH=38></TD></TR>
+<TR><TD WIDTH=45></TD><TD WIDTH=47></TD><TD WIDTH=104></TD><TD WIDTH=151><TT><B>01:00:5e:00:00:01</B></TT>
+</TD><TD WIDTH=56></TD><TD WIDTH=41></TD><TD WIDTH=57></TD><TD WIDTH=47>
+</TD><TD WIDTH=38></TD></TR>
+<TR><TD WIDTH=45><TT>sl0</TT></TD><TD WIDTH=47><TT>552</TT></TD>
+<TD WIDTH=104><TT>140.252.1</TT></TD><TD WIDTH=151><TT>140.252.1.29</TT>
+</TD><TD WIDTH=56><TT>13587</TT></TD><TD WIDTH=41><TT>0</TT></TD>
+<TD WIDTH=57><TT>15615</TT></TD><TD WIDTH=47><TT>0</TT></TD><TD WIDTH=38><TT>0</TT>
+</TD></TR>
+<TR><TD WIDTH=45></TD><TD WIDTH=47></TD><TD WIDTH=104></TD><TD WIDTH=151><TT><B>224.0.0.1</B></TT>
+</TD><TD WIDTH=56></TD><TD WIDTH=41></TD><TD WIDTH=57></TD><TD WIDTH=47>
+</TD><TD WIDTH=38></TD></TR>
+<TR><TD WIDTH=45><TT>lo0</TT></TD><TD WIDTH=47><TT>1536</TT></TD>
+<TD WIDTH=104><TT>127</TT></TD><TD WIDTH=151><TT>127.0.0.1</TT>
+</TD><TD WIDTH=56><TT>1351</TT></TD><TD WIDTH=41><TT>0</TT></TD>
+<TD WIDTH=57><TT>1351</TT></TD><TD WIDTH=47><TT>0</TT></TD><TD WIDTH=38><TT>0</TT>
+</TD></TR>
+<TR><TD WIDTH=45></TD><TD WIDTH=47></TD><TD WIDTH=104></TD><TD WIDTH=151><TT><B>224.0.0.1</B></TT>
+</TD><TD WIDTH=56></TD><TD WIDTH=41></TD><TD WIDTH=57></TD><TD WIDTH=47>
+</TD><TD WIDTH=38></TD></TR>
+</TABLE>
+<P>
+The <TT>-n</TT> option prints
+IP addresses in numeric format (instead of trying to print them
+as names), <TT>-i</TT> prints the interface
+statistics, and <TT>-a</TT> reports on all
+configured interfaces.
+<P>
+The second line of output for <TT>le0</TT>
+(the Ethernet) shows that this interface belongs to the multicast
+group 224.0.0.1 (&quot;all hosts&quot;), and two lines later the
+corresponding Ethernet address is shown: <TT>01:00:5e:00:00:01</TT>.
+This is what we expect for the Ethernet address, given the mapping
+we described in <a href="broadcas.htm#12_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm#12_4">Section 12.4</a>. We also see that the other two interfaces
+that support multicasting, the SLIP link <TT>sl0</TT>
+and the loopback interface <TT>lo0</TT>, also
+belong to the all-hosts group.
+<P>
+We must also show the IP routing table, as the normal
+routing table is used for multicast datagrams. The bold entry
+shows that all datagrams for 224.0.0.0 are sent to the Ethernet:
+<P>
+<TABLE>
+<TR><TD COLSPAN=6 WIDTH=508><TT>sun % <B>netstat -rn</B></TT>
+</TD></TR>
+<TR><TD COLSPAN=6 WIDTH=508><TT>Routing tables</TT></TD></TR>
+<TR><TD WIDTH=121><TT>Destination</TT></TD><TD WIDTH=123><TT>Gateway</TT>
+</TD><TD WIDTH=57><TT>Flags</TT></TD><TD WIDTH=66><TT>Refcnt</TT>
+</TD><TD WIDTH=47><TT>Use</TT></TD><TD WIDTH=94><TT>Interface</TT>
+</TD></TR>
+<TR><TD WIDTH=121><TT>140.252.13.65</TT></TD><TD WIDTH=123><TT>140.252.13.35</TT>
+</TD><TD WIDTH=57><TT>UGH</TT></TD><TD WIDTH=66><TT>0</TT></TD>
+<TD WIDTH=47><TT>32</TT></TD><TD WIDTH=94><TT>le0</TT></TD></TR>
+<TR><TD WIDTH=121><TT>127.0.0.1</TT></TD><TD WIDTH=123><TT>127.0.0.1</TT>
+</TD><TD WIDTH=57><TT>UH</TT></TD><TD WIDTH=66><TT>1</TT></TD>
+<TD WIDTH=47><TT>381</TT></TD><TD WIDTH=94><TT>lo0</TT></TD></TR>
+<TR><TD WIDTH=121><TT>140.252.1.183</TT></TD><TD WIDTH=123><TT>140.252.1.29</TT>
+</TD><TD WIDTH=57><TT>UH</TT></TD><TD WIDTH=66><TT>0</TT></TD>
+<TD WIDTH=47><TT>6</TT></TD><TD WIDTH=94><TT>sl0</TT></TD></TR>
+<TR><TD WIDTH=121><TT>default</TT></TD><TD WIDTH=123><TT>140.252.1.183</TT>
+</TD><TD WIDTH=57><TT>UG</TT></TD><TD WIDTH=66><TT>0</TT></TD>
+<TD WIDTH=47><TT>328</TT></TD><TD WIDTH=94><TT>sl0</TT></TD></TR>
+<TR><TD WIDTH=121><TT><B>224.0.0.0</B></TT>
+</TD><TD WIDTH=123><TT><B>140.252.13.33</B></TT>
+</TD><TD WIDTH=57><TT><B>U</B></TT>
+</TD><TD WIDTH=66><TT><B>0</B></TT>
+</TD><TD WIDTH=47><TT><B>66</B></TT>
+</TD><TD WIDTH=94><TT><B>le0</B></TT>
+</TD></TR>
+<TR><TD WIDTH=121><TT>140.252.13.32</TT></TD><TD WIDTH=123><TT>140.252.13.33</TT>
+</TD><TD WIDTH=57><TT>U</TT></TD><TD WIDTH=66><TT>8</TT></TD>
+<TD WIDTH=47><TT>5581</TT></TD><TD WIDTH=94><TT>le0</TT></TD>
+</TR>
+</TABLE>
+<P>
+If you compare this routing table to the one shown
+in <a href="ip_rout.htm#9_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_2">Section 9.2</a> for the router <TT>sun</TT>,
+you'll see that the multicast entry is the only change.
+<P>
+We now run a test program that lets us join a multicast
+group on an interface. (We don't show any output for our use of
+this test program.) We join the group 224.1.2.3 on the Ethernet
+interface (140.252.13.33). Executing <TT>netstat</TT>
+shows that the kernel has joined the group, and again the Ethernet
+address is what we expect. We show the changes from the previous
+<TT>netstat</TT> output in a bold font:
+<P>
+<TABLE>
+<TR><TD COLSPAN=9 WIDTH=631><TT>sun % <B>netstat -nia</B></TT>
+</TD></TR>
+<TR><TD WIDTH=54><TT>Name</TT></TD><TD WIDTH=47><TT>Mtu</TT></TD>
+<TD WIDTH=104><TT>Network</TT></TD><TD WIDTH=151><TT>Address</TT>
+</TD><TD WIDTH=57><TT>lpkts</TT></TD><TD WIDTH=57><TT>lerrs</TT>
+</TD><TD WIDTH=57><TT>Opkts</TT></TD><TD WIDTH=57><TT>Oerrs</TT>
+</TD><TD WIDTH=47><TT>Coll</TT></TD></TR>
+<TR><TD WIDTH=54><TT>le0</TT></TD><TD WIDTH=47><TT>1500</TT></TD>
+<TD WIDTH=104><TT>140.252.13.</TT></TD><TD WIDTH=151><TT>140.252.13.33</TT>
+</TD><TD WIDTH=57><TT>4374</TT></TD><TD WIDTH=57><TT>0</TT></TD>
+<TD WIDTH=57><TT>4929</TT></TD><TD WIDTH=57><TT>0</TT></TD><TD WIDTH=47><TT>0</TT>
+</TD></TR>
+<TR><TD WIDTH=54></TD><TD WIDTH=47></TD><TD WIDTH=104></TD><TD WIDTH=151><TT><B>224.1.2.3</B></TT>
+</TD><TD WIDTH=57></TD><TD WIDTH=57></TD><TD WIDTH=57></TD><TD WIDTH=57>
+</TD><TD WIDTH=47></TD></TR>
+<TR><TD WIDTH=54></TD><TD WIDTH=47></TD><TD WIDTH=104></TD><TD WIDTH=151><TT>224.0.0.1</TT>
+</TD><TD WIDTH=57></TD><TD WIDTH=57></TD><TD WIDTH=57></TD><TD WIDTH=57>
+</TD><TD WIDTH=47></TD></TR>
+<TR><TD WIDTH=54></TD><TD WIDTH=47></TD><TD WIDTH=104></TD><TD WIDTH=151><TT>08:00:20:03:f6:42</TT>
+</TD><TD WIDTH=57></TD><TD WIDTH=57></TD><TD WIDTH=57></TD><TD WIDTH=57>
+</TD><TD WIDTH=47></TD></TR>
+<TR><TD WIDTH=54></TD><TD WIDTH=47></TD><TD WIDTH=104></TD><TD WIDTH=151><TT><B>01:00:5e:01:02:03</B></TT>
+</TD><TD WIDTH=57></TD><TD WIDTH=57></TD><TD WIDTH=57></TD><TD WIDTH=57>
+</TD><TD WIDTH=47></TD></TR>
+<TR><TD WIDTH=54></TD><TD WIDTH=47></TD><TD WIDTH=104></TD><TD WIDTH=151><TT>01:00:5e:00:00:01</TT>
+</TD><TD WIDTH=57></TD><TD WIDTH=57></TD><TD WIDTH=57></TD><TD WIDTH=57>
+</TD><TD WIDTH=47></TD></TR>
+<TR><TD WIDTH=54><TT>sl0</TT></TD><TD WIDTH=47><TT>552</TT></TD>
+<TD WIDTH=104><TT>140.252.1</TT></TD><TD WIDTH=151><TT>140.252.1.29</TT>
+</TD><TD WIDTH=57><TT>13862</TT></TD><TD WIDTH=57><TT>0</TT></TD>
+<TD WIDTH=57><TT>15943</TT></TD><TD WIDTH=57><TT>0</TT></TD><TD WIDTH=47><TT>0</TT>
+</TD></TR>
+<TR><TD WIDTH=54></TD><TD WIDTH=47></TD><TD WIDTH=104></TD><TD WIDTH=151><TT>224.0.0.1</TT>
+</TD><TD WIDTH=57></TD><TD WIDTH=57></TD><TD WIDTH=57></TD><TD WIDTH=57>
+</TD><TD WIDTH=47></TD></TR>
+<TR><TD WIDTH=54><TT>lo0</TT></TD><TD WIDTH=47><TT>1536</TT></TD>
+<TD WIDTH=104><TT>127</TT></TD><TD WIDTH=151><TT>127.0.0.1</TT>
+</TD><TD WIDTH=57><TT>1360</TT></TD><TD WIDTH=57><TT>0</TT></TD>
+<TD WIDTH=57><TT>1360</TT></TD><TD WIDTH=57><TT>0</TT></TD><TD WIDTH=47><TT>0</TT>
+</TD></TR>
+<TR><TD WIDTH=54></TD><TD WIDTH=47></TD><TD WIDTH=104></TD><TD WIDTH=151><TT>224.0.0.1</TT>
+</TD><TD WIDTH=57></TD><TD WIDTH=57></TD><TD WIDTH=57></TD><TD WIDTH=57>
+</TD><TD WIDTH=47></TD></TR>
+</TABLE>
+<P>
+We have shown the output again for the other two
+interfaces, <TT>sl0</TT> and <TT>lo0</TT>,
+to reiterate that the multicast group is joined only on one interface.
+<P>
+Figure 13.4 shows the <TT>tcpdump</TT>
+output corresponding to the process joining the multicast group.
+<CENTER>
+<a name="fig_13_4"><TABLE></a>
+<TR><TD WIDTH=26>1</TD><TD WIDTH=104><TT>0.0</TT>
+</TD><TD WIDTH=420><tt>8:0:20:3:f6:42 1:0:5e:1:2:3 ip 60:</tt>
+</TD></TR>
+<TR><TD WIDTH=26></TD><TD WIDTH=104></TD><TD WIDTH=410><TT>sun &gt; 224.1.2.3: igmp report 224.1.2.3 [ttl 1]</TT>
+</TD></TR>
+<TR><TD WIDTH=26>2</TD><TD WIDTH=104><TT>6.94 (6.94)</TT>
+</TD><TD WIDTH=420><tt>8:0:20:3:f6:42 1:0:5e:1:2:3 ip 60:</tt>
+</TD></TR>
+<TR><TD WIDTH=26></TD><TD WIDTH=104></TD><TD WIDTH=410><TT>sun &gt; 224.1.2.3: igmp report 224.1.2.3 [ttl 1]</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 13.4</B> <TT>tcpdump</TT>
+output when a host joins a multicast group.</CENTER>
+<P>
+Line 1 occurs when the host joins the group. The
+next line is the delayed report that we said is sent at some random
+time up to 10 seconds afterward.
+<P>
+We have shown the hardware addresses in these two
+lines, to verify that the Ethernet destination address is the
+correct multicast address. We can also see that the source IP
+address is the one corresponding to <TT>sun</TT>,
+and the destination IP address is the multicast group address.
+We can also see that the reported address is that same multicast
+group address.
+<P>
+Finally, we note that the TTL is 1, as specified,
+<TT>tcpdump</TT> prints the TTL in square
+brackets when its value is 0 or 1. This is because the TTL is
+normally greater than this. With multicasting, however, we expect
+to see lots of IP datagrams with a TTL of 1.
+<P>
+Implied in this output is that a multicast router
+must receive <I>all</I> multicast datagrams on all its interfaces.
+The router has no idea which multicast groups the hosts might
+join.
+<H4>Multicast Router Example</H4>
+<P>
+Let's continue the previous example, but we'll also
+start a multicast routing daemon on the host sun. Our interest
+here is not the details of multicast routing protocols, but to
+see the IGMP queries and reports that are exchanged. Even though
+the multicast routing daemon is running on the only host that
+supports multicasting (<TT>sun</TT>), all
+the queries and reports are multicast on the Ethernet, so we can
+see them on any other system on the Ethernet.
+<P>
+Before starting the routing daemon we joined another
+multicast group: 224.9.9.9. Figure 13.5 shows the output.
+<CENTER>
+<a name="13_5"><TABLE></a>
+<TR><TD WIDTH=26>1</TD><TD WIDTH=142><TT>  0.0</TT>
+</TD><TD WIDTH=360><tt>sun &gt; 224.0.0.4: igmp report 224.0.0.4</tt>
+</TD></TR>
+<TR><TD WIDTH=26>2</TD><TD WIDTH=142><TT>  0.00 (  0.00)</TT>
+</TD><TD WIDTH=360><tt>sun &gt; 224.0.0.1: igmp query</tt>
+</TD></TR>
+<TR><TD WIDTH=26>3</TD><TD WIDTH=142><TT>  5.10 (  5.10)</TT>
+</TD><TD WIDTH=360><tt>sun &gt; 224.9.9.9: igmp report 224.9.9.9</tt>
+</TD></TR>
+<TR><TD WIDTH=26>4</TD><TD WIDTH=142><TT>  5.22 (  0.12)</TT>
+</TD><TD WIDTH=360><tt>sun &gt; 224.0.0.1: igmp query</tt>
+</TD></TR>
+<TR><TD WIDTH=26>5</TD><TD WIDTH=142><TT>  7.90 (  2.68)</TT>
+</TD><TD WIDTH=360><tt>sun &gt; 224.1.2.3: igmp report 224.1.2.3</tt>
+</TD></TR>
+<TR><TD WIDTH=26>6</TD><TD WIDTH=142><TT>  8.50 (  0.60)</TT>
+</TD><TD WIDTH=360><tt>sun &gt; 224.0.0.4: igmp report 224.0.0.4</tt>
+</TD></TR>
+<TR><TD WIDTH=26>7</TD><TD WIDTH=142><TT> 11.70 (  3.20)</TT>
+</TD><TD WIDTH=360><tt>sun &gt; 224.9.9.9: igmp report 224.9.9.9</tt>
+</TD></TR>
+<TR><TD WIDTH=26>8</TD><TD WIDTH=142><TT>125.51 (113.81)</TT>
+</TD><TD WIDTH=360><tt>sun &gt; 224.0.0.1: igmp query</tt>
+</TD></TR>
+<TR><TD WIDTH=26>9</TD><TD WIDTH=142><TT>125.70 (  0.19)</TT>
+</TD><TD WIDTH=360><tt>sun &gt; 224.9.9.9: igmp report 224.9.9.9</tt>
+</TD></TR>
+<TR><TD WIDTH=26>10</TD><TD WIDTH=142><TT>128.50 (  2.80)</TT>
+</TD><TD WIDTH=360><tt>sun &gt; 224.1.2.3: igmp report 224.1.2.3</tt>
+</TD></TR>
+<TR><TD WIDTH=26>11</TD><TD WIDTH=142><TT>129.10 (  0.60)</TT>
+</TD><TD WIDTH=360><tt>sun &gt; 224.0.0.4: igmp report 224.0.0.4</tt>
+</TD></TR>
+<TR><TD WIDTH=26>12</TD><TD WIDTH=142><TT>247.82 (118.72)</TT>
+</TD><TD WIDTH=360><tt>sun &gt; 224.0.0.1: igmp query</tt>
+</TD></TR>
+<TR><TD WIDTH=26>13</TD><TD WIDTH=142><TT>248.09 (  0.27)</TT>
+</TD><TD WIDTH=360><tt>sun &gt; 224.1.2.3: igmp report 224.1.2.3</tt>
+</TD></TR>
+<TR><TD WIDTH=26>14</TD><TD WIDTH=142><TT>248.69 (  0.60)</TT>
+</TD><TD WIDTH=360><tt>sun &gt; 224.0.0.4: igmp report 224.0.0.4</tt>
+</TD></TR>
+<TR><TD WIDTH=26>15</TD><TD WIDTH=142><TT>255.29 (  6.60)</TT>
+</TD><TD WIDTH=360><tt>sun &gt; 224.9.9.9: igmp report 224.9.9.9</tt>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 13.5</B> <TT>tcpdump</TT>
+output while multicast routing daemon is running.</CENTER>
+<P>
+We have not included the Ethernet addresses in this
+output, because we've already verified that they are what we expect.
+We've also deleted the notation that the TTL equals 1, because
+again that's what we expect.
+<P>
+Line 1 is output when the routing daemon starts.
+It sends a report that it has joined the group 224.0.0.4. Multicast
+address 224.0.0.4 is a well-known address used by DVMRP (Distance
+Vector Multicast Routing Protocol), the protocol currently used
+for multicast routing. (DVMRP is defined in RFC 1075 [Waitzman,
+Partridge, and Deering 1988].)
+<P>
+When the daemon starts it also sends out a query
+(line 2). The destination IP address of the query is 224.0.0.1
+(all-hosts), as shown in <a href="#fig_13_3">Figure 13.3</a>.
+<P>
+The first report (line 3) is received about 5 seconds
+later, for group 224.9.9.9. This is the only report received before
+another query is sent (line 4). These two queries (lines 2 and
+4) occur rapidly when the daemon starts up, as it tries to build
+its multicast routing table.
+<P>
+Lines 5, 6, and 7 are what we expect: one report
+from the host sun for each group to which it belongs. Notice that
+the group 224.0.0.4 is reported, in addition to the two groups
+that we explicitly joined, because as long as the routing daemon
+is running, it belongs to this group.
+<P>
+The next query on line 8 occurs about 2 minutes after
+the previous query. Again it elicits the three reports we expect
+(lines 9, 10, and 11). The reports are in a different order this
+time, as expected, since the time between receiving the query
+and sending the report should be randomized.
+<P>
+The final query that we show occurs about 2 minutes
+after the previous query, and again we have the expected responses.
+<a name="13_5"><H3>13.5 Summary</H3></a>
+<P>
+Multicasting is a way to send a message to multiple
+recipients. In many applications it is better than broadcasting,
+since multicasting imposes less overhead on hosts that are not
+participating in the communication. The simple host membership
+reporting protocol (IGMP) is the basic building block for multicasting.
+<P>
+Multicasting on a LAN or across closely connected
+LANs uses the techniques we've described in this chapter. Since
+broadcasting is often restricted to a single LAN, multicasting
+could be used instead of broadcasting for many applications that
+use broadcasting today
+<P>
+A problem that has not been completely solved, however,
+is multicasting across wide area networks. [Deering and Cheriton
+1990] propose extensions to common routing protocols to support
+multicasting. Section 9.13 of [Periman 1992] discusses some of
+the problems with multicasting across WANs.
+<P>
+[Casner and Deering 1992] describe the delivery of
+audio for an IETF meeting across the Internet using multicasting
+and a virtual network called the <I>MBONE</I> (multicasting backbone).
+<H4>Exercises</H4>
+<P>
+<B>13.1</B> We said that hosts
+schedule IGMP reports with random delays. How can the hosts on
+a LAN try to ensure that no two hosts generate the same random
+delay?
+<P>
+<B>13.2</B> In [Casner and Deering
+1992] they mention that UDP lacks two features needed for sending
+audio samples across the MBONE: detection of packet reordering
+and detection of duplicate packets. How could you add these capabilities
+above UDP?
+</BODY>
+</HTML>

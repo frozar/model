@@ -1,0 +1,411 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML
+><HEAD
+><TITLE
+>PPP et serialmail</TITLE
+><META
+NAME="CREATOR"
+CONTENT="Modular DocBook HTML Stylesheet version 1.07"><META
+NAME="form"
+CONTENT="html"><META
+NAME="Description"
+CONTENT="Introduction to qmail in french"><META
+NAME="Keywords"
+CONTENT="qmail mta"><META
+NAME="Robot"
+CONTENT="index,follow"><META
+NAME="Author"
+CONTENT="Djalil Chafai"></HEAD
+><BODY
+BGCOLOR="#FFFFFF"
+TEXT="#000000"
+><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TH
+COLSPAN="3"
+ALIGN="center"
+>Introduction à qmail</TH
+></TR
+><TR
+><TD
+WIDTH="10%"
+ALIGN="left"
+VALIGN="bottom"
+><A
+HREF="c0502.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="80%"
+ALIGN="center"
+VALIGN="bottom"
+>Chapitre 5. Configuration : pour aller plus loin</TD
+><TD
+WIDTH="10%"
+ALIGN="right"
+VALIGN="bottom"
+><A
+HREF="c0504.html"
+>Suivant</A
+></TD
+></TR
+></TABLE
+><HR
+ALIGN="LEFT"
+WIDTH="515"><H1
+><A
+NAME="PPP"
+>PPP et serialmail</A
+></H1
+><P
+>Lorsque la machine n'est connectée à l'Internet que de façon
+intermittante en PPP par modem par exemple, les courriels à destination de
+l'extérieur restent dans la file d'attente de
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+> jusqu'à la
+prochaine connexion. Il est alors utile d'envoyer un signal ALRM à
+<I
+CLASS="APPLICATION"
+>qmail-send</I
+> à l'établissement de la lisaison IP
+(par exemple dans le script <TT
+CLASS="FILENAME"
+>/etc/ppp/ip-up.local</TT
+> ou
+équivalent) pour qu'il traite les courriels présents dans la file d'attente
+immédiatement.</P
+><P
+>J'en profite au passage pour signaler que sur la
+<I
+CLASS="PRODUCTNAME"
+>Debian GNU/Linux</I
+>,
+les fichiers <TT
+CLASS="FILENAME"
+>/etc/ppp/ip-up.local</TT
+> et
+<TT
+CLASS="FILENAME"
+>/etc/ppp/ip-down.local</TT
+>
+de PPP sont remplacés par des répertoires
+<TT
+CLASS="FILENAME"
+>/etc/ppp/ip-up.d/</TT
+>
+et <TT
+CLASS="FILENAME"
+>/etc/ppp/ip-down.d/</TT
+> destinés à accueillir des scripts
+lancés automatiquement par <I
+CLASS="APPLICATION"
+>run-parts</I
+> respectivement
+à l'établissement et à la chute de la lisaison IP via PPP).</P
+><P
+>Cette méthode a cependant un inconvénient. Supposons qu'aucune
+connexion n'est lieu pendant une période assez longue, les courriels
+en question seront alors tout bètement renvoyés à l'expéditeur, c'est
+un mécanisme présent dans toute gestion de file d'attente. La variable
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+> <TT
+CLASS="FILENAME"
+>queuelifetime</TT
+>
+represéente la durée de vie en seconde d'un courriel dans la file d'attente.
+Elle vaut par défaut 604800 secondes, soit une semaine.</P
+><P
+>Une solution élégante à ce problème consiste à faire en sorte que
+tous les courriels devant transiter par PPP soit livrés dans une boite
+aux lettres spécialement prévue à cet effet. Il suffira ensuite dès
+l'établissement de la liaison IP par PPP de vider cette BAL
+sur le port SMTP de la passerelle courriel de notre FAI.
+Ce n'est pas sans rappeler le mecanisme «store-and-forward» d'UUCP.
+On peut éditer cette BAL avec n'importe quel MUA,
+ce qui est tout de même mieux que de toucher à la file d'attente de
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+>.   </P
+><P
+>Nous créons donc une BAL nommée
+<TT
+CLASS="FILENAME"
+>~alias/ppp</TT
+> par :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>root$ maildirmake ~alias/pppdir
+root$ chown -R alias ~alias/pppdir</PRE
+></TD
+></TR
+></TABLE
+>
+
+Il nous faut ensuite créer le fichier
+<TT
+CLASS="FILENAME"
+>~alias/.qmail-ppp-default</TT
+>
+qui doit contenir la ligne
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>./pppdir/</PRE
+></TD
+></TR
+></TABLE
+>
+
+Enfin il faut ajouter une ligne à la fin du fichier
+<TT
+CLASS="FILENAME"
+>/var/qmail/control/virtualdomains</TT
+> :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>mondomaine.amoi:
+.mondomaine.amoi:
+:alias-ppp</PRE
+></TD
+></TR
+></TABLE
+>
+
+ainsi, la livraison vers notre BAL se fera pour les
+courriels à destination des adresses extérieures au domaine
+<TT
+CLASS="LITERAL"
+>mondomaine.amoi</TT
+>. 
+Voir la <A
+HREF="c04.html#VIRTUALDOMAINS"
+>la section <I
+>virtualdomains</I
+> du Chapitre 4</A
+>.</P
+><P
+>Reste maintenant à trouver un moyen pour vider cette BAL
+sur le port 25 de notre FAI. C'est là qu'intervient
+<I
+CLASS="PRODUCTNAME"
+>serialmail</I
+>, que l'on trouve sur
+<A
+HREF="http://pobox.com/~djb/serialmail.html"
+>http://pobox.com/~djb/serialmail.html</A
+>.
+<I
+CLASS="PRODUCTNAME"
+>serialmail</I
+> existe aussi sous forme de paquetage
+source <I
+CLASS="PRODUCTNAME"
+>Debian</I
+>, je recommande fortement cette
+méthode à ceux qui possèdent une <I
+CLASS="APPLICATION"
+>Debian GNU/Linux</I
+>.</P
+><P
+><I
+CLASS="PRODUCTNAME"
+>serialmail</I
+> est un ensemble de petits programmes
+écrits par Dan Bernstein dont <I
+CLASS="APPLICATION"
+>maildirsmtp</I
+> qui
+permet justement de vider une BAL au format maildir sur un port SMTP.</P
+><P
+><I
+CLASS="APPLICATION"
+>maildirsmtp</I
+> fait appel à
+<I
+CLASS="APPLICATION"
+>tcpclient</I
+> lui même faisant partie de UCSPI-TCP
+(voir <A
+HREF="http://pobox.com/~djb/ucspi-tcp.html"
+> http://pobox.com/~djb/ucspi-tcp.html</A
+>).
+Un paquetage source <I
+CLASS="PRODUCTNAME"
+>Debian GNU/Linux</I
+>
+est disponible.</P
+><P
+>Voici  ce qu'il faut rajouter dans votre script
+<TT
+CLASS="FILENAME"
+>/etc/ppp/ip-up.local</TT
+> ou équivalent :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>  maildirsmtp ~alias/pppdir \
+               alias-ppp- mail.monfai.amoi \
+               mamachine.mondomaine.amoi 2&#62;&#62; /var/log/maildir2smtp.log </PRE
+></TD
+></TR
+></TABLE
+>
+
+où <TT
+CLASS="LITERAL"
+>mail.monfai.amoi</TT
+> désigne la passerelle courriel de
+votre FAI.</P
+><P
+>La principale critique que l'on pourrait porter à ce système
+est que <I
+CLASS="PRODUCTNAME"
+>serialmail</I
+> vide les messages sur le port
+SMTP séquentiellement. Le moindre bloquage empêche le traitement du reste
+de la BAL. </P
+><P
+>Avant de terminer cette section, je vous rappelle que le fichier de contrôle
+<TT
+CLASS="FILENAME"
+>/var/qmail/control/smtproutes</TT
+>
+permet de spécifier à <I
+CLASS="APPLICATION"
+>qmail-remote</I
+>
+les relais de courriels à contacter (cf. la page de manuel).
+L'idéal pour une machine isolée,
+connectée de façon intermittante à l'Internet par PPP,
+est de demander à <I
+CLASS="APPLICATION"
+>qmail-remote</I
+> de transmettre
+tout les courriels sortants à la passerelle de courriel du FAI (un «smarthost»
+pour parler le langage de <I
+CLASS="PRODUCTNAME"
+>sendmail</I
+>).
+Cela évite à <I
+CLASS="APPLICATION"
+>qmail-remote</I
+> de contacter lui même les
+machines destinataires et de faire des requettes DNS. La ligne PPP
+est donc moins sollicitée. On peut par exemple mettre ceci dans le fichier
+<TT
+CLASS="FILENAME"
+>smtproutes</TT
+> :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>:mail.monfai.amoi             </PRE
+></TD
+></TR
+></TABLE
+>
+         
+Voir la <A
+HREF="c04.html#SMTPROUTES"
+>la section <I
+>smtproutes</I
+> du Chapitre 4</A
+>.</P
+><HR
+ALIGN="LEFT"
+WIDTH="515"><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+><A
+HREF="c0502.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+><A
+HREF="book01.html"
+>Page principale</A
+></TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+><A
+HREF="c0504.html"
+>Suivant</A
+></TD
+></TR
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+>Contrôle de relayage</TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+><A
+HREF="c05.html"
+>Niveau précédent</A
+></TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+>Fetchmail</TD
+></TR
+></TABLE
+></BODY
+></HTML
+>

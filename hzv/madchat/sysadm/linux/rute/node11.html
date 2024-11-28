@@ -1,0 +1,833 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 99.2beta8 (1.46)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>8. Streams and sed -- The Stream Editor</TITLE>
+<META NAME="description" CONTENT="8. Streams and sed -- The Stream Editor">
+<META NAME="keywords" CONTENT="rute">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v99.2beta8">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="rute.css">
+
+<LINK REL="next" HREF="node12.html">
+<LINK REL="previous" HREF="node10.html">
+<LINK REL="up" HREF="rute.html">
+<LINK REL="next" HREF="node12.html">
+</HEAD>
+
+<BODY BGCOLOR=#FFFFFF >
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD align=left bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-purchase.html"><FONT COLOR=white>Purchase</FONT></A>&nbsp;
+</FONT>
+</TD><TD align=center bgcolor="#000000">
+<FONT COLOR=white>
+Copyright&nbsp;&#169;&nbsp;2002&nbsp;Paul Sheer. <A HREF="copying.html"><FONT COLOR=white>Click here for copying permissions.</FONT></A>
+</FONT>
+</TD><TD align=right bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-home.html"><FONT COLOR=white>Home</FONT></A>&nbsp;
+</FONT>
+</TD></TR>
+<TR><TD colspan=2 align=left bgcolor="#ECEBF4">
+<IMG SRC="va-btn-small-light-60.png">
+</TD><TD align=right bgcolor="#ECEBF4">
+<IMG SRC="sflogo2-steel-60.png">
+</TD></TR>
+</TABLE><BR>
+
+<!--Navigation Panel-->
+<A NAME="tex2html1875"
+  HREF="node12.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html1871"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html1865"
+  HREF="node10.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html1873"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html1876"
+  HREF="node12.html">9. Processes, Environment Variables</A>
+<B> Up:</B> <A NAME="tex2html1872"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html1866"
+  HREF="node10.html">7. Shell Scripting</A>
+ &nbsp <B>  <A NAME="tex2html1874"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html1877"
+  HREF="#SECTION001110000000000000000">8.1 Introduction</A>
+<LI><A NAME="tex2html1878"
+  HREF="#SECTION001120000000000000000">8.2 Tutorial</A>
+<LI><A NAME="tex2html1879"
+  HREF="#SECTION001130000000000000000">8.3 Piping Using <TT>
+<FONT COLOR="#0000ff">&#124;</FONT></TT> Notation</A>
+<LI><A NAME="tex2html1880"
+  HREF="#SECTION001140000000000000000">8.4 A Complex Piping Example</A>
+<LI><A NAME="tex2html1881"
+  HREF="#SECTION001150000000000000000">8.5 Redirecting Streams with <TT>
+<FONT COLOR="#0000ff">&gt;&amp;</FONT></TT></A>
+<LI><A NAME="tex2html1882"
+  HREF="#SECTION001160000000000000000">8.6 Using <TT>
+<FONT COLOR="#0000ff">sed</FONT></TT> to Edit Streams</A>
+<LI><A NAME="tex2html1883"
+  HREF="#SECTION001170000000000000000">8.7 Regular Expression Subexpressions</A>
+<LI><A NAME="tex2html1884"
+  HREF="#SECTION001180000000000000000">8.8 Inserting and Deleting Lines</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION001100000000000000000">
+8. Streams and <TT>
+<FONT COLOR="#0000ff">sed</FONT></TT> -- The Stream Editor</A>
+</H1>
+
+<P>
+<A NAME="chap:streams"></A>The ability to use pipes is one of the powers of U<SMALL>NIX</SMALL>. This is one of
+the principle deficiencies of some non-U<SMALL>NIX</SMALL> systems. Pipes used on the command-line
+as explained in this chapter are a neat trick, but pipes used inside <B>C</B>
+programs enormously simplify program interaction. Without pipes, huge amounts
+of complex and buggy code usually needs to be written to perform simple tasks.
+It is hoped that this chapter will give the reader an idea of why U<SMALL>NIX</SMALL> is such
+a ubiquitous and enduring standard.
+
+<P>
+
+<H1><A NAME="SECTION001110000000000000000">
+8.1 Introduction</A>
+</H1>
+
+<P>
+The commands <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">echo</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">df</FONT></TT> and so on print some
+output to the screen. In fact, what is happening on a lower level is that they
+are printing characters one by one into a theoretical data <I>stream</I> (also
+called a <I>pipe</I>) called the <I>stdout</I> pipe. The shell itself performs
+the action of reading those characters one by one and displaying them on the
+screen. The word <I>pipe</I> itself means exactly that: A program places data
+in the one end of a funnel while another program reads that data from the other
+end. Pipes allow two separate programs to perform simple
+communications with each other. In this case, the program is merely communicating
+with the shell in order to display some output.
+
+<P>
+The same is true with the <TT>
+<FONT COLOR="#0000ff">cat</FONT></TT> command explained previously. This command,
+when run with no arguments, reads from the <I>stdin</I> pipe. By default, this pipe is the
+keyboard. One further pipe is the <I>stderr</I> pipe to which a program writes
+error messages. It is not possible to see whether a program message is caused
+by the program writing to its stderr or stdout pipe because usually both are
+directed to the screen. Good programs, however, always write to the appropriate
+pipes to allow output to be specially separated for diagnostic purposes if need
+be.
+
+<P>
+
+<H1><A NAME="SECTION001120000000000000000">
+8.2 Tutorial</A>
+</H1>
+
+<P>
+Create a text file with lots of lines that contain the word <TT>
+<FONT COLOR="#0000ff">GNU</FONT></TT> and
+one line that contains the word <TT>
+<FONT COLOR="#0000ff">GNU</FONT></TT> as well as the word <TT>
+<FONT COLOR="#0000ff">Linux</FONT></TT>.
+Then run <TT>
+<FONT COLOR="#0000ff">grep&nbsp;GNU&nbsp;myfile.txt</FONT></TT>. The result is printed to stdout as usual.
+Now try <TT>
+<FONT COLOR="#0000ff">grep&nbsp;GNU&nbsp;myfile.txt&nbsp;&gt;&nbsp;gnu_lines.txt</FONT></TT>. What is happening here
+is that the output of the <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> command is being <I>redirected</I> into
+a file. The <TT>
+<FONT COLOR="#0000ff">&gt;&nbsp;gnu_lines.txt</FONT></TT> tells the shell to create a new file <TT>
+<FONT COLOR="#0000ff">gnu_lines.txt</FONT></TT>
+and to fill it with any output from stdout instead of displaying the output as
+it usually does. If the file already exists, it will be
+<I>truncated</I>. <FONT COLOR="#ffa500">[Shortened to zero length.]</FONT>
+<P>
+Now suppose you want to append further output to this file. Using <TT>
+<FONT COLOR="#0000ff">&#62;&#62;</FONT></TT>
+instead of <TT>
+<FONT COLOR="#0000ff">&#62;</FONT></TT> does <I>not</I> truncate the file, but appends output
+to it. Try
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>echo&nbsp;"morestuff"&nbsp;&#062;&#062;&nbsp;gnu_lines.txt</code><br>
+</FONT></TD></TR></TABLE><P>
+then view the contents of <TT>
+<FONT COLOR="#0000ff">gnu_lines.txt</FONT></TT>.
+
+<P>
+
+<H1><A NAME="SECTION001130000000000000000">
+8.3 Piping Using <TT>
+<FONT COLOR="#0000ff">&#124;</FONT></TT> Notation</A>
+</H1>
+
+<P>
+The real power of pipes is realized when one program can read from the output of another
+program. Consider the <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> command, which reads from stdin when given
+no arguments; run <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> with one argument on the command-line:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>[root@cericon]#&nbsp;<font color="navy"><B>grep&nbsp;GNU</B></font></code><br>
+<code>A&nbsp;line&nbsp;without&nbsp;that&nbsp;word&nbsp;in&nbsp;it</code><br>
+<code>Another&nbsp;line&nbsp;without&nbsp;that&nbsp;word&nbsp;in&nbsp;it</code><br>
+<code>A&nbsp;line&nbsp;with&nbsp;the&nbsp;word&nbsp;GNU&nbsp;in&nbsp;it</code><br>
+<code>A&nbsp;line&nbsp;with&nbsp;the&nbsp;word&nbsp;GNU&nbsp;in&nbsp;it</code><br>
+<code>I&nbsp;have&nbsp;the&nbsp;idea&nbsp;now</code><br>
+<code>^C</code><br>
+<code>#</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+<TT>
+<FONT COLOR="#0000ff">grep</FONT></TT>'s default behavior is to read from stdin when no files are given. As you
+can see, it is doing its usual work of printing lines that have the word
+<TT>
+<FONT COLOR="#0000ff">GNU</FONT></TT> in them. Hence, lines containing <TT>
+<FONT COLOR="#0000ff">GNU</FONT></TT> will be printed
+twice--as you type them in and again when <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> reads them and decides that
+they contain <TT>
+<FONT COLOR="#0000ff">GNU</FONT></TT>.
+
+<P>
+Now try <TT>
+<FONT COLOR="#0000ff">grep&nbsp;GNU&nbsp;myfile.txt&nbsp;&#124;&nbsp;grep&nbsp;Linux</FONT></TT>. The first <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> outputs
+all lines with the word <TT>
+<FONT COLOR="#0000ff">GNU</FONT></TT> in them to stdout. The <TT>
+<FONT COLOR="#0000ff">&#124;</FONT></TT> specifies
+that all stdout is to be typed as stdin (as we just did above) into the next
+command, which is also a <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> command. The second <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> command
+scans that data for lines with the word <TT>
+<FONT COLOR="#0000ff">Linux</FONT></TT> in them. <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT>
+is often used this way as a <I>filter</I> <FONT COLOR="#ffa500">[Something that screens data.]</FONT>and can be used multiple times, for example,
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>grep&nbsp;L&nbsp;myfile.txt&nbsp;|&nbsp;grep&nbsp;i&nbsp;|&nbsp;grep&nbsp;n&nbsp;|&nbsp;grep&nbsp;u&nbsp;|&nbsp;grep&nbsp;x</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">&lt;</FONT></TT> character redirects the contents of a file in place of stdin. In other words,
+the contents of a file replace what would normally come from a keyboard. Try
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>grep&nbsp;GNU&nbsp;&#060;&nbsp;gnu_lines.txt</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H1><A NAME="SECTION001140000000000000000">
+8.4 A Complex Piping Example</A>
+</H1>
+
+<P>
+In Chapter <A HREF="node8.html#chap:regexp">5</A> we used <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> on a dictionary to demonstrate regular expressions.
+This is how a dictionary of words can be created (your dictionary might
+be under <TT>
+<FONT COLOR="#0000ff">/var/share/</FONT></TT> or under <TT>
+<FONT COLOR="#0000ff">/usr/lib/aspell</FONT></TT> instead):
+
+<P>
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>cat&nbsp;/usr/lib/ispell/english.hash&nbsp;|&nbsp;strings&nbsp;|&nbsp;tr&nbsp;'A-Z'&nbsp;'a-z'&nbsp;\</code><br>
+<code>|&nbsp;grep&nbsp;'^[a-z]'&nbsp;|&nbsp;sort&nbsp;-u&nbsp;&#062;&nbsp;mydict</code><br>
+</FONT></TD></TR></TABLE><P>
+
+ <FONT COLOR="#ffa500">[A backslash <TT>
+<FONT COLOR="#0000ff">&#92;</FONT></TT> as the last character
+on a line indicates that the line is to be continued. You can leave out
+the <TT>
+<FONT COLOR="#0000ff">&#92;</FONT></TT> but then you must leave out the newline as well -- this
+is known as <I>line continuation</I>.]</FONT>
+<P>
+The file <TT>
+<FONT COLOR="#0000ff">english.hash</FONT></TT> contains the U<SMALL>NIX</SMALL> dictionary normally used for
+spell checking. With a bit of filtering, you can create a dictionary that will
+make solving crossword puzzles a breeze. First, we use the command <TT>
+<FONT COLOR="#0000ff">strings</FONT></TT>,
+explained previously, to extract readable bits of text. Here we are using its
+alternate mode of operation where it reads from stdin when no files are specified
+on its command-line. The command <TT>
+<FONT COLOR="#0000ff">tr</FONT></TT> (abbreviated from 
+<I>translate</I>--see <TT>
+<FONT COLOR="#0000ff">tr</FONT></TT>(1))
+then converts upper to lower case. The <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT>
+command then filters out lines that do not start with a letter. Finally, the
+<TT>
+<FONT COLOR="#0000ff">sort</FONT></TT> command sorts the words in alphabetical order. The <TT>
+<FONT COLOR="#0000ff">-u</FONT></TT>
+option stands for <TT>
+<FONT COLOR="#0000ff">u</FONT></TT><I>nique</I>, and specifies that duplicate
+lines of text should be stripped. Now try <TT>
+<FONT COLOR="#0000ff">less&nbsp;mydict</FONT></TT>.
+
+<P>
+
+<H1><A NAME="SECTION001150000000000000000">
+8.5 Redirecting Streams with <TT>
+<FONT COLOR="#0000ff">&gt;&amp;</FONT></TT></A>
+</H1>
+
+<P>
+Try the command <TT>
+<FONT COLOR="#0000ff">ls&nbsp;nofile.txt&nbsp;&gt;&nbsp;A</FONT></TT>. We expect that <TT>
+<FONT COLOR="#0000ff">ls</FONT></TT> will give an error
+message if the file doesn't exist. The error message is, however, displayed and
+not written into the file <TT>
+<FONT COLOR="#0000ff">A</FONT></TT>. The reason is that <TT>
+<FONT COLOR="#0000ff">ls</FONT></TT> has written
+its error message to stderr while <TT>
+<FONT COLOR="#0000ff">&gt;</FONT></TT> has only redirected stdout. The
+way to get both stdout and stderr to both go to the same file is to use a <I>redirection
+operator</I>. As far as the shell is concerned, stdout is called <TT>
+<FONT COLOR="#0000ff">1</FONT></TT> and stderr
+is called <TT>
+<FONT COLOR="#0000ff">2</FONT></TT>, and commands can be appended with a <I>redirection</I>
+like <TT>
+<FONT COLOR="#0000ff">2&gt;&amp;1</FONT></TT> to dictate that stderr is to be mixed into the output of
+stdout. The actual words stderr and stdout are only used in <B>C</B> programming,
+where the number <I>1</I>, <I>2</I> are known as
+<I>file numbers</I> or <I>file descriptors</I>.
+Try the following:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>touch&nbsp;existing_file</code><br>
+<code>rm&nbsp;-f&nbsp;non-existing_file</code><br>
+<code>ls&nbsp;existing_file&nbsp;non-existing_file</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+<TT>
+<FONT COLOR="#0000ff">ls</FONT></TT> will output two lines: a line containing a listing for the file
+<TT>
+<FONT COLOR="#0000ff">existing_file</FONT></TT> and a line containing an error message to explain that
+the file <TT>
+<FONT COLOR="#0000ff">non-existing_file</FONT></TT> does not exist. The error message would
+have been written to stderr or file descriptor number <TT>
+<FONT COLOR="#0000ff">2</FONT></TT>, and
+the remaining line would have been written to stdout or file descriptor
+number <TT>
+<FONT COLOR="#0000ff">1</FONT></TT>.
+
+<P>
+Next we try
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ls&nbsp;existing_file&nbsp;non-existing_file&nbsp;2&#062;A</code><br>
+<code>cat&nbsp;A</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Now <TT>
+<FONT COLOR="#0000ff">A</FONT></TT> contains the error message, while the remaining output came to
+the screen. Now try
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ls&nbsp;existing_file&nbsp;non-existing_file&nbsp;1&#062;A</code><br>
+<code>cat&nbsp;A</code><br>
+</FONT></TD></TR></TABLE><P>
+The notation <TT>
+<FONT COLOR="#0000ff">1&gt;A</FONT></TT> is the same as <TT>
+<FONT COLOR="#0000ff">&gt;A</FONT></TT> because the shell assumes
+that you are referring to file descriptor <TT>
+<FONT COLOR="#0000ff">1</FONT></TT> when you don't specify
+a file descriptor. Now <TT>
+<FONT COLOR="#0000ff">A</FONT></TT> contains the stdout output, while the error message has
+been redirected to the screen.
+
+<P>
+Now try
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ls&nbsp;existing_file&nbsp;non-existing_file&nbsp;1&#062;A&nbsp;2&#062;&#038;1</code><br>
+<code>cat&nbsp;A</code><br>
+</FONT></TD></TR></TABLE><P>
+Now <TT>
+<FONT COLOR="#0000ff">A</FONT></TT> contains both the error message and the normal output. The <TT>
+<FONT COLOR="#0000ff">&gt;&amp;</FONT></TT>
+is called a <I>redirection operator</I>.
+<I>x</I><TT>
+<FONT COLOR="#0000ff">&gt;&amp;</FONT></TT><I>y</I> tells
+the shell to write pipe <I>x</I> into pipe <I>y</I>. <I>Redirection is specified
+from right to left on the command-line</I>. Hence, the above command means to mix
+stderr into stdout and <I>then</I> to redirect stdout to the file <TT>
+<FONT COLOR="#0000ff">A</FONT></TT>.
+
+<P>
+Finally,
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ls&nbsp;existing_file&nbsp;non-existing_file&nbsp;2&#062;A&nbsp;1&#062;&#038;2</code><br>
+<code>cat&nbsp;A</code><br>
+</FONT></TD></TR></TABLE><P>
+We notice that this has the same effect, except that here we are doing the reverse:
+redirecting stdout into stderr and then redirecting stderr into a file <TT>
+<FONT COLOR="#0000ff">A</FONT></TT>.
+
+<P>
+To see what happens if we redirect in reverse order, we can try,
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ls&nbsp;existing_file&nbsp;non-existing_file&nbsp;2&#062;&#038;1&nbsp;1&#062;A</code><br>
+<code>cat&nbsp;A</code><br>
+</FONT></TD></TR></TABLE><P>
+which means to redirect stdout into a file <TT>
+<FONT COLOR="#0000ff">A</FONT></TT>, and <I>then</I> to
+redirect stderr into stdout. This command will therefore not mix stderr and stdout because
+the redirection to <TT>
+<FONT COLOR="#0000ff">A</FONT></TT> came first.
+
+<P>
+
+<H1><A NAME="SECTION001160000000000000000">
+8.6 Using <TT>
+<FONT COLOR="#0000ff">sed</FONT></TT> to Edit Streams</A>
+</H1>
+
+<P>
+
+<TT>
+<FONT COLOR="#0000ff">ed</FONT></TT> used to be the standard text <I>ed</I>itor for U<SMALL>NIX</SMALL>. It is cryptic
+to use but is compact and programmable. <TT>
+<FONT COLOR="#0000ff">sed</FONT></TT> stands for <I>stream
+editor</I> and is the only incarnation of <TT>
+<FONT COLOR="#0000ff">ed</FONT></TT> that is commonly used today.
+<TT>
+<FONT COLOR="#0000ff">sed</FONT></TT> allows editing of files non-interactively. In the way that <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT>
+can search for words and filter lines of text, <TT>
+<FONT COLOR="#0000ff">sed</FONT></TT> can do search-replace
+operations and insert and delete lines into text files. <TT>
+<FONT COLOR="#0000ff">sed</FONT></TT> is one
+of those programs with no man page to speak of. Do <TT>
+<FONT COLOR="#0000ff">info&nbsp;sed</FONT></TT> to see
+<TT>
+<FONT COLOR="#0000ff">sed</FONT></TT>'s comprehensive <TT>
+<FONT COLOR="#0000ff">info</FONT></TT> pages with examples.
+
+<P>
+The most common usage
+of <TT>
+<FONT COLOR="#0000ff">sed</FONT></TT> is to replace words in a stream with alternative words. <TT>
+<FONT COLOR="#0000ff">sed</FONT></TT>
+reads from stdin and writes to stdout. Like <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT>, it is line buffered,
+which means that it reads one line in at a time and then writes that line out
+again after performing whatever editing operations. Replacements are typically
+done with
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>cat&nbsp;&#060;file&#062;&nbsp;|&nbsp;sed&nbsp;-e&nbsp;'s/&#060;search-regexp&#062;/&#060;replace-text&#062;/&#060;option&#062;'&nbsp;\</code><br>
+<code>&#062;&nbsp;&#060;resultfile&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+where <TT>
+<FONT COLOR="#0000ff">&#60;search-regexp&#62;</FONT></TT> is a regular expression, <TT>
+<FONT COLOR="#0000ff">&#60;replace-text&#62;</FONT></TT> is the
+text you would like to replace each occurrence with, and <TT>
+<FONT COLOR="#0000ff">&#60;option&#62;</FONT></TT>
+is nothing or <TT>
+<FONT COLOR="#0000ff">g</FONT></TT>, which means to replace every occurrence in the same
+line (usually <TT>
+<FONT COLOR="#0000ff">sed</FONT></TT> just replaces the first occurrence of the regular
+expression in each line). (There are other <TT>
+<FONT COLOR="#0000ff">&#60;option&#62;</FONT></TT>; see the <TT>
+<FONT COLOR="#0000ff">sed</FONT></TT> <TT>
+<FONT COLOR="#0000ff">info</FONT></TT>
+page.) For demonstration, type
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>sed&nbsp;-e&nbsp;'s/e/E/g'</code><br>
+</FONT></TD></TR></TABLE><P>
+and type out a few lines of English text.
+
+<P>
+
+<H1><A NAME="SECTION001170000000000000000">
+8.7 Regular Expression Subexpressions</A>
+</H1>
+
+<P>
+The section explains how to do the apparently complex task of moving text around
+within lines. Consider, for example, the output of <TT>
+<FONT COLOR="#0000ff">ls</FONT></TT>: say you want
+to automatically strip out only the size column--<TT>
+<FONT COLOR="#0000ff">sed</FONT></TT> can do this
+sort of editing if you use the special <TT>
+<FONT COLOR="#0000ff">&#92;(&nbsp;&#92;)</FONT></TT>
+notation to group parts of the regular expression together. Consider the following
+example:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>sed&nbsp;-e&nbsp;'s/\(&#060;[^&nbsp;]*&#062;\)\([&nbsp;]*\)\(&#060;[^&nbsp;]*&#062;\)/\3\2\1/g'</code><br>
+</FONT></TD></TR></TABLE><P>
+Here <TT>
+<FONT COLOR="#0000ff">sed</FONT></TT> is searching for the expression <TT>
+<FONT COLOR="#0000ff">&#92;&lt;.*&#92;&gt;[
+]*&#92;&lt;.*&#92;&gt;</FONT></TT>. From the chapter on regular expressions,
+we can see that it matches a whole word, an arbitrary amount of whitespace,
+and then another whole word. The <TT>
+<FONT COLOR="#0000ff">&#92;(&nbsp;&#92;)</FONT></TT>
+groups these three so that they can be referred to in <TT>
+<FONT COLOR="#0000ff">&#60;replace-text&#62;</FONT></TT>. Each
+part of the regular expression inside <TT>
+<FONT COLOR="#0000ff">&#92;(&nbsp;&#92;)</FONT></TT>
+is called a <I>subexpression</I> of the regular expression. Each subexpression
+is numbered--namely, <TT>
+<FONT COLOR="#0000ff">&#92;1</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">&#92;2</FONT></TT>,
+etc. Hence, <TT>
+<FONT COLOR="#0000ff">&#92;1</FONT></TT> in <TT>
+<FONT COLOR="#0000ff">&#60;replace-text&#62;</FONT></TT> is the first <TT>
+<FONT COLOR="#0000ff">&#92;&lt;[^&nbsp;]*&#92;&gt;</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">&#92;2</FONT></TT> is <TT>
+<FONT COLOR="#0000ff">[&nbsp;]*</FONT></TT>, and <TT>
+<FONT COLOR="#0000ff">&#92;3</FONT></TT>
+is the second <TT>
+<FONT COLOR="#0000ff">&#92;&lt;[^&nbsp;]*&#92;&gt;</FONT></TT>.
+
+<P>
+Now test to see what happens when you run this:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>sed&nbsp;-e&nbsp;'s/\(&#060;[^&nbsp;]*&#062;\)\([&nbsp;]*\)\(&#060;[^&nbsp;]*&#062;\)/\3\2\1/g'</code><br>
+<code>GNU&nbsp;Linux&nbsp;is&nbsp;cool</code><br>
+<code>Linux&nbsp;GNU&nbsp;cool&nbsp;is</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+To return to our <TT>
+<FONT COLOR="#0000ff">ls</FONT></TT> example (note that this is just an example, to
+count file sizes you should instead use the <TT>
+<FONT COLOR="#0000ff">du</FONT></TT> command), think about
+how we could sum the bytes sizes of all the files in a directory:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>expr&nbsp;0&nbsp;`ls&nbsp;-l&nbsp;|&nbsp;grep&nbsp;'^-'&nbsp;|&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;sed&nbsp;'s/^\([^&nbsp;]*[&nbsp;]*\){4,4}\([0-9]*\).*$/&nbsp;+&nbsp;\2/'`</code><br>
+</FONT></TD></TR></TABLE><P>
+We know that <TT>
+<FONT COLOR="#0000ff">ls&nbsp;-l</FONT></TT> output lines start with <TT>
+<FONT COLOR="#0000ff">-</FONT></TT> for ordinary
+files. So we use <TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> to strip lines not starting with <TT>
+<FONT COLOR="#0000ff">-</FONT></TT>.
+If we do an <TT>
+<FONT COLOR="#0000ff">ls&nbsp;-l</FONT></TT>, we see that the output is divided into four columns of
+stuff we are not interested in, and then a number indicating the size of the
+file. A column (or <I>field</I>) can be described by the regular expression
+<TT>
+<FONT COLOR="#0000ff">[^&nbsp;]*[&nbsp;]*</FONT></TT>, that is, a length of text with no whitespace,
+followed by a length of whitespace. There are four of these, so we bracket it
+with <TT>
+<FONT COLOR="#0000ff">&#92;(&nbsp;&#92;)</FONT></TT> and then use the <TT>
+<FONT COLOR="#0000ff">&#92;&#123;
+&#92;&#125;</FONT></TT> notation to specify that we want exactly <TT>
+<FONT COLOR="#0000ff">4</FONT></TT>. After
+that come our number <TT>
+<FONT COLOR="#0000ff">[0-9]*</FONT></TT>, and then any trailing characters,
+which we are not interested in, <TT>
+<FONT COLOR="#0000ff">.*$</FONT></TT>. Notice here that we have neglected
+to use <TT>
+<FONT COLOR="#0000ff">&#92;&lt;&nbsp;&#92;&gt;</FONT></TT> notation to indicate whole
+words. The reason is that <TT>
+<FONT COLOR="#0000ff">sed</FONT></TT> tries to match the maximum number of characters
+legally allowed and, in the situation we have here, has exactly the same effect.
+
+<P>
+If you haven't yet figured it out, we are trying to get that column of byte
+sizes into a format like
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>+&nbsp;438</code><br>
+<code>+&nbsp;1525</code><br>
+<code>+&nbsp;76</code><br>
+<code>+&nbsp;92146</code><br>
+</FONT></TD></TR></TABLE><P>
+so that <TT>
+<FONT COLOR="#0000ff">expr</FONT></TT> can understand it. Hence, we replace each line with subexpression
+<TT>
+<FONT COLOR="#0000ff">&#92;2</FONT></TT> and a leading <TT>
+<FONT COLOR="#0000ff">+</FONT></TT> sign. Backquotes give the
+output of this to <TT>
+<FONT COLOR="#0000ff">expr</FONT></TT>, which studiously sums them, ignoring any newline
+characters as though the summation were typed in on a single line. There is
+one minor problem here: the first line contains a <TT>
+<FONT COLOR="#0000ff">+</FONT></TT> with nothing before
+it, which will cause <TT>
+<FONT COLOR="#0000ff">expr</FONT></TT> to complain. To get around this, we can just
+add a <TT>
+<FONT COLOR="#0000ff">0</FONT></TT> to the expression, so that it becomes <TT>
+<FONT COLOR="#0000ff">0&nbsp;+</FONT></TT> ....
+
+<P>
+
+<H1><A NAME="SECTION001180000000000000000">
+8.8 Inserting and Deleting Lines</A>
+</H1>
+
+<P>
+<TT>
+<FONT COLOR="#0000ff">sed</FONT></TT> can perform a few operations that make it easy to write
+scripts that edit configuration files for you. For instance,
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>sed&nbsp;-e&nbsp;'7a\</code><br>
+<code>an&nbsp;extra&nbsp;line.\</code><br>
+<code>another&nbsp;one.\</code><br>
+<code>one&nbsp;more.'</code><br>
+</FONT></TD></TR></TABLE><P>
+<TT>
+<FONT COLOR="#0000ff">a</FONT></TT>ppends three lines <I>after</I> line 7, whereas
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>sed&nbsp;-e&nbsp;'7i\</code><br>
+<code>an&nbsp;extra&nbsp;line.\</code><br>
+<code>another&nbsp;one.\</code><br>
+<code>one&nbsp;more.'</code><br>
+</FONT></TD></TR></TABLE><P>
+<TT>
+<FONT COLOR="#0000ff">i</FONT></TT>nserts three lines <I>before</I> line 7. Then
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>sed&nbsp;-e&nbsp;'3,5D'</code><br>
+</FONT></TD></TR></TABLE><P>
+<TT>
+<FONT COLOR="#0000ff">D</FONT></TT>eletes lines 3 through 5.
+
+<P>
+In <TT>
+<FONT COLOR="#0000ff">sed</FONT></TT> terminology, the numbers here are called
+
+<I>addresses</I>, which can also be regular expressions matches.
+To demonstrate:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>sed&nbsp;-e&nbsp;'/Dear&nbsp;Henry/,/Love&nbsp;Jane/D'</code><br>
+</FONT></TD></TR></TABLE><P>
+deletes all the lines starting from a line matching the
+regular expression <TT>
+<FONT COLOR="#0000ff">Dear&nbsp;Henry</FONT></TT> up to a line matching
+<TT>
+<FONT COLOR="#0000ff">Love&nbsp;Jane</FONT></TT> (or the end of the file if one does not exist).
+
+<P>
+This behavior applies just as well to to insertions:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>sed&nbsp;-e&nbsp;'/Love&nbsp;Jane/i\</code><br>
+<code>Love&nbsp;Carol\</code><br>
+<code>Love&nbsp;Beth'</code><br>
+</FONT></TD></TR></TABLE><P>
+Note that the <TT>
+<FONT COLOR="#0000ff">$</FONT></TT> symbol indicates the last line:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>sed&nbsp;-e&nbsp;'$i\</code><br>
+<code>The&nbsp;new&nbsp;second&nbsp;last&nbsp;line\</code><br>
+<code>The&nbsp;new&nbsp;last&nbsp;line.'</code><br>
+</FONT></TD></TR></TABLE><P>
+and finally, the negation symbol, <TT>
+<FONT COLOR="#0000ff">!</FONT></TT>, is used to match
+all lines <I>not</I> specified; for instance,
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>sed&nbsp;-e&nbsp;'7,11!D'</code><br>
+</FONT></TD></TR></TABLE><P>
+deletes all lines <I>except</I> lines 7 through 11.
+
+<P>
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html1875"
+  HREF="node12.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html1871"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html1865"
+  HREF="node10.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html1873"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html1876"
+  HREF="node12.html">9. Processes, Environment Variables</A>
+<B> Up:</B> <A NAME="tex2html1872"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html1866"
+  HREF="node10.html">7. Shell Scripting</A>
+ &nbsp <B>  <A NAME="tex2html1874"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+
+</BODY>
+</HTML>

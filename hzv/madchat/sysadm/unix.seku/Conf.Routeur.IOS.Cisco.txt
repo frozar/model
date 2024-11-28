@@ -1,0 +1,509 @@
+11/04/2003 - 23h37
+
+================================================================================================
+
+                 Configuration IOS CISCO - Sécurité sur routeur CISCO serie 1700
+                                            
+                                          
+
+                               lunatic (_lunatic_@caramail.com)
+
+================================================================================================
+
+
+
+
+
+
+
+
+=============================
+       Au programme...
+=============================
+
+
+-|- A. Introduction
+
+
+
+-|- B. Let's go
+
+
+
+-|- C. Commandes USER
+
+
+
+-|- D. Commandes PRIVILEGED
+
+
+
+-|- E. Application
+
+
+
+-|- F. Sécurités
+
+
+
+-|- G. Failles
+
+
+
+-|- H. End
+
+
+
+-|- I. Greetings
+
+
+
+
+
+
+
+
+================================================================================================
+
+-|- A. Introduction
+
+================================================================================================
+
+
+Mon boss m'a recement demandé d'arreter de cracker des softs a la con durant mes heures de 
+boulot et de me mettre activment a configurer les routeurs cisco 1700 sinon j'avais le droit de 
+prendre la porte sans indemnités...le tout courroner un magnifique coup de pied au cul.
+
+
+Aprés tout pourquoi ne pas en faire un tuto ? En effet le language utilisé pour la configuration
+de ces routeurs est appélé "IOS CISCO", ok ça vous dit rien .. c un language propriétaire a la 
+con...mais bon, on va qd meme essayé d'y voir les failles, la configuration ...
+bref a koi ça ressemble IOS CISCO. Ba on va tenter de voir ça maintenant, Vi MOnsieur, hop a froid
+, juste avant d'aller boire un coup, histoire d'avoir une raison d'eponger un futur mal de crane.
+
+Le routeur a installer etait un CISCO 1700, c'est un routeur d'accès multiservices pour petites 
+et moyennes entreprises. Routeur modulaire optimisé pour les applications réseaux privés virtuels 
+VPN et transport de la téléphonie sur IP. 
+
+Bon la mise en place du routeur cisco 1700 avait pour objectif la configuration d'une architecture 
+reseau permettant l'accés a internet a un etablissement (légal) cascadé derriere le reseau renater
+d'une université le tout sous VPN. Le VPN impose la mise en place d'un canal. Ce canal peut être 
+implémenté de différentes manières : L2TP (niveau 2 du modèle OSI) ou IPSec (niveau 3) ou PPTP 
+(version Lucent puis Microsoft) ou MPPE (Microsoft Point to Point Encryption = RSA RC4) ou GRE 
+(protocole cisco permettant de relier 2 LAN faisant de l'IPX) ou L2F (protocole cisco). De plus 
+on peut rajouter du cryptage au niveau de ce canal : DES(56 bits) ou 3DES (168 bits) ou CET 
+(technologie de cryptage propre à cisco) ou IDEA..enfin bref .. voila pour les details.
+
+
+Bon a premiere vu ça pe parraitre difficile a comprendre vu l'heure qu'il est. Mais je suis sure 
+que meme avec seulement quelques heures de sommeil entre les cernes, vous allez aisement 
+comprendre l'IOS CISCO.
+
+
+
+
+================================================================================================
+
+-|- B. Let's go
+
+================================================================================================
+
+Bon inutile de preciser que le cisco se configure en port console via telnet .. je voudrais pas non 
+plus que vous pensiez que je vous prend pour des abrutis finis.
+L'interface utilisateur d'IOS est composée de plusieurs modes. Le prompt permet de repérer 
+le mode dans lequel on se trouve. De même on peut utiliser à tout moment la commande ? qui affiche 
+la liste des commandes disponibles.
+
+Lorsqu'on initialise une session sur le routeur, on est en mode utilisateur et on dispose d'un 
+sous-ensemble de commandes. Pour avoir accès à l'ensemble des commandes, il faut passer en mode 
+privilégié par l'intermédiaire de la commande "enable" ou "EN". On peut associer un mot de passe 
+à cette commande, mot de passe qui sera stocké soit en clair soit crypté. Les commandes que l'on 
+effectuent ne sont pas sauvegardées lorsqu'on reboote le routeur. Il faut sauvegarder la 
+configuration courante dans le fichier de configuration qui sera chargé au démarrage (commande 
+copy system:running-config nvram:startup-config ou plus simplement write memory). 
+
+
+
+================================================================================================
+
+-|- C. Commandes en mode USER
+
+================================================================================================
+
+En mode utilisateur le prompt est le suivant : 
+Rtr1> 
+
+<1-99> Session number to resume access-enable | Create a temporary Access-List entry 
+access-profile                                | Apply user-profile to interface 
+clear                                         | Reset functions
+connect                                       | Open a terminal connection
+disable                                       | Turn off privileged commands 
+disconnect                                    | Disconnect an existing network connection
+enable                                        | Turn on privileged commands 
+exit                                          | Exit from the EXEC   
+help                                          | Description of the interactive help system    
+lock                                          | Lock the terminal   
+login                                         | Log in as a particular user   
+logout                                        | Exit from the EXEC    
+mrinfo                                        | Request neighbor from a multicast router   
+mstat                                         | Show statistics after multiple multicast traceroutes 
+mtrace                                        | Trace reverse multicast path from destination to source   
+name-connection                               | Name an existing network connection   
+ping                                          | Send echo messages 
+ppp                                           | Start IETF Point-to-Point Protocol (PPP)   
+resume                                        | Resume an active network connection    
+set                                           | Set system parameter (not config)
+show                                          | Show running system information  
+slip                                          | Start Serial-line IP (SLIP)    
+systat                                        | Display information about terminal lines    
+telnet                                        | Open a telnet connection   
+terminal                                      | Set terminal line parameters 
+traceroute                                    | Trace route to destination    
+tunnel                                        | Open a tunnel connection   
+where                                         | List active connections 
+
+
+bon pas besoin d'etre bilingue de naissance pour comprendre ce que ça ve dire...je vais pas rentrer
+dans les details...
+
+
+
+
+
+
+================================================================================================
+
+-|- D. Commandes en mode PRIVILEGED
+
+================================================================================================
+
+En mode privilège le prompt est le suivant : 
+Rtr1# 
+
+
+C'est en mode privilégié que l'on a accès aux paramètres du système. On peut notamment configurer 
+les interfaces des slots contenus dans le routeur. De plus, on peut également positionner le 
+niveau de débuggage que l'on souhaite utiliser, ce qui s'est avéré utile lors du projet. 
+
+
+
+
+
+access-enable                                 | Create a temporary Access-List entry 
+access-profile                                | Apply user-profile to interface  
+access-template                               | Create a temporary Access-List entry 
+calendar                                      | Manage the hardware calendar 
+cd                                            | Change current directory  
+clear                                         | Reset functions 
+clock                                         | Manage the system clock 
+configure                                     | Enter configuration mode 
+connect                                       | Open a terminal connection 
+copy                                          | Copy from one file to another 
+debug                                         | Debugging functions (see also 'undebug')  
+delete                                        | Delete a file  
+dir                                           | List files on a filesystem  
+disable                                       | Turn off privileged commands 
+disconnect                                    | Disconnect an existing network connection  
+ehsa                                          | EHSA commands  
+enable                                        | Turn on privileged commands  
+erase                                         | Erase a filesystem  
+exit                                          | Exit from the EXEC  
+format                                        | Format a filesystem 
+help                                          | Description of the interactive help system  
+hw-module                                     | Slot/subslot/port level commands 
+lock                                          | Lock the terminal 
+login                                         | Log in as a particular user  
+logout                                        | Exit from the EXEC 
+more                                          | Display the contents of a file 
+mrinfo                                        | Request neighbor from a multicast router 
+mstat                                         | Show statistics after multiple multicast traceroutes  
+mtrace                                        | Trace reverse multicast path from destination to source  
+name-connection                               | Name an existing network connection  
+no                                            | Disable debugging functions  
+ping                                          | Send echo messages  
+ppp                                           | Start IETF Point-to-Point Protocol (PPP)  
+pwd                                           | Display current working directory  
+redundancy                                    | Redundancy exec cmd  
+reload                                        | Halt and perform a cold restart  
+reprogram                                     | Reprogram a Controller  
+resume                                        | Resume an active network connection  
+rsh                                           | Execute a remote command  
+send                                          | Send a message to other tty lines  
+set                                           | Set system parameter (not config)  
+show                                          | Show running system information 
+slip                                          | Start Serial-line IP (SLIP) 
+squeeze                                       | Squeeze a filesystem 
+start-chat                                    | Start a chat-script on a line  
+systat                                        | Display information about terminal lines  
+telnet                                        | Open a telnet connection 
+terminal                                      | Set terminal line parameters 
+test                                          | Test subsystems, memory, and interfaces 
+traceroute                                    | Trace route to destination 
+tunnel                                        | Open a tunnel connection  
+undebug                                       | Disable debugging functions (see also 'debug')  
+undelete                                      | Undelete a file  
+verify                                        | Verify a file 
+where                                         | List active connections  
+write                                         | Write running configuration to memory, network, or terminal  
+
+
+
+
+
+La encore une fois .. toujours pas besoin d'etre surdoué en anglais pour comprendre la fonction
+des commandes. 
+
+
+
+
+================================================================================================
+
+-|- E. Application
+
+================================================================================================
+
+Bon revenons a nos moutons. Maintenant que je vous ai balancé les commandes IOS CISCO voyons un 
+peu comment je pourrais le configurer afin qu'il permette a un reso cascader a un autre routeur
+d'acceder a internet..é pourquoi pas y imposter quelques restriction.
+L'exemple est ici tiré de ma configuration actuelle encore en place sur le reseau de lille3, 
+vu que j'ai pas envie de me faire démolir mon reso, ..les IP et les pass seront fictifs..
+
+En resumé le routeur monter doit donc permettre deux choses : 
+1° l'accés a internet
+2° l'accés a un autre reso local distant de plusieurs dizaine de kilometre via VPN
+
+go !
+
+
+
+User Access Verification
+
+Password:
+lille3>en  <= contraction de ENABLE
+Password:
+Password: 
+lille3#sh conf   <= contraction de SHOW CONFIGURATION
+Using 1496 out of 29688 bytes
+!
+version 12.2
+service timestamps debug uptime
+service timestamps log uptime
+no service password-encryption
+!
+hostname lille3
+!
+enable secret 5 $1$OoUV$O2LzaHUGNDfngGPSXVmMb. <= le password crypted
+enable password XXXXXXXX  <= le password non crypted
+!
+mmi polling-interval 60
+no mmi auto-configure
+no mmi pvc
+mmi snmp-timeout 180
+ip subnet-zero
+!
+!
+no ip domain-lookup
+!
+ip audit notify log
+ip audit po max-events 100
+!
+crypto isakmp policy 10
+ hash md5    <= l'encryption utilisée
+ authentication pre-share
+ lifetime 1000
+crypto isakmp key R0uterFWt0PIXFW address 195.146.XXX.150
+!
+!
+crypto ipsec transform-set vpnlille3 esp-des esp-md5-hmac
+!
+crypto map lille3 10 ipsec-isakmp  <= Le VPN
+ set peer 195.146.XXX.150
+ set transform-set vpnlille3
+ match address 101
+!
+!
+!
+!
+interface Ethernet0  <= configuration Carte vers Internet
+ ip address 10.247.XXX.1 255.255.255.0
+ ip nat inside <= NAT interne
+ no ip route-cache
+ no ip mroute-cache
+ full-duplex  <= je precise le transfert
+!
+interface FastEthernet0 <= configuration Carte rezo local
+ ip address 194.XXX.131.86 255.255.255.0
+ ip nat outside
+ no ip route-cache
+ no ip mroute-cache
+ speed 100 <= j'enleve toujours l'automode pour le 10/100
+ full-duplex  <= je precise le transfert
+ crypto map lille3
+!
+ip default-gateway 194.XXX.131.254  <= je rajoute la passerelle par defaut
+ip nat inside source route-map nonat interface FastEthernet0 overload
+ip classless
+ip route 0.0.0.0 0.0.0.0 194.XXX.131.254
+no ip http server
+ip pim bidir-enable
+!
+!
+access-list 101 permit ip 10.247.213.0 0.0.0.255 10.247.192.0 0.0.0.255  <= les IP autorisé
+access-list 110 deny   ip 10.247.213.0 0.0.0.255 10.247.192.0 0.0.0.255
+access-list 110 permit ip 10.247.213.0 0.0.0.255 any
+!
+route-map nonat permit 10
+ match ip address 110
+!
+!
+line con 0
+line aux 0
+line vty 0 4
+ password XXXXX
+ login
+!
+end
+
+
+Easy ? effectivement, la on s'est pas cassez l'anus a proteger les ports .. et meme dans 
+les acces-list, je me suis pas foulé. Le rezo fonctionne nikel une fois la commande 
+"write mem" effectuée.
+
+
+================================================================================================
+
+-|- F. Sécurités
+
+================================================================================================
+
+
+Bon dans ma configuration precedente, j'ai franchement rien sécurisé. c à dire que les 
+utilisateur du reso local coté routeurs on axé a tous les ports .. vu le debit, j'en connais une
+paire qui vont se faire plaisir avec kazaa et autres conneries a downloader comme des gorés.
+Quoique ici, le routeur integre qu'un tres leger firewalling. De plus les acces-listes mériterais
+d'etre beaucoup plus detaillée afin d'obtenir une regle NAT saine et objective.
+Une access-list est une liste séquentielle de règles de permission et d'interdiction portant sur 
+les protocoles réseaux (ip, tcp …) Chaque paquet est examiné et fonction de sa source, de sa 
+destination, de son type, des ports, il est soit retransmis,soit éliminé par le routeur. 
+Une access-list vide laisse tout passer. En resumé tout ce qui n'est pas explicitement permis 
+est interdit
+
+Il y a deux type d'acces liste, les SIMPLES et les ETENDUS, voici quelques exemples :
+
+Exemple de SIMPLE : 
+access-list 1 permit 172.16.1.2 0.0.0.1 	(2 et 3)
+access-list 1 permit 172.16.250.0 0.0.0.255 (0 à 255)
+access-list 1 permit  192.168.5.16 0.0.0.15 	(16 à 31)
+access-list 1 deny any (ajouter de manière implicite)
+
+Exemple d'acces liste ETENDUE :
+
+100 = N° = 199 
+source et destination (+ port source et/ou destination)
+Router(config)#access-list 100 permit ?
+   ip       		Any Internet Protocol
+   tcp      		Transmission Control Protocol
+   udp      		User Datagram Protocol
+   icmp     		Internet Control Message Protocol
+   <0-255>  		An IP protocol number
+   eigrp, ospf, igrp ...  Protocole de routage
+   gre, ipinip 		Tunnel Cisco ou IP dans IP
+   igmp     		Internet Gateway Message Protocol
+
+
+Bref..je comprends que tout ça ne vous soit pas trop trop parlant, pourtant les regles de 
+filtrage sont OBLIGATOIRE, sinon l'utilisation du routeur ne vous servirais strictement a 
+rien.
+
+
+Exemple de FILTRAGE :
+
+access-list 100 permit tcp any any established
+access-list 100 deny   ip 172.25.0.0 	0.0.255.255 any log	(spoofing)
+access-list 100 deny   ip any 0.0.0.255  255.255.255.0 log	(broadcast)
+access-list 100 deny   ip any 0.0.0.0  255.255.255.0 log	(broadcast)
+access-list 100 deny   tcp any any range 161 162 log	(snmp)
+access-list 100 permit ip any host 172.25.1.215		(DMZ)
+access-list 100 permit tcp any host 172.25.240.4 eq smtp  (Mail)
+access-list 100 deny    tcp any any range 0 37 log
+
+
+
+
+================================================================================================
+
+-|- G. Failles
+
+================================================================================================
+
+
+Il est possible d'envoyer un paquet ARP sur une interface d'émission locale (par exemple : 
+Ethernet, le câble, l'anneau symbolique, FDDI) qui pourrait causer l’arrêt d'émission et de 
+reception des paquets ARP sur l'interface d’un routeur ou d’un commutateur utilisant les versions 
+affectées de Cisco IOS ou CatOS. Cette vulnérabilité est documentée dans le bug Cisco ID CSCdu81936 
+et un workaround est disponible.
+
+Pour déterminer si IOS est affecté, se connecte au dispositif et taper la commande show version. Le 
+logiciel Cisco IOS s'identifiera comme " Internetwork Operating System Software" or "IOS (tm)" et 
+affichera un numéro de version.D'autres dispositifs Cisco n'auront pas la commande show version, 
+ou auront un affichage différent.
+
+Bon, je vous conseil de prendre un tube d'aspirine pour ceux qui va suivre, j'ai due me relire
+une bonne 30aine de fois pour me comprendre moi meme. Les paquets ARP, tant la demande que la 
+réponse, reçue par le routeur pour sa propre adresse d'interface ou les entrées globales NAT 
+(Network Address Translation), mais une adresse de MAC différente sera inscrite dans la table 
+ARP du routeur avec celui de la demande ou la réponse ARP. Les dispositifs du routeur Cisco IOS 
+défendront l'adresse MAC d'une interface pour plusieurs tentatives, mais dans une tentative pour 
+empêcher une tempête d'ARP, le dispositif acceptera l'information incorrecte dans la table ARP, 
+qui entraine que l'interface arrête d'accepter des nouvelles entrées ARP et les entrées ne seront 
+pas acceptées ou mises à jour dans la table ARP. Ce comportement a été réparé pour correctement 
+défendre l'interface l'adresse de MAC, avec le taux limitant la réponse pour éviter une tempête 
+d'ARP sur le réseau local. Cette attaque peut seulement être effectuée du réseau local. Ce défaut 
+est documenté dans le bug Cisco ID CSCdu81936 et est réparé dans les versions futures de Cisco IOS. 
+
+Conséquence :
+Cela a pour impact qu'un Routeur Cisco est vulnérable à une attaque Denial-of-Service. Ce défaut 
+n'aboutit pas à un échec de confidentialité d'information stockée sur l'unité, ce défaut ne permet 
+non plus au code hostile d'être chargé sur un dispositif Cisco. Ce défaut peut causer un 
+Denial-of-Service sur les fonctions de gestion d'un Commutateur de Cisco, mais n'affecte pas de 
+trafic par le dispositif.
+
+Logiciel et patch disponible à http://www.cisco.com/warp/public/707/IOS-arp-overwrite-vuln-pub
+
+Mon routeur a bien evidement etait patché :-)) donc pas la peine de vous cassez le cul sur lille3.
+La faille que je viens de decrire est relativement connu et CISCO a informé en masse tout les utilisateurs.
+Cependant je vous conseil vivement d'aller faire un tour la : http://www.labo-cisco.com on y trouve
+toujours des choses sympa.
+
+
+
+
+================================================================================================
+
+-|- H. End
+
+================================================================================================
+
+
+
+Voila, ce petit cours sur l'ISO Cisco est enfin terminé , OUF, vous pouvez allez vous torcher
+la d'jeule tranquillement. je ne saurez que trop vous conseillez la page suivante : 
+
+http://www.cisco.com/warp/public/cc/pd/iosw/ioft/ionetn/prodlit/1195_pp.htm
+
+elle m'a beaucoup aidé dans la configuration de mes routeurs au tout debut.
+
+
+
+
+
+================================================================================================
+
+-|- I. Greetings
+
+================================================================================================
+
+
+#old-school, mon boss pour m'avoir mis un nouvel ecran plat (l'autre etait tombé :-)), et threat
+pour son excelent tuto sur le reversing de 'net share'.
+

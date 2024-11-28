@@ -1,0 +1,636 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!-- saved from url=(0047)http://www.isecurelabs.com/faq/outils_icmp.html -->
+<HTML><HEAD><TITLE>Identification des outils ICMP utilisés par les Hackers</TITLE>
+<META content=fr http-equiv=Content-Language>
+<META content="text/html; charset=windows-1252" http-equiv=Content-Type>
+<META content="Namo WebEditor v4.0(Trial)" name=GENERATOR>
+<META content=FrontPage.Editor.Document name=ProgId>
+<STYLE type=text/css>A:hover {
+	COLOR: #3399ff; TEXT-DECORATION: none
+}
+</STYLE>
+</HEAD>
+<BODY aLink=#000000 link=#000000 vLink=#000000>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000>&nbsp; <B><FONT face=Verdana 
+            size=4>Identification des outils ICMP utilis&eacute;s par les 
+            Hackers</FONT></B></FONT> 
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+            face=Verdana size=2>Introduction</FONT></B> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>De nombreux outils existent 
+            aujourd'hui permettant &agrave; un attaquant d'ordinateurs malveillant 
+            d'envoyer les datagrammes modifies ICMP. Ces datagrammes peuvent 
+            &ecirc;tre utilis&eacute;s pour diff&eacute;rentes t&acirc;ches: d&eacute;tection de machines, 
+            d&eacute;tection avan&ccedil;&eacute;e de machines, empreinte digitale (fingerprints) de 
+            syst&egrave;mes d'exploitation et plus. Cet article examinera si nous 
+            pouvons identifier les diff&eacute;rents outils ICMP utilis&eacute;s par les 
+            hackers disponibles aujourd'hui. Si nous pouvons identifier l'outil, 
+            nous pouvons identifier le syst&egrave;me d'exploitation ou un certain 
+            nombre de syst&egrave;mes d'exploitation sur lesquels cet outil pourrait 
+            fonctionner. Nous utiliserons le fait que certains de ces outils 
+            h&eacute;ritent de quelques valeurs de l'Os de base. Ceci sera fait 
+            passivement, sans questionner activement la machine de l'attaquant 
+            d'ordinateurs malveillant .</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Dans la discussion, nous allons 
+            examiner les cinq utilitaires suivants:</FONT></P>
+            <OL>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>L'utilitaire 'ping' du paquet 
+              iputils sur un systeme REdhat avec noyau 2.2.14.</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>HPING2 beta 54, ecrit par 
+              antirez ( <A href="http://sourceforge.net/projects/hping2." 
+              target=nonlocal>http://sourceforge.net/projects/hping2.</A> 
+              ).</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>Nemesis v1.1, ecrit par obecian 
+              (<A href="http://www.packetfactory.net/Projects/Nemesis" 
+              target=nonlocal>http://www.packetfactory.net/Projects/Nemesis</A>)&nbsp;</FONT> 
+              </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>Icmpenum v1.1.1, ecrit par 
+              Simple Nomad (<A href="http://razor.bindview.com/" 
+              target=nonlocal>http://razor.bindview.com/</A>).</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>SING v1.0, ecrit par Alfredo 
+              Omella (<A href="http://www.sourceforge.net/projects/sing" 
+              target=nonlocal> 
+              http://www.sourceforge.net/projects/sing</A>).</FONT> </P></OL>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Le type de message ICMP examine 
+            sera une requete Echo ICMP envoye avec tous les outils cites. Tous 
+            les outils seront installes et utilises sous une machine Linux 
+            Redhat avec noyau 2.2.14.</FONT></P>
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+            face=Verdana size=2>Requete Echo ICMP</FONT></B></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>RFC 792 - Internet Control Message 
+            Protocol (<A href="http://www.ietf.org/rfc/rfc0792.txt" 
+            target=nonlocal>http://www.ietf.org/rfc/rfc0792.txt</A> ) - definit 
+            le moyen d'envoyer une requete Echo ICMP. La partie emetteur 
+            initialise l'identificateur (employ&eacute; pour identifier des demandes 
+            d'&eacute;cho destine a diff&eacute;rentes machines destination) et le numero de 
+            sequence (si des demandes multiples d'&eacute;cho sont envoy&eacute;es a la m&ecirc;me 
+            machine destination), ajoute quelques donn&eacute;es (arbitraires) &agrave; la 
+            zone d'information et envoie l'&eacute;cho ICMP a la machine destination. 
+            Dans l'en-t&ecirc;te ICMP, le code egale z&eacute;ro. Le destinataire devrait 
+            seulement changer le type en ECHO Reply et renvoyer le datagramme &agrave; 
+            l'exp&eacute;diteur (et le total de contr&ocirc;le (checksum) de l'en-t&ecirc;te 
+            ICMP).</FONT></P>
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+            face=Verdana size=2>Differencier les outils</FONT></B></P>
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+            face=Verdana size=2>Requetes Echo ICMP en utilisant l'utilitaire 
+            &quot;Ping&quot; sous Linux</FONT></B></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Ce qui suit est une requete Echo 
+            ICMP envoyer avec l'utilitaire ping du paquet iputils d'un systeme 
+            Linux Redhat avec noyau 2.2.14:</FONT> 
+            <DIV align=justify><PRE style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 face=Verdana size=2>[root@godfather sbin]# ping -c 2 y.y.y.y
+PING y.y.y.y (y.y.y.y) from x.x.x.x : 56(84) bytes of data.
+64 bytes from hostname (y.y.y.y): icmp_seq=0 ttl=255 time=0.1 ms
+64 bytes from hostname (y.y.y.y): icmp_seq=1 ttl=255 time=0.1 ms
+
+--- y.y.y.y ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.1/0.1/0.1 ms
+[root@godfather sbin]# 
+
+The snort trace:
+
+11/01-23:09:51.398772 x.x.x.x -&gt; y.y.y.y
+ICMP TTL:64 TOS:0x0 ID:38 
+ID:1037   Seq:0  ECHO
+9F 86 00 3A 85 15 06 00 08 09 0A 0B 0C 0D 0E 0F  ...:............
+10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F  ................
+20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F   !&quot;#$%&amp;'()*+,-./
+30 31 32 33 34 35 36 37                          01234567
+
+11/01-23:09:51.398819 y.y.y.y -&gt; x.x.x.x
+ICMP TTL:255 TOS:0x0 ID:39 
+ID:1037   Seq:0  ECHO REPLY
+9F 86 00 3A 85 15 06 00 08 09 0A 0B 0C 0D 0E 0F  ...:............
+10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F  ................
+20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F   !&quot;#$%&amp;'()*+,-./
+30 31 32 33 34 35 36 37                          01234567
+
+Les requetes Echo ICMP suivantes sont envoyees:
+
+
+11/01-23:09:52.391176 x.x.x.x -&gt; y.y.y.y
+ICMP TTL:64 TOS:0x0 ID:40 
+ID:1037   Seq:1  ECHO
+A0 86 00 3A EB F7 05 00 08 09 0A 0B 0C 0D 0E 0F  ...:............
+10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F  ................
+20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F   !&quot;#$%&amp;'()*+,-./
+30 31 32 33 34 35 36 37                          01234567
+
+
+11/01-23:09:52.391220 y.y.y.y -&gt; x.x.x.x
+ICMP TTL:255 TOS:0x0 ID:41 
+ID:1037   Seq:1  ECHO REPLY
+A0 86 00 3A EB F7 05 00 08 09 0A 0B 0C 0D 0E 0F  ...:............
+10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F  ................
+20 21 22 23 24 25 26 27 28 29 2A 2B 2C 2D 2E 2F   !&quot;#$%&amp;'()*+,-./
+30 31 32 33 34 35 36 37                          01234567
+</FONT></PRE></DIV>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Quelques elements importants sur 
+            les empreintes digitales des utilitaires ping doivent &ecirc;tre garde en 
+            tete. Ping (comme d'autres utilitaires ping sous Unix et Unix-like) 
+            utilise un champ de donnees ICMP de 56 octets. Ceci fait une 
+            longueur totale du datagramme IP de 84 octets. Ping commence son 
+            numero de sequence ICMP &agrave; 0, et l'intervalle entre un numero de 
+            sequence et un autre est de 1 hexa. Ping utilise la valeur de 64 
+            comme valeur par d&eacute;faut pour le champ TTL IP pour les demandes 
+            d'&eacute;cho ICMP.</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Un autre point a garder en tete 
+            est le comportement de Linux avec les nombres ID IP. La trace a &eacute;t&eacute; 
+            prise apr&egrave;s que ma machine Linux ait demarre. Le premier nombre ID 
+            IP qui a &eacute;t&eacute; utilis&eacute; &eacute;tait un nombre decimal &agrave; deux chiffres. 
+            L'intervalle entre un nombre ID IP et un autre est de 1.</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Le nombre ID ICMP de ping est 
+            l'identification (ID) du processus assign&eacute;e a ping lors de 
+            l'execution.</FONT></P>
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+            face=Verdana size=2>HPING2</FONT></B></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>HPING2 est un outil reseau 
+            capacble d'envoyer des paquets ICMP/UDP/TCP modifies et d'afficher 
+            les reponses de victimes comme ping fait avec les reponses ICMP. 
+            HPING2 traite la fragmentation, un corps et une taille de paquets 
+            arbitraires et peut etre utilise pour tranferer des fichiers avec 
+            les protocoles supportes. HPING2 se compile sous Linux et 
+            *BSD.</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Dans le prochain exemple, j'ai 
+            envoye une requete Echo ICMP avec HPING2:</FONT></P>
+            <DIV align=justify><PRE style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 face=Verdana size=2>[root@godfather sbin]# hping2 -1 -c 2 y.y.y.y
+default routing not present
+HPING y.y.y.y (y.y.y.y): icmp mode set, 28 headers + 0 data bytes
+28 bytes from y.y.y.y: icmp_seq=0 ttl=255 id=36 rtt=0.8 ms
+28 bytes from y.y.y.y: icmp_seq=1 ttl=255 id=37 rtt=0.7 ms
+
+--- y.y.y.y hping statistic ---
+2 packets tramitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 0.7/0.7/0.8 ms
+[root@godfather sbin]# 
+
+The snort trace:
+
+By Martin Roesch (roesch@clark.net, www.snort.org)
+11/01-23:08:48.338644 x.x.x.x -&gt; y.y.y.y
+ICMP TTL:64 TOS:0x0 ID:14546 
+ID:1032   Seq:0  ECHO
+
+11/01-23:08:48.338691 y.y.y.y -&gt; x.x.x.x
+ICMP TTL:255 TOS:0x0 ID:36 
+ID:1032   Seq:0  ECHO REPLY
+</FONT></PRE></DIV>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Un fait notable est qu'il n'y a 
+            aucune donn&eacute;e transport&eacute;e avec la demande d'&eacute;cho ICMP produite avec 
+            le comportement de d&eacute;faut de HPING2. Par d&eacute;faut, la longueur totale 
+            des datagrammes Echo ICMP produits par HPING2 sera toujours de 28 
+            octets.</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Comme ping, HPING2 utilise son ID 
+            de processus comme valeur du champ ID ICMP:</FONT></P>
+            <DIV align=justify><PRE style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 face=Verdana size=2>[root@godfather /root]# ps aux | grep hping
+root   4826  0.0  0.4  1200  512 pts/1   S   19:57   0:00 [root@godfather /root]# 
+
+11/04-19:57:44.846703 x.x.x.x -&gt; y.y.y.y
+ICMP TTL:64 TOS:0x0 ID:57750 
+ID:4826   Seq:20  ECHO
+</FONT></PRE></DIV>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Dans sendicmp.c le programme 
+            definit: icmp-&gt;un.echo.id = getpid();</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>C'etait seulement pour la premiere 
+            requete Echo ICMP emvoye. A quoi ressemble la seconde requete Echo 
+            ICMP?</FONT></P>
+            <DIV align=justify><PRE style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 face=Verdana size=2>11/01-23:08:49.331187 x.x.x.x -&gt; y.y.y.y
+ICMP TTL:64 TOS:0x0 ID:19756 
+ID:1032   Seq:1  ECHO
+
+11/01-23:08:49.331233 y.y.y.y -&gt; x.x.x.x
+ICMP TTL:255 TOS:0x0 ID:37 
+ID:1032   Seq:1  ECHO REPLY
+
+23:08:49.331187   &gt; x.x.x.x &gt; y.y.y.y: icmp: echo request (ttl 64, id 19756)
+			 4500 001c 4d2c 0000 4001 2fb3 xxxx xxxx
+			 yyyy yyyy 0800 eefb 0804 0100
+</FONT></PRE></DIV>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>La comparaison entre la premiere 
+            paire de requetes Echo ICMP et la reponse avec la seconde paire 
+            revelle qu'ils ne sont pas exactement identiques. Nous pouvons les 
+            differencier sur les points suivants:</FONT> 
+            <UL>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>les differents numeros 
+              d'identification IPqui sont utilises.</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>les numeros de sequence 
+              utilises. l'intervalle utilise est de 1 hex.</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>les checksums des entetes ICMP 
+              (changes parce que les numeros de sequence ont change).</FONT> 
+              </P></UL>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Nous pouvons &eacute;galement conclure 
+            que la valeur du champ d'identification IP n'est pas synchronisee 
+            avec celle du syst&egrave;me d'exploitation de base. Dans les exemples 
+            ci-dessus, HPING2 a utilis&eacute; 14546, et 19756, alors que le syst&egrave;me 
+            d'exploitation utilisait 36, et 37 (si vous faites un essai contre 
+            l'adresse de loopback de votre machine, vous pouvez voir ceci se 
+            produire). En fait, la valeur du champ d'identification IP est 
+            al&eacute;atoirement calcul&eacute;e.</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Le seul vrai detail que nous 
+            pouvons utiliser est le fait que HPING2 n'a aucune donn&eacute;e dans son 
+            partie de donn&eacute;es ICMP.</FONT></P>
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+            face=Verdana size=2>Nemesis</FONT></B></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Nemesis est une suite d'injection 
+            de paquets reseau TCP/UDP/ICMP/ARP/DNS/RIP/IGMP/OSPF. Nemesis se 
+            compile sous Linux, *BSD, et Sun Solaris.</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Dans le prochain exemple, j'ai 
+            envoye une requete Echo ICMP avec Nemesis. Les options que j'ai 
+            utilise sont -vv pour mode verbeux, -i pour type ICMP et -c pour la 
+            valeur du code ICMP:</FONT></P>
+            <DIV align=justify><PRE style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 face=Verdana size=2>[root@godfather /root]# nemesis-icmp -vv -i 8 -c 0 -S x.x.x.x -D y.y.y.y
+
+ICMP Packet Injection -=- The NEMESIS Project 1.1
+(c) 1999, 2000 obecian <OBECIAN@CELERITY.BARTOLI.ORG>
+
+
+
+[IP]  x.x.x.x &gt; y.y.y.y
+[Type] ECHO REQUEST
+[Sequence number] 0
+[IP ID] 0
+[IP TTL] 254
+[IP TOS] 0x18
+[IP Frag] 0x4000
+
+Wrote 48 bytes
+
+ICMP Packet Injected
+
+La trace tcpdump:
+
+00:27:16.153322 &gt; x.x.x.x &gt; y.y.y.y: icmp: echo request (DF) [tos 0x18]  (ttl 254, id 29)
+			 4518 0030 001d 4000 fe01 7e95 xxxx xxxx
+			 yyyy yyyy 0800 f7ff 0000 0000 0000 0000
+			 0000 0000 0000 0000 0000 0000 0000 0000
+
+00:27:16.153375 &gt; y.y.y.y &gt; x.x.x.x: icmp: echo reply [tos 0x18]  (ttl 255, id 30)
+			 4518 0030 001e 0000 ff01 bd94 yyyy yyyy
+			 xxxx xxxx 0000 ffff 0000 0000 0000 0000
+			 0000 0000 0000 0000 0000 0000 0000 0000
+</FONT></PRE></DIV>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Les informations qui peuvent nous 
+            aider a identifier Nemesis incluent:</FONT> 
+            <UL>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>la valeur du champ TOS est mise 
+              a un valeur de 0x18 hex (par defaut, il devrait etre a mis 
+              0x00);</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>le bit DF est mis;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>la valeur du champ IP TTL etait 
+              mise a 254 (l'OS utilise 64 comme valeur par defaut du champs IP 
+              TTL pour les requetes Echo ICMP);</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>la valeur du champ de 
+              l'identificateur ICMP est egale a zero (ICMP_ID=0);</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>la valeur du champ du numero de 
+              sequence ICMP est egale a zero (ICMP_Seq=0);<BR>la portion des 
+              donnees ICMP est egale a 20 octets (Les OS Linux, Unix et 
+              Unix-like utilisent 56 octets de donnees pour les requetes Echo 
+              ICMP. L'OS Microsoft Windows utilise 32 octets). Cela veut dire 
+              que, par defaut, la longueur totale des datagrammes Echo ICMP est 
+              egale a 48 octets.</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>Les 20 octets de donnees avec 
+              ces requetes Echo ICMP sont nuls.</FONT> </P></UL>
+            <DIV align=justify><PRE style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 face=Verdana size=2>Voila la seconde paire de requete et reponse Echo ICMP envoyes par Nemesis:
+
+00:27:23.294060 &gt; x.x.x.x &gt; y.y.y.y: icmp: echo request (DF) [tos 0x18]  (ttl 254, id 31)
+			 4518 0030 001f 4000 fe01 7e93 xxxx xxxx
+			 yyyy yyyy 0800 f7ff 0000 0000 0000 0000
+			 0000 0000 0000 0000 0000 0000 0000 0000
+00:27:23.294097 &gt; y.y.y.y &gt; x.x.x.x: icmp: echo reply [tos 0x18]  (ttl 255, id 32)
+			 4518 0030 0020 0000 ff01 bd92 yyyy yyyy
+			 xxxx xxxx 0000 ffff 0000 0000 0000 0000
+			 0000 0000 0000 0000 0000 0000 0000 0000
+</FONT></PRE></DIV>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>La seconde paire de requete et 
+            reponse Echo ICMP est identique a la premiere paire, excepte pour le 
+            numero d'identification IP (qui est utilise depuis l'OS).</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Le checksum pour l'en-t&ecirc;te ICMP 
+            est le m&ecirc;me avec les deux paires, puisque les numeros de sequence 
+            ICMP et les num&eacute;ros d'identification ICMP utilis&eacute;s sont identiques. 
+            Puisque Nemesis produira la m&ecirc;me demande d'&eacute;cho ICMP par d&eacute;faut, 
+            nous pouvons detecter les m&ecirc;mes configurations a chaque 
+            fois.</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Obecian fait une r&eacute;&eacute;criture 
+            majeure de l'outil, ainsi dans v2.0 il y aura beaucoup de 
+            surprises.</FONT></P>
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+            face=Verdana size=2>Icmpenum</FONT></B></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Icmpenum est la preuve d'un outil 
+            de conception qui a ete ecrit par Simple Nomad. L'outil est capable 
+            d'envoyer des requetes Echo ICMP, des requetes Timestamp ICMP et des 
+            requetes d'information ICMP.</FONT></P>
+            <DIV align=justify><PRE style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 face=Verdana size=2>[root@godfather /root]# ./icmpenum -i 1 IP_Address
+
+11/04-19:40:22.256600 x.x.x.x -&gt; y.y.y.y
+ICMP TTL:255 TOS:0x0 ID:666 
+ID:39426   Seq:0  ECHO
+
+11/04-19:40:22.256662 y.y.y.y -&gt; x.x.x.x
+ICMP TTL:255 TOS:0x0 ID:18 
+ID:39426   Seq:0  ECHO REPLY
+
+
+19:40:22.256600   &gt; x.x.x.x &gt; y.y.y.y: icmp: echo request (ttl 255, id 666)
+			 4500 001c 029a 0000 ff01 bb44 xxxx xxxx
+			 yyyy yyyy 0800 f565 029a 0000
+</FONT></PRE></DIV>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>A partir de la premiere requete 
+            Echo ICMP, nous pouvons conclure que la taille des paquets 
+            qu'Icmpnum produit sera toujours de 28 octets, sans partie de 
+            donnees.</FONT></P>
+            <DIV align=justify><PRE style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 face=Verdana size=2>Envoie d'une autre requete Echo ICMP avec icmpnum:
+
+11/04-19:40:43.826947 x.x.x.x -&gt; y.y.y.y
+ICMP TTL:255 TOS:0x0 ID:666 
+ID:39426   Seq:0  ECHO
+
+11/04-19:40:43.826992 y.y.y.y -&gt; x.x.x.x
+ICMP TTL:255 TOS:0x0 ID:19 
+ID:39426   Seq:0  ECHO REPLY
+</FONT></PRE></DIV>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>L' ID IP sera toujours egal a la 
+            valeur de 029a hex / 666 decimal. La valeur de l'ID ICMP sera 
+            toujours mis a 029a hex. Le numero de sequence ICMP sera toujours 
+            mis a 0. Le TTL IP avec icmpnum est mis a 255. Ces configurations 
+            uniques nous permettent d'identifier icmpnum assez 
+            facilement.</FONT></P>
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+            face=Verdana size=2>SING (Send ICMP Nasty Garbage)</FONT></B></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>SING est &quot;le couteau suisse&quot; pour 
+            ICMP. Avec SING, vous pouvez envoyer presque tout ce que votre 
+            esprit peut consid&eacute;rer avec le protocole ICMP. SING se compile sous 
+            Linux, *BSD, et Sun Solaris. Dans l'exemple suivant, j'ai envoy&eacute; une 
+            requete Echo ICMP avec SING:</FONT></P>
+            <DIV align=justify><PRE style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 face=Verdana size=2>[root@godfather /root]# sing -c 4 y.y.y.y
+SINGing to y.y.y.y (y.y.y.y): 16 data bytes
+16 bytes from y.y.y.y: seq=0 ttl=255 TOS=0 time=0.169 ms
+16 bytes from y.y.y.y: seq=1 ttl=255 TOS=0 time=0.155 ms
+16 bytes from y.y.y.y: seq=2 ttl=255 TOS=0 time=0.136 ms
+16 bytes from y.y.y.y: seq=3 ttl=255 TOS=0 time=0.136 ms
+
+--- y.y.y.y sing statistics ---
+4 packets transmitted, 4 packets received, 0% packet loss
+round-trip min/avg/max = 0.136/0.149/0.169 ms
+[root@godfather /root]# 
+
+00:24:59.011868 &gt; x.x.x.x &gt; y.y.y.y: icmp: echo request (ttl 255, id 13170)
+			 4500 0024 3372 0000 ff01 8a64 xxxx xxxx
+			 yyyy yyyy 0800 7cad 3c04 0000 2be6 e039
+			 332e 0000
+
+00:24:59.011908 &gt; y.y.y.y &gt; x.x.x.x: icmp: echo reply (ttl 255, id 25)
+			 4500 0024 0019 0000 ff01 bdbd yyyy yyyy
+			 xxxx xxxx 0000 84ad 3c04 0000 2be6 e039
+			 332e 0000
+</FONT></PRE></DIV>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Les informations suivantes peuvent 
+            nous aider a identifier SING:</FONT> 
+            <UL>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>Le TTL IP utilise avec la 
+              requete est 255 (l'OS utilise 64 comme valeur par defaut du champ 
+              TTL IP pour une requete Echo ICMP);</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>l'ID ICMP est 3c04 Hex, egal a 
+              1084. L'ID ICMP est en fait l'ID du processus assigne a SING 
+              durant son execution (comme l'utilitaire ping);</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>Seulement 8 octets de donnees 
+              ICMP sont utilises. Ils sont utilises pour le calcul du RTT. Cela 
+              veut dire que, par defaut, la longueur totale d'un datagramme Echo 
+              ICMP de SING sera de 36 octets.</FONT> </P></UL>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Voila al trace tcpdump de la 
+            seconde paire de requete/reponse Echo ICMP:</FONT></P>
+            <DIV align=justify><PRE style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 face=Verdana size=2>00:25:00.004593 &gt; x.x.x.x &gt; y.y.y.y: icmp: echo request (ttl 255, id 13170)
+			 4500 0024 3372 0000 ff01 8a64 xxxx xxxx
+			 yyyy yyyy 0800 d6c9 3c04 0100 2ce6 e039
+			 d711 0000
+
+00:25:00.004630 &gt; y.y.y.y &gt; x.x.x.x: icmp: echo reply (ttl 255, id 26)
+			 4500 0024 001a 0000 ff01 bdbc yyyy yyyy
+			 xxxx xxxx 0000 dec9 3c04 0100 2ce6 e039
+			 d711 0000
+</FONT></PRE></DIV>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>A partir de la seconde paire 
+            requete/reponse Echo ICMP, nous pouvons conclure que:</FONT> 
+            <UL>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>le numero ID IP utilise est 
+              toujours le meme;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>les numeros de sequence utilises 
+              ne sont pas les memes (intervalle de 1 hex), ainsi le checksum de 
+              l'entete ICMP n'est pas le meme.</FONT> </P></UL>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Les parametres que l'on peut 
+            utiliser pour identifier SING sont:</FONT> 
+            <UL>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>l'ID IP sera toujours mis a 3372 
+              hex / 13170 en decimal (sous Linux &amp; *BSD);</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>la portion de donnees ICMP fera 
+              toujours 8 octets de longueur (utilise pour le calcul du 
+              RTT).</FONT> </P></UL>
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+            face=Verdana size=2>Conclusion sur l'OS</FONT></B></P>
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+            face=Verdana size=2>Un Exemple avec SING</FONT></B></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Si vous prenez la peine d'examiner 
+            profond&eacute;ment les sources, vous pourrez decouvrir des faits qui vous 
+            aideront &agrave; identifier le syst&egrave;me d'exploitation sur lequel l'outil 
+            fonctionnait.</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Je prendrais SING en exemple. Avec 
+            les OS Linux et *BSD, SING utilise un nombre constant pour la valeur 
+            du champ d'identification IP. La valeur est l'hexa 0x3372 (13170 en 
+            d&eacute;cimale). Except&eacute; les syst&egrave;mes d'exploitation Sun Solaris, parce 
+            qu'on ne permet pas l'indication de l'identification IP.</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Depuis que nous pouvons identifier 
+            SING, regarder le nombre du champ d'identification IP et voir une 
+            valeur diff&eacute;rente que l'hexa 0x3J372 ou 13170 en d&eacute;cimale nous 
+            indiquera que l'outil SING s'execute sur une machine Sun 
+            Solaris.</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Une autre int&eacute;ressante information 
+            que nous pouvons utiliser est le fait que les machines Sun Solaris 
+            mettent leur bit DF avec des message de types ICMP Query par d&eacute;faut. 
+            SING n'est aucune exception. Ceci nous donne qu'une autre 
+            v&eacute;rification suppl&eacute;mentaire pour le fonctionnement de SING sous une 
+            machine Sun Solaris.</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Une pens&eacute;e: la valeur du champs ID 
+            ICMP est l'identification de processus assign&eacute;e a SING par le 
+            syst&egrave;me d'exploitation. Si nous pouvons calculer l'intervalle des 
+            nombres qui seront assign&eacute;s comme identification de processus pour 
+            SING sous les divers syst&egrave;mes d'exploitation, nous pourrions pouvoir 
+            trouver l'OS. Par exemple - avec Linux apr&egrave;s le boot, 
+            l'identification ICMP a &eacute;t&eacute; plac&eacute;e &agrave; une valeur hexa 3c04, &eacute;gale 
+            1084 en d&eacute;cimal. Avec FreeBSD, l'identification ICMP de SING etait 
+            mis a 1b03 l'hexa / 795 d&eacute;cimal. Avec le soleil Solaris, cette 
+            valeur a &eacute;t&eacute; mise &agrave; 7330 hexa / 12403 d&eacute;cimal. C'est plus compliqu&eacute; 
+            qu'il semble, et devrait &ecirc;tre plus &eacute;tudi&eacute; pour voir si on peut lui 
+            faire confiance.</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Nous pouvons utiliser toutes ces 
+            informations pour diff&eacute;rencier les diverses plateformes sous 
+            laquelle SING pourrait s'ex&eacute;cuter.</FONT></P>
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+            face=Verdana size=2>D'autres types de messages de requ&ecirc;tes 
+            ICMP</FONT></B></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Nous avons examin&eacute; seulement les 
+            demandes Echo ICMP. Si nous examinions d'autres types de message de 
+            requ&ecirc;tes ICMP, d'autres sources pour la diff&eacute;rentiation des outils 
+            seraient introduites. Certaines seraient introduites parce que le 
+            seul type de message de requ&ecirc;te ICMP, qui est partag&eacute; entre tous les 
+            OS, est une requete Echo ICMP (avec l'utilitaire ping).</FONT></P>
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+            face=Verdana size=2>De nombreuses options avec de nombreux 
+            outils</FONT></B></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Parfois vous regarderez une trace 
+            d'un datagramme ICMP et pourrez conclure qu'un de ses champs a &eacute;t&eacute; 
+            &eacute;videmment modifie. Pouvez-vous conclure a partir de la valeur 
+            modifiee du champ quel &eacute;tait l'outil utilis&eacute;? Dans la plupart des 
+            cas oui, parce que les outils ont leur propre empreinte digitale qui 
+            donnent leur identit&eacute;. Ce n'est pas vraiment d'importance quel type 
+            de message de requ&ecirc;te ICMP vous produisez avec cet outil. Avec la 
+            manipulation de quelques champs, il y a seulement un outil capable 
+            de faire ca. Je peux dire que la capacit&eacute; de mettre un bit inutilis&eacute; 
+            comme dans l'exemple est uniquement possible avec l'outil ICMP de 
+            hacker SING. Une conclusion que vous pouvez certainement faire est 
+            que l'utilitaire ping n'a pas &eacute;t&eacute; employ&eacute; dans la plupart des cas 
+            pour modifier le datagramme en question.</FONT></P>
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+            face=Verdana size=2>Imiter d'autres OS</FONT></B></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Le seul outil ICMP de hacker que 
+            j'ai vu qui ait la capacit&eacute; d'imiter un autre syst&egrave;me d'exploitation 
+            est SING. Les autres param&egrave;tres de SING indiquent toujours son 
+            identit&eacute;.</FONT></P>
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+            face=Verdana size=2>Les regles Snort</FONT></B></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Voila des r&egrave;gles Snort pour 
+            d&eacute;tecter l'utilisation des outils examin&eacute;s dans cet article. La 
+            concordance des champs TOS a &eacute;t&eacute; pr&eacute;sent&eacute; dans le dernier CVS Snort, 
+            alors qu'il n'y a toujours pas de support pour le bit DF.</FONT></P>
+            <DIV align=justify><PRE style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 face=Verdana size=2>alert icmp !$HOME_NET any -&gt; $HOME_NET any 
+(msg:&quot;SING Echo from LINUX/*BSD&quot;; id:13170;  itype: 8; dsize: 8;)
+
+alert icmp !$HOME_NET any -&gt; $HOME_NET any 
+(msg:&quot;SING Echo from Sun Solaris&quot;; itype: 8; dsize: 8;)
+
+alert icmp !$HOME_NET any -&gt; $HOME_NET any 
+(msg:&quot;Nemesis v1.1 Echo&quot;; content:&quot;|0000000000000000000000000000000000000000|&quot;; 
+itype: 8;icmp_id: 0; icmp_seq: 0; dsize: 20;)
+
+alert icmp !$HOME_NET any -&gt; $HOME_NET any 
+(msg:&quot;icmpenum v1.1.1&quot;; id: 666; itype: 8;icmp_id: 666; icmp_seq: 0; dsize: 0;)
+
+alert icmp !$HOME_NET any -&gt; $HOME_NET any 
+(msg:&quot;HPING2 Echo from LINUX/*BSD&quot;; itype: 8; dsize:0;)
+</FONT></PRE></DIV>
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+            face=Verdana size=2>Conclusion</FONT></B></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Chacun des outils discut&eacute;s a sa 
+            propre seule empreinte digitale. L'identification de ces seules 
+            diff&eacute;rences entre un outil et un l'autre nous permet de d&eacute;terminer 
+            l'outil utilis&eacute;. Regarder les fautes/erreurs uniques dans la 
+            conception des outils permettra parfois l'identification du syst&egrave;me 
+            d'exploitation.</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Les informations de ce document 
+            ont &eacute;t&eacute; pr&eacute;sent&eacute;es la premi&egrave;re fois au BlackHat 2000 d'Amsterdam, 
+            les 23-25 octobre 2000. La pr&eacute;sentation est disponible sur le Web 
+            BlackHat - <A href="http://www.blackhat.com./" 
+            target=nonlocal>http://www.blackhat.com./</A></FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Traduit par <A 
+            href="http://www.nightbird.free.fr/">NightBird</A> (<A 
+            href="http://www.nightbird.free.fr/">http://www.nightbird.free.fr/</A>)<BR></FONT></P></BODY></HTML>

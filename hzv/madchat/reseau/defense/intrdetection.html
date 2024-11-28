@@ -1,0 +1,733 @@
+<HTML>
+<HEAD>
+<TITLE>Rapport de DEA : Pattern matching et détection d'intrusion</TITLE>
+</HEAD>
+<BODY>
+<center><h1>PATTERN MATCHING ET DETECTION D'INTRUSION</h1></center>
+<hr> 
+<P>
+<h2>Présentation du problème</h2>
+<P align=justify>
+Le développement des réseaux et de l'Internet rend les problèmes de sécurité, de confidentialité, de disponibilité et d'intégrité excessivement préoccupants . Il s'avère primordial de pouvoir détecter une tentative d'attaque à distance afin de prendre les dispositions nécessaires . Beaucoup de ces attaques consistent en des utilisations détournées de la suite de protocoles TCP/IP, le "langage universel" des machines communicantes. Des dispositifs tels que les firewalls ( pare-feu ) permettent de limiter la portée de ces attaques mais il existe de multiples façons de contourner ces lignes de défense; sans parler des problèmes de failles logicielles qu'un attaquant avisé pourra exploiter à son avantage. Bien souvent, il est nécessaire d'analyser les fichiers de log produits par les sniffers ( "mouchards" ) pour détecter les attaques . Pour des réseaux à forte fréquentation, cette tâche peut s'avérer extrêmement fastidieuse voire impossible pour un opérateur humain . Cependant, en raison de la structure des attaques sur TCP/IP, il est possible de dégager des "signatures" caractérisant très précisément ces attaques, permettant l'utilisation d'outils de recherche de motifs dans les fichiers de log.
+<P align=justify>
+Il faut tout de même être conscient du fait que les outils de recherche de motifs ne peuvent pas être utilisés "tels quels" : en effet, les logs représentent des fichiers de très grande taille et de nombreuses signatures différentes sont envisageables selon ce que l'on veut détecter . Il faut donc pouvoir s'assurer que les outils de recherche sont bien optimisés pour cette tâche en termes d'utilisation des resources telles que la mémoire; voire leur adjoindre des fonctionnalités complémentaires s'ils ne suffisent pas . Enfin, l'efficacité d'un système de détection d'intrusion, de façon générale, dépend de sa configurabilité ( ie possibilité de définir de nouvelles spécifications d'attaques et de les rajouter ), de sa robustesse ( ie sa résistance aux "plantages" ) et de la faible quantité de "faux-positifs" ( fausses alertes ) et de "faux-négatifs" ( attaques non détectées ) qu'il génère .
+<P>
+<hr>
+<P>
+<h2>Etat de l'art</h2>
+<P>
+<h3>Qu'est ce que la détection d'intrusion ?</h3>
+<P align=justify>
+D'après la définition mentionnée dans la <A HREF="faq">FAQ IDS</A>, la détection d'intrusion consiste en un processus de découverte et d'analyse de comportement hostile dirigé contre un réseau. Actuellement deux types de systèmes de détection d'intrusion existent et ont des champs d'action complémentaires : les systèmes orientés réseau ( ou Network based Intrusion Detection software, soit NIDS ) et les systèmes orientés poste ( Host based IDS, ou HIDS ) .<P align=justify>
+Les systèmes orientés poste ont pour rôle de déterminer si un ordinateur donné est en train d'être attaqué ou si celui-ci a déjà été attaqué, résultant en une compromission de la sécurité et de l'intégrité du système . La surveillance après attaque se fait généralement par analyse des fichiers présents sur la machine . Les principaux produits sur le marché considérés comme des HIDS sont Tripwire ( logiciel comparant les sommes de contrôle - checksums - des fichiers sensibles avec les valeurs calculées pour un état "sain" ), les logiciels d'anti-virus, les logs système come syslog ...<P align=justify>
+Les système orientés réseau s'occupent de surveiller le trafic sur le réseau en confrontant les paquets détectés à un ensemble de signatures ou de règles . Si les règles sont violées ou si une signature s'applique, le NIDS enregistre l'événement comme une attaque . Les principaux produits utilisés par la communauté informatique sont Snort, Real Secure de ISS, et Network Flight Recorder . 
+<P align=justify>
+Les systèmes de détection d'intrusion comportent des éléments communs ( modèle CIDF, <A HREF="http://seclab.cs.ucdavis.edu/cidf/">Common Intrusion Detection Framework</A> ):
+<uL>
+<LI><P align=justify> Un <b>générateur d'événements</B>, c'est l'élément qui envoie des informations sur le système à surveiller . Le générateur joue donc le rôle de "senseur" pour le système de détection d'intrusion . Pour l'analyse de logs, c'est typiquement le logiciel qui génère ces logs . Notons que le générateur d'événements peut agir en "temps réel", si celui-ci est par exemple couplé à un sniffer . L'analyse se fera alors pratiquement "à chaud" .
+<LI><P align=justify>un <b>moteur d'analyse</b> ou "A-box", dont le rôle est de manipuler les données envoyées par le générateur d'événements dans le but de détecter une attaque .
+<LI><P align=justify>un <b>système de stockage</b>, ou "D-box", permettant de conserver une trace des événements que le moteur d'analyse a considéré comme étant hostiles .
+<LI><P align=justify>éventuellement, un <b>générateur de contre-mesures</B> ( "C-Box" ), visant si cela est possible à contrer une attaque en cours . Bien sûr, ce type d'élément n'a d'utilité que si la détection d'intrusion se fait en temps réel, au moment même où l'attaque a lieu . 
+</UL>
+<center><img src="CIDF.gif"><br>
+<font size= -1>modèle CIDF et interactions entre composants d'un système de détection d'attaques contre les scripts CGI </font></center>
+<P>
+<H3>Approches comportementales</h3>
+<P align=justify>
+La détection d'intrusion a pour but de relever un comportement hostile . Il faut donc initialement définir ce qu'on entend par "comportement hostile" . Deux grandes approches existent pour conceptualiser ceci : la détection par anomalie ( anomaly detection ) et la détection par mauvaise utilisation ( misuse detection ) .
+<UL>
+
+<LI><P align=justify>La détection par anomalie consiste à considérer comme hostile tout ce qui n'est pas normal, au sens où on cherchera plutôt à bien définir ce qu'est un comportement normal sur le réseau pour pouvoir y opposer toute déviance, que l'on considérera comme étant une attaque ( "si ce n'est pas normal, alors c'est dangereux" ). Cette approche comprend donc deux phases :
+<UL>
+<LI><P align=justify>Extraction d'informations sur le milieu, afin de définir la "normalité",
+<LI><P align=justify>Etablir les limites de la "normalité", au-delà desquelles le comportement est nécessairement anormal .
+</UL>
+La détection par anomalie reviendra donc à repérer tout ce qui sortira du cadre de la normalité .
+<LI><P align=justify>Par opposition, la détection par mauvaise utilisation considère comme normal tout ce qui n'est pas hostile : ici il est impératif de bien connaitre les attaques possibles et le mot d'ordre est plutôt " si ce n'est pas dangereux, alors c'est normal" . Si la détection par anomalie a l'avantage de pouvoir détecter des attaques pas forcément connues ( et donc nécessairement non relevées par l'approche par mauvaise utilisation ), la détection par mauvaise utilisation assure cependant que ce qui est relevé par le moteur d'analyse est une attaque avec une plus forte probabilité que pour l'approche précédente ( la détection par anomalie amène nécessairement un grand nombre de fausses alertes ). La détection par mauvaise utilisation est d'autre part moins "lourde" à mettre en application, puisqu'elle ne nécessite pas de phase de renseignements sur le milieu avant d'être opérationnelle ( cette opération peut de surcroit s'avérer coûteuse en temps et à renouveler fréquemment ) .
+</UL>
+<h3>Développements actuels en détection d'intrusion</h3>
+<P align=justify> 
+Pour implémenter ces approches, différentes méthodes sont actuellement développées et utilisées :
+<UL>
+<LI><P align=justify>Système expert: il s'agit d'un système corrélé à une base de connaissances établie par des experts humains, offrant des possibilités de résoudre des problèmes ou au moins de fournir une aide à la décision . De façon générale, le système utilise la base de connaissances sous forme de règles, dont l'activation provoque la détection d'une attaque ou éventuellement l'appel de nouvelles règles ( structure de type "si règle n°1 alors règle n°2 ..." ) . Il est ici crucial de pouvoir assurer la maintenance de la base de connaissances, et il est à noter que la qualité de cette base dépend grandement de l'expert humain qui la définit .
+<LI><P align=justify>Langage de spécifications : cette méthode consiste en des déclarations d'événements en cours, complétées par un ensemble de règles, de la forme "motif -> action" ( si motif est détecté, alors le système provoque action ). Une fois établies en fonction de ce qui est observé ( les déclarations gardent une trace sous forme d'arguments des spécificités de l'événement ), les déclarations d'événements sont confrontées aux motifs . Le langage défini permet de rendre plus complexe les motifs utilisés par composition séquentielle, possibilité de tenir compte de contraintes temporelles, etc ...  
+<LI><P align=justify>Système à scénarios : le système compare ce qu'il observe à un ensemble de scénarios  prédéfinis ( par exemple des attaques se déroulant en plusieurs étapes )  . L'analyse consiste en la détection de l'étape du scénario en cours, puis à faire l'hypothèse de la prochaine étape que l'on devrait rencontrer si ce scénario est effectivement en cours d'application . Le système tente alors de détecter cette prochaine étape dans les données qu'il possède. Au fur et à mesure que les données sont analysées, le système tient à jour les probabilités d'occurence de chaque scénario . Ici encore, la définition des scénarios est une étape cruciale .
+<LI><P align=justify>Analyse par automates : les attaques sont considérées comme des suites de transitions d'états du système surveillé . Les états dans le motif d'attaque correspondent aux états du système et sont associés  à des tests logiques qui doivent être validés avant de passer à l'état suivant . Les états successifs sont reliés entre eux par des arcs correspondants aux conditions requises pour changer d'état .
+<LI><P align=justify>Analyse par graphe : il existe certaines attaques sur les réseaux tels que les worms ( programmes se propageant de façon autonome de machine en machine, et utilisant chaque machine contaminée comme "base de lancement" et pour une tâche définie par l'attaquant : calcul parallèle, ou bien tout simplement désactivation de la machine ) dont l'activité est facilement représentable par un graphe de structure caractéristique ( structure en arbre ou en éventail ) . L'idée de l'analyse par graphe est donc de construire un graphe représentant les activités et les machines sur le réseau à protéger : si le graphe présente une structure similaire à celle d'une attaque, alors le réseau est probablement soumis à une activité hostile. Le type d'attaques que cette méthode permet de détecter est cependant limité ( sweeps, worms ) .
+<LI><P align=justify>Intelligence artificielle : l'utilisation d'outils capables de s'auto-configurer tels que les réseaux neuronaux permet de faciliter le travail des opérateurs humains, notamment dans le domaine de la classification. Cette méthode est donc particulièrement indiquée si on a choisi l'approche par détection d'anomalie . De plus ce système est assez flexible par rapport aux modèles utilisant des signatures, ce qui permet de détecter de légères variations dans les attaques . L'inconvénient majeur est la puissance de calcul nécessaire pour utiliser de tels outils ( notamment pour établir un modèle de convergence pour le réseau de neurones ).
+</UL>
+Pour ce projet, nous avons choisi d'utiliser l'approche par détection de mauvaise utilisation . Ce choix se justifie par le fait que les attaques sur les protocoles TCP/IP sont bien connues et conceptuellement assez simples. La méthode choisie est proche de celle de langage par spécification . Dans l'avenir, il est possible que le projet évolue de façon à se placer en position "hybride", utilisant plusieurs aspects de méthodes différentes .
+<P>
+<hr>
+<P>
+<H2> les attaques sur TCP/IP : généralités</H2>
+<P align=justify>
+<H3>Présentation rapide de TCP/IP</h3>
+<P align=justify>
+La suite de protocoles <I>Transmission Control Protocol/Internet Protocol</I> tient lieu de standard mondial pour les communications sur les réseaux entre machines . Le modèle sous-jacent est un modèle de communication en couches, présentée de la plus "haute" à la plus "basse" :
+<UL>
+<LI><P align=justify>Couche Application : il s'agit de la couche la plus haute. Généralement, l'implémentation de cette couche est assurée par les logiciels présents sur les machines faisant office de clients ou serveurs ( navigateur web, etc ... ).
+<LI><P align=justify>Couche Transport : cette couche gère les détails de la connexion entre deux machines communicantes, et s'occupe notamment d'assurer que les données arrivent à bon port . La couche Transport comprend deux protocoles : TCP est un protocole dit sûr car il dispose de mécanismes de contrôle de transfert des données ( sommes de contrôles, numéros d'acquittement .. ), et est utilisé pour les connexions entre deux machines où il est inacceptable que des données soient perdues ; UDP ( pour User Datagram Protocol ) est un protocole de transfert plus rapide mais on ne peut garantir que des données ne seront pas perdues en cours de route .
+<LI><P align=justify>Couche Réseau ( ou couche IP ) : cette couche s'occupe de transmettre les données de la source à la destination, étape par étape; une étape pouvant être une passerelle comme un routeur .
+<LI><P align=justify>Couche Physique : la couche la plus basse s'occupe des communications entre une machine et le support physique auquel elle est reliée . Cette couche est souvent Ethernet . 
+</UL>
+<center>(dessin de la structure en couches)<br><font size=-1>structure en couche : exemple du navigateur web</font></center>
+<br>
+Dans le cadre de ce projet, nous nous intéresserons donc aux attaques dont le champ d'action ou le médium se trouve dans la couche Transport ou la couche Réseau. Beaucoup d'attaques portent également sur la couche applicative, mais elles sont très différentes de celles décrites ici .
+<P align=justify>
+La structure en couches de TCP/IP induit le concept d'encapsulation de paquets : chaque couche de la source est supposée envoyer des données à la couche correspondante de la destination . Ces données se présentent sous la forme de paquets, chacun comprenant les données utiles précédées par un en-tête ( l'en-tête fournit des informations à la couche tandis que les données peuvent être entrées par l'utilisateur, comme une requête HTTP par exemple ) . Or les couches ne peuvent discuter directement, puisqu'elles sont empilées . Ainsi, la couche application de la source doit d'abord passer son paquet à la couche Transport, qui utilisera celui-ci en tant que données utiles et y rajoutera son propre en-tête, et ainsi de suite jusqu'à la couche physique . On obtient une sorte de "poupée russe" qui sera dépilée par la machine faisant office de destination : les informations contenues dans les en-têtes respectifs sont analysées et les données sont passées à la couche supérieure pour traitement ultérieur; d'où la notion d'encapsulation . A priori les informations contenues dans un en-tête d'une couche donnée ne sont pas redondantes avec celle de l'en-tête d'une autre couche, si bien que chaque couche reste indépendante l'une de l'autre . Cette propriété offre des possibilités d'attaques comme nous le verrons par la suite .
+<P align=justify>
+TCP/IP comprend trois protocoles principaux : TCP et UDP, qui se situent au niveau de la couche transport; et ICMP ( Internet Control Message Protocol ) qui se situe au niveau IP . UDP est un protocole sans connexion et sans garantie d'arrivée des paquets . Il en résulte une plus grande rapidité mais avec sans garantie que toutes les données arrivent comme prévu. Ce protocole est donc plus adapté aux transmissions à courte distance, comme dans les intranets par exemple . Par opposition, TCP est un protocole orienté connexion, cette connexion établie entre la source et la destination permettant d'assurer que toutes les données ont bien été transmises . La connexion TCP est établie lors du handshake TCP où les machines s'échangent leurs numéros d'acquittement initiaux respectifs . Par la suite, chaque paquet TCP contient ces deux numéros d'acquittement ( et un "flag" Acknowledge ), incrémentés selon la taille des données envoyées, ce qui permet de déterminer exactement où en est le transfert de données : chaque paquet qui n'a pas été "acquitté" est réémis par sa source. TCP assure de cette façon que tous les paquets envoyés sont reçus . ICMP est un protocole de "debugging" des réseaux : il est utilisé par les routeurs pour informer une source d'un problème de communication avec une machine distante, ou bien pour vérifier qu'une machine est atteignable sur le réseau ( le fameux "ping" ) . Le traffic ICMP peut être broadcasté ( ie être destiné à toutes les machines d'un réseau en même temps ), ce qui peut être utilisé dans une optique d'attaque .
+<P>
+<h3>les différents types d'attaque</h3><P align=justify>
+Lorsque l'on crée un outil, on n'a pas forcément conscience que celui-ci peut quelquefois être utilisé à des fins très différentes de celles prévues au départ. Ainsi, de même qu'un marteau sert initialement à enfoncer des clous mais peut également être utilisé pour provoquer des dommages physiques sur une personne, il existe des utilisations détournées de TCP/IP permettant de mener des "attaques" contre des machines ou des réseaux entiers . Nous nous intéresserons ici aux attaques que l'on peut mener via ou sur les couches Transport et IP . Ces attaques sont de trois types: <UL>
+<LI><P align=justify> Reconnaissance : ces attaques ne sont pas "destructrices" au sens où elles empêchent une entité de fonctionner correctement, mais permettent d'acquérir des informations parfois cruciales pour mener une attaque de plus grande envergure plus tard. Il s'agit notamment<UL>
+	<LI><P align=justify> des PORT SCANS ( scanning de ports ) qui permettent de savoir quels services sont actifs sur un poste donné. Certains scanners comme <A HREF="http://www.insecure.org/nmap">nmap</A> ou queso permettent en plus de détecter le type de système d'exploitation présent sur la machine ( soit par interrogation directe des démons : le "banner grabbing", soit par analyse de la structure des paquets : par exemple les paquets provenant d'une machine sous BSD ont des TTL fixés à 64 )
+	<LI><P align=justify> des SWEEPS ( balayage ) qui permettent de détecter quelles machines sont actives sur le réseau, ce qui permet de dresser une carte de cibles potentielles. Ces balayages sont généralement effectués à l'aide de requêtes ICMP ( "ping" ) .
+	<LI><P align=justify> solution "hybride" : il s'agit d'un balayage effectué sur un port particulier ( par exemple, on contacte toutes les machines du réseau sur le port 25 ) . L'attaquant cherche à déterminer quelles machines ont un certain type de service activé . Ces scans hybrides sont par conséquent utilisés couramment pour détecter les machines infectées par un trojan ( en général le port est supérieur à 1024), ou bien si une faille existe sur le service visé .
+	</UL>
+<LI><P align=justify> Déni de Service ( DoS ou Denial-of-Service ) : l'équivalence de ce genre d'attaques dans "le monde réel" serait les attentats terroristes. Il s'agit d'empêcher par tous les moyens les utilisateurs de se servir de ressources disponibles en temps normal. Ces attaques sont à but purement "destructeur", au sens où une telle attaque ne permet pas à l'attaquant de compromettre une machine ni de voler des informations ( bien que dans certains cas, l'attaque vise à désactiver le système de détection d'intrusion -par exemple l'attaque "stick", laissant théoriquement le champ libre à l'attaquant ). De telles attaques sont souvent très simples à mettre en place et donnent une sensation de puissance à l'attaquant ( il a la faculté de bloquer un service selon son bon vouloir ), ce qui explique leur fréquence. Ces attaques sont loin d'être bénignes pour des entités dont la source de revenus est la mise à disposition d'un service sur le réseau ( E-Commerce ... ). Les DoS peuvent quelquefois cacher aussi des attaques plus élaborées ( par exemple être le prélude à une attaque de type "Mitnick", ou bien attirer l'attention ... ). Enfin, la tendance actuelle à la parallélisation avec des outils comme Trinoo, TFN ou StachelDraht, des Dénis de Service ( machines "zombies" coordonnées par un serveur qui leur indique à quel moment lancer une attaque globale dévastatrice ) rend cette menace très sérieuse. Lors de l'attaque du début de l'année 2000 menée par "mafia boy" contre les principaux bastions du cybermonde ( yahoo, cnn et e-bay ), on a ainsi mesuré une dégradation de performance de l'internet au niveau mondial d'environ 20% . Ces sites, pourtant préparés à une très forte demande, se sont vus submergés par une demande équivalente à un an de connexions en quelques heures... (<center><B>placer dessin ici : DDOS</B></center> ) Les différents types de dénis de service sont :<UL>
+	<LI><P align=justify> Consommation de bande passante : par <I>inondation</I> du réseau en utilisant la "force pure" ( par exemple un réseau muni d'une connexion de type T1 - 1.5 Mbps - inondant un modem à 56 kbps ) ou une méthode d'amplification ( voir l'attaque <I>smurf</I> )
+	<LI><P align=justify> Consommation de ressources : l'attaque vise à "brûler des cycles" sur la machine en faisant travailler le processeur pour rien, à occuper tout l'espace mémoire disponible ... en somme l'attaque vise les ressources du système plutôt que les ressources du réseau.
+	<LI><P align=justify> Failles dans les programmes : certains systèmes d'exploitation ne savent pas bien gérer les paquets inhabituels ( non prévus dans les RFC ) ou bien ne réagissent pas bien selon les stimulus . Ceci donne des attaques de type <I>teardrop, land ,WinNUKE</I> ...
+	<LI><P align=justify> Attaques sur DNS et Routage : pirater un cache de DNS ayant autorité pour une machine donnée peut empêcher quiconque souhaitant contacter cette machine d'y accéder, ou pire l'envoyer sur une machine-leurre . De telles attaques ont lieu souvent et peuvent servir par exemple à récupérer des mots de passe ou des numéros de carte de crédit si le site touché est un portail de e-business. Le dessin suivant illustre ce type d'attaque :
+<center><img src="dns-poisoning.jpg"><br><font size=-1>
+#1 le client souhaite se connecter au serveur web de microsoft, il interroge donc le serveur DNS de Microsoft pour connaitre l'IP associée à www.microsoft.com<br>
+#2 l'attaquant a piraté le cache de DNS associé à microsoft, de façon à ce que l'adresse IP associée à www.microsoft.com soit en fait celle de www.hacker.com<br>
+#3 le client est connecté à www.hacker.com en pensant être connecté à www.microsoft.com
+</font></center><br>
+De même, donner de fausses informations de routage à une machine peut l'empêcher d'accéder à des ressources, voire la bloquer complètement ( attaque <I>WinFREEZE</I> )
+	</UL>
+<LI><P align=justify>Détournement de connexion : par définition ces attaques ne concernent que TCP. Les attaquants utilisent une faille dans le modèle en couches de TCP/IP, à l'aide de la technique dite de <I>prédiction de Sequence Number</I>. Un attaquant se présente comme une machine autre ( généralement une machine en laquelle la victime a "confiance", et qui a été mise hors service ) et envoie sous cette identité un paquet de synchronisation de connexion ( première étape du "3-way handshake" de TCP ). La victime envoie son paquet de reconnaissance ( SYN/ACK ) avec son Sequence Number. Ce paquet ne peut être intercepté par l'attaquant en général, mais si celui-ci envoie un dernier paquet (ACK) avec son adresse réelle, en ayant deviné le SN de la victime correctement, alors la connexion sera établie <b> par l'attaquant </b>, et la victime croira avoir affaire à l'autre machine ( celle en qui elle a "confiance" ) . Cette attaque permet de contourner les barrières comme les mots de passe: on attend que l'une des victimes ait établi une connexion complète et se soit authentifié avant de se faire passer pour lui .
+<center><B>(dessin ici : Mitnick Attack)</B></center>
+ Le problème vient du fait que les couches IP ( contenant l'adresse source) et TCP ( contenant le SN ) ne communiquent pas entre elles. D'une façon générale, ce type d'attaque peut être réalisée à n'importe quel moment, à la condition que le numéro d'acquittement ( Acknowledger number) et le numéro de séquence ( le Sequence Number ) soient connus ou correctement devinés. Sur les réseaux locaux en architecture "shared" ( c'est à dire tout le monde voit passer tous les paquets de tout le monde sur le même sous-réseau ), il est donc possible de "sniffer " un paquet contenant les numéros en cours, et en étant suffisamment rapide, envoyer un paquet "piégé" ayant un SN correct mais originaire d'une machine pirate .Concrètement, cependant, la connexion pirate ne peut durer longtemps : la machine pirate va recevoir des paquets "ack" confirmant la réception des paquets piégés sans comprendre pourquoi ( les paquets piégés ont été "fabriqués" au niveau logiciel, avec un SN ne correspondant pas à celui en cours de la machine ), ce qui aura pour conséquence l'émission de paquets RST . De même, la connexion originelle devrait prendre fin en raison de la désynchronisation des numéros d'acquittement. En pratique, on peut s'amuser à détourner une connexion sur un réseau "shared" à l'aide de programmes comme <A HREF="http://lin.fsid.cvut.cz/~kra/index.html#HUNT">Hunt</A> ou Juggernaut . Hunt annonce des performances similaires sur réseau "switché", à l'aide de méthodes plus subtiles .</UL>
+<hr>
+<P>
+<H2>Descriptions et signatures des principales attaques</H2>
+<P align=justify>
+La notation s'inspire des expressions régulières ... ainsi {a,b} veut dire "soit a, soit b" et [ a - b] " n'importe quel élément entre a et b". && et || sont respectivement le ET et OU logiques.
+<P align=justify>
+Pour les signatures exactes, consulter le fichier signaturs.pl dans le repertoire <A href="/logre/">logre.</A> 
+<P align=justify>
+Explicitons tout d'abord le format de sortie des " sniffers " ( convention TCPdump ) :
+<P align=justify>
+<B>-TCP</B>
+<P align=justify>
+<I>Timestamp src.sport > dst.dport : flags data-seqno ack window urgent options</I>
+<P align=justify>
+où flags est un sous-ensemble non-vide de FLAG = { S ( SYN ), F ( FIN ), P (PUSH ), R ( RST ) , . ( NOFLAG : pas de flag activé )} 
+<P align=justify>data-seqno est de la forme Start-SN :End-SN( End-SN - Start-SN )
+<P align=justify>ack Vaut soit ACK ack-num ou est vide (¤). Idem pour urgent : URG ou vide (¤).
+<P align=justify>La principale option qui nous intéresse est l'option de fragmentation : (frag ID :size@offset{+, ¤}) ( le + indique que le paquet n'est pas complet )
+<P align=justify>
+L'en-tête TCP contient des champs "réservés" pour une éventuelle mise à niveau du protocole . Si les bits correspondants sont activés, le sniffeur renvoie un message d'erreur ( le paquet TCP est non valide ) .
+<P align=justify>
+<B>-UDP</B>
+<P align=justify>
+<I>timestamp src.sport > dst.dport : udp data</I>
+<P align=justify>
+<B>-ICMP</B>
+<P align=justify>
+<I>timestamp src > dst : icmp : message</I>
+<P align=justify>
+Les champs laissés par défaut ou omis peuvent prendre n'importe quelle valeur. On omettra en particulier le champ timestamp pour les attaques ponctuelles.
+<P>
+<H3>Attaques ponctuelles</H3> 
+<P align=justify>
+Les attaques dites "ponctuelles" sont celles détectables sans problème sur une seule ligne du fichier de log . La plupart de ces attaques consistent en un seul paquet très particulier ( au sens où il est aisément identifiable ), les autres sont basées sur la répétition ( en vue d'une <I>inondation</I> ) d'un paquet anormal, ce qui rend par conséquent leur détection possible sur un seul paquet. On trouve une bonne description des paquets anormaux les plus communs dans l'article de <A HREF="#fredericks">Karen Frederick</A>.
+<P>
+<h4> TCP :</h4>
+<P align=justify>
+-LAND
+<P align=justify>L'attaque consiste à envoyer un paquet où la source et la destination sont les mêmes : certains systèmes d'exploitation ne savent pas gérer ce type de paquets et on assiste à un "plantage".
+<P align=justify>src.sport > src.dport
+
+<P align=justify>
+-BROADCAST TCP
+<P align=justify> tcp est un protocole orienté connexion, un broadcast n'a pas lieu d'être.
+<P align=justify>src.sport > [ 0 - 255 ].[ 0 - 255 ].[0 - 255 ].{0,255}.dport
+<P align=justify>
+-ATTAQUES SUR PORTS
+<P align=justify>tentative d'atteindre des ports interdits ou suspects : 0, ports typiques utilisés par les chevaux de troie ... Cette signature est parmi les plus vulnérables ( voir "les limites du modèles" )
+<P align=justify>src.sport > dst.{0, 31337, ...}  ( une liste de ports se trouve <A HREF="http://www.simovits.com/nyheter9902.html">ici</A>, une autre est accesible dans le répertoire <A href="/logre/">logre</A>)
+<P align=justify>
+- WinNUKE
+<P align=justify>Cette attaque provoque un écran bleu sur les machines windows : le système ne sait pas gérer les paquets "urgents" destinés au port netBIOS sous certaines conditions.
+<P align=justify>src.sport > dst.139 : flags data-seqno ack Window URG
+<P align=justify>
+- CRAFTED PACKETS
+<P align=justify>Ces paquets sont construits de toutes pièces, en s'éloignant délibérément des spécifications décrites dans les RFC. Les réactions des OS devant de tels paquets sont donc souvent imprévisibles . Dans le meilleur des cas, ces paquets sont ignorés, sinon ils constituent un outil de choix pour le scanning car il ne sont pas mentionnés dans les logs du système ( seul un sniffer peut les détecter ).
+<P align=justify>Src.sport > dst.dport : S && Flag data-seqno ack window urg 
+<P align=justify>
+Où Flag est un sous-ensemble non vide de { F ( FIN ), P (PUSH ), R ( RST ) }
+<P align=justify>(cas particulier : XMAS PACKETS -> Flag = { F ( FIN ), P (PUSH ), R ( RST ) } et urg = URG et ack = ACK ack-num)
+<P align=justify>
+Src.sport > dst.dport : S data-seqno ack window URG
+<P align=justify>
+src.spot > dst.dport : . data-seqno ¤ window ¤ ( paquet NULL )
+<P align=justify>
+- SYN FRAG
+<P align=justify>les paquets de synchronisation de connexion ne devraient jamais être fagmentés, vu leur taille .
+De façon générale, tout paquet fragmenté au niveau de l'en-tête ( size < 20 octets ) est hautement suspect. Il peut s'agir d'un moyen d'échapper aux règles d'accès des firewalls qui ne font pas de reconstruction des paquets en transit : le paquet que voit passer le firewall est destiné à un port autorisé par la liste de contrôle d'accès ( ACL ), mais lorsque la machine de destination reconstruira le paquet, le port originel peut être "chevauché" par les données d'un paquet, et donc être remplacé ( voir attaque "teardrop"). Plus simplement, la fragmentation peut servir à duper les IDS effectuant un simple pattern matching sur les paquets, à la recherche d'une signature donnée . La fragmentation permet ainsi de "diluer" dans la masse l'attaque, ou encore de la "brouiller" et la rendre indétectable par pattern matching simple ( voir <A HREF="#hoglund">l'article</A> de Hoglund pour des exemples )
+<P align=justify>Src.sport > dst.dport : S data-seqno ack window (frag ID :size@offset{+, ¤})
+<P align=justify>
+<center>(<B> placer dessin ici</B> )</center>
+<P align=justify>
+- SYN + DATA
+<P align=justify>Il peut s'agir d'une tentative d'échapper à la détection : il n'est pas prévu dans les RFC que des données circulent lors du handshake. Certains IDS ne s'occupant pas des paquets contenant des données, ces paquets anormaux passent à travers les filtres .
+<P align=justify>Src.sport > dst.dport : S Start-SN : !Start-SN 
+<P align=justify>(ie End-SN différent de Start-SN)
+<P>
+<P>
+<h4>UDP :</h4>
+<P align=justify>
+- ECHO-CHARGEN :
+<P align=justify>Cette attaque revient à établir une boucle infernale faisant converser indéfiniment les ports echo (service renvoyant les caractères qu'on lui présente en entrée) et chargen ( service générateur de caractères aléatoires ). Ce genre de traffic étant hautement inhabituel, l'attaque est détectable avec un seul paquet, même si elle s'apparente à une attaque par flooding donc temporelle .
+<P align=justify>(Src.7 > dst.19 || src.19 > dst.7 ) : udp
+<P align=justify>
+- FRAGGLE-AMPLI
+<P align=justify>L'attaque fraggle ( de même que l'attaque smurf, voir plus bas ) permet à tout un chacun d'utiliser de grosses ressources pour frapper la victime, sans pour autant les posséder . L'idée sous-jacente est d'envoyer une requête quelconque au nom de la victime auprès d'un réseau choisi qui servira "d'amplificateur" . Ainsi, la victime recevra les réponses (non sollicitées ) d'un réseau entier, ce qui peut représenter un grand nombre de paquets à traiter d'un seul coup, entrainant ainsi un Déni de Service . Bien entendu, les paquets d'initiation de l'attaque étant "maquillés" dès le départ, il est fort improbable que l'attaquant soit retrouvé .
+<P align=justify>Src.sport > [0- 255].[0 - 255].[0 - 255].{0,255}.{19,7} : udp
+<P align=justify>
+Ici src est la victime ... et le réseau visé va faire office d'amplificateur d'attaque . Dans notre cas , la signature peut être allégée en indiquant simplement l'adresse broadcast du réseau protégé.
+<P align=justify>
+- FRAGGLE-VICTIME
+<P align=justify>idem, mais cette fois-ci dst est la victime .
+<P align=justify>Src.{19,7} > dst.dport : udp
+<P align=justify>
+Ce pattern sera détecté n = m * r fois, où r est la taille du réseau amplificateur et m le nombre de requêtes envoyé par l'attaquant . On voit bien ici comment le réseau amplificateur permet d'accroitre linéairement l'ampleur de l'attaque.
+<P>
+<P>
+<h4>ICMP :</h4>
+<P align=justify>
+- WINFREEZE
+<P align=justify> Cette attaque consiste à envoyer des informations de reroutage erronnées à la victime, notamment en lui faisant "croire" que la victime est elle-même la prochaine étape sur la route vers la destination voulue . Ainsi, lorsque la victime souhaite contacter cette destination, une boucle se crée avec les conséquences attendues : un Déni de Service .
+<P align=justify> Src > dst : icmp : redirect IP to host dst
+<P align=justify>
+- SMURF-AMPLI
+<P align=justify>Il s'agit d'une attaque de type Fraggle, version ICMP .
+<P align=justify>src > [ 0 - 255 ].[ 0 - 255 ].[0 - 255].{0,255}:icmp: echo request
+<P>
+<hr>
+<P>
+<H3>Attaques temporelles</H3>
+<P align=justify>
+Sous cette désignation, sont regroupées toutes les attaques dont la trace dans les fichiers de log est répartie sur plusieurs lignes ( ie paquets ) parce que les paquets qui composent ces attaques, pris individuellement, sont plus ou moins inoffensifs : les attaques temporelles à proprement parler ( scans, balayages et flooding ), pour lesquelles existent un seuil de tolérance ( nombre de connexions maximum autorisé avant de considérer qu'il s'agit d'une attaque ); et les attaques par fragmentation ( attaques impliquant un seul paquet mais découpé en plusieurs morceaux, telles que Teardrop et Ping of Death ).
+<P>
+<H4>Les Scans</H4>
+<P align=justify>
+Lorsque l'on cherche à attaquer un ennemi, on passe d'abord un certain temps à chercher ses faiblesses pour les exploiter. Les scans ont exactement ce but, puisqu'ils permettent de déterminer d'une part la topologie d'un réseau ( rôle des <I>sweeps</I> ou "balayages" ) et d'autre part quels sont les services actifs sur une machine donnée, les versions de leurs implémentation ( par exemple Sendmail 8.9.3, etc .. ) , voire quel est son système d'exploitation ( <I>port scanning</I> ): il suffira ensuite de se renseigner sur les vulnérabilités des implémentations des services recensés ou du système d'exploitation concerné, puis d'exploiter ces failles tout seul ou à l'aide d'un programme prêt à l'emploi ( si ce programme existe, il se trouve <A HREF="http://packetstorm.securify.com">là</A> ou <A HREF="http://www.securityfocus.com">là</A> ). Le scan fait donc office de <B>reconnaissance du terrain</B> avant l'assaut.
+<H5>scan "basique"</H5><P align=justify>
+L'attaquant envoie des paquets SYN vers les ports qui l'intéressent en vue d'établir une connexion complète (le traditionnel handshake ) .
+<center><img src="handshake.jpg"><br>
+<font size=-1>le 3-way handshake de TCP</font></center><P align=justify>
+Dès que le handshake est fini, la connexion est établie, indiquant évidemment qu'un service tourne sur le port visé . L'attaquant est alors libre de clore la connexion, en général sans échange de données . Ce type de scan basique au possible, réalisable à la main avec un client telnet, est cependant des plus mauvais sur le plan de la furtivité, puisque la connexion sera enregistrée dans les logs ( le handshake étant complété ). Or d'un point de vue tactique, il est crucial que la reconnaissance soit furtive : d'abord pour ne pas alarmer la cible et ainsi la prévenir d'une attaque future, et ensuite parce que les traces du scan font remonter à une adresse IP possédée par l'attaquant, permettant une éventuelle identification ( l'attaquant devant récupérer les résultats du scan d'une façon ou d'une autre, l'adresse source utilisée dans le scan n'est pas maquillée et pointe vers une machine détenue - légalement ou non ! - par l'attaquant ). 
+<P>
+<H5>Techniques furtives</H5><P align=justify>
+Pour plus de furtivité, il est nécessaire de faire appel à des techniques plus élaborées, ayant souvent recours à des paquets construits directement par le logiciel de scanning et non plus par le système d'exploitation ( ce qui nécessite, pour pouvoir lancer ce scan, les droits "root" sur la machine ... condition de plus en plus facile à remplir avec le développement des stations personnelles sous linux ) . Les descriptions suivantes sont inspirées du manuel de <A HREF="http://www.insecure.org/nmap">nmap</A>:
+<P align=justify>
+TCP <I>SYN scan</I> ( option -sS avec nmap ):<P align=justify>
+Cette commande fait référence à la technique de scan "mi-ouvert" (half open), car le handshake est entamé mais n'est pas completé. Un paquet avec le flag SYN est envoyé vers la cible, comme lors d'une connexion normale, si ce n'est que le paquet a été "forgé" par le programme et non par le système d'exploitation. Si le port est ouvert chez la cible, celle-ci répond avec un paquet SYN/ACK ( 2e partie du handshake ) . Le système d'exploitation de la machine de l'attaquant détecte ce paquet, considéré comme non sollicité ( puisque la demande de connexion par SYN n'est pas passée par l'OS ), et y répond par un paquet RST, fermant ainsi la connexion avant qu'elle n'ai été établie . Si le port est fermé ( donc inutilisé ), la cible répond par un paquet RST . L' avantage de ce type de scan est qu'il ne sera pas la plupart du temps détecté par la cible ( au sens où la connexion ne sera pas recensée ).
+<P align=justify>
+TCP <I>stealth scan</I> ( options -sX, -sF, ou -sN):
+<P align=justify>
+Ces scans sont encore plus furtifs et consistent en un "mapping inversé", ie on va détecter les ports fermés pour en déduire ceux ouverts. D'après la <A HREF="http://www.isi.edu/in-notes/rfc793.txt">RFC 793</A> décrivant TCP, voici les comportements attendus de la part d'une implémentation TCP, pour un port fermé :
+<UL>
+<LI>les paquets contenant le flag RST sont rejetés.
+<LI>les paquets sans flag RST sont rejetés, et reçoivent en réponse un paquet RST de clôture de connexion.
+</UL><P align=justify>
+L'idée est donc d'envoyer des paquets sans flag RST, et sans ouvrir de connexion, et d'attendre les réponses des ports fermés , pour finalement établir une carte des ports ouverts par déduction . D'où les techniques <I>"FIN scan"</I> ( paquets FIN faisant office de sonde ), <I>"XMAS scan"</I> ( flags FIN, URG, PSH ) et <I>"NULL scan"</I> ( aucun flag activé ) . La furtivité est meilleure puisque aucune connexion n'est réalisée . Ce scan peut aussi permettre de repérer le système d'exploitation de la cible selon la réponse produite ( elle dépend de l'implémentation TCP de l'OS : par exemple ces scans ne marchent pas sur des cibles Windows NT/95 ).
+<P align=justify>
+UDP scan:
+<P align=justify>Il est possible d'utiliser UDP pour scanner les ports, afin de contourner les IDS surveillant le trafic TCP uniquement. Cependant les résultats obtenus sont beaucoup plus aléatoires, UDP étant un protocole sans connexion, ce qui ne garantit pas qu'un paquet lors du scan atteigne toujours la machine cible .
+<P align=justify>
+FTP bounce attack:
+<P align=justify>on utilise ici le fonctionnalité de proxy des serveurs ftp : selon la rfc 959, les serveurs doivnt permettre d'envoyer des fichiers vers n'importe quelle destination sur internet . Ceci laisse le champ libre pour tous types d'attaques, l'attaquant se faisant passer pour le site ftp utilisé pour le rebond .
+<P align=justify>Lorsqu'on veut évaluer la difficulté de détecter un scan, on est confronté à un paradoxe . En effet les scans peuvent être à la fois très faciles et très difficiles à repérer : la détection par signature permet de repérer les scans les plus "bruyants", où une centaine de ports est contactée en moins de 30 secondes. Les scans ayant recours aux techniques furtives décrites plus haut ne sont pas relevés par syslog puisqu'il n'y a pas de connexion établie, mais sont facilement repérables à l'aide d'un sniffeur puisque les paquets sont anormaux . Pourtant, les désavantagse majeurs de la détection par seuil sont:
+<UL>
+<LI><P align=justify><I>comment définir ce seuil ?</I> : il est assez difficile d'établir un seuil, même d'après l'expérience, puisque cela reste assez subjectif ( " combien de connexions est-ce que j'autorise avant de considérer qu'il s'agit d'une attaque ?" ) . Pour le flooding, ces seuils varient également en fonction du port visé. Et une fois que ce seuil est défini ...
+<LI><P align=justify><I>certains "faux négatifs" ne peuvent être évités</I> : un attaquant sera indétectable s'il "délaie" suffisamment son attaque pour passer en dessous du seuil; ou bien s'il "parallélise" son scan en utilisant plusieurs machines.
+</UL>
+La difficulté est donc de trouver un bon compromis au niveau du seuil afin de limiter le nombre de ces "faux négatifs". Malheureusement, on peut être sûr que les scans non détectés proviennent des adversaires les plus dangereux : ceux qui connaissent les failles des systèmes de détection .
+<P>
+<H3>les signatures des attaques</H3>
+<P align=justify>
+Ici la difficulté, d'un point de vue algorithmique, est qu'il faudrait faire appel à des "meta-patterns" pour modéliser ces attaques. Voici quelques exemples :
+<P align=justify>
+- PORT SCAN ( déterminer les services présents sur une machine )
+<P align=justify>Time1 src.sport1 >dest.dport1  && ( 0 ou plusieurs entrées quelconques ) &&
+<P align=justify>... && ( 0 ou plusieurs entrées quelconques ) &&
+<P align=justify>Timen src.sportn > dest.dportn
+<P align=justify>
+Avec Timen - Time1 < 1000 ms et dport1 != ... != dportn . n correspond au nombre maximal de ports "scannables" avant de considérer qu'il s'agit d'une attaque.
+<P align=justify>
+- MITNICK ATTACK (TCP) ( camouflage d'IP )
+<P align=justify>PORT SCAN sur dport &&
+<P align=justify>Time1 src1.sport1 > dest.dport : S && ( 0 ou plusieurs entrées quelconques ) &&
+<P align=justify>Time2 src2.sport2 > dest.dport : flags data-seqno ACK
+<P align=justify>
+La signature décrit ici "l'attaque historique" menée par Kevin Mitnick contre le réseau de Tsutomu Shimomura, du point de vue de la machine attaquée ( dest ). Dans ce cas particulier, il existait une " relation de confiance " ( . rhosts ) entre src1 et dest.On préférera la signature "TCP HIJACK" pour une détection plus générale des détournements de connexion.
+<P align=justify>
+- STICK ( désactivation à distance de certains NIDS par déni de service )
+<P align=justify>Time1 src.sport1 >dest.dport R && ( 0 ou plusieurs entrées quelconques ) &&
+<P align=justify>... && ( 0 ou plusieurs entrées quelconques ) &&
+<P align=justify>Timen src.sportn > dest.dport R
+<P align=justify>
+Timen - Time1 < 1000 ms.
+<P align=justify>
+Contrairement aux attaques ponctuelles et assimilées, la détection dans les logs des attaques temporelles devrait obligatoirement se faire en analysant plusieurs lignes ( comme on l'a vu plus haut, certaines attaques ponctuelles qui sont en fait du flooding sont facilement détectables en raison du port utilisé, etc ... ). Pour éviter d'utiliser des motifs trop lourds, une alternative intéressante est de faire appel à une structure réactive : chaque fois que nous rencontrons un paquet qui pourrait faire partie d'une attaque, la structure évolue jusqu'à atteindre un niveau critique déclenchant une alerte . Concrètement, ce niveau critique peut être un seuil de caractérisation de flood ou de scan, ou bien une taille totale pour un paquet fragmenté ... Nous associons donc à chaque type d'attaque un objet la décrivant, et une instance sera créée à chaque fois qu'une attaque est potentiellement en cours, faisant office de "mémoire" . Ces objets héritent des classes suivantes, construites pour refléter la structure des logs TCPdump ( j'ai omis les constructeurs ) :
+<pre>classe ICMP  {
+	string icmp_type;
+	}
+
+classe TCP {
+	list of strings flags;
+	// flags est un sous-ensemble de { SYN,FIN,PSH,URG,ACK,RST } ou bien vide
+	list of ints data-seqno;
+	// data-seqno = { Start-SN ;End-SN ]
+	int acknum;
+	// si le flag ACK n'est pas activé, acknum = -1
+	}
+classe TCP_FRAG héritant de TCP {
+	int fragID;
+	int size;
+	int offset;
+	boolean more;
+	// indique si le bit "More Fragments" est activé
+	}
+</pre>
+<P align=justify>
+Dans l'optique d'une utilisation pour la détection d'intrusion par signatures,  je ne définis pas de super-classe PAQUET ou UDP . En effet, les objets que j'utiliserai peuvent contenir des listes d'IP ou de ports . J'ai donc fait ce choix par cohérence et souci de ne pas surcharger les structures ...
+<P align=justify>
+Nous avons désormais des classes décrivant la plupart des paquets qu'on aura à filtrer . A partir de là, on peut définir des classes caractérisant les attaques temporelles . Par convention, ces objets sont stockés dans des tables indexées par la caractéristique principale de l'attaque ( cible ou attaquant ) comme par exemple <b>attaque_sur_IP[adresse_attaquant]</B>. Ainsi:
+<P align=justify>
+- PING SWEEP (icmp):<P align=justify>
+Cette "attaque" de reconnaissance consiste à bombarder un réseau de requêtes "ping", afin d'obtenir une carte des adresses actives sur le réseau ciblé .
+<pre>classe PINGSWEEP  héritant de ICMP{
+	string src;
+	// à la construction, icmp_type = "echo request"
+	time heure_de_debut;
+	time heure_en_cours;
+	int compteur;
+	list of strings victims;
+	// victims sert à stocker les IPs des machines "pingées"
+	
+	function new ...
+	function alerte ...
+	}
+
+Timei src > dsti : icmp : echo request ==>
+si !(pingsweep[src]) {
+	pingsweep[src] = new PINGSWEEP // heure_de_debut = Timei et heure_en_cours= Timei;
+}
+si !( desti est dans pingsweep[src].victims ) { 
+	pingsweep[src].compteur =+1;
+	pingsweep[src].heure_en_cours = Timei;
+	ajouter desti à pingsweep[src].victims;
+}
+si ( pingsweep[src].compteur > pingsweep_max && pingsweep[src].heure_en_cours - pingsweep[src].heure_de_début < 1000 ms ) {
+	Alerte !
+}
+// pingsweep_max est une variable de seuil à définir
+</pre>
+<P align=justify>
+- TCP HIJACK
+<P align=justify>Cette attaque désigne un détournement de connexion selon la méthode présentée précédemment, à l'aide des "sequence numbers" / "acknowledge numbers" . Notons que dans ce cas, il est nécessaire de connaitre le trafic dans les deux sens . Jusqu'à présent, il était possible de caractériser une attaque par la seule activité de l'agresseur . Ici, pour déterminer si une attaque est en cours, il faut d'abord vérifier si le numéro de séquence a été volé .
+<pre>classe HIJACK héritant de TCP {
+	string victime;
+	string spoof;
+	time heure_de_debut;
+	time heure_en_cours;
+}	
+
+Timei src.sport > dst.dport : flags Start-SNi:End-SNi(End-SNi - Start-SNi) ACK ack-numi ==>
+si ( !hijack[src.sport] ) {
+	// src : machine à protéger, on pourrait donc éventuellement filtrer les machines pour lesquelles on crée cet objet
+	hijack[src.sport] = new HIJACK;
+	// hijack.victime = src.sport, hijack.spoof = dst.dport, hijack.acknum = ack-numi,
+ 	//hijack.data-seqno[1] = End-SNi, hijack.data-seqno[0] = Start-SNi, hijack.heure_de_debut = Timei;
+}
+si ( hijack[src.sport] ) {
+	hijack.acknum = ack-numi;
+	hijack.data-seqno[1] = End-SNi;
+	hijak.heure_de_debut = Timei;
+	//mise à jour des paramètres cruciaux
+}
+si ( hijack[dst.dport] ) {
+	// src est l'attaquant potentiel, ce coup-ci
+	si ( hijack.spoof != src.sport && Start-SNi == hijack.acknum && ack-numi == hijack.dta-seqno[1] ) {
+		hijack.heure_en_cours = Timei;
+		Alerte !
+		// les 3 conditions du spoofing sont réunies
+	} 
+}
+</pre><P align=justify>
+Cette signature est peut-être moins évidente à saisir que les autres : supposons que nous avons ce paquet :<P align=justify>
+<center><pre>Timei victime.sport > spoof.dport : flags Start-SNi:End-SNi(End-SNi - Start-SNi) ACK ack-numi</pre></Center><P align=justify>
+victime envoie un paquet à la machine spoof, qui peut potentiellement servir de masque à un attaquant . Le paquet normalement attendu si la machine spoof existe bien et a effectivement sollicité le paquet précédent est de la forme :<P align=justify>
+<center><pre>Timej spoof.sport > victim.dport : flags ack-numi:End-SNj(End-SNj - ack-numi) ACK End-SNj</pre></center><P align=justify>
+Par contre, en cas de détournement de connexion avéré, nous verrions passer un paquet de cette sorte : <P align=justify>
+<center><pre>Timej attaquant.sport > victim.dport : flags ack-numi:End-SNj(End-SNj - ack-numi) ACK End-SNj</pre></center><P align=justify>
+Où attaquant est une machine différente de spoof . Cependant, pour confirmer le détournement de connexion, il faut vérifier les numéros de séquence et d'acquittement, formant un doublet unique caractérisant l'avancement d'une connexion ( en effet, un même port d'une machine peut être accédé par plusieurs machines en même temps, comme le port http par exemple ) tout comme le quadruplet {src,sport,dst,dport} caractérise de façon unique une connexion  . Si une machine usurpe un tel doublet, c'est qu'elle tente de détourner la connexion.
+<P align=justify>
+L'attaque par détournement de connexion amène une dernière considération : Au vu de la signature définie à l'instant, il suffirait à attaquant de se présenter avec l'adresse de spoof lorsqu'il envoie ses paquets pour devenir indétectable ( l'utilisateur sur attaquant peut construire complètement ses paquets s'il est <I>root</I> sur cette machine ), puisqu' à l'observation le traffic à l'air tout à fait normal. Le seul désavantage pour le méchant est qu'il n'aura pas la possibilité de récupérer la réponse à son paquet - à moins d'évoluer en réseau <I>shared</I>, mais il existe de nombreuses attaques où il n'est pas nécessaire d'obtenir de réponse de la machine attaquée ( effacement de fichier, etc ... ) . En fait, ce détournement est absolument indétectable avec l'approche qu'on a choisie ( analyse des logs sur une seule machine ). Le seul moyen de détecter ce genre d'attaque serait de confronter les logs de spoof et ceux de victime, pour mettre en évidence la désynchronisation de la connexion au moment où attaquant s'est immiscé. Ces attaques restent cependant improbables hors des sous-réseaux; on ne les verra donc probablement pas si on effectue l'analyse de logs au niveau d'un point de sortie du réseau ( routeur, firewall ... ) 
+<P align=justify>
+- SYN FLOOD ( tcp )<P align=justify>
+Lorsque le port d'une machine est sollicité pour une connexion TCP, la machine garde une trace de ce contact dans la <I>queue de connexion ( connection stack )</I>. Ainsi, lorsque le paquet d'acquittement revient ( la 3e partie du handshake ), la machine sait que tout va bien . La trace est maintenue dans la queue un certain temps qui dépend des systèmes d'exploitations, et si l'acquittement n'est pas arrivé avant cette limite temporelle la connexion est considérée comme perdue et la trace est retirée de la queue . Or cette queue a bien évidemment une capacité limitée . L'idée est donc de "bourrer" cette queue de requêtes de connexions provenant de machines en réalité inexistantes ( pour éviter qu'un paquet d'acquittement ou qu'un paquet de fin de connexion ne soit renvoyé à la victime ), si bien que toute connexion légitime ne pourra être stockée dans la queue et donc aboutir .De l'extérieur, le port de la victime semble inactif . Ici deux patterns agissent conjointement:
+<pre>classe SYNFLOOD {
+	time heure_de_debut;
+	time heure_en_cours;
+	string dst;
+	int dport;
+	list of strings attackers;
+	// contient les adresses IP des éventuels attaquants
+}
+</pre>
+<UL>
+<LI>
+<pre>Timei srci.sporti > dst.dport : S ==>
+si !(synflood[dst.dport]) {
+	créer synflood[dst.dport] // heure_de_debut = Timei et heure_en_cours= Timei;
+}
+ajouter srci.sporti à synflood[dst.dport].attackers;
+synflood[dst.dport].compteur =+1;
+si ( synflood[dest.dport].compteur > synflood_max[dport] ) {
+	Alerte !
+}
+</pre>
+<LI>
+<pre>Timei srci.sporti > dst.dport : flags data-seqno ACK ack-num ==>
+si !(synflood[dst.dport]) {
+	Alerte !
+	//un paquet ACK sans handshake préalable n'est pas normal
+	//( soit un détournement de connexion, soit une tentative d'échapper aux IDS )
+}
+sinon {
+	retirer srci.sporti de synflood[dst.dport].attackers;
+	synflood[dst.dport].compteur --;
+}
+</pre>
+</UL>
+<P align=justify>
+Juste avant que la file d'attente soit engorgée ( à paramétrer avec synflood_max[dport], qui dépendra du port visé ), l'alerte est donnée . Il faut pouvoir tenir compte du temps, afin de ne plus tenir compte des connexions qui ont été automatiquement désactivées par Timeout . D'autre part, on parvient à détecter une attaque que le pattern matching simple ne pouvait pas relever ( nécessité d'un retour en arrière ) : le détournement du 3-way handshake de TCP " à la Mitnick " .
+<P align=justify>
+- PORT SCAN<P align=justify>
+Le scanning de port sert à déterminer les services présents sur une machine. On en a fait une large présentation plus haut .
+<br><pre>classe PORTSCAN héritant de TCP_FRAG{
+	// pour l'instant, pas de détection de scans par UDP, viendra plus tard ...
+	string dest;
+	string src;
+	string type;
+	list of int ports;
+	// ports scannés
+	int compteur;
+}
+
+Time1 src.sporti > dest.dporti : flags data-seqno ack window urg options
+si !(portscan[dest]) {
+	if ( flags == SYN ) {
+		portscan[dest] = new PORTSCAN // heure_de_debut = Timei et heure_en_cours= Timei;
+		portscan(src).type = "SYN scan";
+	}
+	else if ( flags == FIN ) {
+		portscan[dest] = new PORTSCAN // heure_de_debut = Timei et heure_en_cours= Timei;
+		portscan(dest).type = "FIN scan";
+	}
+	else if ( flags == "" && ack == ¤ && urg == ¤ ) {
+		portscan[dest] = new PORTSCAN // heure_de_debut = Timei et heure_en_cours= Timei;
+		portscan(dest).type = "NULL scan";
+	}
+	else if ( flags == "FIN,PUSH" && urg == "URG" ) {
+		portscan[dest] = new PORTSCAN // heure_de_debut = Timei et heure_en_cours= Timei;
+		portscan(dest).type = "XMAS scan";
+	}
+	if ( sporti == 20 ) {
+		portscan[dest].type .= " via FTP bouncing";	
+	}
+	if ( options contient  (frag ID :size@offset{+, ¤}) ) {
+		// paquet fragmentés pour tromper les IDS
+		portscan[dest].type .= " avec fragmentation";
+	}
+}
+si ( dporti n'est pas dans portscan[dest].ports ) {
+	ajouter dporti à portscan[dest].ports;
+	portscan[dest].compteur =+1;
+}
+si ( portscan[dest].compteur > scan_max ) { 
+	// scan_max = 10 parait être un seuil correct ( surtout si on ne tient pas compte du temps )
+	// à confirmer avec l'expérience ...
+	Alerte !
+}
+
+</pre>
+<P align=justify>
+- STICK<P align=justify>
+Stick est une tentative de désactivation à distance des systèmes de détection d'intrusion orientés réseau . L'attaque consiste à envoyer un très grand nombre de paquets RST ( fin de connexion brutale ), ce qui a pour effet de surcharger de travail le NIDS. Ceci aura éventuellement pour effet de provoquer un déni-de-service contre le système de détection d'intrusion, laissant le réseau protégé sans surveillance.
+<br><pre>classe STICK héritant de TCP {
+	string dest;
+	string src;
+	time heure_de_debut;
+	time heure_de_fin;
+	int compteur;
+}	
+
+
+Timei src.sporti > dest.dport : R =>
+si !(stick[dest.dport]) {
+	stick[dest.dport] = new STICK
+	// heure_de_debut = Timei et heure_en_cours= Timei;
+}
+stick[dest.dport].compteur =+1;
+si ( stick[dest.dport].compteur > stick_max ) {
+	//stick_max = 10 ? plus de 10 paquets RST pour clore une connexion de façon abrupte, c'est louche !
+	Alerte !
+}
+</pre>
+<P align=justify>
+- SMURF-VICTIME ( icmp )
+<P align=justify>principe identique à fraggle-victime.
+<br>
+<pre>classe SMURF_VICTIME héritant de ICMP {
+	string dest;
+	list of string attackers;
+	// stocke les IP des machines amplificatrices
+	time heure_de_debut;
+	time heure_en_cours;
+	int compteur;
+}
+
+timei srci > dst : icmp : echo reply ==>
+si !(smurf-victim[dst]) {
+	smurf-victim[dst] = new SMURF_VICTIME; 
+	// heure_de_debut = Timei et heure_en_cours= Timei;
+}
+ajouter srci à smurf-victim[dst].attackers;
+smurf-victim[dst].compteur =+1;
+si ( smurf-victim[dst].compteur > smurf_max ) {
+	Alerte !
+}
+</pre>
+<br><center><img src="smurfsljkh.gif"></center>
+<P>
+<H2>Attaques par fragmentation</H2>
+<P>
+<H3>Le concept de fragmentation</H3><P align=justify>
+La fragmentation a lieu lorqu'un datagramme IP en transit doit paser par un réseau dont la <I>taille maximale de transmission</I> ( MTU ) est plus petite que la taille du datagramme (en clair, il y a engorgement ). Par exemple, la MTU d'Ethernet est de 1500 octets; donc un datagramme de taille supérieure à 1500 octets devra être fragmenté pour voyager sur Ethernet. Les fragments se comportent exactement comme des paquets normaux, si ce n'est qu'ils sont réassemblés par la machine destinataire . Pour se faire, chaque fragment contient les informations suivantes :
+<UL>
+<LI><P align=justify>un identifiant de fragment ( <I>Frag ID</I> ), permettant à la machine destination de regrouper tous les fragments appartenant à un même paquet .
+<LI><P align=justify>un <I>offset</I> indiquant la place du fragment dans le paquet original .
+<LI><P align=justify>la taille des données contenues dans le paquet fragmenté .
+<LI><P align=justify>un indicateur pour savoir si le paquet fragmenté est suivi par d'autres paquets ou bien si il s'agit du dernier fragment . Cet indicateur est le flag "more fragments" (MF) .
+</UL><P align=justify>
+Toutes ces informations se situent dans l'en-tête IP, cet en-tête étant lui-même suivi par un fragment encapsulé .
+<P align=justify>
+La fragmentation est un outil de choix pour mener des attaques pour les raisons suivantes :
+<UL>
+<LI><P align=justify>En cas de chevauchement de données ( ie les données d'un fragment recoupent celles d'un autre à la reconstruction du paquet ), les réactions de la destination peuvent être imprévisibles. Ceci peut donner lieu à des dénis de service comme Teardrop .
+<LI><P align=justify>La fragmentation permet de "maquiller" des paquets de taille gigantesque, dont la manipulation est hasardeuse par le système d'exploitation de la destination ( cas du "ping of death" ).
+<LI><P align=justify>Beaucoup de systèmes de détection d'intrusion ou de firewalls ne reconstruisent pas les paquets pour voir ce qui est vraiment transmis à la destination . Ceci peut poser des problèmes de sécurité : supposons qu'un attaquant veuille utiliser une faille de la couche application, par exemple une attaque sur CGI comme get /phf? via HTTP . Si celui-ci envoie sa requête HTTP directement dans un paquet, celle-ci risque de correspondre avec une signature d'attaque connue de l'IDS de la cible vu que la requête est suffisamment petite pour tenir dans un paquet de taille normale ( 1500 octets ) . Par contre, si la requête est envoyée de façon fragmentée, de sorte que chaque paquet ne contienne qu'une lettre de l'attaque, l'IDS sera berné puisqu'il ne reconnaitra aucune signature d'attaque mais la cible sera touchée par l'attaque .
+<LI><P align=justify>Hormis le premier fragment, les autres autres fragments ne contiennent pas les informations de l'en-tête du paquet original, notamment le port de destination . Ceci peut donc poser un problème de filtrage pour les firewalls . On peut aussi envisager la possibilité d'un chevauchement de données au niveau de l'en-tête original, permettant éventuellement de changer le port de destination au moment où le paquet est reconstruit, ou bien de camoufler une adresse IP source interdite, et donc de tromper les ACL des firewalls ( listes des ports d'accès autorisé par l'extérieur, derrière le firewall ).
+</UL>
+<P> 
+<H3>attaques basées sur la fragmentation et leurs signatures</H3><P align=justify>
+Les traces de paquets fragmentés sont un peu différentes de celles des paquets normaux dans les logs TCPdump, et reflètent l'absence d'informations fournies par l'en-tête TCP . Dans ces conditions, les fragments ne contenant pas l'en-tête ont ce format générique :
+<P align=justify>
+<I>Timestamp src > dst : (frag ID :size@offset{+, ¤})</I>
+<P align=justify>
+Les attaques suivantes fonctionneront donc avec 2 signatures : une première pour détecter le fragment contenant l'entête, et la suivante pour repérer les informations caractéristiques de l'attaque par fragmentation proprement dite .
+<P align=justify>
+- TEARDROP (TCP)
+<P align=justify>L'attaque exploite le chevauchement de paquets fragmentés.
+<P align=justify>Ici, une difficulté supplémentaire est à prendre en compte : les paquets n'arrivent <I>pas forcément</I> dans le bon ordre, ie dans l'ordre des offsets . Pour un paquet fragmenté normal, et pour toute valeur de i, nous savons que offset_i + size_i = somme( size_j, j = 1 ... i ). Par conséquent, une attaque teardrop est telle qu'il existe une valeur de i pour laquelle offset_i + size_i < somme( size_j, j = 1 ... i ) .
+<P align=justify>
+<pre>classe TEARDROP héritant de TCP_FRAG {
+	string dst;
+	int dport;
+	string src;
+	int sport;
+	int ID;
+	// ID number du paquet fragmenté
+	int offset_max;
+	// le plus grand offset reçu en cours
+	int taille_theorique;
+	// egal à offset + size du dernier fragment reçu
+	int taille_reelle;
+	// somme des size_i reçus
+}
+
+Timei SRC.SPORT > DST.DPORT : flags data-seqno ack window (frag ID :size_i@offset_i{+,¤}) ==>
+si !( teardrop[ID] ) {
+	teardrop[ID] = new TEARDROP;
+}
+	teardrop[ID].dst = DST;
+	// etc ...
+</pre>
+et
+<br>
+<pre>Timei SRC > DST : (frag ID :size_i@offset_i{+,¤}) ==>
+si ( offset_i  == max ( offset_i, teardrop[ID].offset_max) ) {
+	teardrop[ID].offset_max = offset_i ;
+	teardrop[ID].taille_theorique = offset_i + size_i;
+}
+teardrop[ID].taille_reelle =+ size_i;
+si ( teardrop[ID].taille_theorique < teardrop[ID].taille_reelle ) {
+	Alerte ! 
+	//la condition ci-dessus n'est pas nécessaire mais elle est suffisante 
+	//( elle devient nécessaire lorsque tous les fragments sont arrivés). A défaut de trouver mieux ...
+}
+</PRE>
+<P align=justify>
+- PING OF DEATH  (icmp)
+<P align=justify>L'envoie d'une requête ping trop grosse ( de taille supérieure à 65 ko ) provoque un plantage de la machine cible, et donc un déni-de-service .
+<br><pre>classe POD héritant de ICMP {
+	string src;
+	string dst;
+	int ID;
+	int total_size;
+}
+
+Timei src > dst : icmp : echo request (frag ID :size_i@offset_i{+,¤})  ==>
+si !(pod[ID]) {
+	pod[ID] = new POD;
+}
+</pre>
+et
+<br>
+<pre>Timei SRC > DST : (frag ID:size_final@offset_final¤) ==>
+// si pod[ID] existe
+pod[ID].total_size = offset_final + size_final;
+si (  pod[ID].total_size > 65 k ) {
+	Alerte !
+}
+</pre>
+<P align=justify>
+La taille du paquet Ping est connue grace au dernier paquet de la fragmentation ( celui ne contenant pas de + ), il suffit donc de repérer celui-ci, et de tester la taille du paquet . Une fois ce test effectué, on peut détruire l'objet pod associé dans la table .
+<P align=justify>
+Sur Teardrop, l'inconvénient est qu'on n'a pas de moyen de détruire l'objet une fois que le paquet complet a été reçu, puisque les paquets fragmentés arrivent dans le désordre. Ces attaques restent assez rares, ce qui devrait limiter le nombre d'objets correspondants créés. 
+<P>
+<hr>
+<P>
+<H2>Test des signatures - Résultats préliminaires</H2>
+<P align=justify>
+Afin de tester l'efficacité des signatures présentées dans ce rapport, un ensemble de scripts appelé LOGre ( pour faire référence aux fichiers de log qu'il manipule et aux expressions régulières qu'il utilise intensément ) a été mis en point en Perl . Ce langage a été choisi en raison de sa grande portabilité et de la puissance de ses outils de test d'expressions régulières .
+<P>
+<H3>présentation de LOGre</H3>
+<P align=justify>
+LOGre est un ensemble de scripts écrits en perl, dont la fonction principale est de tester les signatures présentées dans ce rapport . L'ensemble comprend trois parties :
+<UL>
+<LI><P align=justify>les classes décrivant les objets nécessaires pour décrire et capter les attaques temporelles . Ce sont des fichiers de type "Perl Module" ( extension .pm ) 
+</UL>
+<P>
+<H3>Améliorer encore la recherche : quelques optimisations possibles </H3>
+<P align=justify>
+Il est notamment possible d'exploiter ce qui a été fait dans le domaine de la  recherche de motifs pour essayer d'accélérer la recherche de paquets suspects :
+<P>
+<H4>Classer les signatures</H4><P align=justify>
+Le temps d'exécution est une ressource cruciale dans notre problème, où d'énormes quantités de données doivent être manipulées . Il s'avèrerait donc intéressant de pouvoir classer les signatures principales en une structure permettant de gagner du temps à l'exécution : certaines signatures présentant des similitudes, il peut être fructueux d'essayer de les "factoriser" en les rassemblant dans une structure d'arbre similaire à un arbre de recherche ( TRIE ) . Cet arbre peut être défini une fois pour toutes au démarrage du système de détection d'intrusion, et changé uniquement quand une nouvelle signature doit être rajoutée . De cette façon, chaque paquet est confronté à une signature ayant au plus la taille de la plus longue signature qu'on aura défini. Le gain en vitesse de traitement est donc théoriquement significatif par rapport à l'approche "naïve"  consistant à comparer un paquet avec chaque signature, séquentiellement . Il est même encore possible d'améliorer le stockage en termes d'espace occupé en optant pour une structure de DAWG ( Directed Acyclic Word Graph ), qui est une forme de TRIE sur lequel on a appliqué un algorithme de minimisation . D'après l'article Kucherov/Rusinowitch, le DAWG peut se construire en temps O( |S| ) où S est l'ensemble des signatures, et le rajout d'une signature s se fait en temps O( |s| ).
+<P>
+<H4>Une fonction de comptage plus réaliste</H4><P align=justify>
+tenir compte de "l'age" des paquets ...
+<P>
+<H4>Gérer les tables d'objets</H4><P align=justify>
+Les attaques temporelles tels que le scanning ou l'inondation nécessitent de tenir compte des paquets "suspects" que l'on rencontre lors de l'analyse et d'en garder une trace ( notamment le nombre de fois que ces paquets sont relevés ), comme on l'a vu précédemment . Afin d'éviter l'engorgement de la mémoire de stockage, il faudrait donc régulièrement purger les tables de stockage évoquées plus haut . On peut procéder comme suit : chaque table possède une taille maximale . Lorsque cette taille est atteinte, on efface de la table les entrées pour lesquelles le compteur a la plus faible valeur . On gagne ainsi de la place en détruisant les références à des paquets ne faisant vraisembablement pas partie d'une attaque en cours ( sauf si on a affaire à un attaquant particulièrement vicieux et prêt à "délayer" un scan sur de très grandes durées de temps, mais dans ce cas il faut admettre qu'une telle attaque est de toutes façons quasiment indétectable ) .   
+<P>
+<hr>
+<P>
+<H2>Les limites de la détection d'intrusion</h2>
+<P align=justify>
+Le modèle que nous avons choisi d'étudier est nécessairement limité par le fait qu'il ne surveille que les attaques portant sur les couches Transport et IP . Or un grand nombre d'attaques existe pour la couche Applicative . Cependant, et de façon générale, la détection d'intrusion présente des limites et des problèmes et peut quelquefois se montrer impuissante dans certains cas.
+<H3>les covert channels ... ou la stéganographie appliquée aux protocoles</H3><P align=justify>
+La solution retenue ici ne permet pas de contrer les attaques par "covert channels" de type Loki ... ie les logiciels qui permettent d'utiliser un canal a priori inoffensif pour faire transiter de l'info : par exemple loki fait communiquer le client et le serveur via des paquets icmp echo, AckCmd passe les firewalls en n'utilisant que des paquets ack ... . Ce genre de problème nécessite en fait de "sniffer" plus en profondeur et demande l'application d'une batterie de tests cryptanalytiques sur les paquets ( comme par exemple des tests statistiques sur les SN ), assez lourds en ressources de calcul . A l'heure actuelle, aucune solution n'existe contre ce danger potentiel, puisque même l'interception en profondeur peut être neutralisée par l'usage de la cryptographie pour camoufler les données en transit.
+<P align=justify>
+<H3>les chevaux de troie</H3><P align=justify>
+Le même problème apparait lorsqu'on cherche à se prémunir des "trojan horses". Les "trojans" sont des applications s'apparentant aux virus dans la mesure où ceux ci sont installés souvent à l'insu de l'utilisateur . Une fois en place, toute personne sachant contacter le trojan peut prendre le contrôle de l'ordinateur infecté comme si il en était l'utilisateur actuel ( certains logiciels poussent même le zèle jusqu'à permettre d'afficher l'écran de l'utilisateur piraté .. ) . Une façon de détecter les trojans est donc de vérifier que les ports de communication habituellement ouverts par un trojan ne sont pas actifs sur la machine. Malheureusement, les trojans les plus récents sont hautement configurables, et peuvent donc être activés sur n'importe quel port . Ce genre de signature n'est donc plus efficace .
+<P align=justify>
+La seule méthode à peu près efficace pour détecter ce genre d'attaque repose sur le fait qu'un serveur doit être nécessairement installé sur la machine infectée pour que le covert channel ou le trojan soit mis en place : ainsi, une analyse rigoureuse des changements sur le disque dur d'une machine associée à l'observation éventuelle de trafic inexpliqué peut permettre de découvrir un covert channel ou un trojan en activité . Pour plus de détails et des idées sur les covert channels, voir l'article de <A HREF="#rowland">C. Rowland</A>.
+<P>
+<h3>Détection de mauvaise utilisation contre détection d'anomalie : signatures contre apprentissage</h3><P align=justify>
+Un des gros désavantages de la détection par signatures d'attaques est son manque de  flexibilité et par conséquent sa vulnérabilité aux mutations : d'une part, il faut pour pouvoir définir une signature avoir déjà été confronté à l'attaque considérée . D'autre part, certaines de ces signatures se basent sur des caractéristiques "volatiles" d'un outil, comme par exemple le port qu'un certain troyan ouvre par défaut, la valeur de ISN choisie par tel autre outil de pirate, etc ... Souvent ces logiciels sont soit hautement configurables, soit "open-source" donc librement modifiables . Les caractéristiques retenues pour définir la signature sont donc fragiles, et les signatures extrêmement sensibles aux mutations . Un exemple actuel est l'outil ADMutate, qui permet de camoufler une attaque au niveau applicatif afin de la rendre non détectable par les systèmes de détection d'intrusion conventionnels utilisant des signatures . Contre ce genre de problème, une parade consiste à définir ce qu'est l'état de "compromission", c'est-à-dire l'état attendu d'une machine pendant ou après une attaque . On peut alors essayer de détecter quand la machine entre dans cet état : on ne saura pas comment la machine a été attaquée si l'attaque était de type inconnu, mais on se sera quand même aperçu que quelque chose a eu lieu. Bien sûr, la difficulté majeure dans cette parade est de définir ce fameux état de "compromission". On pourrait donc penser qu'une approche par apprentissage serait une bonne alternative . Cependant, il n'en est rien : outre une convergence plutôt longue vers un modèle comportemental "normal", rien n'empêche un pirate se sachant surveillé de "rééduquer" un tel système en faisant évoluer progressivement son modèle de convergence vers un comportement tout à fait anormal pour l'analyste, mais "normal" d'un point de vue statistique . On retrouve un problème similaire dans l'approche par signatures des attaques temporelles, la signature comprenant fréquemment une valeur de seuil : si l'attaquant a du temps devant lui, il peut s'arranger pour délayer ses attaques dans le "bruit" en prenant garde à ne pas générer une activité dépassant les seuils fixés ( surtout vrai pour les scans de ports, par exemple : si on fixe le seuil de détection à 30 ports scannés, il suffit d'en scanner 29 ou moins de façon assez espacée pour ne pas être détecté ) . C'est un problème assez difficile à résoudre, dans la mesure où la difficulté réside dans la définition d'une attaque temporelle en général ( et d'un scanning de ports en particulier ) . Une solution possible serait d'associer une <B>"probabilité d'attaque"</B> qui tendrait vers 1 quand le seuil fixé est atteint ( par exemple, le rapport min (ports contactés, seuil ) / seuil ) . L'analyste humain déciderait alors lui-même si l'activité relevée est une attaque ou non . Cependant, avec cette approche, on peut passer à côté d'attaques temporelles "distribuées", par exemple . 
+<P>
+<h3>Problèmes de ressources et vulnérabilité aux Dénis-de-Service</h3><P align=justify>
+Outre la taille des fichiers de log ( de l'ordre du Go ), la détection d'intrusion est excessivement gourmande en ressources : par exemple le pattern SynFlood crée un objet par connexion TCP. Au pire, nous pouvons donc avoir O( R * 65000 ) objets synflood créés en même temps, où R est le nombre de machines surveillées et 65000 le nombre approximatif de ports TCP existants . Ces objets disparaissent lorsque le handshake est complet pour <I> toutes les connexions en cours sur les ports considérés</I> . Il faudrait donc tenir compte du temps de "time out" des machines, en cas de handshake laissé en suspens. Les objets générés par teardrop ne sont pas détruits, car il n'est pas possible de connaitre à l'avance le nombre de fragments que l'on va recevoir . La rareté de ces attaques en comparaison avec les syn flood et les scans compense ce défaut. Le pattern HijackTCP "surveille" virtuellement tout le traffic TCP . L'optimisation par "nettoyage" des tables à intervalles temporels réguliers peut donc être très utile . <P align=justify>
+On voit donc que la détection d'intrusion est un exercice périlleux pour les ressources en espace . Un attaquant un peu malin peut chercher à en profiter, en essayant de provoquer un déni-de-service au niveau du système de détection d'intrusion, ou au pire au niveau du système d'exploitation de la machine supportant l' IDS. Une fois l'IDS désactivé, l'attaquant a le champ libre pour tenter tout ce qui lui plait . Ainsi, l'attaque "STICK" est une tentative de déni-de-service contre les IDS ( en particulier contre ISS RealSecure ) : l' attaquant espère ainsi surcharger de travail l'IDS, au point de le désactiver ou au moins de le rendre moins efficace .
+<P>
+<h3>Problème fondamental de la détection d'intrusion orientée réseau</H3><P align=justify>
+ La détection d'intrusion orientée réseau présente un problème fondamental : comment être certain que ce que le générateur d'événements va capturer est bien la même chose que ce qui va atteindre les machines du réseau à surveiller ?Une différence notable provient déjà du fait que le système de détection d'intrusion se trouve rarement sur la machine qu'il est en train de protéger . Il existe aussi des limitations due aux performances :  les vitesses de transmission sont parfois telles qu'elles dépassent largement la vitesse d'écriture des disques durs les plus rapides du marché, ou même la vitesse de traitement des processeurs . Il n'est donc pas rare qu'un "sniffeur" ait un taux de perte de paquets non nul, si bien que des paquets non reçus par l'IDS seront peut-être reçus par la machine destinataire . D'autre part, un système de détection d'intrusion ne faisant pas de reconstruction de paquets fragmentés aura forcément un aperçu de ce qui passe sur le réseau différent de ce qui sera réellement reçu par les machines surveillées . Comme on l'a évoqué précédemment, un tel système de détection d'intrusion passerait à côté des attaques de type Teardrop, du chevauchement des en-têtes ( pour modifier l'IP source, le port de destination, ect... au dernier moment ), ou encore des attaques au niveau applicatif qui seraient fragmentées pour leurrer le moteur d'analyse par pattern matching de l'IDS. Il se peut aussi que la différence de temps entre le moment où l'IDS reçoit un paquet et celui où la machine destinataire reçoit ce paquet soit cruciale : il peut par exemple se passer quelque chose sur la machine destinataire, faisant que ce paquet sera rejeté, alors que l'IDS l'aura analysé et fera l'hypothèse que ce paquet a bien été reçu et traité par sa destination . Dans l'autre sens, il se peut aussi qu'une différence de systèmes d'exploitation entre la machine supportant l'IDS et la machine surveillée fasse que certains paquets rejetés par le système de détection d'intrusion soient acceptés par la destination ( c'est par exemple le cas des paquets UDP avec une somme de contrôle erronée, rejetés par la plupart des systèmes d'exploitation, sauf les plus anciens ) . Ce problème peut engendrer deux types de faux négatifs chez un système de détection d'intrusion :
+<UL>
+<LI><P align=justify>faux négatif par <I>insertion</I> : reprenons le cas d'une attaque contre la couche applicative, et supposons que la commande "attack" soit considérée comme dangereuse . Le système de détection d'intrusion doit donc être configurer pour relever tout paquet contenant la séquence "attack", par exemple par pattern matching . L'attaquant, pour éviter d'être repéré, peut commencer par fragmenter son paquet, de façon à n'envoyer que des séquences de 1 caractère . Mais si l'IDS reconstruit le paquet, l'attaque sera repérée . Pour aller plus loin, l'attaquant peut s'arranger pour envoyer des paquets "leurres" qui seront rejetés par la machine de destination, mais pas par l'IDS . En reconstruisant le flux, l'IDS ne parviendra pas à appliquer sa signature pour "attack" mais la machine sera pourtant attaquée . Le dessin suivant résume la situation :
+<center><img src="evasion.gif"><br><font size=-1>attaque par insertion</font></center>
+<LI><P align=justify>faux négatif par <I>évasion</I> : dans ce cas, c'est le système de détection d'intrusion qui rejette un paquet qui sera pourtant accepté par la destination, menant à un résultat comparable .
+<center><img src="evasion2.gif"><br><font size=-1>attaque par évasion</font></center>
+</UL>
+Les problèmes d'insertion et d'évasion, en pratique, restent cependant difficiles à exploiter pour un attaquant . En effet, de telles attaques exploitent les spécificités des systèmes d'exploitation et du système de détection d'intrusion, et demandent donc de connaitre parfaitement la composition du réseau que l'on souhaite attaquer . Toutefois, bien que difficilement utilisable, le risque existe .
+<P>
+<hr>
+<P>
+<H2>Conclusion</H2>
+<P align=justify>
+<hr>
+<P>
+<H2>Sources:</H2>
+<P align=justify>
+<I>Etat de l'art:</I>
+<UL>
+<LI><P align=justify><A NAME="faq"><A HREF="http://www.packetnexus.com/idsfaq/Section_3.html">the IDS FAQ</A> : réponses aux questions les plus fréquemment posées concernant la détection d'intrusion .
+<LI><P align=justify><B>A High-Performance Network Intrusion Detection System</B>, R. Sekar, Y. Guang, S. Verma, T. Shanbhag, in ACM Computer & Communication Security, 1999.
+<LI><P align=justify><B>Recent Adances in Intrusion Detection</B>, Springer, 2000 .
+<li><P align=justify><B>Artificial Intelligence and Intrusion Detection: current and future directions</B>, J. Frank, juin 1994.
+<LI><P align=justify><B>The application of Artificial neural Networks to Misuse Detection: Initial Results</B>, J. Cannady, J. Mahaffey
+<LI><P align=justify><B>A pattern matching model for misuse Intrusion detection</B>, S. Kumar, E. Spafford, 1994
+<LI><P align=justify><B>The Design of GrIDS: a Graph-Based Intrusion Detection System</B>, S. Cheung, R. Crawford, M. Dilger, J. Frank, J. Hoagland, K. Levitt, J. Rowe, S. Staniford-Chen, R. Yip, D. Zerkle, Janvier 1999.
+<LI><P align=justify><A HREF="http://seclab.cs.sunysb.edu/sekar/papers/ravith.doc">ASL: A specification language for intrusion detection and network monitoring</A>, 
+Ravi Vankamamidi, Novembre 1998.
+</UL>
+<br>
+<I>signatures et attaques:</I>
+<UL>
+<LI><A HREF="http://seclab.cs.sunysb.edu/sekar/papers/netattacks.pdf">introduction to TCP/IP network attacks</A>, Guang Yang
+<LI><B>Network intrusion detection - An analyst's Handbook</B>, S.Northcutt, J. Novak, New Riders, 2000
+<LI><B>Intrusion signatures and Analysis</B>, Stephen Northcutt, Mark Cooper, Matt Fearnow, Karen Frederick, ed. New Riders, 2001
+<LI><B>Hacking exposed</B> et le <A HREF="http://www.hackingexposed.com">site web compagnon</A>
+<LI><A HREF="http://www.securityfocus.com/frames/index.html?focus=ids">security focus</A>, sections "intrusion detection systems" et "incidents" . Ce site héberge également les mailing lists "Bugtraq", "IDS" et "Penetration testing".
+<A NAME="fredericks"><LI><a href="http://www.Securityfocus.com/frames/?focus=ids&content=/focus/ids/articles/abnormal1.html">Abnormal IP packets</A>, Karen Frederick .
+</UL>
+<P align=justify>
+<I>Fragmentation, furtivité et failles des IDS:</I>
+<UL>
+<LI><P align=justify><A HREF="ftp://ftp.isi.edu/in-notes/rfc1858.txt">RFC1858</A>: Security Considerations for IP Fragment Filtering, 1997
+<LI><P align=justify><A NAME="hoglund"><A HREF="http://www.securityfocus.com/focus/ids/menu.html?fm=4&action=fold">Multiple Levels of De-synchronization and other concerns with testing an IDS system</A>,  Greg Hoglund et Jon Gary, aout 2000 .
+<LI><P align=justify><A HREF="http://secinf.net/info/ids/9712.html">50 ways to defeat your IDS</A>, Fred Cohen, 1997
+<LI><P align=justify><A href="http://secinf.net/info/ids/idspaper/idspaper.html">Insertion, Evasion, and Denial of Service: Eluding Network Intrusion Detection</A>, T. Ptacek, T. Newsham, 1998
+</UL>
+<P align=justify>
+<I>Covert channels:</I><UL>
+<LI><P align=justify><a href="http://www.phrack.Com">Phrack</A>, voir l'article sur Loki.
+<LI><P align=justify><A NAME="rowland"><A HREF="http://www.psionic.com/papers/covert/showtext?fn=covert.tcp.txt">Covert Channels in the TCP/IP Protocol Suite</A>, Craig H. Rowland, Novembre 1996
+</UL>
+<P align=justify>
+<I>Aspects algorithmiques:</I><UL>
+<LI><P align=justify><B>Matching a Set of Strings with Variable Length Don't Cares</B> ,M. Rusinowitch, G. Kucherov, Theoretical Computer Science (178)1-2 (1997)
+<LI><P align=justify><B>the analysis of hybrid Trie structures</B>, J. Clément, P. Flajolet, B. Vallée, Proceedings of the Ninth ACM-SIAM Symposium on Discrete Algorithms, Janvier 1998.
+</UL>
+<P align=justify>
+<I>Logiciels:</I><UL>
+<LI><P align=justify><A HREF="http://packetstorm.securify.net">Packet Storm</A> : pour trouver tous les programmes évoqués ici ou mettant en pratique les failles présentées dans ce rapport ...
+<LI><P align=justify><A HREF="http://ww.perl.com/pub">le site de Perl</A> : un langage de script de haute portablilité et disposant d'outils très puissants pour les expressions régulières . Accessoirement, le langage de réalisation des tests ..
+<LI><P align=justify><A HREF="/logre/">LOGre</A> : un script de  test de mes signatures, écrit en perl .
+</UL><P align=justify>
+<I>m'écrire:</I> <a href="mailto:huin@loria.fr">huin@loria.fr</A>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

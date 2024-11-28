@@ -1,0 +1,417 @@
+    How to Create Linkable C & C++ Functions in Assembly Language v1.0
+                                Roland  Honsch
+                        [Release Date: April 14. 1998]
+
+ ___________________________________________________________________________
+|                                 DISCLAIMER                                |
+|---------------------------------------------------------------------------|
+| By making use of the information contained within this file you are as-   |
+| suming full responsibility for any result that might arise, be it positi- |
+| ve, undesirable, or even malicious.                                       |
+|                                                                           |
+| Therefore, any potential damage that occurs which may result from the in- |
+| formation contained below is the sole responsibility of the user.         |
+|                                                                           |
+| HOWEVER, it is highly unlikely that anything contained below could result |
+| in malicious code (since it has none any, code that is).                  |
+|                                                                           |
+| If something screws up it is your assembly code, not my proc names.       |
+|___________________________________________________________________________|
+NOTE: Examples files compile PERFECTLY with BC 4.5
+NOTE: C/C++ and ASM programming skills are much-needed for the following!
+
+Additional Notes:
+
+I am writing this part months later than the rest. However, this may need
+to be said. Although the title of the article implies to teach one the way
+to write assembly functions for *ANY* C/C++ compiler. Well, that is *NOT*
+the case. I do not feel guilty though. (Hell, MSIE's name implies you can
+explore the internet with it!)
+
+This technique has been tested *EXTENSIVELY*, but *SOLELY* on BC v4.5.
+It may or may not work with other compilers. This technique will *NOT*
+work with DJGPP . . . well it probably does, but you have to use a
+different version of ASM, and go through different steps. If you do want
+to write assembly functions for DJGPP C/C++ programs; take a look at the
+docs. I do recall seeing some ASM & linking info there.
+
+So anyways. If you have a 16-bit compiler; chances are you can use the
+technique described below. However, unless you have BC v4.5; take a look
+at the ASM source of a program or two, and check if you are seeing what
+I describe in the following pages.
+
+                             Good Luck!
+
+CONTENTS
+
+A1 - Introduction
+B1 - Naming Assembly Procs for C Functions
+B2 - Naming Assembly Procs for C++ Functions
+B3 - Returning Variables from C & C++ Functions in Assembly
+B4 - Declaring Assembly Procs as C / C++ Functions in C / C++ Source Code
+C1 - Reading Variables Passed by C / C++ 
+C2 - Reading Variables the Easy Way
+D1 - Example C Program with External Assembly Proc
+D2 - Example C++ Program with External Assembly Proc
+E1 - Special case for C++ Assembly Procs
+F1 - Credits
+F2 - Final Note . . .
+
+NOTE: This text-file has been designed for DOS' EDIT.COM. If you wish
+      to convert this file into other formats, please contact me at
+      lost-poet@unforgettable.com and have the subject-line read "C++".
+      I get hundreds... well, around 100 junk-mails a day, and unless
+      your message sticks out, it is doomed to be deleted. Also, wait
+      for a few days, I may not check my email every day.
+
+A1 - Introduction
+
+  Since you are reading this document, I feel it is safe to assume that
+you would like to "spice up" your code, make it a little smaller, a little
+faster.
+  There are two ways to do this, design more efficient code, and use assem-
+bly language where speed or size matters. It is best when both are applied,
+but at times converting from C / C++ to assembly might just do the trick.
+  If you are using BC 4.5+ and have TASM, put TASM.EXE into a direc-
+tory covered by your AUTOEXEC's PATH statement and use the syntax;
+BCC <name of c / c++ file> <name of asm file> the rest of you, read
+your manuals on LINKing OBJ files to you programs.
+
+
+          Good Luck!
+
+
+
+
+
+
+
+B1 - Naming Assembly Procs for C Functions
+
+If you are familiar with Assembly you should know that assembly
+functions are called PROCedures. Naming a PROC for use by a C
+program is fairly simple. You simply have to put an underscore
+before the name of the PROC.
+
+So the function that has the prototype: void Add(int fnumber, int snumber);
+would be named in assembly as a PROC the following way: _Add
+
+Now you are ready to write the PROC and when done (debuggin the code)
+you should have no trouble linking it to your C source code.
+
+
+
+
+
+
+
+
+
+
+B2 - Naming Assembly Procs for C++ Functions
+
+If you already read the naming syntax for C's assembly PROCs and
+are hoping for something similiarly simple, you are going to be
+disappointed.
+  Because of function overloading, C++ has a much more clever,
+yet much more complex scheme.
+
+Every C++ function PROC has the format '@nameofprocedure$q', and
+after the 'q' you must assign the parameters for the C++ function.
+Not clear? Here is an example: void Add(int num, int number) turns
+into @Add$qii but void Add(int number, double number2, float number3)
+turns into @Add$qidf
+  
+After a closer look it once again should seem straightforward,
+but it is not always. And for that reason, I've included the
+table below. This has been tested with BC 4.5, but it should
+work with all newer (and some older) compilers as well, if they
+follow the ANSI standard of C++. One more thing before the table,
+I would advise that you use specific data types (unsigned short int
+rather than int) because different compiler settings may have
+different settings for a plain int.
+ ______________________________ ______________________________
+| data type           | add to || data type           | add to |  If you have
+|                     | proc   ||                     | proc   |  a pointer
+|                     | name   ||                     | name   |  to a 
+|_____________________|________||_____________________|________|  pointer it
+| void                |   v    || void*               |   pv   |  is would be
+| char                |   c    || char*               |   pc   |  pps -
+| signed char         |   zc   || signed char*        |   pzc  |  pointer to
+| unsigned char       |   uc   || unsigned char*      |   puc  |  pointer to
+| int                 |   i    || int*                |   pi   |  short int.
+| signed int          |   i    || signed int*         |   pi   |
+| unsigned int        |   ui   || unsigned int*       |   pui  |  Just stack
+| short int           |   s    || short int*          |   ps   |  the 'p's on
+| signed short int    |   s    || signed short int*   |   ps   |  each other
+| unsigned short int  |   us   || unsigned short int* |   pus  |  for
+| long int            |   l    || long int*           |   pl   |  whatever
+| signed long int     |   l    || signed long int*    |   pl   |  depth you
+| unsigned long int   |   ul   || unsigned long int*  |   pul  |  require.
+| float               |   f    || float*              |   pf   |
+| double              |   d    || double*             |   pd   |
+| long double         |   g    || long double*        |   pg   |
+|_____________________|________||_____________________|________|
+B3 - Returning Variables from C & C++ Functions in Assembly
+
+This is a short lesson. Whether you are using C or C++, all you
+have to do is to put the value to be return into AX (and of course
+have proper prototypes available in the source code).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+B4 - Declaring Assembly Procs as C / C++ Functions in C / C++ Source Code
+
+In other words, prototyping. This lesson is going to be simple as well.
+
+The syntax for Assembly PROC functions is:
+extern <return_type> <function_name>(<list_of_variables>);
+
+So, for the function: int Add(int num1, int num2) you would use
+extern int Add(int num1, int num2);
+
+Another thing that can be useful is the ability to name the language
+of the external function. (this is surely available in BC 4.5, others
+can only hope) All you have to do is insert a null-terminated c-type
+string between extern and the <return_type>. So that transforms our
+Add function into: 'extern "C" int Add(int num1, int num2);' if we used
+C or: 'extern "C++" int Add(int num1, int num2);' if we used C++ form
+to write the assembly PROC. Oh, and keep in mind, the language naming
+is case sensitive, "c" will give an error message, as well as "c++".
+
+
+
+
+C1 - Reading Variables Passed by C / C++
+
+Whenever a new NEAR function is called the offset of the current address
+is pushed onto the stack, right after the parameters that you passed to
+the function.
+
+And it is wise, in fact vital that BP be saved, and restored just before
+returning from the function. That is if you do not want your program to
+crash.
+
+So, before you do anything you have to PUSH BP onto the stack. Where does
+that put your function's parameters? Exactly 4 bytes after the address the
+Stack Pointer is currently pointing to.
+
+You would be able to get them the following way (this comes after saving BP: 
+
+    MOV   BP, SP        ;Points BP to current stack address
+    MOV   AX, [BP+4]    ;MOVes first variable into AX
+    MOV   BX, [BP+6]    ;MOVes second variable into BX
+    MOV   CX, [BP+8]    ;MOVes third variable into CX
+    MOV   DX, [BP+10]   ;MOVes fourth variable into DX
+
+If you did not already realize, the stack is made up of DWs or as
+we would say it in C of INTs. BP is simply a pointer and each time
+you gotta point 2 bytes further for the next variable, starting
+from +4. Why? Because the return address and BP are already taking
+up the first 4 bytes of the stack.
+
+That's it, you can now read in all the variables you want if you
+have a large-enough stack.
+
+The only difference that you will find with FAR PROCs is that instead
+of only the address (offset), the segment is also pushed onto the stack,
+so considering BP, your first variable will be +6 instead of +4, but
+all else remains unchanged.
+
+
+
+
+
+
+
+
+
+C2 - Reading Variables the Easy Way
+
+There is an easier, and safer way of doing this though. You can use
+your assembler's version of #DEFINE, which is equ.
+
+So, lets read in 3 variables:
+
+first_variable EQU [BP+4]
+second_variable EQU [BP+6]
+third_variable EQU [BP+8]
+
+    MOV   BP, SP                ;Points BP to current stack address
+    MOV   AX, first_variable    ;MOVes first variable into AX
+    MOV   BX, second_variable   ;MOVes second variable into BX
+    MOV   CX, third_variable    ;MOVes third variable into CX
+
+The above method helps to avoid screw ups, and can be use with any NEAR
+C / C++ assembly PROC, for FAR PROCs, simply add 2 to all numbers following
+BP.
+
+
+
+D1 - Example C Program with External Assembly Proc
+
+/* C Program Begins Here */
+/* This C program will call the assembly PROC Add with two integers,
+ * which will be added together, and the result will be returned.
+ */
+
+#include <conio.h> /* CONIO.H need not be used */
+
+extern int Add(int fnumber, int snumber);
+
+int main()
+{
+cprintf("%d", Add(1,2));
+return 0;
+}
+
+/* C source code ends here! */
+/* ASM source code for this program is on the next page. */
+
+
+
+; This ASM program includes the Add() function for the above C program
+
+    .model small
+    .code
+    public _Add
+_Add  proc near
+    push  bp          ;saves bp (required by C & C++)
+    mov   bp, sp      ;mov curent stack address into bp
+
+    mov   ax, [bp+4]  ;read first number into ax
+    mov   bx, [bp+6]  ;read second number into bx
+    add   ax, bx      ;add the two numbers
+                      ;since the return value is already in ax, no further
+    pop   bp          ;action is needed, but to load bp and return
+    ret
+_Add  endp
+    end
+
+; ASM program ends here.
+
+
+
+D2 - Example C++ Program with External Assembly Proc
+
+// C++ program begins here
+// This C++ program will call the external ASM PROC function Add
+
+#include <iostream.h> // IOSTREAM.H need not be used
+
+extern int Add(int fnumber, int snumber);
+
+int main()
+{
+cout << Add(1, 2);
+return 0;
+}
+
+// C++ program ends here
+// ASM program on next page
+
+
+
+
+
+; ASM program containing Add function for the above C++ program
+
+    .model small
+    .code
+    public @Add$qii
+@Add$qii  proc near
+    push  bp          ;saves bp (required by C & C++)
+    mov   bp, sp      ;mov curent stack address into bp
+
+    mov   ax, [bp+4]  ;read first number into ax
+    mov   bx, [bp+6]  ;read second number into bx
+    add   ax, bx      ;add the two numbers
+                      ;since the return value is already in ax, no further
+    pop   bp          ;action is needed, but to load bp and return
+    ret
+@Add$qii  endp
+    end
+
+; ASM program ends here.
+
+
+
+E1 - Special case for C++ Assembly Procs
+
+If you want to pass more then one pointer of the same type to a function; a
+special method must be used. Since pointers can be rather long, and tedious
+in the C++ ASM naming method. (You can have 'pppc' which would be char***.
+I am not implying anyone would use something like that. But it is legal in
+the language.) So to save some space, instead of writing them out over and
+over again you refer back to them. The syntax is t<argument>. Easy way to
+remember is that 't' might stand for "take". So let me show you:
+
+@Add$qusppciduspcpipcpippc becomes @Add$qusppciduspcpit6t7t2
+
+Keep in mind, the number refers back to the argument as if it were in an
+array (it probably is come to think of it). 't6' takes the SEVENTH *ARGUMENT*
+and not the argument beginning at the sixth letter after 'q'. Yes, 'us' and
+'ppc' only count as one argument. So once again: t6 refers back to the 'pc',
+t7 refers back to the 'pi', and t2 refers back to the 'ppc'.
+If the number is over 9, go to lower case letters of the alphabet. (a = 10,
+b = 11, c = 12, d = 13 etc.) If you have more then 30-40 arguments to pass
+email me and ask me to write a follow-up article regarding passing structs
+or classes.
+
+F1 - Credits
+
+All the above is my work, well, more like observations. So most credit which
+is due, is due to me, Roland Honsch. However this article was inspired by
+"Michael Abrash's Graphics Programming Black Book - Special Edition", it 
+is a GREAT book, get it if you can, it includes Zen of Code Optimization,
+Zen of Graphics Programming, and on the CD ROM included with the book
+you can find Zen of Assembly Language. If you are only buying one programming
+book this year, let this be it!
+
+Also, I thank Chuck Nelson for his AMAZING assembly language tutorial, which
+can be found at this FANTASTIC site: www.programmersheaven.com
+
+Well, that is all. If you find any bugs, or errors, need help or just want
+to write to me for some other reason check out the NOTE under the CONTENTS
+page for info on how and where you can reach me.
+
+Cheers for now!
+  Happy Programming!
+                                    Roland Honsch!
+
+
+F2 - Final Note . . .
+
+If you would like to read a follow-up article on how to pass structures,
+classes, and typedefed types to assembly procs; email me and say so. If
+I get a sufficent number of requests I will write the article. If not . . .
+Life goes on!
+
+Also, please report any spelling errors and any other problems you have with
+this article. Revision will be made if need be.
+
+
+
+
+
+
+
+
+
+
+
+

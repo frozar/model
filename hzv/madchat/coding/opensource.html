@@ -1,0 +1,414 @@
+<html><head><title>Contributing to Open Source Projects HOWTO</title></head>
+<body>
+
+<h1>Contributing to Open Source Projects HOWTO</h1>
+This page is aimed at programmers new to the <a href="http://www.opensource.org/">Open Source</a>
+/ <a href="http://www.gnu.org/">Free Software</a> world, who
+want to make a contribution, but aren't sure where to start.
+<p>
+The latest version of this document is at <a href="http://www.kegel.com/academy/opensource.html">www.kegel.com/academy/opensource.html</a>.
+
+</p><h2><a name="contents">Contents</a></h2>
+<ul>
+<li><a href="#triage">Triage</a>
+</li><li><a href="#patches">Patches</a>
+<ul>
+<li><a href="#patches.making">Making Patches</a></li>
+<li><a href="#patches.using">Using Patches</a></li>
+<li><a href="#licensing">Licensing</a></li>
+</ul></li>
+<li><a href="#culture">Culture</a>
+</li><li><a href="#autotools">Gnu Autotools</a></li>
+<li><a href="#cvs">CVS</a></li>
+<li><a href="#example1">Example: Fixing a #include problem</a></li>
+<li><a href="#suggestions">Suggestions</a>
+<ul>
+<li><a href="#testing">Testing</a></li>
+<li><a href="#testing-input">Invalid Input Testing</a></li>
+<li><a href="#testing-coverage">Unit Test Coverage Improvement</a></li>
+<li><a href="#wine-headers">Wine Header Cleanup</a></li>
+<li><a href="#wine-help">Wine Command Shell Help Text</a></li>
+<li><a href="#continuous-integration">Continuous Integration Autobuilders</a></li>
+</ul>
+</li><li><a href="#links">See Also</a></li>
+</ul>
+
+<h2><a name="triage">Triage</a></h2>
+Triage is the fine art of looking at bug reports from users,
+deciding if they're repeatable, and if so, passing the proper
+information on to the developers.  This is a great way to get
+familiar with a project, and to earn karma points.  
+A guide to triage of OpenOffice bugs is online at <a href="http://kegel.com/openoffice/">kegel.com/openoffice</a>
+Other projects with bug report backlogs that could use triage
+include 
+<ul>
+<li><a href="http://bugs.winehq.org/">Wine</a>
+</li><li><a href="http://bugzilla.kernel.org/">Linux-2.6</a>
+</li><li><a href="http://sources.redhat.com/glibc/">glibc</a>
+</li><li><a href="http://gcc.gnu.org/">gcc</a>
+</li></ul>
+
+<h2><a name="patches">Patches</a></h2>
+Most open source projects work like this: all the developers have
+their own (not quite identical) copies of the source code.
+When one developer has a change he wants to share with the
+others, he emails them a <i>patch</i>.
+
+<h3><a name="patches.making">Making Patches</a></h3>
+To create a patch, you run a program called <tt>diff</tt>, and save
+its output to a file.  For instance, if the original source tree
+is in directory "foobar.old", and your new sources are in directory "foobar.new",
+the command
+<pre>diff -Naur foobar.old foobar.new &gt; blarg.patch</pre>
+will create the file 'blarg.patch' containing your changes
+in 'unified context diff' format.   
+(See <a href="http://www.linuxjournal.com/article.php?sid=1237">Diff, Patch, and Friends</a> for more info.)
+<p>
+You can also diff against individual files rather than directories,
+but you still want to be in the directory above the project just
+as if you were doing a directory diff.  Also, to represent the addition 
+of a new file, diff it against /dev/null (since there was no original file).
+</p><p>
+If you're submitting a patch to a project that uses CVS, you may
+be able to use cvsdiff to create the patch, but IIRC that doesn't
+handle new files; you have to diff against /dev/null for those.
+</p><p>
+When creating a patch, remember that the people who receive it
+will look at it very skeptically, and will probably reject
+it if it contains lots of unrelated or unneeded changes.
+</p><p>
+To maximize the likelihood that other developers will bless your
+patch, review your patch line by line to verify
+that there are no extra changes included.  If you see anything
+extraneous (for instance, the unneccessary addition or deletion of whitespace),
+you should go fix your edited file, regenerate the diff, and verify
+that the extra changes are gone.
+</p><p>
+<tt>diff</tt> is part of the Gnu Project; to learn more, read the GNU project's 
+<a href="http://www.gnu.org/software/diffutils/manual/html_node/">manual for diff</a> and/or
+the Linux Documentation Project's 
+<a href="http://www.tldp.org/HOWTO/Software-Release-Practice-HOWTO/patching.html">Software Release Practice HOWTO</a>.
+
+</p><h3><a name="patches.using">Using Patches</a></h3>
+To use a patch -- that is, to automatically carry out the changes described in a
+patch file -- you run a program called <tt>patch</tt>.  For instance, 
+if you're trying to apply the patch 'blarg.patch' to a package called foobar-0.17, you might say
+<pre>cd foobar-0.17; patch -p1 &lt; ../blarg.patch</pre>
+That would merge the changes from blarg.patch into your source tree.
+(The -p1 tells patch to ignore the first directory in filenames in the patch;
+that way a patch generated against the directory foobar-0.11 will still
+apply properly.)
+
+<p>
+<tt>patch</tt> is part of the Gnu Project; to learn more, read
+<a href="http://www.gnu.org/software/diffutils/manual/html_node/index.html#toc_Merging%20with%20patch">"Merging with Patch"</a> 
+in the GNU project's manual for diff.
+
+</p><h3><a name="licensing">Licensing</a></h3>
+Before you submit a patch, be sure you understand the basics
+of software licensing, otherwise your patch might be rejected
+for legal reasons.  
+<p>
+Here are some rules of thumb:
+</p><ul>
+<li>Respect the copyright of others.  Don't use their code in ways they don't permit.
+</li><li>Make sure you know what license the project you're 
+contributing uses.
+</li><li>If posting a patch that contains code copied from
+some other project, make sure both projects' 
+licenses are compatible.
+</li><li>Preserve your own copyright.  
+When you post code, make it clear who wrote it, what year it was written, and
+what license it's being made available under (preferably the
+same license as the project you're contributing to).
+</li></ul>
+See <a href="http://www.denniskennedy.com/opensourcelaw.htm">www.denniskennedy.com/opensourcelaw.htm</a> for more info on licenses.
+
+<h2><a name="culture">Culture</a></h2>
+The culture of successful open source projects, e.g. the Linux kernel, is described in the following pages:
+<ul>
+<li><a href="http://www.groklaw.net/article.php?story=20041122035814276">Andrew Morton's SDForum presentation on the new Linux Kernel development model, 16 Nov 2004</a> (good for nuts-and-bolts discussion of why things are done with patches and email, and not phone calls)
+</li><li><a href="http://www.catb.org/%7Eesr/writings/cathedral-bazaar/cathedral-bazaar/">Eric Raymond's "The Cathedral and the Bazaar"</a> (if you haven't already seen it)
+</li></ul>
+
+<h2><a name="autotools">Gnu Autotools</a></h2>
+Many open source projects make use of the Gnu Autotools to generate
+their Makefiles.  The learning curve for the Autotools is steep,
+but a few tutorials are available.  Here are some places to start:
+<ul>
+<li><a href="http://wilma.vub.ac.be/%7Ese5/tutorials/Autotools.html">A Very Short Introduction to Autotools</a> by Peter Vrancx
+</li><li><a href="http://www.amath.washington.edu/%7Elf/codes/toolsmanual.html#SEC33">"hello world" autotools demo</a> by <a href="http://www.amath.washington.edu/%7Elf/software.html">Eleftherios Gkioulekas</a>
+</li><li><a href="https://www6.software.ibm.com/reg/devworks/dw-coclib-i">IBM's tutorial</a> (free registration required)
+</li><li><a href="http://sources.redhat.com/autobook/">The Autotools Book</a>
+</li><li><a href="http://vipe.technion.ac.il/%7Eshlomif/lecture/Autotools/">Shlomi Fish's autotools page</a>
+</li><li><a href="http://www-106.ibm.com/developerworks/linux/library/l-debcon.html?ca=dgr-lnxw02DebugConfig">Debugging Configure</a>, by Peter Seebach
+</li></ul>
+
+<h2><a name="cvs">CVS</a></h2>
+CVS is a source code control system that automates and hides the work of using diff and patch.
+You'll get to know cvs later; when starting out, it's best to learn
+how to use diff and patch.  (But if you're curious, you can learn about cvs at
+<a href="http://www.cvshome.org/">cvshome.org</a>.)
+
+<h2><a name="example1">Example: Fixing a #include problem</a></h2>
+
+Here's how one newcomer jumped in and started contributing.
+
+<ol>
+<li>Since he didn't have Linux, he downloaded and installed
+<a href="http://www.cygwin.com/">Cygwin</a> to give his Windows system
+the tools needed to build Linux programs to run on Windows.
+(Note: you have to pick the "Development" package in the installer to
+get the C compiler! Cygwin's installer's user interface takes some
+learning.) </li><li>He went to <a href="http://freshmeat.net/">freshmeat.net</a> and browsed
+around until he found a project that looked interesting.  His
+choice was Clex, a curses-based file manager (see <a href="http://www.clex.sk/">http://www.clex.sk</a>). 
+</li><li>He downloaded the clex source code from its home page's download page
+(in particular, he downloaded the file <a href="http://www.clex.sk/download/clex-3.1.7.src.tar.gz">www.clex.sk/download/clex-3.1.7.src.tar.gz</a>),
+and unpacked it with the command
+<pre>tar -xzvf clex-3.1.7.src.tar.gz</pre>
+Then he read the README and INSTALL files for instructions on how to build it, and tried building it, using the commands
+<pre>cd clex-3.1.7
+./configure
+make
+</pre>
+This failed with the compiler error 
+<pre>Can't find file term.h</pre>
+</li><li>
+At that point, I explained that term.h was a standard include
+file that's part of Unix, but it lives at different places in
+different versions of Unix.  This is the kind of problem that
+makes it hard to write programs that will compile on all versions of Unix!
+Fortunately, since clex uses Gnu Autotools, and they're good
+at handling this kind of problem, the solution was fairly
+simple: figure out what subdirectory of /usr/include term.h
+is in on Cygwin (turns out it's in /usr/include/ncurses), and
+tell configure.in to look for term.h in both the normal place
+and in the ncurses subdirectory.  (I helped with this part,
+since this is one of those things that's not obvious to beginners.)
+Then run autoheader and autoconf to regenerate the Makefiles
+and whatnot, and away you go.
+(Annoyingly, Cygwin ships with two versions of Gnu Autotools,
+and clex seems to prefer the older one, so we had to modify the
+PATH environment variable.  See the shell script below.)
+</li><li>Having fixed the program, he now wanted to share his fix with the
+Clex author and other developers.  To do that, he needed to make a patch
+containing his change.  So he read a tutorial on how to use 'diff' to create patches, then
+  created a patch using the commands
+<pre>make distclean
+cd ..
+mv clex-3.1.7 clex.new
+tar -xzvf clex-3.1.7.src.tar.gz
+diff -aur clex-3.1.7 clex.new &gt; cygwin-clex.patch</pre>
+
+</li><li>To make sure his patch really worked, he read a tutorial on how to use 'patch', then unpacked the clex source code 
+  again into a new directory, applied the patch with the command
+  <pre>patch -p1 &lt; cygwin-clex.patch</pre>
+  then made sure the new sources really worked.
+</li><li>Because figuring out how to build the program after his
+  change was a challenge, he saved that knowledge for use by others
+  by 
+<a href="http://cygwin.com/ml/cygwin/2003-02/txt00014.txt">writing a shell script</a>
+that demonstrated the whole process of downloading
+the sources, applying the patch, and building clex.
+He verified that running that script actually produced a working
+version of clex from scratch.
+</li><li>
+Finally, he was ready to contribute his changes.  Clex doesn't have
+a mailing list, so he emailed the patch and shell script to the Cygwin mailing list
+(so others in his situation would be able to find his patch if 
+they looked for "clex" in the Cygwin mailing list archives)
+and the author of clex (so he could fix the next version of Clex).
+</li></ol>
+
+<h2><a name="example1.patch">The Result</a></h2>
+The fruit of his labor was a single short message to a mailing list
+which contained exactly what other programmers had to do to
+fix the bug easily.  It said:
+
+<blockquote><pre>I ran into a compile problem while building clex under cygwin.
+(Clex is a curses-based file manager; see <a href="http://www.clex.sk/">http://www.clex.sk</a> ). 
+A patch to fix it is attached, along with a little shell script
+that demonstrates how to build clex under Cygwin.
+</pre></blockquote>
+
+Here's the patch he attached:
+
+<blockquote><pre>--- clex-3.1.7/configure.in.old	2003-02-12 12:09:34.000000000 -0800
++++ clex-3.1.7/configure.in	2003-02-12 12:25:56.000000000 -0800
+@@ -12,7 +12,7 @@
+ AC_HEADER_MAJOR
+ AC_HEADER_SYS_WAIT
+ AC_HEADER_TIME
+-AC_CHECK_HEADERS(ncurses.h fcntl.h unistd.h)
++AC_CHECK_HEADERS(ncurses.h fcntl.h unistd.h term.h ncurses/term.h)
+ AC_DECL_SYS_SIGLIST
+ AC_C_CONST
+ AC_TYPE_UID_T
+--- clex-3.1.7/src/inout.c.old	2003-02-12 12:10:51.000000000 -0800
++++ clex-3.1.7/src/inout.c	2003-02-12 12:12:26.000000000 -0800
+@@ -24,7 +24,11 @@
+ #else
+ # include &lt;curses.h&gt;
+ #endif
++#ifdef HAVE_TERM_H
+ #include &lt;term.h&gt;		/* enter_bold_mode */
++#elif defined (HAVE_NCURSES_TERM_H)
++#include &lt;ncurses/term.h&gt;
++#endif
+ 
+ #include "clex.h"
+ #include "inout.h"
+</pre></blockquote>
+(See <a href="http://www.gnu.org/manual/diffutils/html_node/Unified-Format.html#Unified%20Format">the GNU diff manual's description of unified diff format</a> for an
+explanation of what those +'s and -'s mean.)
+
+And here's the shell script he attached:
+<blockquote><pre>wget http://www.clex.sk/download/clex-3.1.7.src.tar.gz
+tar zxvf clex-3.1.7.src.tar.gz
+patch -p0 &lt; cygwin-clex.patch
+cd clex-3.1.7
+PATH=/usr/autotool/stable/bin:$PATH
+rm missing
+aclocal
+touch NEWS README AUTHORS
+autoheader
+automake --add-missing
+autoconf
+./configure
+make
+</pre></blockquote>
+
+Try installing Cygwin on a Windows system, and see if his shell script correctly downloads, patches, and
+builds Clex!  (You may need to apply the patch by hand, since it's hard to copy
+and paste patches from web pages.)
+
+<h2><a name="suggestions">Suggestions</a></h2>
+Now that you've seen examples of how to contribute to an existing project,
+here are some suggestions for picking projects to contribute to.
+<p>
+The best way to find projects to contribute to
+is to simply use open source software for all your day to day
+computing needs.  As time goes on, you will find rough edges here
+and there.  Pick one of the smallest rough edges you can find, and
+post a patch that makes things work better.
+</p><p>
+Some projects maintain "to-do" lists for people who want to
+fix problems others have already identified.  Here are a few:
+</p><ul>
+<li>Wine: <a href="http://www.winehq.org/about/index.php?contrib#active">Getting actively involved in the Wine project</a>
+</li><li>Wine: <a href="http://www.dssd.ca/wine/Wine-Janitorial.html">Wine Janitors TODO list</a>
+</li><li>Linux kernel: <a href="http://kernel-janitor.sourceforge.net/TODO">Kernel Janitors TODO list</a>
+</li><li>Linux kernel: <a href="http://marc.theaimsgroup.com/?l=linux-kernel&amp;m=104622142915847&amp;w=2">2.5 Porting Items</a>
+</li></ul>
+
+Also, here are a few small project ideas:
+
+<h3><a name="testing">Testing</a></h3>
+Several of the following project
+ideas have to do with testing.  Here are a couple web pages on the subject that are worth reading:
+<ul>
+<li><a href="http://www.infosun.fmi.uni-passau.de/st/papers/issta2000/">Simplifying Failure-Inducing Input</a>, by Hildebrandt and Zeller.  
+Paper describing three different apps and how the authors created minimal test cases for bugs in these apps
+</li><li><a href="http://www.informatik.tu-cottbus.de/%7Errichter/teaching/2004-test-ex.html">Data Structures and Software Dependability</a>
+- a list of tools that might be of interest when testing software.
+(Scroll down to the English section if you can't read German.)
+</li></ul>
+
+<h3><a name="testing-input">Invalid Input Testing</a></h3>
+All programs that process responses from remote servers should be able to
+withstand invalid and possibly malicious responses without crashing.
+Yet few programs are tested to make sure they can, let alone designed with this in mind.
+See for instance:
+<ul>
+<li><a href="http://lwn.net/Articles/107087/">How to kill a web browser</a>
+-- discussion of Michal Zalewski's "mangleme" tool and the bugs it
+found in many browsers (an updated version even found bugs in IE)
+</li><li><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=264944">Mozilla bug 264944</a> -- discussion of this class of bugs and their fixes for Mozilla
+</li></ul>
+Your assignment, should you choose to accept it, is to write a tool
+to do similar testing on some other program that accepts data
+from strangers (e.g. OpenOffice, xpdf, Macromedia Flash plugin, Sun JVM)
+and see if you can get it to crash in a nasty way.  If you can,
+submit your test program to the maintainers of the application,
+and file a bug report in the application's bug tracking system.
+
+<h3><a name="testing-coverage">Unit Test Coverage Improvement</a></h3>
+<ol>
+<li>
+Find some project that has a test suite (e.g. <a href="http://www.winehq.org/">Wine</a>, 
+<a href="http://www.cs.wustl.edu/%7Eschmidt/TAO.html">ACE/TAO</a>, 
+<a href="http://www.openoffice.org/">OpenOffice.org</a>).
+</li><li>
+Figure out how to build the project with the compiler options needed for <a href="http://gcc.gnu.org/onlinedocs/gcc-3.4.2/gcc/Gcov.html#Gcov">gcov</a>.
+</li><li>
+If the project is autoconf-based, submit a patch to the project to add a --enable-gcov 
+configure option.  (See e.g. <a href="http://www.winehq.org/hypermail/wine-patches/2004/10/0156.html">Aaron Arvey's patch for Wine</a>.)
+</li><li>
+Measure the coverage of the test suite for one of the project's source files or modules.
+e.g. for Wine, measure the coverage for the source code of one DLL.
+(<a href="http://ltp.sourceforge.net/coverage/lcov.php">lcov</a> may come in handy if
+you want an overview of a large project's test suite coverage, but you'll probably
+want plain old gcov once you've picked what part of the project to focus on.)
+</li><li>
+Add cases to the test suite to increase the coverage.
+</li><li>
+Submit these test cases to the project.
+</li></ol>
+
+<h3><a name="wine-headers">Wine Header Cleanup</a></h3>
+Wine comes with its own copy of &lt;windows.h&gt;, to allow
+compiling Windows programs for Linux.  However, Wine's
+version of windows.h isn't quite complete.  As Dimitrie Paun
+pointed out, <a href="http://www.winehq.com/hypermail/wine-devel/2003/02/0881.html">it
+uses macros when it should be using inline functions</a>; that
+would let it compile more programs.    Try converting one
+of the macros into an inline function, verify that wine still
+builds, send your one-line patch to wine-devel@winehq.com and ask 
+for feedback, and if they like it, submit it to wine-patches@winehq.com.
+
+<h3><a name="wine-help">Wine Command Shell Help Text</a></h3>
+Wine comes with wcmd.exe, a clone of the 
+<a href="http://www.microsoft.com/windowsxp/home/using/productdoc/en/ntcmds.asp">Windows Command Shell, cmd.exe</a>.
+wcmd.exe doesn't have help text for some of its commands.
+It's fairly easy to add the missing text, once you
+know what the command does.  
+<a href="http://www.winehq.com/hypermail/wine-patches/2003/01/0369.html">Here's an example patch</a>
+that adds the missing help text for one command.
+
+<h3><a name="continuous-integration">Continuous Integration Autobuilders</a></h3>
+There are several continuous build systems that watch over a
+source code repository, continuously building the project.
+This catches new errors much sooner than if some developer had
+to run into them, and increases the chances that bugs will
+be fixed before they get in the way.  Here are links to a few:
+<ul>
+<li><a href="http://www.mozilla.org/tinderbox.html">Mozilla Tinderbox</a>
+</li><li><a href="http://cruisecontrol.sourceforge.net/">CruiseControl</a>
+</li><li><a href="http://www.urbancode.com/projects/anthill/default.jsp">Anthill</a>
+</li><li><a href="http://docs.codehaus.org/display/DAMAGECONTROL/Continuous+Integration+Server+Feature+Matrix">Comparison Matrix of continuous integration servers</a>
+</li></ul>
+Read up on a couple of them, pick one, and try to set it up to
+watch a popular open source project (e.g. wine) and send
+you email whenever it finds problems.  Once that's working,
+document how you set it up, and post the description to
+the mailing list for the project you set up the autobuilder for.
+
+
+<h2><a name="links">See Also</a></h2>
+<ul>
+<li><a href="http://lwn.net/">Linux Weekly News</a> - the best source of kernel information.
+See their Kernel section; they have a good set of tutorials for kernel developers.
+</li><li><a href="http://oss.software.ibm.com/developerworks/opensource/linux/presentations/lwce2002/Chats/LSB/lsbhowto.pdf">"How to contribute code back to the open source community"</a> by Kraft and Clavey, IBM DeveloperToolbox Magazine, 2001
+</li><li><a href="http://www.infoworld.com/article/02/04/12/020415opsource_1.html">"Let your people code"</a> by Russell Pavlicek, April 2002
+</li><li><a href="http://www.advogato.org/article/619.html">"Dealing with unhelpful comments on your open source software"</a>, by Ploppy, at Avagadro.org.  (Read this for an idea of how the people receiving your patch feel about things.)
+</li><li><a href="http://www.linuxjournal.com/article.php?sid=1237">Diff, Patch, and Friends</a> by Michael K. Johnson, Linux Journal, 2003
+</li><li><a href="http://www.linuxjournal.com/article.php?sid=3991">Contributing to the Linux Kernel</a> by Joseph Pranevich, Linux Journal, 2003
+
+
+</li></ul>
+<hr>
+<small><i>Last Change 22 Nov 2004<br>
+(C) Dan Kegel 2003-2004</i></small><br>
+<a href="http://www.kegel.com/">[Return to www.kegel.com]</a>
+</body></html>

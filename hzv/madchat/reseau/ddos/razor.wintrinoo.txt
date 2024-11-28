@@ -1,0 +1,46 @@
+RAZOR has acquired a copy of the Trojan Trinoo. Here is a bit of
+information about it. Sorry this isn't in official "advisory" style of
+writing, but I really wanted to get this info out quickly.
+
+The trojan is called service.exe, but could be renamed. It is 23145 bytes
+in length. To remove it you must kill in in memory, remove its entry at
+HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run, and
+delete the file from the hard drive. Make sure you delete the correct
+file, and not services.exe.
+
+It listens on udp port 34555, and will respond to pings on udp port 35555.
+The password is "[]..Ks" (without the quotes). Therefore the following
+will detect it:
+
+Set up a netcat listener:
+     nc -u -n -l -p 35555 -v -w 100
+
+Send a trinoo ping:
+     echo 'png []..Ks l44' | nc -u -n -v -w 3 192.168.1.5 34555
+
+The listener will display PONG if a trinoo daemon is listening.
+
+This will kill it:
+     echo 'd1e []..Ks l44' | nc -u -n -v -w 3 192.168.1.5 34555
+
+After it is killed, the udp port may still be bound until a reboot, at
+least on Windows 95/98. Subsequent trinoo pings will return an ICMP
+destination unreachable/port unreachable if it is down.
+
+I've updated the unix version of Zombie Zapper to reflect this. You can
+download it from http://razor.bindview.com/tools/ZombieZapper_form.shtml,
+look for the Unix version 1.1 with Trinoo Trojan support near the bottom
+of the page. Hopefully we'll have a Unix version available sometime
+Monday.
+
+Both Seth McGann and Todd Sabin of RAZOR contributed heavily to the info
+above after disassembling the trojan. And special thanks to Gary Flynn at
+James Madison University for supplying RAZOR with a sample for testing.
+
+
+-         Simple Nomad          -  No rest for the Wicca'd  -
+-      thegnome@nmrc.org        -        www.nmrc.org       -
+-  thegnome@razor.bindview.com  -     razor.bindview.com    -
+
+
+

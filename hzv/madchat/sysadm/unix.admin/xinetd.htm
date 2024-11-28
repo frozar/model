@@ -1,0 +1,1244 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!-- saved from url=(0042)http://www.isecurelabs.com/faq/xinetd.html -->
+<HTML><HEAD><TITLE>xinetd - extented Internet services daemon</TITLE>
+<META content=fr http-equiv=Content-Language>
+<META content="text/html; charset=windows-1252" http-equiv=Content-Type>
+<META content="Namo WebEditor v4.0(Trial)" name=GENERATOR>
+<META content=FrontPage.Editor.Document name=ProgId>
+<STYLE type=text/css>A:hover {
+	COLOR: #3399ff; TEXT-DECORATION: none
+}
+</STYLE>
+</HEAD>
+<BODY aLink=#000000 link=#000000 vLink=#000000>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 face=Verdana 
+            size=6>Xinetd</FONT></B> 
+            <P align=justify 
+            style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><I><FONT color=#000000 
+            face=Verdana size=2>R&eacute;sum&eacute;</FONT></I><FONT color=#000000 
+            face=Verdana size=2>:</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>xinetd - extented Internet 
+            services daemon - fournit une excellente s&eacute;curit&eacute; contre les 
+            intrusions, et limite certains risques d'attaques par <I>Deny of 
+            Services</I> (<I>DoS</I>). Comme la paire plus connue (inetd+tcpd), 
+            il permet de fixer des droits d'acc&egrave;s &agrave; une machine, mais ses 
+            capacit&eacute;s s'&eacute;tendent bien au-del&agrave;. Cet article vous propose de les 
+            d&eacute;couvrir.<BR></FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Le d&eacute;sormais classique inetd a 
+            rendu de fiers services pour contr&ocirc;ler les connexions vers une 
+            machine. Lorsqu'une requ&ecirc;te arrive sur un port g&eacute;r&eacute; par inetd, 
+            celui-ci la transmet alors au wrapper qui d&eacute;cide de l'action &agrave; 
+            entreprendre relativement aux instructions contenues dans 
+            hosts.{allow, deny}. Si la requ&ecirc;te est autoris&eacute;e, le serveur associ&eacute; 
+            la traite.</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>xinetd offre des capacit&eacute;s de 
+            contr&ocirc;le d'acc&egrave;s similaires &agrave; celles offertes par tcp_wrapper. 
+            Toutefois, ses possibilit&eacute;s s'&eacute;tendent bien au-del&agrave; :</FONT> 
+            <UL>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>contr&ocirc;le d'acc&egrave;s pour des 
+              services TCP, UDP et RPC (pour ces derniers, tout ne fonctionne 
+              pas tr&egrave;s bien) ;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>contr&ocirc;le d'acc&egrave;s fond&eacute; sur des 
+              plages horaires ;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>logging puissant, autant en cas 
+              de succ&egrave;s que d'&eacute;chec de la connexion ;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>pr&eacute;vention efficace contre les 
+              attaques de type <I>Deny of Services</I> (DoS) qui bloquent une 
+              machine en saturant ses ressources :</FONT> 
+              <UL>
+                <LI>
+                <P align=justify 
+                style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+                face=Verdana size=2>limitations du nombre de serveurs d'un m&ecirc;me 
+                type qui peuvent tourner en m&ecirc;me temps ;</FONT> </P>
+                <LI>
+                <P align=justify 
+                style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+                face=Verdana size=2>limitations du nombre total de serveur 
+                ;</FONT> </P>
+                <LI>
+                <P align=justify 
+                style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+                face=Verdana size=2>limitations sur la taille des fichiers de 
+                log.</FONT> </P></UL>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>attachement d'un service &agrave; une 
+              interface particuli&egrave;re : ceci permet, par exemple, de rendre des 
+              services accessibles &agrave; votre r&eacute;seau interne mais pas au reste du 
+              monde ;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>peut faire office de proxy vers 
+              d'autres syst&egrave;mes, ce qui s'av&egrave;re tr&egrave;s pratique dans le cas de 
+              l'ip masquerading (ou de NAT) afin d'atteindre des machines 
+              situ&eacute;es sur le r&eacute;seau interne.</FONT> </P></UL>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Le principal inconv&eacute;nient, d&eacute;j&agrave; 
+            mentionn&eacute;, concerne les RPC qui ne sont pas encore tr&egrave;s bien 
+            support&eacute;s. Toutefois, portmap et xinetd cohabitent parfaitement 
+            :)</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>La premi&egrave;re partie de cet article 
+            explique le fonctionnement g&eacute;n&eacute;ral de xinetd. Nous nous attarderons, 
+            par l'interm&eacute;diaire d'exemples, sur la configuration g&eacute;n&eacute;rale d'un 
+            service, sur quelques options particuli&egrave;res (attachement &agrave; une 
+            interface, redirection). La seconde partie illustre le 
+            fonctionnement de xinetd, les logs qu'il g&eacute;n&egrave;re et finit avec une 
+            petite astuce tr&egrave;s utile.<BR>&nbsp;</FONT> 
+            <H1 align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Compilation &amp; 
+            Installation</FONT></H1>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Vous pouvez r&eacute;cup&eacute;rer xinetd sur 
+            le site <A href="http://www.xinetd.org/">http://www.xinetd.org/</A>. 
+            La version utilis&eacute;e pour cet article est la 2.1.8.9pre10.<BR>La 
+            compilation et l'installation sont tout &agrave; fait classiques : le 
+            triplet ./configure; make; make install fait tout :) Les options 
+            habituelles sont support&eacute;es par le configure. Trois options 
+            particuli&egrave;res sont &eacute;galement disponibles pour compiler ce 
+            programme:</FONT> 
+            <OL>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>--with-libwrap : avec cette 
+              option, xinetd commence par examiner les fichiers de configuration 
+              de tcpd (/etc/hosts.{allow, deny}) et ensuite, si l'acc&egrave;s est 
+              accord&eacute;, il utilise ses propres m&eacute;canismes de contr&ocirc;le. Cette 
+              option n&eacute;cessite la pr&eacute;sence du tcp_wrapper et des biblioth&egrave;ques 
+              qui l'accompagnent. (Note de l'auteur : ce qui est r&eacute;alisable avec 
+              le wrapper l'est tout aussi bien par xinetd. Autoriser cette 
+              compatibilit&eacute; conduit &agrave; multiplier les fichiers de configuration, 
+              ce qui complique l'administration ... bref, je ne le recommande 
+              pas);</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>--with-loadavg : cette option 
+              permet &agrave; xinetd de supporter l'option de configuration max_load 
+              (charge maximale). Cela permet de d&eacute;sactiver certains services 
+              lorsque la charge de la machine d&eacute;passe le seuil donn&eacute;, ce qui est 
+              essentiel pour pr&eacute;venir certains DoS (voir l'attribut max_load 
+              dans le <A 
+              href="http://www.isecurelabs.com/faq/xinetd.html#tableau1">tableau 
+              1</A> ;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>--with-inet6 : si vous voulez 
+              utiliser IPv6, cette option en garantit le support. Les connexions 
+              IPv4 <B>et</B> IPv6 sont g&eacute;r&eacute;es, mais les adresses IPv4 se 
+              transforment au format IPv6.</FONT> </P></OL>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Avant de d&eacute;marrer xinetd, il n'est 
+            pas obligatoire d'arr&ecirc;ter inetd. Toutefois, ne pas le faire entra&icirc;ne 
+            un comportement relativement impr&eacute;visible des deux d&eacute;mons!</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Certains signaux influencent le 
+            comportement de xinetd:</FONT> 
+            <UL>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>SIGUSR1: reconfiguration soft : 
+              le fichier de configuration est relu et les param&egrave;tres des 
+              services sont ajust&eacute;s;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>SIGUSR2: reconfiguration hard : 
+              comme ci-dessus, mais tue en plus les d&eacute;mons qui ne correspondent 
+              plus aux crit&egrave;res;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>SIGTERM: termine xinetd et tous 
+              les d&eacute;mons qu'il a g&eacute;n&eacute;r&eacute;s.</FONT> </P></UL>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Il en existe quelques autres 
+            (signalons juste une erreur dans les documentations et pages man: le 
+            signal SIGHUP g&eacute;n&egrave;re son dump dans le fichier /var/run/xinetd.dump 
+            et non dans /tmp/xinetd.dump), mais ces trois l&agrave; permettent d'&eacute;crire 
+            rapidement un petit script pour le g&eacute;rer facilement &agrave; l'aide des 
+            options start, stop, restart, soft, hard (ces deux derni&egrave;res 
+            correspondent respectivement aux signaux SIGUSR1 et SIGUSR2).</FONT> 
+
+            <H1 align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Configuration</FONT></H1>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Le fichier /etc/xinetd.conf 
+            configure, par d&eacute;faut, le d&eacute;mon xinetd (une option de la ligne de 
+            commande permet d'en d&eacute;signer un autre). Si la configuration de 
+            xinetd n'est pas tr&egrave;s compliqu&eacute;e, elle est longue et la syntaxe 
+            diff&egrave;re malheureusement de celle employ&eacute;e par son pr&eacute;d&eacute;cesseur 
+            inetd.</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Deux utilitaires (itox et 
+            xconv.pl) sont fournis avec xinetd et permettent de convertir le 
+            fichier /etc/inetd.conf en fichier de configuration pour xinetd. 
+            Bien &eacute;videmment, ceci ne suffit pas dans la mesure o&ugrave; les r&egrave;gles 
+            stipul&eacute;es dans les fichiers de configuration du wrapper sont 
+            ignor&eacute;es. itox n'&eacute;volue plus, m&ecirc;me s'il est encore maintenu. 
+            xconv.pl offre une meilleure solution, m&ecirc;me si le r&eacute;sultat n&eacute;cessite 
+            d'&ecirc;tre modifi&eacute;, ne serait-ce que parce que xinetd offre plus de 
+            possibilit&eacute;s qu'inetd.</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>&gt;&gt;/usr/local/sbin/xconv.pl 
+              &lt; /etc/inetd.conf &gt; /etc/xinetd.conf</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Le fichier de configuration 
+            commence par une section par d&eacute;faut dont les attributs seront 
+            utilis&eacute;s pour tous les services pris en charge par xinetd. Suivent 
+            alors autant de sections que de services d&eacute;sir&eacute;s, chacun pouvant 
+            red&eacute;finir des options qui lui seront sp&eacute;cifiques par rapport &agrave; 
+            celles par d&eacute;faut.</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>La section des valeurs par d&eacute;fauts 
+            s'&eacute;crit:</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify 
+              style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><I><FONT color=#000000 
+              face=Verdana size=2>defaults</FONT></I><FONT color=#000000 
+              face=Verdana size=2><BR>{<BR>&nbsp;&nbsp;&nbsp; attribut op&eacute;rateur 
+              valeur(s)<BR>&nbsp;&nbsp;&nbsp; ...<BR>}</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Chacun des attributs d&eacute;fini dans 
+            cette section conserve la (les) valeur(s) fournie(s) pour les 
+            services d&eacute;crits ensuite. Ainsi, l'attribut only_from permet de 
+            stipuler une liste d'adresses autoris&eacute;es &agrave; se connecter aux 
+            serveurs:</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>only_from = 192.168.1.0/24 
+              192.168.5.0/24 192.168.10.17</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Par la suite, tous les services 
+            d&eacute;clar&eacute;s autorisent l'acc&egrave;s aux machines dont les adresses 
+            correspondent &agrave; l'une de celles indiqu&eacute;es. Il est toutefois possible 
+            de modifier ces valeurs par d&eacute;faut au sein de chaque service (voir 
+            les op&eacute;rateurs expliqu&eacute;s ci-apr&egrave;s). Cependant, cette d&eacute;marche 
+            comporte certains risques. En effet, il vaut mieux, pour des raisons 
+            de simplicit&eacute; et de s&eacute;curit&eacute;, ne jamais d&eacute;finir de valeur par d&eacute;faut 
+            qui soit ensuite modifi&eacute;e dans un service. Dans le cas de droits 
+            d'acc&egrave;s par exemple, la politique la plus simple et la plus efficace 
+            consiste &agrave; interdire par d&eacute;faut l'acc&egrave;s &agrave; tout le monde pour ensuite 
+            autoriser l'acc&egrave;s &agrave; chaque service seulement &agrave; ceux qui en ont 
+            besoin (avec tcp_wrapper, cette politique se traduit par un 
+            hosts.deny contenant ALL:ALL@ALL, et un hosts.allow ne contenant que 
+            les services autoris&eacute;s avec les adresses ad&eacute;quates).</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Chaque section d&eacute;crivant un 
+            service dans le fichier de configuration est de la forme:</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify 
+              style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><I><FONT color=#000000 
+              face=Verdana size=2>service</FONT></I><FONT color=#000000 
+              face=Verdana size=2> nom_du_service<BR>{<BR>&nbsp;&nbsp;&nbsp; 
+              attribut op&eacute;rateur valeur(s)<BR>&nbsp;&nbsp;&nbsp; ...<BR>}</FONT> 
+              </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Il existe trois op&eacute;rateurs: '=', 
+            '+=' et '-='. La plupart des attributs ne supporte que l'op&eacute;rateur 
+            '=', qui fixe une valeur &agrave; un attribut. L'op&eacute;rateur '+=' ajoute un 
+            &eacute;l&eacute;ment &agrave; une liste de valeurs, alors que '-=' retire cet 
+            &eacute;l&eacute;ment.</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Le <A 
+            href="http://www.isecurelabs.com/faq/xinetd.html#tableau1">tableau 
+            1</A> d&eacute;crit succinctement quelques uns des attributs. Nous verrons 
+            leur utilisation dans les exemples qui suivront. La lecture de la 
+            page man de xinetd.conf fournit de plus amples 
+            informations.<BR>&nbsp;<BR>&nbsp; <A name=tableau1>&nbsp;</A></FONT>
+            <CENTER>
+            <TABLE bgColor=#9999bb border=1 width="100%" NOSAVE>
+              <TBODY>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT 
+                  color=#000000 face=Verdana size=2>Attribut</FONT></B></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT 
+                  color=#000000 face=Verdana size=2>Valeurs et 
+                  description</FONT></B></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>flags</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Seules les valeurs les plus 
+                  courantes sont d&eacute;crites ici, regarder dans la documentation 
+                  pour d&eacute;couvrir les autres:</FONT> 
+                  <UL>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>IDONLY: n'accepte de 
+                    connexions que des clients qui disposent d'un serveur 
+                    d'identification;</FONT> </P>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>NORETRY : &eacute;vite que le 
+                    processus soit &agrave; nouveau &quot;fork&eacute;&quot; en cas d'&eacute;chec;</FONT> </P>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>NAMEINARGS: le premier 
+                    argument de l'attribut server_args est utilis&eacute; en tant que 
+                    argv[0] pour le server. Ceci permet d'utiliser tcpd en le 
+                    mettant dans l'attribut server, puis d'&eacute;crire le nom du 
+                    serveur et ses arguments comme server_args, exactement comme 
+                    avec inetd.</FONT> </P></UL></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>log_type</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>xinetd utilise syslogd et le 
+                  s&eacute;lecteur daemon.info par d&eacute;faut.</FONT> 
+                  <BLOCKQUOTE>
+                    <UL>
+                      <LI>
+                      <P align=justify 
+                      style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                      color=#000000 face=Verdana size=2>SYSLOG s&eacute;lecteur 
+                      [level]: permet de choisir parmi les entr&eacute;es daemon, auth, 
+                      user ou local0-7 de syslogd ;</FONT> </P>
+                      <LI>
+                      <P align=justify 
+                      style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                      color=#000000 face=Verdana size=2>FILE [taille_max 
+                      [taille_max_absolue]]: le fichier sp&eacute;cifi&eacute; re&ccedil;oit les 
+                      informations. Les deux options fixent des limites de 
+                      taille du fichier. La premi&egrave;re, lorsqu'elle est atteinte, 
+                      provoque l'&eacute;mission d'un message vers syslogd, la seconde 
+                      arr&ecirc;te l'enregistrement des logs pour le service concern&eacute; 
+                      (s'il s'agit d'un fichier commun - ou fix&eacute; par d&eacute;faut - 
+                      plusieurs services peuvent alors &ecirc;tre affect&eacute;s).</FONT> 
+                      </P></UL></BLOCKQUOTE></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>log_on_success</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Diff&eacute;rentes informations 
+                  sont enregistrables quand un serveur d&eacute;marre:</FONT> 
+                  <UL>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>PID: le PID du serveur 
+                    (s'il s'agit d'un service interne &agrave; xinetd, le PID vaut 
+                    alors 0);</FONT> </P>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>HOST: l'adresse du 
+                    client;</FONT> </P>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>USERID: l'identit&eacute; de 
+                    l'utilisateur distant, en accord avec la <A 
+                    href="http://www.ietf.org/rfc/rfc1413.txt">RFC1413</A> qui 
+                    d&eacute;finit le protocole d'identification;</FONT> </P>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>EXIT: le statut de sortie 
+                    du processus;</FONT> </P>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>DURATION: la dur&eacute;e de la 
+                    session.</FONT> </P></UL></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>log_on_failure</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>L&agrave; encore, xinetd dispose de 
+                  multiples informations &agrave; enregistrer quand un serveur ne peut 
+                  d&eacute;marrer, soit par manque de ressources, soit &agrave; cause des 
+                  r&egrave;gles d'acc&egrave;s:</FONT> 
+                  <UL>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>HOST, USERID: comme 
+                    ci-dessus;</FONT> </P>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>ATTEMPT: enregistre le 
+                    fait qu'une tentative d'acc&egrave;s a eu lieu. Cette option est 
+                    automatique d&egrave;s qu'une autre valeur est stipul&eacute;e ;</FONT> 
+                    </P>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>RECORD: enregistre toutes 
+                    les informations disponibles sur le client.</FONT> 
+                  </P></UL></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>nice</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Modifie la priorit&eacute; du 
+                  serveur, exactement comme avec la commande 
+              nice.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>no_access</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Liste de clients dont on 
+                  refuse les connexions &agrave; ce service.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>only_from</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Liste de clients autoris&eacute;s. 
+                  Si cet attribut n'a pas de valeur, l'acc&egrave;s &agrave; ce service est 
+                  interdit.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>port</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Le port associ&eacute; au service. 
+                  Si celui-ci est &eacute;galement d&eacute;fini dans /etc/services, les 2 
+                  num&eacute;ros de port doivent correspondre.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>protocol</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Le protocole stipul&eacute; doit 
+                  exister dans /etc/protocols. S'il n'en est pas fournit, le 
+                  protocole par d&eacute;faut associ&eacute; &agrave; ce service est 
+                  employ&eacute;.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>server</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Le chemin vers le serveur &agrave; 
+                  utiliser.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>server_args</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Des arguments &agrave; passer au 
+                  serveur.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>socket_type</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>stream (TCP), dgram (UDP), 
+                  raw (acc&egrave;s direct &agrave; IP) ou seqpacket ().</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>type</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>xinetd g&egrave;re 3 types de 
+                  services:</FONT> 
+                  <OL>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>RPC: pour ceux d&eacute;crit dans 
+                    /etc/rpc ... mais ne fonctionne pas tr&egrave;s bien;</FONT> </P>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>INTERNAL: pour les 
+                    services pris directement en charge par xinetd (echo, time, 
+                    daytime, chargen et discard);</FONT> </P>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>UNLISTED : pour les 
+                    services non d&eacute;crits soit dans /etc/rpc, soit dans 
+                    /etc/services;</FONT> </P></OL>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Notons qu'il est possible de 
+                  combiner plusieurs de ces valeurs, comme nous le verrons avec 
+                  les services internes servers, services et 
+                xadmin.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>wait</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>D&eacute;finit le comportement du 
+                  service vis-&agrave;-vis des threads. Deux valeurs sont 
+                  possibles:</FONT> 
+                  <UL>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>yes: le service est 
+                    mono-thread, une seule connexion de ce type peut-&ecirc;tre g&eacute;r&eacute;e 
+                    &agrave; la fois par le service;</FONT> </P>
+                    <LI>
+                    <P align=justify 
+                    style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                    color=#000000 face=Verdana size=2>no: &agrave; chaque nouvelle 
+                    requ&ecirc;te vers le service, un nouveau serveur est d&eacute;marr&eacute; par 
+                    xinetd, dans la limite maximale d&eacute;finie (Attention, cette 
+                    limite est infinie par d&eacute;faut).</FONT> </P></UL></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>cps</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Limite le nombre de 
+                  connexions entrantes. Le premier argument est ce nombre 
+                  lui-m&ecirc;me. Lorsque ce seuil est d&eacute;pass&eacute;, le service se 
+                  d&eacute;sactive pour un d&eacute;lai, exprim&eacute; en secondes, fourni par le 
+                  second argument.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>instances</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>D&eacute;termine le nombre maximal 
+                  de serveurs d'un m&ecirc;me type pouvant fonctionner en m&ecirc;me 
+                  temps.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>max_load</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Ce r&eacute;el indique la charge 
+                  maximale que peut occuper un serveur (par exemple, 2 ou 2.5). 
+                  Au-del&agrave; de cette limite, les requ&ecirc;tes sur ce serveur sont 
+                  rejet&eacute;es.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>per_source</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Soit un entier, soit 
+                  UNLIMITED, pour restreindre le nombre de connexions ayant une 
+                  m&ecirc;me origine&nbsp; &agrave; un serveur&nbsp;</FONT></P></TD></TR>
+              <CAPTION vAlign=bottom>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><A 
+              href="http://www.isecurelabs.com/faq/xinetd.html#tableau1" 
+              name=tableau1><FONT color=#000000 face=Verdana size=2>Tab. 
+              1</FONT></A><FONT color=#000000 face=Verdana size=2>: quelques 
+              attributs utilisables avec 
+            xinetd</FONT></P></CAPTION></TABLE></CENTER>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Les quatre derniers attributs 
+            pr&eacute;sent&eacute;s dans le <A 
+            href="http://www.isecurelabs.com/faq/xinetd.html#tableau1">tableau 
+            1</A> permettent de contr&ocirc;ler les ressources attach&eacute;es aux serveurs. 
+            Ceci permet de lutter efficacement contre certaines attaques par 
+            <I>Deny of Service</I> (DoS), dont le but est de paralyser une 
+            machine en occupant toutes ses ressources.</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Cette partie pr&eacute;sentait quelques 
+            unes des possibilit&eacute;s offertes par xinetd. Les parties suivantes 
+            montrent comment s'en servir et pr&eacute;cisent certaines r&egrave;gles de bon 
+            fonctionnement. <A name=lfindex0>&nbsp;</A></FONT> 
+            <H2 align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>defaults pour les 
+            services</FONT></H2>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>La section defaults permet de 
+            fixer des valeurs pour certains attributs (voir les documentations 
+            pour la liste compl&egrave;te). Parmi cette liste, certains (only_from, 
+            no_access, log_on_success, log_on_failure, ...) cumulent les valeurs 
+            allou&eacute;es dans cette section avec celles fournies dans les 
+            services.</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Interdire, par d&eacute;faut,&nbsp; tout 
+            acc&egrave;s &agrave; sa machine est la premi&egrave;re &eacute;tape d'une politique de 
+            s&eacute;curisation viable. Ensuite, il ne restera qu'&agrave; autoriser, en 
+            fonction des services, l'acc&egrave;s &agrave; qui de droit. Nous avons vu deux 
+            attributs permettant de contr&ocirc;ler l'acc&egrave;s &agrave; sa machine fond&eacute;s sur 
+            les adresses IP: only_from et no_access. Choisir le second en 
+            mettant:</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>no_access = 0.0.0.0/0</FONT> 
+            </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>bloque compl&egrave;tement l'acc&egrave;s aux 
+            services. Cependant, si vous souhaitez autoriser tout le monde &agrave; 
+            acc&eacute;der, par exemple, &agrave; echo, vous devrez alors mettre dans le 
+            service echo:</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>only_from = 0.0.0.0/0</FONT> 
+            </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Voici le message enregistr&eacute; dans 
+            les logs avec cette configuration:</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>Sep 17 15:11:12 charly 
+              xinetd[26686]: Service=echo-stream: only_from list and no_access 
+              list match equally the address 192.168.1.1</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>En fait, le contr&ocirc;le d'acc&egrave;s se 
+            fait en comparant les listes d'adresses contenues dans les deux 
+            attributs. Quand l'adresse du client correspond aux 2 listes, la 
+            liste la moins g&eacute;n&eacute;rale l'emporte. En cas d'&eacute;galit&eacute;, comme c'est le 
+            cas dans notre exemple, xinetd se met dans une situation 
+            d'ind&eacute;cidabilit&eacute; et refuse la connexion.&nbsp; Pour lever 
+            l'ambiguit&eacute;, il aurait suffit de mettre:</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>only_from = 192.0.0.0/8</FONT> 
+              </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Un autre solution, moins 
+            probl&eacute;matique, consiste &agrave; contr&ocirc;ler l'acc&egrave;s uniquement avec 
+            l'attribut:</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>only_from =</FONT> 
+            </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Ne rien pr&eacute;ciser comme valeur 
+            condamne toutes les connexions &agrave; l'&eacute;chec :) Ensuite, chaque service 
+            d&eacute;livre ses autorisations d'acc&egrave;s au moyen de ce m&ecirc;me 
+            attribut.</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>D&eacute;tail important, voire essentiel: 
+            en cas d'absence compl&egrave;te de r&egrave;gles d'acc&egrave;s (i.e. ni only_from, ni 
+            no_access) pour un service (allou&eacute;es soit de mani&egrave;re directe, soit 
+            par le biais de la section default), l'acc&egrave;s au service est 
+            autoris&eacute;!</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Voici un exemple de defaults 
+            :</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>defaults<BR>{<BR>&nbsp; 
+              instances&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 15<BR>&nbsp; 
+              log_type&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = FILE 
+              /var/log/servicelog<BR>&nbsp; log_on_success&nbsp; = HOST PID 
+              USERID DURATION EXIT<BR>&nbsp; log_on_failure&nbsp; = HOST USERID 
+              RECORD<BR>&nbsp; only_from&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+              =<BR>&nbsp; per_source&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 5</FONT> 
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>&nbsp; disabled = shell login 
+              exec comsat<BR>&nbsp; disabled = telnet ftp<BR>&nbsp; disabled = 
+              name uucp tftp<BR>&nbsp; disabled = finger systat netstat</FONT> 
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>&nbsp; #INTERNAL<BR>&nbsp; 
+              disabled = time daytime chargen servers services xadmin</FONT> 
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>&nbsp; #RPC<BR>&nbsp; disabled = 
+              rstatd rquotad rusersd sprayd walld<BR>}</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Parmi les services internes, 
+            servers, services, et&nbsp; xadmin permettent de g&eacute;rer xinetd. Nous 
+            en reparlerons plus loin. <A name=lfindex1>&nbsp;</A></FONT> 
+            <H2 align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Configurer un service</FONT></H2>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Pour configurer un service, nous 
+            avons besoin de... rien :) En fait, tout se comporte exactement 
+            comme avec les valeurs par d&eacute;faut: il suffit de pr&eacute;ciser les 
+            attributs et leur(s) valeur(s) pour param&eacute;trer le service en 
+            question. Ceci entra&icirc;ne soit une modification des valeurs par 
+            d&eacute;faut, soit l'ajout d'un attribut pour ce service.</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Certains attributs doivent 
+            imp&eacute;rativement appara&icirc;tre en fonction du type du service (INTERNAL, 
+            UNLISTED ou RPC)&nbsp;:<BR>&nbsp;<BR>&nbsp; <A 
+            name=tableau2></A></FONT>
+            <CENTER>
+            <TABLE bgColor=#9999bb border=1 width="60%" NOSAVE>
+              <TBODY>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT 
+                  color=#000000 face=Verdana size=2>Attribut</FONT></B></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT 
+                  color=#000000 face=Verdana 
+              size=2>Commentaire</FONT></B></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>socket-type</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Tous les 
+                services.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>user</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Uniquement pour les services 
+                  non INTERNAL</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>server</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Uniquement pour les services 
+                  non INTERNAL</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>wait</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Tous les 
+                services.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>protocol</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Tous les services RPC et 
+                  absents de /etc/services.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>rpc_version</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Tous les services 
+                  RPC.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>rpc_number</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Tous les services RPC, 
+                  absents de /etc/rpc.</FONT></P></TD></TR>
+              <TR>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>port</FONT></P></TD>
+                <TD>
+                  <P align=justify 
+                  style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+                  color=#000000 face=Verdana size=2>Tous les services non RPC, 
+                  absents de /etc/services.</FONT></P></TD></TR>
+              <CAPTION vAlign=bottom>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><A 
+              href="http://www.isecurelabs.com/faq/xinetd.html#tableau2"><FONT 
+              color=#000000 face=Verdana size=2>Tab. 2</FONT></A><FONT 
+              color=#000000 face=Verdana size=2>: attributs 
+              obligatoires</FONT></P></CAPTION></TABLE></CENTER>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>L'exemple ci-dessous illustre la 
+            d&eacute;finition de services :</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>service ntalk<BR>{<BR>&nbsp; 
+              socket_type&nbsp;&nbsp; = dgram<BR>&nbsp; 
+              wait&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              yes<BR>&nbsp; 
+              user&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              nobody<BR>&nbsp; server&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+              = /usr/sbin/in.ntalkd<BR>&nbsp; only_from&nbsp;&nbsp;&nbsp;&nbsp; 
+              = 192.168.1.0/24<BR>}</FONT> 
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>service ftp<BR>{<BR>&nbsp; 
+              socket_type&nbsp; = stream<BR>&nbsp; 
+              wait&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              no<BR>&nbsp; user&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+              = root<BR>&nbsp; server&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              /usr/sbin/in.ftpd<BR>&nbsp; server_args&nbsp; = -l<BR>&nbsp; 
+              instances&nbsp;&nbsp;&nbsp; = 4<BR>&nbsp; access_times = 
+              7:00-12:30 13:30-21:00<BR>&nbsp; 
+              nice&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              10<BR>&nbsp; only_from&nbsp;&nbsp;&nbsp; = 
+              192.168.1.0/24<BR>}</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>&nbsp;Constatons que ces services 
+            ne sont autoris&eacute;s que sur le r&eacute;seau interne (192.168.1.0/24). Pour 
+            le FTP, des restrictions suppl&eacute;mentaires sont pr&eacute;vues: le nombre 
+            d'instances est limit&eacute; &agrave; 4 et il ne sera possible de l'utiliser que 
+            pendant certaines plages horaires. <A 
+            name=lfindex2>&nbsp;</A></FONT> 
+            <H2 align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Attachement &agrave; un port: l'attribut 
+            bind</FONT></H2>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Cet attribut permet de lier (<I>to 
+            bind</I> en Anglais) un service &agrave; une adresse IP. Si votre machine 
+            ne dispose que d'une adresse, ceci ne sert &agrave; rien. En revanche, 
+            prenons le cas d'un ordinateur sur un r&eacute;seau local mais &eacute;galement 
+            connect&eacute; &agrave; Internet: il dispose au moins de deux adresses.</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Par exemple, une soci&eacute;t&eacute; veut 
+            mettre en place un serveur FTP pour ses employ&eacute;s (afin qu'ils 
+            puissent consulter des documents internes). Elle tient &eacute;galement &agrave; 
+            fournir &agrave; ses clients un acc&egrave;s FTP vers ses produits: bind est fait 
+            pour cette soci&eacute;t&eacute; :) Nous allons d&eacute;finir deux services FTP. 
+            Toutefois, xinetd doit pouvoir les distinguer: c'est l&agrave; 
+            qu'intervient l'attribut id, qui d&eacute;finit de mani&egrave;re unique un 
+            service (lorsqu'il n'est pas d&eacute;fini dans un service, il vaut, par 
+            d&eacute;faut, le nom du service).<BR>&nbsp;</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>service ftp<BR>{<BR>&nbsp; 
+              id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              ftp-public<BR>&nbsp; 
+              wait&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              no<BR>&nbsp; user&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+              = root<BR>&nbsp; server&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              /usr/sbin/in.ftpd<BR>&nbsp; server_args&nbsp; = -l<BR>&nbsp; 
+              instances&nbsp;&nbsp;&nbsp; = 4<BR>&nbsp; 
+              nice&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              10<BR>&nbsp; only_from&nbsp;&nbsp;&nbsp; = 0.0.0.0/0 #autorisation 
+              pour tous les clients<BR>&nbsp; 
+              bind&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              212.198.253.142 #adresse IP publique de ce serveur<BR>}</FONT> 
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>service ftp<BR>{<BR>&nbsp; 
+              id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              ftp-private<BR>&nbsp; socket_type&nbsp; = stream<BR>&nbsp; 
+              wait&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              no<BR>&nbsp; user&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+              = root<BR>&nbsp; server&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              /usr/sbin/in.ftpd<BR>&nbsp; server_args&nbsp; = -l<BR>&nbsp; 
+              only_from&nbsp;&nbsp;&nbsp; = 192.168.1.0/24 #usage interne 
+              seulement<BR>&nbsp; 
+              bind&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              192.168.1.1&nbsp; #adresse IP locale de ce serveur 
+              (charly)<BR>}</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>L'utilisation de bind va 
+            permettre, selon la destination des paquets, d'invoquer le d&eacute;mon 
+            correspondant. Ainsi, un client sur le r&eacute;seau local, dans cette 
+            configuration, doit pr&eacute;ciser l'adresse locale (ou le nom qui y est 
+            associ&eacute;) pour acc&eacute;der aux donn&eacute;es internes. Dans le fichier de logs, 
+            les traces suivantes apparaissent:</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>00/9/17@16:47:46: START: 
+              ftp-public pid=26861 from=212.198.253.142<BR>00/9/17@16:47:46: 
+              EXIT: ftp-public status=0 pid=26861 
+              duration=30(sec)<BR>00/9/17@16:48:19: START: ftp-interne pid=26864 
+              from=192.168.1.1<BR>00/9/17@16:48:19: EXIT: ftp-interne status=0 
+              pid=26864 duration=15(sec)</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>La premi&egrave;re s&eacute;rie r&eacute;sulte de la 
+            commande ftp 212.198.253.142, alors que la seconde, ex&eacute;cut&eacute;e 
+            directement de charly vers lui-m&ecirc;me: ftp 192.168.1.1.</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Un probl&egrave;me appara&icirc;t clairement: 
+            que se passe-t-il si la machine ne dispose pas de deux adresses IP 
+            fixes? Ce cas de figure se produit par exemple avec des connexions 
+            ppp ou si vous utilisez le protocole dhcp. Il semble donc qu'il 
+            vaudrait mieux lier les services aux interfaces qu'aux adresses. 
+            Toutefois, ceci n'est pas encore pr&eacute;vu avec xinetd et pose de 
+            nombreux probl&egrave;mes (entre autres, &eacute;crire un module C pour acc&eacute;der 
+            aux interfaces et aux adresses d&eacute;pend fortement de l'OS de 
+            l'ordinateur, or xinetd est support&eacute; par beaucoup d'OS 
+            diff&eacute;rents...) L'utilisation d'un script permet de r&eacute;soudre ce 
+            probl&egrave;me &agrave; moindre co&ucirc;t:</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>#!/bin/sh</FONT> 
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>PUBLIC_ADDRESS=`/sbin/ifconfig 
+              $1 | grep &quot;inet addr&quot; | awk '{print $2}'| awk -F: '{print 
+              $2}'`<BR>sed s/PUBLIC_ADDRESS/&quot;$PUBLIC_ADDRESS&quot;/g /etc/xinetd.base 
+              &gt; /etc/xinetd.conf</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Ce script prend le fichier 
+            /etc/xinetd.base, qui contient la configuration souhait&eacute;e avec&nbsp; 
+            PUBLIC_ADDRESS &agrave; la place de l'adresse variable, et le transforme en 
+            /etc/xinetd.conf, en rempla&ccedil;ant la cha&icirc;ne de caract&egrave;res 
+            PUBLIC_ADDRESS par l'adresse associ&eacute;e &agrave; l'interface pass&eacute;e en 
+            argument du script. Ensuite, l'appel de ce script d&eacute;pend du type de 
+            connexion utilis&eacute;: le plus simple consiste &agrave; en ajouter l'appel dans 
+            le fichier ifup-* ad&eacute;quate et de (re)lancer xinetd. <A 
+            name=lfindex3>&nbsp;</A></FONT> 
+            <H2 align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Redirection d'un service vers une 
+            autre machine: l'attribut redirect</FONT></H2>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>xinetd peut se transformer en une 
+            sorte de proxy transparent (enfin, presque ... comme nous le 
+            verrons) gr&acirc;ce &agrave; l'attribut redirect. Il permet de r&eacute;acheminer la 
+            requ&ecirc;te parvenant &agrave; un service vers une autre machine sur le port 
+            voulu.</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>service telnet<BR>{<BR>&nbsp; 
+              flags&nbsp; = REUSE<BR>&nbsp; socket_type = stream<BR>&nbsp; 
+              wait&nbsp; = no<BR>&nbsp; user&nbsp; = root<BR>&nbsp; server = 
+              /usr/sbin/in.telnetd<BR>&nbsp; only_from = 
+              192.168.1.0/24<BR>&nbsp; redirect = 192.168.1.15 23<BR>}</FONT> 
+              </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Regardons ce qui se passe 
+            maintenant :</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>&gt;&gt;telnet charly<BR>Trying 
+              192.168.1.1...<BR>Connected to charly.<BR>Escape character is 
+              '^]'.<BR>&nbsp;</FONT> 
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>Digital UNIX (sabrina) 
+              (ttyp1)</FONT> 
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>login:</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Effectivement, la connexion semble 
+            se faire sur charly, sauf que la suite montre bien qu'en fait, 
+            sabrina (une alpha, d'o&ugrave; le &quot;Digital UNIX&quot;) a pris le relais. Ce 
+            m&eacute;canisme peut s'av&eacute;rer &agrave; la fois utile et dangereux. Lors de sa 
+            mise en place, des logs doivent avoir lieu &agrave; chaque extr&eacute;mit&eacute; de la 
+            connexion. De plus, pour ce type de service, l'utilisation d'une DMZ 
+            et de firewalls n'est pas &agrave; n&eacute;gliger ;-) <A 
+            name=lfindex4>&nbsp;</A></FONT> 
+            <H2 align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Services sp&eacute;ciaux</FONT></H2>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>xinetd dispose de trois services 
+            qui lui sont propres. Ces services n'apparaissant ni dans /etc/rpc, 
+            ni dans /etc/services, doivent avoir &eacute;galement le flag UNLISTED (en 
+            plus du flag INTERNAL qui signale qu'il s'agit de services de 
+            xinetd)</FONT> 
+            <OL>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>servers: r&eacute;v&egrave;le les serveurs 
+              actuellement en cours d'utilisation ;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>services: affiche les services 
+              disponibles, leur protocole et leur port ;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>xadmin: m&eacute;lange les fonctions 
+              des deux pr&eacute;c&eacute;dents.</FONT> </P></OL>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Bien &eacute;videmment, ces services 
+            exposent votre ordinateur. Ils d&eacute;voilent des informations 
+            importantes. Pour l'instant, leur acc&egrave;s n'est pas prot&eacute;g&eacute; (par un 
+            mot de passe par exemple). Vous ne devez vous en servir que lors de 
+            la configuration de xinetd. Ensuite, dans la section defaults, leur 
+            usage doit &ecirc;tre prohib&eacute;:</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>defaults {<BR>&nbsp; 
+              ...<BR>&nbsp; disabled = servers services xadmin<BR>&nbsp; 
+              ...<BR>}</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Avant de les initaliser, mieux 
+            vaut prendre quelques pr&eacute;cautions :</FONT> 
+            <OL>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>seule la machine sur laquelle 
+              tourne xinetd doit pouvoir s'y connecter ;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>limiter le nombre d'instances &agrave; 
+              une;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>n'autoriser l'acc&egrave;s qu'&agrave; la 
+              machine sur laquelle tourne le serveur.</FONT> </P></OL>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Prenons le cas du service xadmin 
+            (les deux autres se configurent exactement de la m&ecirc;me mani&egrave;re, au 
+            num&eacute;ro de port pr&egrave;s ;-):</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>service xadmin<BR>{<BR>&nbsp; 
+              type&nbsp; = INTERNAL UNLISTED<BR>&nbsp; port&nbsp; = 
+              9100<BR>&nbsp; protocol = tcp<BR>&nbsp; socket_type = 
+              stream<BR>&nbsp; wait&nbsp; = no<BR>&nbsp; instances = 1<BR>&nbsp; 
+              only_from = 192.168.1.1&nbsp; #charly<BR>}</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Le service xadmin dispose de 5 
+            commandes :</FONT> 
+            <OL>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>help ...</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>show run: comme pour le service 
+              servers, montre les serveurs actuellement utilis&eacute;s;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>show avail: comme pour le 
+              service services, affiche les services disponibles (et quelques 
+              autres informations qui n'apparaissent pas services);</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>bye ou exit ...</FONT> 
+            </P></OL>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Vous savez maintenant qu'ils 
+            existent: oubliez-les ;-) Vous pouvez tout &agrave; fait faire vos tests 
+            sans ces services Des commandes comme (netstat, fuser, lsof, ... 
+            vous permettent justement de savoir exactement ce qui se passe sur 
+            votre machine sans l'exposer autant que ces services!</FONT> 
+            <H1 align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Jouons un peu ...</FONT></H1>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><A 
+            name=lfindex5><FONT color=#000000 face=Verdana 
+            size=2>&nbsp;</FONT></A> 
+            <H2 align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Une &eacute;nigme pour 
+            commencer</FONT></H2>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Voici un petit exercice pour ceux 
+            qui ont surv&eacute;cu ;-) Apr&egrave;s avoir expliqu&eacute; la configuration utilis&eacute;e, 
+            une requ&ecirc;te donne un r&eacute;sultat surprenant. Nous m&egrave;nerons l'enqu&ecirc;te 
+            pour d&eacute;couvrir ce qui se passe.</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Nous n'avons besoin que du service 
+            finger :</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>service finger<BR>{<BR>&nbsp; 
+              flags&nbsp; = REUSE NAMEINARGS<BR>&nbsp; server = 
+              /usr/sbin/tcpd<BR>&nbsp; server_args = in.fingerd<BR>&nbsp; 
+              socket_type = stream<BR>&nbsp; wait&nbsp; = no<BR>&nbsp; 
+              user&nbsp; = nobody<BR>&nbsp; only_from = 192.168.1.1&nbsp; 
+              #charly<BR>}</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>xinetd n'a pas &eacute;t&eacute; compil&eacute; avec 
+            l'option --with-libwrap (voir l'attribut server). La section 
+            defaults est du m&ecirc;me genre que celle fournie pr&eacute;c&eacute;demment: tout 
+            acc&egrave;s est interdit vers charly quelle que soit la source de la 
+            connexion. Le service finger n'est pas d&eacute;sactiv&eacute;, et 
+            pourtant:</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>pappy@<I>charly</I> &gt;&gt; 
+              finger pappy@charly<BR>[charly]<BR>pappy@<I>charly</I> 
+              &gt;&gt;</FONT> 
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>pappy@<I>bosley</I> 
+              &gt;&gt;&nbsp; finger pappy@charly<BR>[charly]</FONT> 
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>pappy@<I>bosley</I> 
+              &gt;&gt;</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2><BR>Il semble que la requ&ecirc;te n'ait 
+            pas fonctionn&eacute; correctement, qu'elle soit ex&eacute;cut&eacute;e de charly 
+            (192.168.1.1), machine autoris&eacute;e, ou bien de bosley (192.168.1.10). 
+            Examinons les fichiers de logs:</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify 
+              style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+              face=Verdana size=2>/var/log/servicelog :</FONT></B><FONT 
+              color=#000000 face=Verdana size=2><BR>00/9/18@17:15:42: START: 
+              finger pid=28857 from=192.168.1.1<BR>00/9/18@17:15:47: EXIT: 
+              finger status=0 pid=28857 duration=5(sec)<BR>00/9/18@17:15:55: 
+              FAIL: finger address from=192.168.1.10</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>La requ&ecirc;te en provenance de charly 
+            (les deux premi&egrave;res lignes) se d&eacute;roule bien du point de vue de 
+            xinetd: l'acc&egrave;s est autoris&eacute; et la requ&ecirc;te prend 5 secondes. En 
+            revanche, la requ&ecirc;te de issue de bosley est rejet&eacute; (le FAIL).<BR>Si 
+            on regarde la configuration du service finger, le serveur employ&eacute; 
+            n'est pas directement in.fingerd, mais le tcp_wrapper tcpd. Les logs 
+            du wrapper contiennent les lignes suivantes:</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify 
+              style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><B><FONT color=#000000 
+              face=Verdana size=2>/var/log/services:</FONT></B><FONT 
+              color=#000000 face=Verdana size=2><BR>Sep 18 17:15:42 charly 
+              in.fingerd[28857]: refused connect from 192.168.1.1</FONT> 
+            </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Remarquons que nous ne d&eacute;couvrons 
+            qu'une seule ligne correspondant &agrave; nos deux requ&ecirc;tes! En effet, 
+            celle en provenance de bosley (la seconde) a &eacute;t&eacute; intercept&eacute;e par 
+            xinetd, donc, il est tout &agrave; fait normal de ne pas la retrouver dans 
+            ce fichier. La ligne s&eacute;lectionn&eacute;e correspond bien &agrave; la requ&ecirc;te qu'a 
+            autoris&eacute;e xinetd &eacute;mise depuis charly vers charly (la premi&egrave;re): 
+            l'heure et surtout le PID sont identiques.</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>R&eacute;sumons les &eacute;l&eacute;ments en notre 
+            possession:</FONT> 
+            <OL>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>xinetd a autoris&eacute; la 
+              requ&ecirc;te;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>la requ&ecirc;te finger passe par 
+              tcpd;</FONT> </P>
+              <LI>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>in.fingerd a refus&eacute; cette m&ecirc;me 
+              requ&ecirc;te.</FONT> </P></OL>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Alors que se passe-t-il? Puisque 
+            la requ&ecirc;te est accept&eacute;e par xinetd, elle est transmise au serveur 
+            sp&eacute;cifi&eacute; (tcpd ici). Or, tcpd refuse cette connexion. Il faut donc 
+            aller voir du c&ocirc;t&eacute; de hosts.{allow,deny}. En examinant ces fichiers, 
+            /etc/hosts.deny ne contient que ALL:ALL@ALL, ce qui explique que la 
+            requ&ecirc;te soit rejet&eacute;e par le wrapper!</FONT> 
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>En fait, telles que les lignes 
+            server et server_args du service ont &eacute;t&eacute; d&eacute;finies, les capacit&eacute;s du 
+            wrapper restent accessibles (banner -il existe aussi un attribut 
+            banner avec xinetd-, spawn, twist, ...). Rappelons que l'option de 
+            compilation --with-libwrap ajoute uniquement une v&eacute;rification 
+            pr&eacute;alable, &agrave; l'aide des hosts.{allow,deny}, des droits d'acc&egrave;s avant 
+            que le processus propre &agrave; xinetd ne s'enclenche. Les &eacute;critures 
+            pr&eacute;sent&eacute;es ici permettent donc de continuer &agrave; employer les 
+            m&eacute;canismes mis en oeuvre avec le wrapper.</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Ce chevauchement des capacit&eacute;s, 
+            s'il peut fonctionner, peut &eacute;galement conduire &agrave; d'&eacute;tranges 
+            comportements. Pour faire cohabiter xinetd, inetd et portmap, il 
+            vaut mieux qu'un service ne soit g&eacute;r&eacute; que par <U>un seul</U> de ces 
+            &quot;super-d&eacute;mons&quot;.</FONT></P>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><A 
+            name=lfindex6><FONT color=#000000 face=Verdana 
+            size=2>&nbsp;</FONT></A> 
+            <H2 align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>chrooter un service</FONT></H2>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Il est souvent conseill&eacute; de 
+            restreindre les domaines de certains services, voire de cr&eacute;er un 
+            nouvel environnement. La commande chroot permet de changer le 
+            r&eacute;pertoire racine pour la commande (ou le script) qui sera ex&eacute;cut&eacute;e 
+            ensuite:</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>chroot [options] 
+              nouvelle_racine</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Ceci s'utilise couramment pour 
+            prot&eacute;ger des services tels que bind/DNS ou ftp. Pour reproduire ce 
+            comportement tout en b&eacute;n&eacute;ficiant des capacit&eacute;s de xinetd, il suffit 
+            de d&eacute;clarer chroot en tant que serveur. Il ne reste plus alors qu'&agrave; 
+            passer les autres arguments par l'interm&eacute;diaire de l'attribut 
+            server_args :)</FONT> 
+            <BLOCKQUOTE>
+              <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+              color=#000000 face=Verdana size=2>service ftp<BR>{<BR>&nbsp; 
+              id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              ftp<BR>&nbsp; socket_type&nbsp; = stream<BR>&nbsp; 
+              wait&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              no<BR>&nbsp; user&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+              = root<BR>&nbsp; server&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = 
+              /usr/sbin/chroot<BR>&nbsp; server_args&nbsp; = /var/servers/ftp 
+              /usr/sbin/in.ftpd -l<BR>}</FONT> </P></BLOCKQUOTE>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Ainsi, lorsqu'une requ&ecirc;te est 
+            destin&eacute;e &agrave; ce service, la premi&egrave;re instruction utilis&eacute;e est chroot. 
+            Ensuite, le premier argument qui lui est pass&eacute; est le premier de la 
+            ligne server_args, c'est-&agrave;-dire la nouvelle racine. Enfin, le 
+            serveur d&eacute;sir&eacute; est d&eacute;marr&eacute;.</FONT> 
+            <H1 align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Conclusion</FONT></H1>
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=2>Vous pouvez vous demander quel 
+            d&eacute;mon choisir entre xinetd et inetd. En fait, xinetd demande un 
+            petit effort suppl&eacute;mentaire d'administration, surtout tant qu'il ne 
+            sera pas inclus directement dans les distributions (il l'est dans la 
+            Red Hat 7.0). La solution la plus s&ucirc;re consiste &agrave; utiliser xinetd 
+            sur votre (vos) machine(s) ayant un acc&egrave;s public (comme Internet) 
+            car il offre une meilleure ligne de d&eacute;fense. Pour les autres, &agrave; 
+            l'int&eacute;rieur de votre r&eacute;seau, inetd suffit amplement. Ne pas n&eacute;gliger 
+            toutefois l'emploi d'un firewall: son travail ne se situe pas au 
+            m&ecirc;me niveau.</FONT> </P></BODY></HTML>

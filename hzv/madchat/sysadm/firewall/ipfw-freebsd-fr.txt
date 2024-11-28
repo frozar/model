@@ -1,0 +1,84 @@
+Larry W. Cashdollar
+11/12/99 Rev 1.0
+Translate by eberkut (mailto:eberkut@nexen.net) - http://www.chez.com/keep
+01/29/01
+
+			Etablir un firewall FreeBSD
+			      en utilisant ipfw.
+
+1) Vous aurez besoin d'ajouter quelques options à la configuration de votre kernel afin de
+procéder. Si vous n'avez jamais recompiler votre kernel veuillez vous référer à la
+documentation FreeBSD à www.freebsd.org pour plus d'information.
+
+2) Ajoutez les options suivantes au fichier de configuration du kernel
+options         IPFIREWALL                   #firewall
+options         IPFIREWALL_VERBOSE           #print information about
+options         IPFILTER                     #kernel ipfilter support
+options         IPFILTER_LOG                 #ipfilter logging
+
+#options        IPFIREWALL_DEFAULT_TO_ACCEPT #allow everything by default
+
+Si vous voulez que votre firewall soit ouvert par défaut ajoutez aussi cette option.
+Le comportement par défaut du firewall ne doit permettre aucune connexion jusqu'à ce que
+vous indiquiez le contraire. Cette option changera cela pour permettre tout le trafic IP
+sauf indication contraire.
+
+Le document LINT contient plus d'information sur toutes ces options.
+Après avoir effectué ces modifications sur votre fichier de configuration exécutez le
+package de configuration pour y entrer les sources du kernel.
+
+3) Configurer votre kernel.
+
+# cd /usr/src/sys/i386/conf; config YOUR_CONFIG_HERE
+# cd ../../compile/YOUR_CONFIG_HERE
+# make depend; make
+
+4) Installer le kernel
+
+Si tout se déroule correctement, faites make install et rebootez.
+
+5) Utiliser ipfw pour créer des ACL (Access Control Lists) pour votre hôte.
+
+Vous avez besoin d'être root
+
+Regardez les pages de manuel d'ipfw pour une description détaillée.
+Fondamentalement c'est comme ceci :
+ipfw action number [allow|deny] [all|tcp|udp|ip] de où vers où via quoi
+ 
+Autoriser la machine locale à communiquer avec elle-même grâce aux règles suivantes.
+
+/sbin/ipfw add 100 pass all from any to any via lo0
+/sbin/ipfw add 200 deny all from any to 127.0.0.0/8
+
+Autoriser la machine locale à communiquer avec n'importe qui via une interface ethernet.
+
+/sbin/ipfw add 300 allow all from YOUR_IP_HERE to any
+
+Autoriser l'etablissements de connexions normales.
+
+/sbin/ipfw add 350 allow tcp from any to any established
+
+Disons que vous executez une serveur web et un mail host, vous avez besoin que les ports 80
+et 25 soit accessibles par tous les autres hôtes. Faîtes ce qui suit :
+
+/sbin/ipfw add 400 allow tcp from any to any 80
+/sbin/ipfw add 500 allow tcp from any to any 25
+
+Autoriser l'envoi de données UDP au serveur de nom pour la fonction DNS.
+
+/sbin/ipfw add 600 allow udp from YOUR_DNS_HERE 53 to YOUR_IP_HERE
+
+Ceci peut ne pas être suffisant pour les futures versions de BIND qui utiliseront aussi bien
+TCP que UDP pour des requêtes DNS. Nous aborderons le sujet en temps voulu.
+
+Vous voulez autoriser tous les paquets ICMP exceptés les pings (ECHO requests) ? C'est cette
+règle :
+
+/sbin/ipfw add 700 deny icmp from any to YOUR_IP_HERE icmptypes 8
+/sbin/ipfw add 800 allow icmp from any to any
+
+J'ai également ajouté cette règle à mes listes, c'est la même que la règle par défaut 65535
+pour refuser tout ; cependant, il le loggera au daemon syslogd, ainsi vous pouvez voir
+précisément quels paquets ont été bouncé depuis votre serveur.
+
+/sbin/ipfw add 10000 deny log ip from any to any

@@ -1,0 +1,54 @@
+<?php die(); /* XSS SHIELD, REMOVE THIS LINE */ ?>
+<?
+	//Galerie Photos (sans panneau d'administration pour le moment) vr0.1 bêta
+	//Ce code a ete ecris par SeriousMan le 28/03/03
+	//c'est un code d'une galerie de photo (tres basique)
+	//La fonction miniature a ete ecris par une autre personne (mais changer par moi)(je ne sais pas son nom mais je le remercie quand meme)
+	//Pour que le code fonctionne (normalement) il faut que vous changer la valeur de $dossier
+	//au nom du dossier que contient vos images ,laisser le si galerie.php se trouve dans ce dossier
+	//Vous pouvez aussi changer la valeur de $larg pour changer la largeur de vos photo
+	//Remarque: Si vous voulez les option changer les options body n'oublier pas de mettre \ avant les "
+	//Bug Connu: Quelque ralentissement dans la presence d'un grand nombre de photo avec une grande resolution 
+	
+	function miniature($photo3) {
+$size3 =getimagesize($photo3);     //on prend les la largeur et largeur de l'image
+$larg=100;                         //on met la valeur de la largeur dont on a besoin
+$coef_reduc3=$size3[0]/$larg;      //calcule du coefficient reducteur
+$h_fini3=$size3[1]/$coef_reduc3;   //calcule de l'hauteur a partir du coefficient
+$h_ter3=ceil($h_fini3);            //on arrondie les nombres
+echo "<img src=\" ";               //et on affiche le tout
+echo $photo3;
+echo" \" border=\"0 \" width=";
+echo $larg ;
+echo " height=";
+echo $h_ter3;
+echo ">" ;
+}
+
+
+$dossier = "./";
+echo "<html><body>";                     //ici metter les headers de votre fichier html que vas generer ce code
+if($dir= @opendir($dossier)){                 //Mais ou sont les photos
+	while($file = readdir($dir)){        //on ouvre le dossier contenant les photos
+	    $ext = strrchr ( $file , "." );  //on lis ce qu'il y a dans ce fameux fichier
+	    
+        if((!strcasecmp ($ext, ".gif")) || (!strcasecmp ($ext, ".jpg")) || (!strcasecmp ($ext, ".png")) || (!strcasecmp ($ext, ".bmp")) || (!strcasecmp ($ext, ".jpeg")))  //c'est quoi le type du fichier
+        {
+        
+		echo "<a href= \"";            //on l'affiche
+		echo $dossier;
+		echo "/";
+		echo $file;                    //les photos reduit
+		echo "\" target =\"_blank\">"; //et on forme
+		$mi = $dossier.$file;
+		echo miniature ($mi);        //un lien
+		echo "</a>";                   //vers le fichier originale
+		echo " ";
+		}
+	}
+	
+	closedir($dir);                    //on ferme le dossier
+}
+echo "</body></html>";//et on ce dit a+
+?>
+

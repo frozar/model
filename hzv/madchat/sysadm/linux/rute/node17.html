@@ -1,0 +1,401 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 99.2beta8 (1.46)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>14. Permission and Modification Times</TITLE>
+<META NAME="description" CONTENT="14. Permission and Modification Times">
+<META NAME="keywords" CONTENT="rute">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v99.2beta8">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="rute.css">
+
+<LINK REL="next" HREF="node18.html">
+<LINK REL="previous" HREF="node16.html">
+<LINK REL="up" HREF="rute.html">
+<LINK REL="next" HREF="node18.html">
+</HEAD>
+
+<BODY BGCOLOR=#FFFFFF >
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD align=left bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-purchase.html"><FONT COLOR=white>Purchase</FONT></A>&nbsp;
+</FONT>
+</TD><TD align=center bgcolor="#000000">
+<FONT COLOR=white>
+Copyright&nbsp;&#169;&nbsp;2002&nbsp;Paul Sheer. <A HREF="copying.html"><FONT COLOR=white>Click here for copying permissions.</FONT></A>
+</FONT>
+</TD><TD align=right bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-home.html"><FONT COLOR=white>Home</FONT></A>&nbsp;
+</FONT>
+</TD></TR>
+<TR><TD colspan=2 align=left bgcolor="#ECEBF4">
+<IMG SRC="va-btn-small-light-60.png">
+</TD><TD align=right bgcolor="#ECEBF4">
+<IMG SRC="sflogo2-steel-60.png">
+</TD></TR>
+</TABLE><BR>
+
+<!--Navigation Panel-->
+<A NAME="tex2html1994"
+  HREF="node18.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html1990"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html1984"
+  HREF="node16.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html1992"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html1995"
+  HREF="node18.html">15. Symbolic and Hard</A>
+<B> Up:</B> <A NAME="tex2html1991"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html1985"
+  HREF="node16.html">13. LINUX Resources</A>
+ &nbsp <B>  <A NAME="tex2html1993"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html1996"
+  HREF="#SECTION001710000000000000000">14.1 The <TT>
+<FONT COLOR="#0000ff">chmod</FONT></TT> Command</A>
+<LI><A NAME="tex2html1997"
+  HREF="#SECTION001720000000000000000">14.2 The <TT>
+<FONT COLOR="#0000ff">umask</FONT></TT> Command</A>
+<LI><A NAME="tex2html1998"
+  HREF="#SECTION001730000000000000000">14.3 Modification Times: <TT>
+<FONT COLOR="#0000ff">stat</FONT></TT></A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION001700000000000000000">
+14. Permission and Modification Times</A>
+</H1>
+
+<P>
+<A NAME="chap:permmodtimes"></A>
+<P>
+Every file and directory on a U<SMALL>NIX</SMALL> system, besides being owned
+by a user and a group, has access <I>flags</I> <FONT COLOR="#ffa500">[A switch
+that can either be on or off.]</FONT> (also called <I>access bits</I>) dictating what kind of access that
+user and group have to the file.
+
+<P>
+Running <TT>
+<FONT COLOR="#0000ff">ls -ald /bin/cp /etc/passwd /tmp</FONT></TT> gives you a
+listing like this:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>-rwxr-xr-x&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;28628&nbsp;Mar&nbsp;24&nbsp;&nbsp;1999&nbsp;/bin/cp</code><br>
+<code>-rw-r--r--&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1151&nbsp;Jul&nbsp;23&nbsp;22:42&nbsp;/etc/passwd</code><br>
+<code>drwxrwxrwt&nbsp;&nbsp;&nbsp;5&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4096&nbsp;Sep&nbsp;25&nbsp;15:23&nbsp;/tmp</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+In the leftmost column are flags which completely
+describe the access rights to the file.
+
+<P>
+So far I have explained that the furthest flag to the left is either
+<TT>
+<FONT COLOR="#0000ff">-</FONT></TT> or <TT>
+<FONT COLOR="#0000ff">d</FONT></TT>, indicating an ordinary file or directory. The
+remaining nine have a <TT>
+<FONT COLOR="#0000ff">-</FONT></TT> to indicate an unset value or
+one of several possible characters. Table
+<A HREF="node17.html#table:permissions">14.1</A> gives a complete description of file system permissions.
+
+<P>
+<BR><P></P>
+<DIV ALIGN="CENTER"><A NAME="table:permissions"></A><A NAME="18523"></A>
+<TABLE>
+<CAPTION><STRONG>Table 14.1:</STRONG>
+File and directory permissions</CAPTION>
+<TR><TD><IMG
+ WIDTH="556" HEIGHT="707" BORDER="0"
+ SRC="img17.png"
+ ALT="\begin{table}{\small\begin{tabularx}{1.0\textwidth}{\vert c \vert p{9ex} \vert X...
+...ode{\color{blue}{T}}} has no effect.
+\\
+\par\hline
+\end{tabularx}}
+\end{table}"></TD></TR>
+</TABLE>
+</DIV><P></P>
+<BR>
+
+<P>
+
+<H1><A NAME="SECTION001710000000000000000">
+14.1 The <TT>
+<FONT COLOR="#0000ff">chmod</FONT></TT> Command</A>
+</H1>
+
+<P>
+You use the <TT>
+<FONT COLOR="#0000ff">chmod</FONT></TT> command to change the permissions of
+a file. It's usually used as follows:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>chmod&nbsp;[-R]&nbsp;[u|g|o|a][+|-][r|w|x|s|t]&nbsp;&#060;file&#062;&nbsp;[&#060;file&#062;]&nbsp;...</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+For example,
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>chmod&nbsp;u+x&nbsp;myfile</code><br>
+</FONT></TD></TR></TABLE><P>
+adds execute permissions for the user of <TT>
+<FONT COLOR="#0000ff">myfile</FONT></TT>. And,
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>chmod&nbsp;a-rx&nbsp;myfile</code><br>
+</FONT></TD></TR></TABLE><P>
+removes <TT>
+<FONT COLOR="#0000ff">r</FONT></TT><I>ead</I> and <I>e</I><TT>
+<FONT COLOR="#0000ff">x</FONT></TT><I>ecute</I> permissions
+for <TT>
+<FONT COLOR="#0000ff">a</FONT></TT><I>ll</I>--that is, user, group, and other.
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">-R</FONT></TT> option, once again means <I>recursive</I>,
+diving into subdirectories as usual.
+
+<P>
+Permission bits are often represented in their binary form,
+especially in programs. It is convenient to show the
+<TT>
+<FONT COLOR="#0000ff">rwxrwxrwx</FONT></TT> set in octal, <FONT COLOR="#ffa500">[See Section <A HREF="node5.html#sec:binocthex">2.1</A>.]</FONT>where each digit fits
+conveniently into three bits. Files on the system are usually
+created with <I>mode</I> <TT>
+<FONT COLOR="#0000ff">0644</FONT></TT>, meaning
+<TT>
+<FONT COLOR="#0000ff">rw-r&#45;&#45;r&#45;&#45;</FONT></TT>. You can set permissions explicitly with an octal
+number, for example,
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>chmod&nbsp;0755&nbsp;myfile</code><br>
+</FONT></TD></TR></TABLE><P>
+gives <TT>
+<FONT COLOR="#0000ff">myfile</FONT></TT> the permissions <TT>
+<FONT COLOR="#0000ff">rwxr-xr-x</FONT></TT>. For a full list
+of octal values for all kinds of permissions and file types, see
+<TT>
+<FONT COLOR="#0000ff">/usr/include/linux/stat.h</FONT></TT>.
+
+<P>
+In Table <A HREF="node17.html#table:permissions">14.1</A> you can see <TT>
+<FONT COLOR="#0000ff">s</FONT></TT>, the <I>setuid</I> or
+<I>setgid</I> bit. If it is used without execute permissions
+then it has no meaning and is written as a capitalized <TT>
+<FONT COLOR="#0000ff">S</FONT></TT>.
+This bit effectively colorizes an <TT>
+<FONT COLOR="#0000ff">x</FONT></TT> into an <TT>
+<FONT COLOR="#0000ff">s</FONT></TT>,
+so you should read an <TT>
+<FONT COLOR="#0000ff">s</FONT></TT> as e<B><TT>
+<FONT COLOR="#0000ff">x</FONT></TT></B>ecute
+<I>with</I> the setuid or setgid bit set.
+<TT>
+<FONT COLOR="#0000ff">t</FONT></TT> is known as the <I>sticky</I> bit. It also has no
+meaning if there are no execute permissions and is written as a capital
+<TT>
+<FONT COLOR="#0000ff">T</FONT></TT>.
+
+<P>
+The leading <TT>
+<FONT COLOR="#0000ff">0</FONT></TT> can in be ignored, but is preferred for
+explicitness. It <I>can</I> take on a value representing
+the three bits, <I>setuid</I> (<TT>
+<FONT COLOR="#0000ff">4</FONT></TT>), <I>setgid</I>
+(<TT>
+<FONT COLOR="#0000ff">2</FONT></TT>), and <I>sticky</I> (<TT>
+<FONT COLOR="#0000ff">1</FONT></TT>). Hence a value of
+<TT>
+<FONT COLOR="#0000ff">5764</FONT></TT> is 
+<FONT COLOR="#0000ff"><!-- MATH
+ $101~111~110~100$
+ -->
+<IMG
+ WIDTH="112" HEIGHT="15" ALIGN="BOTTOM" BORDER="0"
+ SRC="img18.png"
+ ALT="\bgroup\color{blue}$101~111~110~100$\egroup"></FONT> in binary and gives
+<TT>
+<FONT COLOR="#0000ff">-rwsrw-r-T</FONT></TT>.
+
+<P>
+
+<H1><A NAME="SECTION001720000000000000000">
+14.2 The <TT>
+<FONT COLOR="#0000ff">umask</FONT></TT> Command</A>
+</H1>
+
+<P>
+<A NAME="sec:umask"></A>
+<P>
+<TT>
+<FONT COLOR="#0000ff">umask</FONT></TT> sets the default permissions for newly created files; it
+is usually <TT>
+<FONT COLOR="#0000ff">022</FONT></TT>. This default value means that the permissions of any new
+file you create (say, with the <TT>
+<FONT COLOR="#0000ff">touch</FONT></TT> command) will be
+<I>masked</I> with this number. <TT>
+<FONT COLOR="#0000ff">022</FONT></TT> hence <I>excludes</I> write
+permissions of <TT>
+<FONT COLOR="#0000ff">g</FONT></TT>roup and of <TT>
+<FONT COLOR="#0000ff">o</FONT></TT>ther. A <TT>
+<FONT COLOR="#0000ff">umask</FONT></TT> of <TT>
+<FONT COLOR="#0000ff">006</FONT></TT>
+would exclude read and write permissions of <TT>
+<FONT COLOR="#0000ff">o</FONT></TT>ther, but would allow read
+and write of <TT>
+<FONT COLOR="#0000ff">g</FONT></TT>roup. Try
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>umask</code><br>
+<code>touch&nbsp;&#060;file1&#062;</code><br>
+<code>ls&nbsp;-al&nbsp;&#060;file1&#062;</code><br>
+<code>umask&nbsp;026</code><br>
+<code>touch&nbsp;&#060;file2&#062;</code><br>
+<code>ls&nbsp;-al&nbsp;&#060;file2&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+<TT>
+<FONT COLOR="#0000ff">026</FONT></TT> is probably closer to the kind of mask we like
+as an ordinary user. Check your <TT>
+<FONT COLOR="#0000ff">/etc/profile</FONT></TT> file to see
+what <TT>
+<FONT COLOR="#0000ff">umask</FONT></TT> your login defaults to, when, and also why.
+
+<P>
+
+<H1><A NAME="SECTION001730000000000000000">
+14.3 Modification Times: <TT>
+<FONT COLOR="#0000ff">stat</FONT></TT></A>
+</H1>
+
+<P>
+In addition to permissions, each file has three integers associated with
+it that represent, in seconds, the last time the file was accessed
+(read), when it was last modified (written to), and when its permissions
+were last changed. These are known as the <I>atime</I>, <I>mtime</I>, and
+<I>ctime</I> of a file respectively.
+
+<P>
+To get a complete listing of the file's permissions, use the <TT>
+<FONT COLOR="#0000ff">stat</FONT></TT>
+command. Here is the result of <TT>
+<FONT COLOR="#0000ff">stat /etc</FONT></TT>:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&nbsp;&nbsp;File:&nbsp;"/etc"</code><br>
+<code>&nbsp;&nbsp;Size:&nbsp;4096&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Filetype:&nbsp;Directory</code><br>
+<code>&nbsp;&nbsp;Mode:&nbsp;(0755/drwxr-xr-x)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Uid:&nbsp;(&nbsp;&nbsp;&nbsp;&nbsp;0/&nbsp;&nbsp;&nbsp;&nbsp;root)&nbsp;&nbsp;Gid:&nbsp;(&nbsp;&nbsp;&nbsp;&nbsp;0/&nbsp;&nbsp;&nbsp;&nbsp;root)</code><br>
+<code>Device:&nbsp;&nbsp;3,1&nbsp;&nbsp;&nbsp;Inode:&nbsp;14057&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Links:&nbsp;41&nbsp;&nbsp;&nbsp;</code><br>
+<code>Access:&nbsp;Sat&nbsp;Sep&nbsp;25&nbsp;04:09:08&nbsp;1999(00000.15:02:23)</code><br>
+<code>Modify:&nbsp;Fri&nbsp;Sep&nbsp;24&nbsp;20:55:14&nbsp;1999(00000.22:16:17)</code><br>
+<code>Change:&nbsp;Fri&nbsp;Sep&nbsp;24&nbsp;20:55:14&nbsp;1999(00000.22:16:17)</code><br>
+</FONT></TD></TR></TABLE><P>
+The <TT>
+<FONT COLOR="#0000ff">Size:</FONT></TT> quoted here is the actual amount of disk space
+used to store the directory <I>listing</I>, and
+is the same as reported by <TT>
+<FONT COLOR="#0000ff">ls</FONT></TT>. In this case it is
+probably four disk blocks of 1024 bytes each. The size of a
+directory as quoted here does <I>not</I> mean the sum of all
+files contained under it. For a file, however, the <TT>
+<FONT COLOR="#0000ff">Size:</FONT></TT> would
+be the exact file length in bytes (again, as reported by <TT>
+<FONT COLOR="#0000ff">ls</FONT></TT>).
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html1994"
+  HREF="node18.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html1990"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html1984"
+  HREF="node16.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html1992"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html1995"
+  HREF="node18.html">15. Symbolic and Hard</A>
+<B> Up:</B> <A NAME="tex2html1991"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html1985"
+  HREF="node16.html">13. LINUX Resources</A>
+ &nbsp <B>  <A NAME="tex2html1993"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+
+</BODY>
+</HTML>

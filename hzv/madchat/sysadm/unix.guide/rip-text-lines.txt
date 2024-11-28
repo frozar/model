@@ -1,0 +1,120 @@
+
+> ... the best way to rip a segment of text from a text file...
+
+Interesting problem. Nobody seems to be answering yet, so 
+here is my two cents: I don't think you can do it in sed, 
+since it always does things a line at a time. This might 
+be true for awk as well. If you don't mind getting the rest 
+of the line, you can do one of these:
+
+sed -n '/foo/,/bar/p' myfile
+
+awk '/foo/,/bar/' myfile
+
+I thought of a nasty way to do it involving awk and the index 
+command, cut, and some others commands, but why not just 
+write a short perl script? Perl seems the natural tool for 
+the job, IMO, especially since you want to only grab part 
+of each line. Then name the script something like "2string" 
+and put it in your path. :)
+
+#!/usr/bin/perl
+
+my ($file,$string1,$string2) = @ARGV;
+
+die "Usage: $0 <file> <string1> <string2>\n"
+  unless defined $file and defined $string1 and defined $string2;
+open(F,$file) or die "Could not open $file: $!\n";
+local $/;
+<F> =~ m/($string1.+$string2)/s and print "$1\n";
+close(F);
+
+
+
+
+
+
+
+
+
+
+Yours:
+perl -e '$/="";print$&if<>=~/START.*END/s;' < file
+
+Very nice.  I like the use of $& ... I never use that.  I would have
+done a () around the match, which would have cost me several strokes.
+
+AFAICT, your if isn't needed, which allows me to shave off one stroke:
+perl -e '$/="";<>=~/START.*END/s;print$&;' < file
+
+Usage of -0 to set $/ drops another 5:
+perl -0e '<>=~/START.*END/s;print$&;' < file
+
+Since we're using command-line args, we can lose 5 more:
+perl -n0e '/START.*END/s;print$&;' file
+
+
+
+
+perl -e '$/="";print$&if<>=~/START.*END/s;' < file
+Non-inclusive:
+
+perl -e '$/="";<>=~/START(.*)END/s&&print$1;' < file
+
+
+
+
+
+perl -ne 'if(/START/){$g=1;next;}if(/END/){$g=0;next;}print if($g);' file
+spreads out as:
+while (<>) {
+    if (/START/) {  # if the line has the start marker
+        $g = 1;     # we'll start printing
+        next;       # but skip this line
+    }               #  (not sure if START is on a line by itself
+    if (/END/) {    # once we hit the end marker
+        $g = 0;     # stop printing
+        next;       # but skip this line, as before
+    }
+    if ($g) {       # if we're supposed to be printing...
+        print;      # do so
+    }
+}
+
+
+
+> The second returns only a single record...
+
+perl -e 'for(<>){$a .= $_;};$a=~s/^.*START//s;$a=~s/END.*//s;print $a;' < file
+becomes:
+for (<>) {
+    $a .= $_;        # build a string of the whole file
+}
+$a =~ s/^.*START//s; # get rid of everything before START, inclusive
+$a =~ s/END.*//s;    # get rid of everything after END, inclusive
+print $a;            # print what's left
+
+This is a much more "traditional" perl approach...you could also do
+something with s/.*START(.*)END.*/$1/;
+
+Both work fine here, although the first one assumes START and END are
+on lines by themselves.  Without seeing the exact application, it's
+hard to get a perfect solution.
+
+
+
+
+
+One line...barely (56 strokes):
+perl -ne 'if(/START/){$g=1;next;}if(/END/){$g=0;next;}print if($g);' file
+
+Also, using regexes (59 strokes):
+perl -e 'for(<>){$a .= $_;};$a=~s/^.*START//s;$a=~s/END.*//s;print $a;' < file
+
+
+
+
+
+
+
+

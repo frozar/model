@@ -1,0 +1,460 @@
+[
+	 par Yann Berthier (11/05/2001)
+	 www.hsc.fr/ressources/breves/jail.html
+]
+
+			The jail(8) function under FreeBSD, part 2.
+			===========================================	
+
+
+(yes, I know, there is no part 1, and I'm not sure there will be one either ;-)
+In fact, parts 1 and 2 of the jail tip were merged into what we will call now
+the part 2 - the actual tip)
+
+
+0x00 Plan
+0x01 Introduction - or, what is jail
+0x02 A brief overview of jail
+0x03 How to setup a jail
+0x04 More applications in the jail
+0x05 The future of jail
+0x06 Conclusion
+
+
+0x01 - What is jail
+
+The traditional unix security model is simple, yet very effective: there is
+the root account, and the others ;-) 
+
+Several projects are trying to add more granularity to this model : support of
+Posix 1.e ACLs, and notions derivated from what is called 'trusted operating
+systems', such as MAC and DAC access (to name just a few).
+
+See http://www.trustedbsd.org/ for an implementation for the FreeBSD project.
+
+All of those technologies have one shortcoming, though: to dramatically
+increase the administrative costs.
+
+The jail implementation under FreeBSD is a -very effective in my opinion- way
+to enhance the granularity of privileges while retaining the Unix security
+model and its efficiency :)
+
+Jail was initiated by Poul-Henning Kamp of the FreeBSD project. Many credits to
+him for his wonderful work !
+
+His original presentation on the subject is available here:
+http://www.nluug.nl/events/sane2000/papers/kamp.pdf 
+
+The jail() function appeared for the first time in FreeBSD 4.0
+
+
+0x02 - A brief overview of jail
+
+ . It's a virtual FreeBSD environment bound to an IP address. There can be as
+   many jails as you set IP aliases 
+
+ . Each jail is a fully functional environment, with it's own account database
+   and configuration files.
+
+ . A process in a jail is bound to its jail, and can't see processes outside
+   its jail, nor interfere with.
+
+ . You can delegate the root account of each jail while being able to enforce a
+   system wide policy. And if one service in a jail is compromised, the
+   attacker won't be able to escape the jail to leverage his gain to the rest
+   of the system - even if he gains root access in the jail via a local
+   exploit.
+
+
+Let's take a look at an example:
+
+You are an ISP doing multi hosting. 
+
+You want to let your customer administrate the services he offers (update of
+his web pages, creation of CGIs, creation of accounts for his POP3 server, and
+so on). 
+
+But you want to be sure your customer's settings can't affect your other
+customers, and that, if his web site or whatever is compromised through a badly
+written CGI script, or a new vulnerability is discovered in his FTP daemon, the
+attacker won't be able to affect other customers, nor compromise the hosting
+machine.
+
+If you are in this case, jail is for you.
+
+If you are not in this case, well, many chances are that jail is for you anyway
+:)
+
+
+0x03 - How to set up a basic jail
+
+Convention: to distinguish between the guest environment (the jail) and the
+host OS, the prompts of the commands contain the hostname:
+
+ogoun for the host OS, whose main IP address is 10.0.0.75, and cell for the
+jail.
+
+
+# we create an IP alias on the ep0 network card ...
+ifconfig ep0 alias 192.168.10.2 netmask 0xffffff00
+
+# the directory of our jails will be /jail/$IP_ALIAS ...
+mkdir -p /jail/192.168.10.2
+
+# the show begins ... (we need the source tree of course)
+cd /usr/src
+export JAIL=/jail/192.168.10.2
+make world DESTDIR=$JAIL
+cd etc
+make distribution DESTDIR=$JAIL NO_MAKEDEV=yes
+cd $JAIL/dev
+sh MAKEDEV jail
+ln -sf null /boot/kernel/kernel
+# to shut up the jail at boot time ...
+touch ../etc/fstab
+
+
+We use ipnat (from the ipfilter packet filtering tool) to redirect incoming
+requests from the outside to the jail, and from the jail to the outside:
+
+ogoun% cat /etc/filters/ipnat.rules
+# 
+map ep0 192.168.10.2/32 -> 0.0.0.0/32 portmap tcp/udp 10000:65000
+map ep0 192.168.10.2/32 -> 0.0.0.0/32
+# redirecting the request to the ftp port of our host to the ftp 
+# port inside the jail
+rdr ep0 10.0.0.75/32 port 21 -> 192.168.10.2 port 21
+
+ogoun% ipnat -CF -f /etc/filters/ipnat.rules
+
+
+To launch our jail :
+
+ogoun% jail /jail/192.168.10.2/ cell.hsc.fr 192.168.10.2 /bin/tcsh
+
+
+The jail seen from the inside ...
+
+cell% ifconfig ep0
+ep0: flags=8843 mtu 1500
+        inet 192.168.10.2 netmask 0xffffff00 broadcast 192.168.10.255
+        ether 00:50:04:cc:3e:cc 
+        media: 10baseT/UTP
+        supported media: 10base2/BNC 10baseT/UTP 10base5/AUI
+
+A line is added in the /etc/hosts file:
+
+192.168.10.2            cell   cell.hsc.fr
+
+The /etc/resolv.conf file contains the IP address of our DNS server:
+
+cell% cat /etc/resolv.conf 
+search hsc.fr
+nameserver 1.2.3.4 
+
+
+/etc/inetd.conf is edited, and the only service left uncommented is ftpd.
+Remember, we are talking about the /etc/inetd.conf file of the jail !
+
+If we launch inetd:
+
+cell% inetd
+
+cell% netstat -an
+Active Internet connections (including servers)
+Proto Recv-Q Send-Q  Local Address          Foreign Address        (state)
+tcp4       0      0  192.168.10.2.21        *.*                    LISTEN
+
+
+Populating the jail with users - well, one user in our case ;-)
+
+The user monkeytest is created with the adduser(8) facility:
+
+cell% cat /etc/passwd | grep monkeytest
+monkeytest:*:1001:1001:monkeytest:/home/monkeytest:/bin/tcsh
+
+cell% cat /etc/group | grep monkeytest
+monkeytest:*:1001:
+
+
+We can't see processes outside the jail ...
+
+cell% ps aux
+USER         PID %CPU %MEM   VSZ  RSS  TT  STAT STARTED      TIME COMMAND
+root       48035  0.0  0.9  1488  290  p9  DWJ   2:17PM   0:00.14 /bin/csh
+root       48921  0.0  0.7  1160  205  ??  DWsJ  2:17PM   0:00.01 inetd
+root        8689  0.0  0.6  1196  200  p9  DWJ   2:31PM   0:00.01 su - monkeyte
+monkeytest  8954  0.0  0.9  1428  268  p9  DWJ   2:31PM   0:00.03 -su (tcsh)
+monkeytest  4108  0.0  0.3   576   78  p9  RW+J  3:29PM   0:00.00 ps aux
+
+
+The flag 'J' in the STAT column let us know we are in a jail
+
+In fact, many many other things let us know we are in a jail. 
+
+Keep this in mind if you think as a jail for a good honeypot basis. 
+
+However, a jail has several interesting properties as a honeypot:
+
+ . the outgoing flow can be filtered and
+   . the filtering rules can't be changed by the attacker,
+   . the jail can't be used as a platform to attack other networks.
+ . the administrator of the host OS can 'observe' the attacker without being
+ seen
+   . with a network sniffer (tcpdump)
+   . with a tty sniffer (watch)
+ . the log files in the jail can be looked at and kept safe outside of the jail
+ (with no possibility for the attacker to tamper with)
+ . the capability of FreeBSD to run native Linux binary is a plus, as most
+ exploits found today are targeted toward the Linux platform
+
+(no troll intended, it's only because of the vast number of Linux machines
+installed 'as is' straight on the Internet)
+
+No need to say, one should not rely only on ipfilter of the host box, in the
+event of a vulnerability of the jail code which would permit to escape it !
+
+
+Back to our jail ...:
+
+We have access to the outside world: 
+
+cell% ftp ftp.freebsd.org
+Connected to ftp.freebsd.org.
+220 usw3.freebsd.org FTP server (Version DG-4.1.73 983302105) ready.
+Name (ftp.freebsd.org:yann): anonymous
+331 Guest login ok, send your email address as password.
+Password:
+230 Guest login ok, access restrictions apply.
+Remote system type is UNIX.
+ftp> quit
+221 Goodbye!
+
+
+Except for raw sockets ...
+
+cell% ping 1.2.3.4
+ping: socket: Operation not permitted
+
+
+And from outside the jail ...
+
+ogoun% ifconfig ep0
+ep0: flags=8843 mtu 1500
+        inet 10.0.0.75 netmask 0xffffff00 broadcast 192.70.106.255
+        inet 192.168.10.2 netmask 0xffffff00 broadcast 192.168.10.255
+        ether 00:50:04:cc:3e:cc 
+        media: 10baseT/UTP
+        supported media: 10base2/BNC 10baseT/UTP 10base5/AUI
+
+
+ogoun% ps aux | grep J
+root    48035  0.0  0.9  1488  290  p9  DWJ   2:17PM   0:00.14 /bin/csh
+root    48921  0.0  0.7  1160  205  ??  DWsJ  2:17PM   0:00.01 inetd
+root     8689  0.0  0.6  1196  200  p9  DWJ   2:31PM   0:00.01 su - monkeytest
+titi     8954  0.0  0.9  1428  268  p9  DW+J  2:31PM   0:00.03 -su (tcsh)
+yann     1617  0.0  0.5  1164  145  pa  DW+   3:29PM   0:00.01 grep J
+
+The process 8954 is seen belonging to the user 'titi'. In fact, it's because
+this user has the same uid (1001) as the user monkeytest inside the jail.
+
+ogoun% netstat -an | fgrep '.21 '
+tcp4       0      0  192.168.10.2.21        *.*                    LISTEN
+
+
+One can now log via ftp to the ftpd server of the jail:
+
+bubble:~$ ftp ogoun.hsc.fr 
+Connected to 10.0.0.75 
+220 cell.hsc.fr FTP server (Version 6.00LS) ready.
+Name (10.0.0.75:yb): monkeytest
+331 Password required for monkeytest.
+Password:
+230 User monkeytest logged in.
+Remote system type is UNIX.
+Using binary mode to transfer files.
+ftp> ls
+150 Opening ASCII mode data connection for '/bin/ls'.
+total 193
+drwx------  2 monkeytest  monkeytest     512 May  6 16:19 .ssh
+-rw-r--r--  1 monkeytest  monkeytest  180935 Apr 19 20:32 thttpd-2.21b.tgz
+226 Transfer complete.
+ftp> quit
+221 Goodbye.
+
+
+ogoun% ipnat -l
+List of active MAP/Redirect filters:
+map ep0 192.168.10.2/32  -> 0.0.0.0/32  portmap tcp/udp 10000:65000
+map ep0 192.168.10.2/32  -> 0.0.0.0/32 
+rdr ep0 10.0.0.75/32 port 21 -> 192.168.10.2 port 21 tcp
+
+List of active sessions:
+MAP 192.168.10.2    1178  <- -> 192.70.107.75 10001 [1.2.3.4 53]
+RDR 192.168.10.2    21    <- -> 192.70.107.75 21    [192.70.106.33 2821]
+
+
+How to launch the jail at boot time
+
+The $JAIL/etc/rc.conf file should be edited to fit the needs of the jail. 
+
+cell% cat /etc/rc.conf
+hostname="cell.hsc.fr"
+syslogd_enable="YES"            # Run syslog daemon (or NO).
+syslogd_flags="-s -s"
+inetd_enable="YES"              # Run the network daemon dispatcher (or NO).  
+inetd_flags="-wW -a 192.168.10.2"
+sendmail_outbound_enable="YES"  # Dequeue stuck mail (YES/NO).
+sendmail_outbound_flags="-q30m" # Flags to sendmail (outbound only)
+sshd_enable="YES"
+
+
+For the sshd daemon in the jail to be able to bind to the IP address of the
+jail, you should say to your sshd daemon outside the jail _not_ to bind to this
+IP address:
+
+ogoun% cat /etc/ssh/sshd_config | grep -i listenaddress
+ListenAddress 10.0.0.75
+ListenAddress ::
+
+
+And then ...
+
+ogoun% cat /etc/rc.local
+/usr/sbin/jail /jail/192.168.10.2/ cell.hsc.fr \
+192.168.10.2 /bin/sh /etc/rc &
+
+
+0x04 - More applications in the jail
+
+An httpd server is compiled inside the jail (thttpd, see
+http://www.acme.com/software/thttpd/).
+
+The file /etc/rc.local is modified to launch the http server at boot time:
+
+cell% cat /etc/rc.local
+/usr/local/sbin/thttpd
+
+A NAT entry should be added to redirect incoming connections to the port 80/tcp
+of the host OS to the port 80/tcp of the jail:
+
+ogoun% cat /etc/filters/ipnat.rules 
+# 
+map ep0 192.168.10.2/32 -> 0.0.0.0/32 portmap tcp/udp 10000:65000
+map ep0 192.168.10.2/32 -> 0.0.0.0/32
+# redirecting the request to the ftp port of our host to the ftp 
+# port inside the jail
+rdr ep0 10.0.0.75/32 port 21 -> 192.168.10.2 port 21
+# redirecting requests for the sshd server
+rdr ep0 10.0.0.75/32 port 22 -> 192.168.10.2 port 22
+# redirecting requests for the httpd server
+rdr ep0 10.0.0.75/32 port 80 -> 192.168.10.2 port 80
+
+
+Our jail now begins to be a fully functional environment ...
+
+cell% ps aux
+USER         PID %CPU %MEM   VSZ  RSS  TT  STAT STARTED      TIME COMMAND
+root       92416  0.0  0.3   580   92  pg  RW+J  3:04PM   0:00.00 ps aux
+root       33099  0.0  0.5  1080  165  ??  DWsJ  2:55PM   0:00.01 cron
+root       17139  0.0  0.5  1044  152  ??  DWsJ  2:56PM   0:00.01 syslogd -s -s
+root       28713  0.0  0.6  1160  190  ??  DWsJ  2:56PM   0:00.00 inetd -wW -a 
+root       30405  0.0  0.6  1080  178  ??  DWsJ  2:56PM   0:00.01 cron
+root       32211  0.0  1.3  2312  394  ??  DWsJ  2:56PM   0:00.14 /usr/sbin/ssh
+nobody     47140  0.0  0.9  1540  283  ??  DWsJ  2:56PM   0:00.01 /usr/local/sb
+root       80634  0.0  1.0  2312  299  ??  DWsJ  6:07PM   0:00.71 sshd
+root       87693  0.0  1.5  2404  481  ??  DWJ   3:04PM   0:00.15 sshd: monkeyt
+monkeytest 89426  0.0  0.8  1428  259  pg  DWsJ  3:04PM   0:00.05 -tcsh (tcsh)
+root       90233  0.0  0.7  1200  215  pg  DWJ   3:04PM   0:00.01 su -
+root       90434  0.0  0.9  1448  276  pg  DWJ   3:04PM   0:00.04 -su (csh)
+
+cell% netstat -an
+Active Internet connections (including servers)
+Proto Recv-Q Send-Q  Local Address          Foreign Address        (state)
+tcp4       0      0  192.168.10.2.22        *.*                    LISTEN
+tcp4       0      0  192.168.10.2.80        *.*                    LISTEN
+tcp4       0      0  192.168.10.2.21        *.*                    LISTEN
+Active UNIX domain sockets
+Address  Type   Recv-Q Send-Q    Inode     Conn     Refs  Nextref Addr
+c93d6440 dgram       0      0        0 c933c180        0        0
+c933c180 dgram       0      0 c9558ac0        0 c93d6440        0 /var/run/log
+c93d61c0 dgram       0      0        0 c933c080        0        0
+c933c080 dgram       0      0 c94b1900        0 c93d61c0        0 /var/run/log
+
+
+0x05 - The future of jail: the near -current implementation ;-)
+
+For now, several sysctl exist to control the behavior of jails:
+
+ogoun% sysctl -a | grep jail
+jail.set_hostname_allowed: 0
+jail.socket_unixiproute_only: 1
+jail.sysvipc_allowed: 0
+
+Anyway, this is somewhat limited.
+
+Here is a mail from Robert Watson in a FreeBSD mailing list regarding the
+future of jail ...
+
+This weekend I was spending some time tweaking the jail(8) code to improve
+it's SMPng-happiness as well as manageability.  Unfortunately, I ended up
+rewriting it in the process :-).  I changed the model somewhat so that
+jails are now persistently configred, joined, et al, and broke out the
+chroot() from the creation/joining process, as with increased namespaces
+(such as System V IPC) creating a nice clean failure was increasingly
+difficult.  Aspects of individual jails may now be managed using sysctl's,
+which appears to work reasonably well.  Clearly there's a lot of work left
+to do, but I'd appreciate comments if people are interested:
+
+  http://www.watson.org/~robert/jailng/
+  
+Simple example:
+
+dev# ./jailctl 
+usage:
+  jailctl create [jailname]
+  jailctl destroy [jailname]
+  jailctl join [jailname] [-c chrootpath] [path] [cmd] [args...]
+dev# ./jailctl create test
+dev# sysctl -a | grep jail
+jail.instance.test.sysvipc_permitted: 0
+jail.instance.test.set_hostname_permitted: 1
+jail.instance.test.socket_ipv4_permitted: 1
+jail.instance.test.socket_unix_permitted: 1
+jail.instance.test.socket_route_permitted: 1
+jail.instance.test.socket_other_permitted: 0
+jail.instance.test.ipv4addr: 0
+dev# ./jailctl join test -c /tmp /bin/sh   
+# ps ax
+  PID  TT  STAT      TIME COMMAND
+  907  d0  DWJ    0:00.02 /bin/sh
+  908  d0  RW+J   0:00.00 ps ax
+# exit
+dev# ./jailctl destroy test
+dev#
+
+I also have a jailinit(8) in the works which would allow improved
+startup/shutdown in the style of init(8) (sans the whole sigchild thing).
+Another feature I'd like to add is a jail signal call that allows a signal
+to be delivered to all processes inside a jail from outside, allowing an  
+easier forceable shutdown.
+
+
+0x06 - Conclusion
+
+As it's clear with the mail from Robert Watson, jail is a work in progress, and
+that many improvements will appear in a near future, notably regarding the
+manageability of jails.
+
+Anyway, jails are for now ready for production use, and are in fact used in the
+real life. Give it a try, it's a powerful tool to compartment your FreeBSD
+server.
+
+To test a working example and see a jail in action, see the OpenRoot project:
+http://sektor7.ath.cx/openroot/ where the initiator of the project give to
+everyone the root access.
+
+
+
+
+

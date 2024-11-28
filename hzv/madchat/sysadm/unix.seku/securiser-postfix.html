@@ -1,0 +1,227 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD><TITLE>Sécuriser un serveur Postfix</TITLE>
+<META content="text/html; charset=windows-1252" http-equiv=Content-Type>
+<META content="MSHTML 5.00.2920.0" name=GENERATOR></HEAD>
+<BODY>
+<CENTER>
+<H1>Sécuriser un serveur Postfix</FONT> </H1></CENTER>
+<H2>Introduction</H2>Il n'est pas question de comparer dans ce document les 
+fonctionnalités de Sendmail et de Postfix en terme de sécurité. Nous connaissons 
+tous le fichier de configuration de Sendmail plutôt repoussant (ou tout du moins 
+nous en avons déjà entendu parler), nous sommes aussi au courant de ses 
+nombreuses vulnérabilités depuis ses toutes premières versions. Postfix semble 
+être une bonne alternative, de part sa simplicité de configuration et son 
+implémentation différente de Sendmail. Contrairement à ce dernier, Postfix 
+utilise plusieurs démons pour gérer le système de mail, empêchant donc celui-ci 
+d'être compromis en cas d'une simple erreur. D'autres caractéristiques de 
+Postfix, comme la possibilité de chrooter le démon en font un serveur de mail 
+stable et sécurisé. 
+<H2>Installation</H2>La version stable actuelle est la Postfix Release 20010228. 
+Si vous utilisez une RedHat 7.0, vous devrez d'abord installer le package RPM 
+db3-devel. 
+<P>Je ne détaillerai pas l'installation de Postfix ici (reportez vous au fichier 
+INSTALL). Simplement deux choses sont à noter. Il est d'abord préférable de 
+créer avant toute chose un utilisateur postfix (ou ce que vous voulez) qui sera 
+le propriétaire de la file d'attente : <PRE>$groupadd -g 101 postfix
+$useradd -u 101 -g 101 --disable-password -d /var/spool/postfix -s /bin/false postfix 
+</PRE>Ajoutez-le aussi dans le fichier /etc/aliases : <PRE>	postfix: root
+</PRE>Ensuite au cours de la procédure d'installation deux solutions sont 
+proposées pour soumettre des mails. Soit le répertoire 
+/var/spool/postfix/maildrop sera accessible à tout le monde, et dans ce cas-là 
+il aura les permissions 1733, soit le programme postdrop aura le bit set-gid 
+positionné. Le fichier INSTALL précise par exemple pour la première solution 
+qu'il est possible qu'un utilisateur local surcharge la file d'attente dans le 
+but de crasher le serveur. Une totale confiance dans les utilisateurs locaux est 
+donc nécessaire, ce qui n'est pas vraiment une bonne solution. Nous retiendrons 
+donc la deuxième solution. Le fichier INSTALL décrit la procédure pour rendre 
+postdrop set-gid. 
+<P>
+<H2>L'anti-relayage</H2>
+<P>Pour éviter que l'on utilise votre serveur smtp comme relai de messagerie, 
+vous devez configurer le paramètre smtp_recipient_restrictions dans le fichier 
+principal de configuration /etc/postfix/main.cf. Il regarde en fait le champ 
+RCPT TO. <PRE>smtpd_recipient_restrictions = permit_mynetworks,check_relay_domains
+</PRE>La valeur permit_mynetworks autorise postfix à relayer les mails... Ce qui 
+n'est pas une mauvaise solution. La valeur permit_mynetworks signifie que 
+postfix autorise à relayer les mails venant d'adresses IP contenues dans 
+$mynetworks. La valeur check_relay_domains elle, permet soit de relayer des 
+messages venant d'adresses IP contenues dans $relay_domains, soit à destination 
+de $relay_domains, ou bien si la destination est $inet_interfaces, 
+$mydestination, ou $virtual_maps. Reste a définir ces valeurs toujours dans 
+main.cf : <PRE>mynetworks   = 192.168.0.0/24, 127.0.0.0/8
+relay_domain = domain.fr
+</PRE>D'autres valeurs existent. Par exemple, reject_unknown_recipient_domain 
+permet de rejeter les mails si le domaine de l'adresse mail du destinataire 
+n'est pas resolvable. Beaucoup d'autres valeurs existent. La documentation 
+html/uce.html vous en dira plus sur ces valeurs. 
+<P>
+<H2>Chrooter le démon</H2>
+<P>Plutôt qu'une longue explication, voici une définition du chroot (issu du 
+jargon http://www.linux-france.org/prj/jargonf) : 
+<P>" Commande modifiant l'emplacement de la racine du système de fichier, par 
+exemple pour leurrer un programme afin que des utilisateurs malintentionnés ne 
+puissent pas s'aventurer dans la vraie racine. Surtout utilisé pour les serveurs 
+FTP." 
+<P>Le fait de chrooter Postfix ne rend pas notre système impénétrable, mais 
+limite tout de même les possibilités d'intrusion. Nous avons deux solutions pour 
+mettre en place le chroot. Soit nous utilisons le script 
+examples/chroot_setup/LINUX2 et nous l'adaptons éventuellement, soit nous 
+faisons tout manuellement. Dans les deux cas, les répertoires etc, usr/lib, lib 
+sont créés dans le répertoire /var/spool/postfix, certains fichiers sont copiés 
+et postfix est rechargé. Personnellement, j'ai utilisé le script qui 
+fonctionnait très bien chez moi. 
+<P>Le fichier de configuration /etc/postfix/master.cf doit ensuite être adapté 
+pour définir la façon dont sont executés les différents progammes de Postfix: <PRE>#
+# Postfix master process configuration file.  Each line describes how
+# a mailer component program should be run. The fields that make up
+# each line are described below. A "-" field value requests that a
+# default value be used for that field.
+#
+# ==========================================================================
+# service type	private	unpriv	chroot	wakeup	maxproc	command + args
+# 		(yes)	(yes)	(yes)	(never)	(50)
+# ==========================================================================
+smtp	  inet	n	-	y	-	-	smtpd
+pickup	  fifo	n	n	y	60	1	pickup
+cleanup	  unix	-	-	y	-	0	cleanup
+qmgr	  fifo	n	-	y	300	1	qmgr
+#qmgr	  fifo	n	-	y	300	1	nqmgr
+rewrite	  unix	-	-	n	-	-	trivial-rewrite
+bounce	  unix	-	-	y	-	0	bounce
+defer	  unix	-	-	n	-	0	bounce
+flush	  unix	-	-	y	1000?	0	flush
+smtp	  unix	-	-	y	-	-	smtp
+showq     unix	n	-	y	-	-	showq
+error     unix	-	-	n	-	-	error
+local	  unix	-	n	n	-	-	local
+virtual	  unix	-	n	n	-	-	virtual
+lmtp	  unix	-	-	n	-	-	lmtp
+cyrus	  unix	-	n	n	-	-	pipe
+    flags=R user=cyrus argv=/cyrus/bin/deliver -e -m ${extension} ${user}
+uucp	  unix	-	n	n	-	-	pipe
+    flags=F user=uucp argv=uux -r -n -z -a$sender - $nexthop!rmail ($recipient)
+ifmail    unix  -       n       n       -       -       pipe
+    flags=F user=ftn argv=/usr/lib/ifmail/ifmail -r $nexthop ($recipient)
+bsmtp     unix  -       n       n       -       -       pipe
+    flags=F. user=foo argv=/usr/local/sbin/bsmtp -f $sender $nexthop $recipient
+</PRE>Ce fichier de configuration décrit la facon dont chaque programme de 
+Postfix est lancé. Pour cela, le champ chroot est mis à 'y' pour chaque service 
+que nous utilisons et que nous voulons chrooter. Les autres services peuvent 
+rester par défaut. Un petit reload de postfix s'impose: <PRE>$postfix reload
+</PRE>
+<P>
+<H2>L'anti-spam</H2>
+<P>Là encore, Postfix se distingue par sa simplicité de configuration. Pour 
+éviter le spam, vous avez deux paramètres à configurer dans le fichier main.cf : 
+smtpd_client_restrictions et smtpd_sender_restrictions. Le premier agit au 
+niveau de la connexion d'un client sur le serveur de mail, tandis que le 
+deuxième vérifie le champ MAIL FROM du mail. 
+<P>Voici la facon dont j'ai configuré ces deux paramètres: <PRE>smtpd_client_restrictions = reject_unknown_client, permit_mynetworks, \ 
+                            check_client_access hash:/etc/postfix/access, reject_maps_rbl
+smtpd_sender_restrictions = reject_unknown_sender_domain, check_sender_access hash:/etc/postfix/access, \
+                            reject_non_fqdn_sender, reject_maps_rbl
+</PRE>Note : Les anti-slashes signifient que les valeurs doivent etre sur la 
+meme ligne. En ce qui concerne smtpd_client_restrictions : 
+<P>
+<UL>
+  <LI>reject_unknown_client signifie que le serveur rejète le client si son 
+  adresse IP n'a pas d'enregistrement PTR (enregistrement qui établit une 
+  relation entre l'addresse IP et le nom complet d'un hote ou fqdn) dans le DNS. 
+
+  <LI>permit_mynetworks a été vu précédemment 
+  <LI>check_client_access signifie que le serveur accepte ou rejète le client 
+  selon les régles du fichier spécifie hash:/etc/postfix/access (hash représente 
+  le type du fichier). Nous verrons plus loin la façon de configurer ce fichier. 
+
+  <LI>reject_maps_rbl signifie que le client sera rejeté s'il fait partie des 
+  black-lists que nous devons spécifier dans le paramètre maps_rbl_domains. 
+</LI></UL>
+<P>Quant à smtpd_sender_restrictions : 
+<P>
+<UL>
+  <LI>reject_unknown_sender_domain signifie que le serveur rejète la requête si 
+  l'adresse email de l'émetteur n'a pas d'enregistrement A (enregistrement qui 
+  établit une relation entre le nom d'hote et l'adresse IP) ou MX 
+  (enregistrement qui détermine le serveur de mail du domaine) dans le DNS. 
+  <LI>check_sender_access signifie que le serveur accepte ou rejète la requête 
+  selon les règles du fichier /etc/postfix/access. 
+  <LI>reject_non_fqdn_sender signifie que la requête est rejetée si l'adresse 
+  email n'est pas un nom de domaine complet. 
+  <LI>reject_maps_rbl a déja été vu. </LI></UL>
+<P>Reste donc à paramétrer le fichier /etc/postfix/access : <PRE>$/bin/cat /etc/postfix/access
+valide@domain.com 	OK
+non-valide@domain.com	REJECT
+spam.com		REJECT
+</PRE>
+<P>Un <CODE>'man 5 access'</CODE> vous donne plus de précisions sur ce fichier 
+et la façon de le configurer. 
+<P>Une fois terminé, et à chaque modification ultérieure de ce fichier, il faut 
+reconstruire la base de données correspondante: <PRE>$postmap /etc/postfix/access
+$ls -l /etc/postfix/access*
+-rw-r--r--    1 root     root           17 May  1 21:39 /etc/postfix/access
+-rw-r--r--    1 root     root         4096 May  1 21:39 /etc/postfix/access.db
+</PRE>
+<P>
+<H2>Filtrage des headers</H2>
+<P>Nous venons de voir que Postfix permet de filtrer les mails entrants. Il 
+permet en plus le filtrage des headers des messages à l'aide d'expressions 
+régulières. Tout ce qu'il vous suffit de faire est de paramétrer header_checks 
+dans le fichier main.cf : <PRE>header_checks = regexp:/etc/postfix/regexp
+</PRE>
+<P>ou le fichier /etc/postfix/regexp contient par exemple: <PRE>/^postmaster@.*$/		OK
+/^To: foobar/			REJECT
+</PRE>Un <CODE>'man 5 regexp_table'</CODE> vous donnera de plus amples 
+renseignements au sujet de ce fichier. 
+<P>
+<H2>Ce qu'il reste à faire</H2>
+<P>Quelques paramètres restent à configurer pour que notre serveur mail soit 
+assez sécurisé. Le paramètre mail_name dans main.cf définit le nom du logiciel 
+de mail dans l'entête "Receveid:". L'intérêt ici est de diffuser le moins 
+d'information possible. Donc si nous mettons mail_name = Microsoft Exchange, 
+voila ce qui apparaitra dans les entêtes des mails: <PRE>Received: by neptune.galaxie.fr (Microsoft Exchange , from userid 1000)
+	id F0A42C946; Wed,  2 May 2001 00:18:32 +200 (CEST)
+</PRE>
+<P>C'est aussi possible de configurer la bannière : <PRE>mail_version = 5.5     
+smtpd_banner = ESMTP $mail_name ($mail_version)
+</PRE>
+<P>Voici ce que nous obtenons: <PRE>$telnet localhost 25
+Trying 127.0.0.1...
+Connected to neptune.
+Escape character is '^]'.
+220 ESMTP Microsoft Exchange (5.5)
+</PRE>
+<P>Dernier paramètre à configurer, disable_vrfy_command toujours dans le fichier 
+main.cf. Il suffit de le mettre à 'yes' pour désactiver la commande vrfy. Cette 
+commande sert à vérifier les utilisateurs valides. Pour la commande expn, il n'y 
+a rien à faire car elle n'est pas implémentée dans Postfix. 
+<P>Autre point important, le démon syslogd. Vous devez le configurer pour qu'il 
+prenne en compte les logs de votre serveur de mail. Rajoutez donc dans votre 
+syslog.conf, les lignes suivantes : <PRE>mail.*			/var/log/mail.log
+mail.info		/var/log/mail.info
+mail.warn		/var/log/mail.warn
+mail.err		/var/log/mail.err
+</PRE>Et relancez le démon syslogd. 
+<P>
+<H2>Conclusion</H2>
+<P>Toutes les fonctionnalités de Postfix n'ont pu être abordées dans ce 
+document. Des sujets tels que l'intégration d'OpenLDAP, ou de TLS dans Postfix 
+(serveur de mail sécurisé) auraient été très interessants à étudier. Une 
+dernière chose qu'il est utile de préciser : aucune vulnérabilité à ma 
+connaissance sur Postfix ne semble avoir été découverte. 
+<P>
+<H2>Références</H2>
+<P>
+<UL>
+  <LI>[1] Site officiel de Postfix<BR>http://www.postfix.org 
+  <P></P>
+  <LI>[2] "Tutoriel Postfix" - Alain 
+  Thivillon<BR>http://www.hsc.fr/iressources/cours/postfix/index.html.fr 
+  <P></P>
+  <LI>[3] "Installation de postfix avec TLS (serveur de mail securise)" - Yann 
+  Berthier<BR>http://www.hsc.fr/ressources/breves/postfix-tls.html </LI></UL>
+<P>
+<HR>
+
+<ADDRESS>Samuel Dralet - samuel.dralet@mastersecurity.fr <A 
+href="mailto:samuel.dralet@mastersecurity.fr"></A></ADDRESS>
+<P><!-- hhmts start -->Last modified: Fri Jun 12 11:44:28 CET 2001 <!-- hhmts end --></P></BODY></HTML>

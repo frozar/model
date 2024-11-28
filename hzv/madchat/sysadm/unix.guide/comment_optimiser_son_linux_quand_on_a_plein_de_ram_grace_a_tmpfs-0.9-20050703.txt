@@ -1,0 +1,357 @@
+
+***** cOMMEnt oPtiMiSer sOn liNUx qUANd on a plEin de rAm gRACe a tMPfs ! *****
+***** ....................................................  v0.9-20050703 *****
+
+
+1  Giga  de  RAM  peut  sembler risible au premier abord (en 2005), 
+mais le hardcore benchmarker avertis que tu es a bien sentis qu'il
+s'agit surtout d'une aubaine pour optimiser un peut plus son os..
+
+Ce howto te propose un gain de performances notable, 
+en montant une partie du sytème de fichier en ram, 
+et (donc) en minimisant les acces disques.
+
+le but du jeux consiste à monter en 'tmpfs' les répertoires dans 
+lesquels linux fait des acces en écriture, à savoir : 
+
+/var
+/tmp
+/etc
+/root
+/home/username
+
+Explications:
+
+- Les  fichiers  stockés  en tmpfs logent en ram. Plus précisément, dans le cache 
+  du noyo. La quantité de mémoire allouée est variable, et c'est globalement moins
+  contraignant qu'un ramdisk.
+
+- Un disque dur est toujours plus lent en écriture qu'en lecture.
+
+
+
+>>  Les ingrédients  <<
+    ~~~~~~~~~~~~~~~
+    
+- OS ?
+  Gentoo Linux (www.gentoo.org) : tu veux un OS optimisé ou pas?
+  N'importe quel Linux avec un noyo 2.6 devrait faire l'affaire.
+
+- Hardware ?
+  n'importe quel ordinateur moderne avec plus de 512 Mo de RAM 
+  (1Gig conseillé)
+
+- Inspiration ? 
+  /usr/src/linux/Documentation/filesystems/tmpfs.txt
+  http://gentoo-wiki.com/HOWTO_build_a_LiveCD_from_scratch#Creating_the_initrd_image
+
+
+
+>>  Le Kernel  <<
+    ~~~~~~~~~
+
+Les supports de tmpfs et ramdisk sont obligatoires dans le noyo.
+
+  File systems  --->
+    Pseudo filesystems  --->
+      [*] Virtual memory file system support (former shm fs) 
+
+  Device Drivers  ---> 
+    Block devices  ---> 
+      <*> RAM disk support
+        (4096) Default RAM disk size (kbytes)
+        [*]   Initial RAM disk (initrd) support
+  
+Il est conseillé de ne pas déja utiliser d'initrd (pas de genkernel donc). 
+Si ton système en utilise un pour démarrer, alors il te faudra mettre 
+les mains dedans.
+
+
+
+>>  Le Swap  <<
+    ~~~~~~~
+
+Si tu utilises un swap, l'operation suivante s'impose :
+
+nano /etc/sysctl.conf
+vm.swappiness = 10
+
+Plus  la  valeur  tend vers 0, plus le noyo tardera à 
+partir se soulager dans le swap.  
+
+
+
+>>  Range ta chambre  <<
+    ~~~~~~~~~~~~~~~~
+
+- Portage : La  scandaleuse  surcharge  pondérale  de  Portage  nous force 
+  à ne pas lui faire profiter des avantages du tmpfs. Tampix pour lui, il
+  n'avait qu'a prendre moins de place dans /var.
+
+  Note  :  Si  les  requêtes  et updates de portage ne se feront pas en tmpfs, les
+  compilations --elles-- se feront bien en RAM (..et boudiou que c'est Rapide!!)
+
+  mv /var/db /usr/lib/portage
+  ln -s /usr/lib/portage/db /var/db
+
+  mv /var/cache/edb /usr/lib/portage
+  ln -s /usr/lib/portage/edb /var/cache/edb
+
+
+- Ton homedir ne devrait contenir que des fichiers de conf, et des fichiers
+  temporaires (cache de ton butineur, etc..). Il est donc chaudement
+  recommendé de déplacer divx, mp3 et images de cul dans un autre endroit.
+
+
+- Histoire de taille : 
+  du -h --max-depth=1 /var  # une taille d'une dixaine de Mo peut être
+                            # considéré comme normale.
+
+  du -h --max-depth=1 /etc  # une taille d'une dixaine de Mo peut être
+                            # considéré comme normale.
+
+  du -h --max-depth=1 /home/username  # taille conseillé : 100Mo environ.
+
+  du -h --max-depth=1 /root # quelques Mo seulement.
+
+
+- Penser aussi à.. 
+
+  rm -R /var/tmp
+  ln -s /tmp /var/tmp       # 1 seul répertoire temp.
+  mkdir /var/old_root       # fais le, tu comprendra plus tard.
+
+
+
+>>  L'Initrd  <<
+    ~~~~~~~~
+
+Comme l'amis nunux a besoin d'acceder a /etc et /var très tôt, 
+il convient de créer un initrd (mini-systeme monté en ramdisk, 
+executé apres l'init du kernel et avant le véritable démarrage de l'os).
+
+- On crée l'image (ici, 4meg)
+  touch /boot/initrd
+  dd if=/dev/zero of=/boot/initrd bs=1024k count=4
+  mke2fs /boot/initrd  # on crée le systeme de fichiers,
+  mkdir /mnt/initrd    # on prépare le point de montage,
+  mount /boot/initrd /mnt/initrd  # et on monte l'image.
+
+- On crée les répertoires essentiels..
+  cd /mnt/initrd
+  mkdir etc dev lib bin proc new cdrom
+  touch linuxrc
+  chmod +x linuxrc
+  touch etc/mtab
+  touch etc/fstab 
+   
+- On copie les fichiers necessaires..
+  
+  On attend de notre initrd, qu'il sache :
+  . créer des points de montage en tmpfs,
+  . et décompresser le contenu de ces répertoires.
+  
+  les commandes suivantes seront requises : 
+  . sh 
+  . ls 
+  . cat
+  . mount 
+  . umount
+  . mkdir
+  . chroot
+  . tar
+  . gzip
+  . pivot_root
+  . ainsi que leurs librairies. 
+
+  Ce script s'occupe de tout : 
+
+  #!/bin/sh
+  for x in sh ls cat mount umount mkdir chroot tar gzip 
+  do
+    cp -v /bin/${x} /mnt/initrd/bin
+  done 
+  cp -v /sbin/pivot_root /mnt/initrd/bin 
+
+  cd /lib
+  for x in sh ls cat mount umount mkdir chroot tar gzip
+  do
+    cp -v `ldd /bin/${x}|egrep lib|cut -d "=" -f1` /mnt/initrd/lib
+  done
+  cp -v `ldd /sbin/pivot_root|egrep lib|cut -d "=" -f1` /mnt/initrd/lib
+
+  # pas indispensable depuis que l'on utilise devfs ou udev
+  mknod /mnt/initrd/dev/console c 5 1
+  mknod /mnt/initrd/dev/null c 1 3
+  mknod /mnt/initrd/dev/hda b 3 0
+  mknod /mnt/initrd/dev/hdb b 3 64
+  mknod /mnt/initrd/dev/hdc b 22 0
+  mknod /mnt/initrd/dev/hdd b 22 64
+  mknod /mnt/initrd/dev/tty c 4 0
+  mknod /mnt/initrd/dev/loop0 b 7 0
+
+  Une fois executé le lépertoire /mnt/initrd/bin devrait contenir les fichiers
+  necessaires et /mnt/initrd/lib, les librairies requises.
+
+- linuxrc est le premier script qui est executé par le noyo, une fois l'image
+  montée en ram. C'est donc la phase le plus importante.
+  Le fichier /mnt/initrd/linuxrd doit ressembler à ca :
+
+  #!/bin/sh
+  export PATH=/bin
+
+  # Get kernel CMDLINE
+  mount -t proc none /proc
+  CMDLINE=`cat /proc/cmdline`
+  umount /proc
+
+  # Remplacer la partoche racine par la bonne.
+  mount -t ext2 -o ro /dev/ide/host0/bus0/target0/lun0/part3 /new
+ 
+  # N'ai point peur, Les tailles indiqués sont des valeur maximum.
+  mount -t tmpfs -o size=32m none /new/var
+  mount -t tmpfs -o size=32m none /new/etc
+  mount -t tmpfs -o size=512m none /new/tmp
+  mount -t tmpfs -o size=32m none /new/root
+
+  # On décompresse..
+  cd /new
+  tar -xpzf /new/var.tgz
+  tar -xpzf /new/etc.tgz
+  tar -xpzf /new/root.tgz
+
+  # On pivote, on démonte et on commence l'init.
+  cd /new
+  pivot_root . var/old_root
+  exec chroot . /bin/sh <<- EOF >dev/console 2>&1
+  umount /var/old_root/dev
+  umount /var/old_root
+  exec /sbin/init ${CMDLINE}
+  EOF 
+
+
+
+>>  Le gluon du tmpfs  <<
+    ~~~~~~~~~~~~~~~~~
+
+Faire tenir des fichiers en ram, c'est bien beau, 
+mais c'est encore mieux si on sait sauvegarder, 
+sinon les changements seront perdu a chaques démarrages.
+On va donc créer pour l'ocasion : 
+
+- le service tmpfsd
+
+  touch /etc/init.d/tmpfsd
+  chmod +x /etc/init.d/tmpfsd
+  nano /etc/init.d/tmpfsd
+
+  Le script devrait ressembler a quelque chose dans ce style :
+
+  #!/sbin/runscript
+  # tmpfsd : save some tmpfs directories to local hard drive..
+
+  start() {
+    ebegin "-=)) Mise en orbite du gluon du tmpfs" 
+
+    # décompresse /home/username en tmpfs une fois!
+    if [ -e /var/username/.bashrc ]
+    then
+      echo "  >> username deja en orbite."
+    else
+      mount -t tmpfs -o size=256m none /home/username
+      tar -xpzf /new/home/username.tgz
+      chmod 700 /home/username
+      chown username /home/username
+    fi
+  }
+  stop() {
+    ebegin "-=) Mise en boite des fichiers en tmpfs"
+    tar -czp --totals -f /etc.tgz /etc
+    tar -czp --totals -f /var.tgz /var
+    tar -czp --totals -f /root.tgz /root
+    tar -czp --totals -f /home/username.tgz /home/username
+    eend $? "-=) WOW!! on dirait que ca a rate!"
+  }
+
+- Un petit cron te permettra de sauver tes fichiers régulierement.
+
+    crontab -e 
+
+  Ajoutes-y la ligne suivante :
+
+    # sauvegarde les fichiers en tmpfs tous les jours a 23h00
+    0 23 * * * /etc/init.d/tmpfsd restart
+  
+- On oublie pas de lancer le service au démarrage.
+
+    rc-update add tmpfsd boot
+
+
+    
+>>  N'oublie pas ton bootloader  <<
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Il est necessaire de configurer ton bootloader 
+si tu veut éviter un coups de panic à ton kernel.
+
+Voici un exemple de lilo.conf. Si tu utilise grub, 
+un 'man grub' t'apportera joie, bonheur et mal de crâne.
+
+  image = /boot/kernel
+        label = gentoo-initrd
+        read-only
+        root = /dev/ram0
+	append="init=/linuxrc"
+        initrd=/boot/initrd
+
+enfin, taper 'lilo' pour écrire le nouveau mbr.
+
+
+>>  On déménage  <<
+    ~~~~~~~~~~~
+
+On commence par faire les cartons. Les archives etc.tgz, var.tgz, 
+root.tgz et username.tgw sont créés automatiquement par :
+
+  /etc/init.d/tmpfsd start
+  /etc/init.d/tmpfsd stop
+
+On renomme /etc, /var, /tmp, /root, /home/username 
+et on crée des repertoires vices a la place :
+
+  mv /tmp /tmp-disabled
+  mkdir /tmp
+  chmod 777 /tmp
+
+  mv /var /var-disabled
+  mkdir /var
+
+  mv /home/username /home/username-disabled
+  mkdir /home/username
+
+  mv /root /root-disabled
+  mkdir /root
+  chmod 700 /root
+
+  mv /etc /etc-disabled
+  mkdir /etc
+
+reboot !
+
+
+
+>>  Conclusion <<
+    ~~~~~~~~~~
+
+- www.chezmoicamarche.org Libre à toi d'arranger cette doc comme bon te semble
+  et selon tes besoins..
+
+- L'auteur  de  cette  doc  se  dégage  de  toutes  responsabilités concernant
+  d'éventuels    vautrages  qui  pourraient  avoir  lieu.  D'ailleurs,  cette  doc
+  n'existe  pas,  tu l'a rêvée.  Son  véritable auteur n'est autre que toi même et
+  tu devrrais consulter mon vieux..  
+
+
+.auteur. Cif!
+.gREEtz. nAXAlite
+.cORRECtEUr. tOBOZo

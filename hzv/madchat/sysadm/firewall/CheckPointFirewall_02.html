@@ -1,0 +1,263 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!-- saved from url=(0040)http://www.isecurelabs.com/faq/F1_p2.htm -->
+<!-- saved from url=(0048)http://www.nightbirdfr.com/docs/checkpoint2.html --><HTML><HEAD><TITLE>Check Point Firewall-1 pour Linux, deuxième partie</TITLE>
+<META content="text/html; charset=windows-1252" http-equiv=Content-Type>
+<META content="MSHTML 5.00.2920.0" name=GENERATOR></HEAD>
+<BODY aLink=#0000a8 bgColor=#ffffff link=#000088 text=#000000 vLink=#7777dd>
+<H1>Check Point Firewall-1 pour Linux, deuxième partie </H1>Par David "Del" 
+Elson<BR>Traduit par Nightbird <A 
+href="http://www.nightbirdfr.com/">http://www.nightbirdfr.com/</A> <BR>
+<HR>
+
+<P>Check Point Firewall-1 a été le système principal du marché des firewalls 
+depuis son introduction en 1994. L'avantage principal de Firewall-1 est son 
+interface complete et facile a comprendre, qui a fait de lui un système firewall 
+de choix pour beaucoup de corporation. C'est la seconde partie dans une série de 
+trois articles qui examineront Check Point Firewall-1 pour Linux. Le premier 
+article s'est composé d'une brève vue d'ensemble préliminaire de Firewall-1 et 
+d'une discussion d'installation, tâches de post-installation, aussi bien que 
+pour les installations simples et que pour les multi-systems. Cet article 
+couvrira les concepts Firewall-1 tels que des objets réseau, des règles de 
+firewall, des règles de translation d'adresses, et NAT, aussi bien que des 
+dispositifs et des limitations de Firewall-1. L'article final discutera alors 
+des aspects de Firewall-1 tels que la disposition de fichiers et de répertoires, 
+les rulesets, l'installation Firewall-1 existante de passer à Linux, et les 
+configurations de sauvegarde et de secours.</P>
+<P><B>Concepts Firewall-1</B> </P>
+<P><B>Objets reseau</B></P>
+<P>Un objet réseau est "l'unité d'information" basique pour Firewall-1. La table 
+d'"objet réseau" est où toutes les informations sur n'importe quoi avec une 
+adresse IP (ou groupe d'adresses Ip) sont stocké. </P>
+<P>Pour contrôler vos objets réseau, lancer l'éditeur de politique Firewall-1, 
+et choisir "objets réseau" du menu de gestion. Vous devrez écrire des détails 
+des divers objets que vous avez sur votre réseau, incluant: </P>
+<UL>
+  <LI>Le firewall lui-meme 
+  <LI>Serveurs, chacun a l'interieur ou a l'exterieur de votre reseau, ou vont 
+  les connexions; et, 
+  <LI>Workstations, a l'interieur ou a l'exterieur, d'ou proviennent les 
+  connexions </LI></UL>
+<P>Par exemple, vous pourriez vouloir définir l'ensemble simple d'objets de 
+réseau suivant:</P>
+<UL>
+  <LI>Un firewall; 
+  <LI>Une plage pour le resaeu interne; 
+  <LI>Quelques serveurs dans la DMZ, par exemple un serveur web ou ftp, avec 
+  acces publique; et, 
+  <LI>Quelques serveurs sur internet auxquels vous autorisez/interdisez l'acces 
+  </LI></UL>
+<P><B>Services</B></P>
+<P>Firewall-1 vient avec un ensemble prédéfini de services, incluant la plupart 
+des services bien connus en service sur l'Internet. Il est possible, cependant, 
+que vous vouliez inclure plus de services qui ne sont pas prédéfinis. Pour faire 
+ceci, choisissez les "services" du menu de gestion dans l'éditeur de politique 
+Firewall-1.</P>
+<P><B>Groupes</B></P>
+<P>Vous pouvez grouper des objets réseau ou services ensemble dans un groupe 
+facile-à-contrôler. Par exemple, vous pouvez avoir un certain nombre de serveurs 
+Web dans une DMZ auquel vous voulez permettre l'accès public. Pour éviter de 
+devoir définir un grand nombre règle, une pour chaque serveur, ou pour définir 
+une règle contenant une grande liste de serveurs, vous pouvez grouper tous vos 
+Web serveurs ensemble dans un seul groupe appele "Web-Servers". Utilisez ce 
+groupe dans une règle, plutôt que chaque serveur individuel.</P>
+<P><B>Regles Firewall</B></P>
+<P>Firewall-1 est livre avec un ensemble de regles vides pre-installes</P>
+<P>Une fois que vous avez un ensemble de base d'objets réseau et de groupes 
+défini, vous voudrez utiliser l'éditeur de politique pour commencer à programmer 
+votre firewall avec un ensemble de règles qui définissent votre politique de 
+sécurité. Des règles peuvent être ajoutées à l'extrémité du positionnement de 
+règle, insérée au dessus ou n'importe où au milieu. L'éditeur de politique 
+Firewall-1 vous permet copier/coller des règles, des mouvements en haut et en 
+bas dans le positionnement de règles, ou d'effacement à volonté.</P>
+<P>L'expérimentation avec un positionnement existant de règles, lisant le guide 
+"Getting Started" et le manuel Firewall-1 (contenu dans le format pdf sur le CD 
+d'installation, dans le répertoire de Docs) est la meilleure voie d'apprendre 
+comment utiliser l'outil de gestion GUI.</P>
+<P><B>Regles de translation d'adresses</B></P>
+<P>Firewall-1 supporte un éventail de règles de translation d'adresses de réseau 
+(NAT). L'onglet principal de l'éditeur de politique, "politique de sécurité", 
+énumère des règles d'accept/deny seulement. Le deuxième onglet, "translation 
+d'adresses", est où les règles de translation d'adresses sont montrées.</P>
+<P>Dans la plupart des cas, vous créerez des règles de translation d'adresses en 
+définissant les objets réseau. Faire ceci, dans la fenetre de propriétés d'objet 
+réseau, choisissant l'onglet "NAT". Il y a deux types de NAT: Ils sont statiques 
+et Hide NAT.</P>
+<P><B>1. NAT Statiques</B></P>
+<P>NAT statique est où une adresse IP simple en dehors de votre réseau est liée 
+à une adresse IP simple à l'intérieur de votre réseau, en d'autres termes un 
+lien 1:1. Pour que le NAT statique travaille, votre firewall doit avoir plus 
+d'une adresse IP extérieurement visible (plus sur cela sous "ARP" sous peu), et 
+votre ISP doit fournir le routage pour toutes vos adresses extérieurement 
+visibles. </P>
+<P>Le NAT statique est le plus utile dans les cas où vous avez un serveur à 
+l'intérieur de votre réseau (ou sur une DMZ) auquel vous voulez fournir l'accès 
+a Internet. Afin que cela se passe, vous devez avoir une adresse IP 
+extérieurement visible que ce serveur utilise, et par conséquent vous devez 
+utiliser le NAT statique.</P>
+<P><B>2. Hide NAT</B></P>
+<P>Hide NAT (ou NAT dynamique) est semblable à IP Masquerading ou d'autres 
+fonctions semblables. C'est où un certain nombre d'objets réseau, ou votre 
+réseau entier, est caché derrière une adresse IP extérieurement visible.</P>
+<P>Pour utiliser Hide NAT, vous devez seulement employer une adresse IP simple 
+relié à Internet (bien que vous pouvez avoir plus.) Vous pouvez employer Hide 
+NAT pour cacher votre réseau derrière une adresse IP externe de votre firewall, 
+ceci est exactement le même qu'Ip Masquerading. Pour utiliser Hide NAT pour un 
+objet réseau, ouvrez l'objet réseau auquel vous voulez appliquer NAT (ceci 
+pourrait être un poste de travail, un groupe, ou un réseau). Dans le tabulateur 
+NAT, choisissez le checkbox étiqueté "ajout des règles automatiques de 
+translation d'adresses", choisissez "hide" comme méthode de traduction, et 
+écrivez l'adresse IP extérieurement visible que vous souhaitez utiliser dans la 
+zone "IP valide".</P>
+<P><B>Editer des regles NAT</B></P>
+<P>Quand vous créez des regles NAT statiques ou hide dans un objet réseau, ceci 
+crée des règles de translation d'adresses dans le tabulateur "translation 
+d'adresses" de l'éditeur de politique. Ces règles ne peuvent pas être éditées, 
+mais de nouvelles règles peuvent être ajoutées au-dessus et au-dessous des 
+règles automatiquement produites.</P>
+<P>Par exemple, après l'établissement NAT pour une paire de réseaux cachés, vous 
+pouvez souhaiter invalider NAT pour le trafic allant entre ces réseaux. Vous 
+pouvez faire ceci en insérant une règle de translation d'adresses au dessus de 
+la liste, montrant que le trafic provenant et allant vers ces réseaux doivent 
+être laissés non traduit. Pour faire ceci, vous pourriez vouloir d'abord créer 
+un objet groupe contenant tous vos réseaux (les règles de translation d'adresses 
+peuvent seulement prendre un objet simple dans chaque domaine d'une règle), et 
+laissez la source "paquet traduit" et les zones réceptrices lisant "= 
+(original)".</P>
+<P>Des règles NAT peuvent également être utilisées pour un paquet plus complexe. 
+Par exemple, vous pourriez vouloir qu'un hôte apparaisse comme une IP quand 
+l'accès est demandé à Internet, mais une IP différente quand il est consulté 
+d'une DMZ. (la discussion de pourquoi et de comment faire ceci est complexe et 
+au delà de la portée de cet article.) </P>
+<P><B>ARP et routes</B></P>
+<P>Firewall-1 se base sur un systeme complexe d'ARP et de routes pour assister 
+le NAT statique.</P>
+<P>Afin que le NAT statique fonctionne correctement, vous devez définir une 
+règle arp pour faire apparaître l'IP extérieurement visible du serveur NATé a 
+l'adresse MAC de votre firewall. Pour faire ceci, vous devez savoir l'adresse 
+MAC de l'interface externe de votre firewall (ceci peut être obtenu en exécutant 
+"ifconfig" et en regardant la valeur d'"HWaddr").</P>
+<P>Publier l'entre ARP est fait en utilisant /sbin/arp :</P><CODE>/sbin/arp -s 
+pub xx:yy:zz:aa:bb:cc</CODE> 
+<P>... ou xx:yy:zz:aa:bb:cc est l'adresse que vous voulez publier, et <MAC 
+address>est l'adresse MAC de l'interface externe de votre firewall (PAS celle de 
+l'hoste).</P>
+<P>Assez étonnamment (et confondant même pour des experts en matière de TCP/IP), 
+vous devez également créer une route, de l'adresse IP externe vers l'adresse IP 
+interne. Par exemple, si vous avez un web server qui a une IP interne de 
+192.168.1.1 et vous avez installé NAT statique pour que ce serveur apparaisse 
+sur Internet en tant que 211.11.22.33 alors vous avez besoin d'ajouter une 
+entrée de table de routage avec la commande suivante: </P><PRE>/sbin/route add -host 211.11.22.33 gw 192.168.1.1</PRE>
+<P>Inutile de dire, ajouter tout ces arp et ces routes peut en quelque sorte 
+être ennuyeux chaque fois que votre firewall est relancé, ainsi vous aviez 
+probablement mis ces derniers dans un de vos init (par exemple 
+/etc/rc.d/rc.local).</P>
+<P><B>Fonctionnalités et limitations</B></P>
+<P><B>Fonctionnalités</B></P>
+<P>La caractéristique principale de Firewall-1 est qu'il est relativement facile 
+a utiliser, par rapport à d'autres systèmes de firewall, et avec un GUI 
+intuitif.</P>
+<P>Firewall-1 supporte beaucoup de types de translation d'adresses, celle (par 
+exemple) n'est pas supporté par le module ipchains du noyau Linux 2.2. Pour un 
+firewall complexe qui protège beaucoup de différents types de dispositifs de 
+réseau, c'est une fonctionnalite a avoir. Ce type de translation d'adresses est 
+maintenant un dispositif du noyau Linux 2.4 avec le module ipfilter, et ainsi le 
+soutien de la translation d'adresses complexe n'est plus un dispositif qui 
+différencie Firewall-1 du noyau Linux.</P>
+<P><B>Comparison entre Firewall-1, ipchains, et netfilter</B></P>
+<P>Ipchains est un systeme firewall construit sur le noyau Linux 2.2. La page 
+d'accueil d'ipchains est: http://netfilter.kernelnotes.org/ipchains/</P>
+<P>Netfilter, le systeme firewall construit sur le noyau Linux 2.4, est concu 
+comme une remplacement d'ipchains. La page d'accueil de netfilter est: 
+http://netfilter.kernelnotes.org/</P>
+<P>Notez que netfilter est, en parlant correctement, un conglomérat des 
+composants. À la couche inférieure du noyau il y a "netfilter" qui est le 
+système établi dans le noyau 2.4 pour les paquets. Sur ceci est une couche pour 
+la translation d'adresses de réseau (NAT), une couche pour le paquet filtrant 
+(IPtables), et un outil de l'utilisateur appelé les "iptables" pour contrôler le 
+processus entier.</P>
+<P><B>Règles chaines et arbres</B></P>
+<P>Les ipchains et les iptables ont installé un certain nombre de "règles 
+enchaînees" dans un type de structure arborescente. Au dessus de l'arbre sont 
+quelques chaînes préinstallées, appelées entrée, sortie, et transfert (ou pour 
+les iptables, entrée, sortie et transfert). Chacune de ces chaînes peut 
+"s'embrancher" à une autre chaîne pour des règles d'évaluation, l'exécution NAT, 
+ou d'autres fonctions (telles que l'enregistrement) basées sur certaines 
+conditions.</P>
+<P>Un procédé commun avec ipchains ou iptables est d'installer une chaîne de 
+règle basée sur l'interface d'entrée et de sortie du paquet. Les chaînes 
+préinstallées puis branches de ces chaînes basées sur quelques règles définies 
+au dessus de la chaîne. </P>
+<P>Firewall-1 supporte une chaîne simple de règles. Chaque paquet passe la 
+chaîne de règle du haut vers le bas, jusqu'à ce qu'il rencontre une règle qui 
+accepte ou rejette le paquet.</P>
+<P><B>Performance</B></P>
+<P>La chaîne/branche de règles est plus efficace que la chaîne simple de règles, 
+parce que chaque paquet doit passer par peu de règles, en moyenne, avant de 
+rencontrer une correspondance accept/reject. Pour cette raison, Firewall-1 est, 
+sur un positionnement complexe de règles, mesurablement plus lent en moyenne 
+qu'en utilisant netfilter sur le même matériel.</P>
+<P>D' autre part, établissant que la chaîne/branche est plus complexe, plus 
+d'erreur sont possible. Beaucoup de generateurs de regles avec interface pour 
+ipchains n'utilisent pas les mécanismes de branche/chaîne mais mettent à la 
+place toutes les règles dans entrée, sortie et/ou transfert. Ceci inverse la 
+majeure partie de l'avantage d'exécution qui serait obtenu de ne pas utiliser 
+Firewall-1.</P>
+<P>Firewall-1 et ipchains/netfilter sont mis en application comme modules du 
+noyau. Je compte que n'importe quelle mesure de différence de performance entre 
+Firewall-1 et iptables utilisant un positionnement (sans branche) semblable de 
+règles serait très légère. Notez que Firewall-1 pour Windows NT n'est pas mis en 
+application comme module du noyau (je compte que c'est parce que CheckPoint n'a 
+pas accès au code source de Microsoft) et est donc mesurablement plus lent que 
+Firewall-1 pour Linux sur le même matériel.</P>
+<P><B>Management, utilisation et support</B></P>
+<P>D'une manière générale, j'ai trouvé le support Firewall-1 tout à fait bon, 
+bien que quelque peu lent. Il y a beaucoup d'individus et organismes dans le 
+monde entier qui sont bien entrainés dans la gestion Firewall-1, et ainsi 
+obtenant le personnel pour s'occuper d'un système Firewall-1 ne devrait pas être 
+un mal de tête important. Dans la comparaison, le code ipfilter dans Linux est 
+relativement nouveau, et plutôt complexe. Je compterais que la courbe d'étude 
+pour ceci serait assez significative et la conclusion du personnel qualifié dans 
+son utilisation serait sensiblement plus difficile.</P>
+<P>Dans une certaine mesure, cependant, un firewall est un firewall, et un 
+consultant expérimenté en matière de sécurité avec une bonne compréhension des 
+concepts firewalling ne devrait avoir aucune difficulté apprenant Firewall-1 ou 
+des systèmes iptables. Firewall-1 semble avoir l'avantage en termes de 
+rentabilité à l'heure actuelle, cependant. L'interface GUI de Firewall-1 est 
+excellente et j'espère qu'il y aura un portage pour KDE et/ou GNOME dans un 
+futur pas trop lointain!</P>
+<P><B>Prix</B></P>
+<P>Firewall-1 ne concurrence pas iptables ou ipchains sur le prix. ipchains et 
+iptables sont des produits libres. Firewall-1 est non-libre, et n'est meme pas 
+particulièrement bon marché.</P>
+<P><B>Services Proxy</B></P>
+<P>Ipchains et netfilter sont des modules packet-filtering et paquet-mangling 
+seulement. Firewall-1 n'est pas un système de proxy server et ne fournit pas 
+quelques dispositifs trouvés dans d'autres modules disponibles sur Linux (par 
+exemple: le serveur de cache proxy Squid). Il fournit cependant un certain 
+contenu limité de filtration à l'aide des ressources proxy qui est définie en 
+tant qu'objets Firewall-1.</P>
+<P>Puisque les dispositifs de filtrage de contenu de Firewall-1 sont plutôt 
+limités et de toute façon, ralentissent l'exécution du ruleset du firewall, je 
+suis incliné pour ne pas l'utiliser. Le filtrage de contenu des demandes HTTP 
+est probablement mieux fait en utilisant un serveur proxy séparé (par exemple: 
+Squid), tandis que le filtrage SMTP est probablement meilleur fait en utilisant 
+une combinaison système de relais de courrier (par exemple: sendmail) et module 
+de filtrage de connexion/lecture de virus. Il y a beaucoup de ces derniers 
+disponibles sur le marché, dont une partie a un prix raisonnable ou est 
+libre.</P>
+<P>D'une manière générale, un système de filtrage de paquets est beaucoup plus 
+rapide qu'un proxy firewall. Firewall-1 est construit pour la vitesse, et donc 
+est la plupart du temps mis en application comme système de filtrage de paquets 
+seulement. Bien qu'il soit possible d'exécuter Squid sur le même serveur Linux 
+qu'en l'utilisant pour Firewall-1, je serais incliné pour ne pas faire ainsi, 
+pour des raisons de performances.</P>
+<P><B>Le prochain article...</B></P>
+<P>Cet coup d'oeil a Checkpoint Firewall-1 pour Linux a couvert les concepts 
+Firewall-1 tels que des objets réseau, des règles de firewalls, des règles de 
+translation d'adresses et NAT, aussi bien que des dispositifs et des limitations 
+de Firewall-1. Le troisième et final article discutera des aspects de Firewall-1 
+tels que la disposition des fichiers et des répertoires, les rulesets, la 
+migration d'une installation Firewall-1 existante pour passer à Linux et les 
+configurations de sauvegarde et de secours. </P>Traduit par Nightbird <A 
+href="http://www.nightbirdfr.com/">http://www.nightbirdfr.com/</A> 
+<BR></BODY></HTML>

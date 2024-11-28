@@ -1,0 +1,512 @@
+Représentation de l'information
+
+
+
+I	L'information vue par l'ordinateur
+==========================================
+
+
+Dans une machine l'information est du code binaire.
+
+Deux types d'information sont codés :
+
+	Les données avec : différents codages binaires
+
+	Les instructions avec :
+		un code opératoire binaire
+		des opérandes codées en binaire
+
+	ex : Dans une instruction du type 2+3 ,  2 et 3 sont les opérandes,
+ 	     + est le code opératoire non binaire.
+
+II	Préliminaire : Les systèmes de numération
+=================================================
+
+
+   A	Le système décimal
+   -----------------------
+   
+Les dix chiffres : 0, 1, 2, 3, 4, 5, 6, 7, 8 et 9
+La virgule (le point pour les anglo-saxons)
+Le chiffre des unités, la dizaine et les puissances de dix (base 10): 
+
+	324,07 =  3 . 10^2 + 2 . 10^1 + 4 + 0 . 10^-1 + 7 . 10^-2
+
+
+    B	Le système binaire
+    ----------------------
+    
+Les deux chiffres : 0 et 1
+Le chiffre des unités, le bit et les puissances de deux (base 2): 
+
+	101,112  =  1 . 2^2 + 0 . 2^1 + 1 + 1 . 2^-1 + 1 . 2^-2  =  5,75
+
+
+    C	Le système octal
+    --------------------
+    
+Les huit chiffres : 0, 1, 2, 3, 4, 5, 6 et 7
+Le chiffre des unités, l'octet et les puissances de huit : 
+
+	512,058  =  5 . 8^2 + 1 . 8^1 + 2 + 0 . 8^-1 + 5 . 8^-2  =  330, 078 125
+
+
+     D	Le système hexadécimal
+     -------------------------
+Les seize chiffres : 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, B, C, D, E et F
+Le chiffre des unités et les puissances de seize : 
+
+	A1F,0516  =  10 . 16^2 + 1 . 16^1 + 15 + 0 . 16^-1 + 5 . 16^-2  
+	          =  2 591, 019 531 25
+
+
+
+Remarques :
+
+En informatique, il est souvent nécessaire de savoir passer d'un système à l'autre.
+
+Par convention, on met 2, 8 ou 16 en indice derrière une nombre en binaire, octal ou hexadécimal, mais le plus souvent il n'y a pas d'indication (à vous de comprendre en fonction du contexte)
+
+
+
+III	Les codages binaires
+============================
+
+En informatique, au niveau de la machine, l'information est codée en binaire.
+
+L'unité de base du codage de l'information est le bit (0 ou 1).
+
+On regroupe les bits par 8, l'unité de stockage de l'information est l'octet
+(8 bits entre 0000 00002 et 1111 11112 ou entre 0 et 255 un octet permet 256 
+niveaux de code, sa valence est 256).
+
+On dit parfois que l'information est numérique (on devrait dire codée 
+numériquement)
+
+
+Exemples de codage binaire sur 12 bits : 
+
+en binaire :  	     1001 1100  1110 0011  1111 1011
+en hexadécimal :	     0x   9C  E3  AB
+en octal :		     047 161773	
+
+
+
+Remarques :
+
+Si l'information est stockée en octet, on préférera la lire en hexadécimal 
+(1 octet = 2 caractères hexadécimaux).
+
+Si l'information est stockée par groupe de 6 bits, on préférera la lire en 
+octal (6 bits = 2 caractères en octal).
+
+Pour représenter des nombres entiers (une information réellement numérique), 
+on les code d'abord en binaire puis éventuellement on les écrit en hexadécimal 
+ou en octal. 
+
+
+
+IV	Les données numériques
+==============================
+
+
+    A	Les nombres entiers
+    -----------------------
+
+A.1	Représentation  en champ fixe pour des entiers positif ou nul
+*********************************************************************
+
+Simple codage binaire.
+
+Exemple de codage sur 8 bits (1 octet)
+
+		26				0001 1010
+	+      156			+	1001 1100
+
+	=      182			=	1011 0110  (addition binaire)
+
+Sur 8 bits, on dispose de 256 codes possibles et
+on code des nombres de 0 (0000 00002) à 255 (1111 11112)
+
+Attention aux dépassements de capacité (overflow) lors des additions.
+
+
+
+A.2	Représentation par signe et valeur absolue (entiers quelconques) 
+************************************************************************
+
+Bit de signe : 0 pour positif et 1 pour négatif
+et codage binaire de la valeur absolue.
+Exemple de codage sur 8 bits avec un bit de signe
+
+              - 53				1  011 0101
+	+	26			+	0  001 1010
+
+	=     - 27			=	1  001 1011  (soustraction binaire)
+
+Sur 8 bits, on dispose de 256 codes possibles et on code des nombres de -127 
+(1 111 1111) à 127 (0 111 1111)
+Zéro a deux représentations  0 000 0000  et  1 000 0000
+Le bit de signe doit être traité à part avant de poser soit une addition
+soit une soustraction des valeurs absolues.
+
+Attention encore aux dépassements de capacité (overflow)
+
+
+A.3	Représentation par complément logique (complément à 1) 
+**************************************************************
+
+Le premier bit est pour le signe (0 positif et 1 négatif)
+avec codage binaire de la valeur absolue si le nombre est positif
+et son complément logique (0 devient 1 et 1 devient 0) si le nombre est négatif
+
+
+Exemple de codage sur 8 bits :
+
+	        - 53				1 100 1010  (à la place de 1 011 0101)
+	+	90			+       0 101 1010  (nombre positif inchangé)
+
+	 				    (1)	0 010 0100  (addition binaire)
+			 		 +  (1) (ajouter la retenue)
+	=        37			=        0 010 0101
+
+
+Sur 8 bits, on dispose de 256 codes possibles et
+on code des nombres de -127 (1 000 0000) à 127 (0 111 1111)
+	Zéro a deux représentations  1 111 1111  et  0 000 0000
+	-1 est représenté par  1 111 1110
+	-2 est représenté par  1 111 1101 
+	-3 est représenté par  1 111 1100 
+
+
+Le bit de signe est traité avec l'addition (et il n'y a plus de soustraction),
+il faut ajouter la retenue éventuelle.
+
+Ce codage permet une détection des dépassements de capacité (overflow) :
+si les retenues générées au dernier bit (bit de signe)
+et à l'avant dernier bit (bit de gauche de la valeur absolue)
+sont différentes, il y a overflow.
+
+	          72				0  100 1000  
+	+	  74			+	0  100 1010
+
+					    	1  001 0010  (addition binaire)
+			retenues            (0) (1) différentes donc overflow
+
+
+A.4	Représentation par complément arithmétique (complément à 2) 
+*******************************************************************
+
+Le premier bit est pour le signe (0 positif et 1 strictement négatif)
+avec codage binaire de la valeur absolue si le nombre est positif
+et son complément logique plus 1 si le nombre est strictement négatif
+(dans la pratique, on inverse les bits en partant de la droite uniquement après le premier 1 rencontré)
+
+Exemple de codage sur 8 bits :
+
+	      - 52				1 100 1100  (à la place de 1 011 0100)
+	+	90			+	0 101 1010  (nombre positif inchangé)
+
+					    (1)	0 010 0110	(addition binaire)
+								(la retenue est ignorée)
+	=       38			=       0 010 0110
+
+
+Sur 8 bits, on dispose de 256 codes qui sont tous utilisés
+on code des nombres de -128 (1 000 0000) à 127 (0 111 1111)
+	Zéro a une seule représentation  0 000 0000
+	-1 est représenté par  1 111 1111 
+	-2 est représenté par  1 111 1110 
+	-3 est représenté par  1 111 1101 
+
+Le bit de signe est traité avec l'addition (et il n'y a plus de soustraction),
+la retenue éventuelle est ignorée.
+
+Ce codage permet aussi une détection des dépassements de capacité :
+si les retenues générées au dernier bit (bit de signe)
+et à l'avant dernier bit (bit de gauche de la valeur absolue)
+sont différentes, il y a overflow.
+
+	        72				0  100 1000  
+	+	74			+	0  100 1010
+
+					    	1  001 0010  (addition binaire)
+			retenues            (0) (1) différentes donc overflow
+
+
+A.5	Représentation biaisée  (Complément au cours si nécessaire)
+*******************************************************************
+
+On considère une représentation à champs fixe où le code zéro (que des 0 en binaire) 
+représente l'opposé du biais.
+
+
+Exemple de codage sur 8 bits biaisé à 128 (ou en excédent à 128):
+
++-------------------------------+------------+------------+------------+
+|Ecriture décimale | 127        | 126        | 2          | 1          |
+|Complément à 1    | 0 111 1111 | 0 111 1110 | 0 000 0010 | 0 000 0001 |
+|Complément à 2    | 0 111 1111 | 0 111 1110 | 0 000 0010 | 0 000 0001 |
+|Biaisée à 128     | 1111  1111 | 1111  1110 | 1000  0010 | 1000  0001 |
++------------------+------------+------------+------------+------------+
+|Ecriture décimale | 0          | -1         | -2         | -127       |
+|Complément à 1    | 0 000 0000 | 1 111 1110 | 1 111 1101 | 1 000 0000 |
+|Complément à 2    | 0 000 0000 | 1 111 1111 | 1 111 1110 | 1 000 0001 |
+|Biaisée à 128     | 1 000 0000 | 0111  1111 | 0111  1110 | 0000  0001 | 
++------------------+------------+------------+------------+------------+
+                   | -128       |
+		   | N.A.       |
+		   | 1 000 0000 |
+		   | 0000  0000 |
+		   +------------+
+Remarques :
+
+L'écriture binaire de 128 (1000 0000) correspond au code biaisé à 128 du nombre zéro.  
+
+L'écriture binaire de 0 (0000 00002) correspond au code biaisé à 128 du nombre 128 
+(l'opposé du biais).
+
+Le code biaisé à 128 d'un nombre n est le code à champs fixe du nombre n+128.
+
+Le code par complément à 2 (complément arithmétique) et le code biaisé à 128 ne 
+diffèrent que par le bit de signe.  
+
+
+Dans la plupart des ordinateurs, les entiers sont codés par complément arithmétique 
+(complément à 2), ce qui facilite le calcul des sommes d'entiers.
+
+
+
+    B	Les nombres fractionnaires
+    ------------------------------
+
+
+B.1	Virgule fixe 
+********************
+
+
+Traités comme des entiers, l'utilisateur gère lui même la virgule.
+
+
+
+B.2	Codage décimal des calculatrices 
+****************************************
+
+Différents codes sont utilisés. les plus connus sont :
+	code BCD
+	code excédent à 3
+	code 2 dans 5
+	code biquinaire
+
+
+
+B.3	Virgule flottante 
+*************************
+
+L'écriture fractionnaire :
+
+ Nombre = Mantisse  Base^Exposant    
+
+	ex :  -312,45 = -0,31245  10^3
+
+Codage du nombre fractionnaire (norme IEEE 754) :
+
+	Exemple de codage sur 32 bits (on parle de simple précision) :
+
+		1 bit de signe de la mantisse
+		8 bits pour l'exposant
+		23 bits de mantisse
+
+	Avec un codage sur 64 bits (en double précision), on utilise:
+		
+		1 bit de signe
+		11 bits pour l'exposant
+		52 bits de mantisse
+
+(Complément au cours si nécessaire)
+
+La base est un entier positif fixé.
+	(L'écriture est en général en base 2)
+
+L'exposant est un entier codé en représentation biaisée.
+	(biaisé à 127 pour un codage sur 8 bits  et à 1023 pour un codage sur 11 bits)
+
+La mantisse est purement fractionnaire (écriture du type 0,xx.) normalisée (écriture 
+du type 0,c(b) avec c chiffre non nul dans la base b) et codée en binaire (voir la 
+partie fractionnaire de l'écriture binaire sans le 0, du début d'écriture).
+
+Quand l'écriture fractionnaire est en base 2, la mantisse commence par 0,1(2) , ce 
+premier 1 du codage de la mantisse est parfois enlevé, on parle alors de codage 
+avec un bit caché.
+
+Remarque : 
+	Dans ce cas on a :
+		0,12  Mantisse < 12 
+		soit 	0,5  Mantisse < 1 .
+
+L'utilisation d'un bit caché nécessite l'utilisation de
+nombres dénormalisés : ce sont les nombres dont l'exposant
+est nul ont une mantisse dénormalisée (et sans bit caché).
+
+	Exemple :
+
+-312,45 avec un codage en base 2 sur 32 bits avec un bit caché 
+		En base 2, on a l'écriture :
+			-312,45  -1 0011 1000 ,0111 0011 0011 0012
+		Alors :
+-312,45  -0,1001 1100 0011 1001 1001 1001 (2)  2^9
+Son codage sera :
+  1       1000 1000	  001 1100 0011 1001 1001 1001	
+signe      exposant                	mantisse			
+
+
+
+Caractéristiques du standard IEEE
+
++-----------------+------------------+------------------+
+|                 | Simple précision | Double précision |
++-----------------+------------------+------------------+
+|Bit de signe     |        1         |         1        |
+|Bit d'exposant   |        8         |        11        |
+|Bit de mantisse  |       23         |        52        |
+|Total            |       32         |        64        |
++-----------------+------------------+------------------+
+|Codage de l'expo | biaise a 127     | biaise a 1024    |
++-----------------+------------------+------------------+
+|Var. de l'expo   |     -126..127    |  -1022..1023     |
++-----------------+------------------+------------------+
+| Plus petit norm.|      2^-127      |       2^-1022    |
++-----------------+------------------+------------------+
+| Plus grand norm.|      2^128       |       2^1024     |
++-----------------+------------------+------------------+
+
+Attention :
+	Il y a toujours des approximations !
+	Il peut y avoir overflow mais aussi underflow !
+
+Complément : Norme IEEE 754  32 bit  normalisé
+	X = (-1)Signe  ×  1,Mantisse  ×  2Exposant - 127
+
+
+V	Les données alphanumériques
+===================================
+
+Les caractères alphanumériques :
+
+	10 chiffres : 0, 1, 2, 3, 4, 5, 6, 7, 8 , 9 .
+	26 lettres minuscules
+	26 lettres majuscules
+	caractères de ponctuations
+carctères particuliers $, £, ...
+caractères accentués,
+
+Remarques sur les caractères "cachés" :
+	le bip (<bell>),
+	le changement de ligne (new line ou line feed : <lf>),
+	le retour en debut de ligne (carriage return : <cr>),
+	fin de fichier (end of file : <eof>),...
+
+
+Les caractères sont codés par des tables :
+
+	BCD Binary Coded Decimal
+		codage sur 6 bits de 64 caractères
+		ex : A devient 010001
+	ASCII American Standard Code for Information Interchange
+		codage sur 7 bits de 128 caractères
+		ex : A devient 1000001
+	EBCDIC Extended Binary Coded Decimal Internal Code
+		codage sur 8 bits de 256 caractères
+		ex : A devient 11000001
+	UNICODE
+		codage sur 16 bits de 65 536 caractères
+	ISO/IEC 10646
+		codage sur 32 bits
+
+Table des codes ASCII
+
+
+VI	Codage des instructions
+===============================
+
+
+Arité de l'instruction (nombre d'opérandes)
+Adresses des opérandes (en mémoire ou dans un registre du processeur)
+(voir I)
+
+
+VII	Stockage de l'information
+=================================
+
+Organisation de la mémoire
+
+La mémoire : suite de bits conservée sur un support physique.
+	mémoire vive
+	mémoire morte
+	mémoire de masse
+
+Chaque mot mémoire a une adresse :
+
+
+Adresse : 0         1         2         3              4         5         6         7      8         
+
+
+Plusieurs organisations sont possibles :
+	Des mots longs et peu d'adresses
+	Des mots courts et beaucoup d'adresses
+
+
+Ordonnancement des octets : Endianisme
+L'octet est l'unité de base
+
+Exemple: L'ordonnancement des octets pour des mots de 16 bits
+
+INTEL : little endian (petit boutiste)
+ 01 23 45 67
+MOTOROLA : big endian (gros boutiste)
+ 10 32 54 76
+
+Remarque : ceci pose de nombreux problèmes pour la transmission directe 
+          d'information provenant de systèmes différents.
+
+
+
+VIII 	Encodage de l'information
+=================================
+
+Les différents buts :
+
+	Compression de l'information
+	Détection d'erreurs (de codage ou de transmission)
+	Correction des erreurs
+	Criptage
+
+
+Exemples de techniques d'encodage : un bit de parité (parité impair)
+
++-------------------+----------+----------+----------+
+|caractère          |  A       |  B       |  C       |
+|code ASCII         |  100 0001|  100 0010|  100 0011|
+|avec bit de parité | 1100 0001| 1100 0010| 0100 0011|
++-------------------+----------+----------+----------+
+
+Différents codes :
+
+	double parité
+	code de Hamming
+	CRC (Cyclic Redondant Coding)
+	code de Huffman
+	PGP (Pretty Good Privacy)
+	Algorithme RSA (Rivest Shamir Adelman)
+
+Annexe :
+
+Table des codes ASCII
+
+
+
+--
+Note de cours de Michel HERBIN (UFR Science REIMS)
+Mis en txt et remis en forme par Clement MATHIEU aka "Cykl"
+Cours Deug MIAS 2 Annee 
+	Option => OI31 (Architecture)

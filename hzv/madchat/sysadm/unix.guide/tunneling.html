@@ -1,0 +1,254 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<HTML>
+<Head>
+    <title>realprogrammers: Hack: SSH: Tunneling -- by hackers, for hackers</Title>
+	<META Name="keywords" content="real programmers,independent,thinkers,open source,art,style,techniques,discussion,learning,guru,advanced,expert,programming,code,fun,humour,humor">
+	<META Content="description" content="realprogrammers.com will become a resource for the exchange of ideas, techniques and opinions about the art of programming for Real Programmers (or otherwise :). Currently under construction, please email for more information/participation.">
+<!-- Script Language="JavaScript" Src="index.js">Script> -->
+	<link rel="stylesheet" href="/index.css" type="text/css">
+</Head>
+
+<Body BGColor="#fffff5" Link=Green VLink=Green text="#000000">
+<div style="float:right"><a href="http://realprogrammers.com/">Real Programmers</a>/ <a href="/hack/">Hack</a>/ <a href="/hack/SSH/">SSH</a>/ Tunneling</div>
+<!--
+<A Href="http://paulm.com/projects/"><img Src='login.gif' Width="490" Height="80" HSpace=0 Border="0" Alt="Find out more about http://realprogrammers.com..."></A>
+-->
+
+<h2>realprogrammers.com</h2>
+
+<h1>SSH Tunneling</h1>
+
+<div>
+
+SSH is probably most commonly used to gain access to a remote shell.
+There are however many other rather interesting and often poorly
+understood tricks up SSH's sleeves. One such device is
+<em>tunneling</em>, the act of wrapping up one protocol in another, most
+often point-to-point. The application we're going to look at here is
+retrieving mail from a POP server, and logging into a website.
+
+<h2>Motivation</h2>
+
+The primary reason here for tunneling is that both POP and HTTP GET and
+POST operations happen over plain-text protocols (APOP mitigates this
+issue but is relatively infrequently seen or offered by ISPs). This
+means when you log into your POP server to retrieve mail the username
+&amp; password appears on the network with no encryption whatsoever.
+Similarly, when logging in using a form over the Web the username &amp;
+password are on the wire for all to read.
+
+<h2>Port forwarding</h2>
+
+There are two types of port forwarding that SSH offers: local &amp;
+remote. They are quite similar and share some features. Here's how it
+works. In both cases, an SSH connection is made to a server.
+
+<h3>Local</h3>
+
+Running SSH with a local forward will result in a process listening on a
+port on the local machine (where the SSH session is started). This
+process/port will accept connections and forward them <em>via the remote
+authenticated SSH (sshd) process</em> to another host:port combination.
+Thus the local machine is accepting connections and forwarding them over
+SSH to the logged-into machine, and then there on to host:port as an
+ordinary IP connection.
+
+<h3>Remote</h3>
+
+This is similar to local port forwarding in that a listener process is
+set up by SSH to forward packets over an authenticated SSH session but
+this time the listener process is on the remote machine, started by the
+remote <code>sshd</code> daemon. Thus the remote machine is accepting
+connections and forwarding them back over SSH back to the machine that
+started the SSH port forward session, and then from there onto host:port
+as an ordinary IP connection as above.
+
+<h2>Examples</h2>
+
+<h3>Local</h3>
+
+<h4>Browsing corporate intranet webserver via corporate firewall</h4>
+
+You log in from your laptop to your corporate firewall box with
+SSH and set up a local port forward to the corporate intranet webserver
+behind the firewall. The intranet webserver server is not ordinarily
+contactable or even route-able from the Internet at large. What results
+is an  SSH process running on your laptop listening on a port, say port
+8080, where all data sent to that port ends up at the intranet webserver
+on the HTTP port 80 via the authenticated SSH session running to the
+firewall. As far as the webserver is concerned, it simply sees a normal
+IP connection from the firewall's internal address (e.g. a private
+192.168.x.y IP address). The key thing to note is that the session from
+your laptop to the firewall is SSH encrypted but the connection from the
+firewall to the webserver is not. We presumably don't mind this since
+it's on an internal corporate network.
+
+<p>
+
+So the packets go like:
+
+<pre>
+Browser -HTTP-> http://localhost:8080/
+localhost:8080 -SSH-> firewall:22
+firewall:<i>some_high_port</i> -HTTP-> http://www.intranet.local:80/
+</pre>
+
+<p>SSH command on the local machine required for this:
+
+<p>
+<a name="#sshoptions"></a>
+<code>
+ssh -N -f -L 8080:www.intranet.local:80 user@firewall
+</code>
+
+<ul>
+	<li> <code>-f</code> backgrounds the ssh process once it's
+authenticated 
+	</li>
+	<li> <code>-N</code> doesn't run a particular
+command on the remote server (which ordinarily is the default behavior,
+using the user's shell on the remote machine).
+	</li>
+    <li> <code>-L</code> (and <code>-R</code> below) options take the
+         syntax
+         <i>listener_port</i>:<i>remote_host</i>:<i>remote_port</i>. I
+         think of it like <i>listener_port</i> <code>-&gt;</code>
+         <i>remote_host</i>:<i>remote_port</i> where <code>-&gt;</code>
+         means of course via the logged-into machine.
+
+	</li>
+</ul>
+
+<em>Note:</em> <code>user@hostname</code> is equivalent to <code>-l user
+hostname</code>. You may find the former a little more natural to type.
+
+<h4>Checking mail on your mail server</h4>
+
+This time there are only two machines involved, your desktop workstation
+and your mailserver (on which you have an SSH account) on the other side
+of town. You need to check your mail on your mail server but don't want
+your plain-text password appearing either locally (so your dastardly
+coworker can't sniff it) or anywhere else along the way. The process is
+nearly the same as above, except rather than continuing on from the
+logged-into host to another we're simply forwarding to another port
+on the host.
+
+<p>
+<code>
+ssh -N -f -L 30110:mail.mydomain.example:110 user@firewall
+</code>
+
+<p>
+
+Now you would configure your mail client to use POP3 server
+<code>localhost</code>, and port <code>30110</code>. This is much like
+telling the browser in the last example to use &quot;webserver&quot;
+<code>localhost</code> in <code>http://localhost:8080/</code>
+
+<em>Note:</em> You can combine these various port forwards on a single
+SSH session by simply having multiple <code>-L</code> options.
+
+<h3>Remote</h3>
+
+<h4>Serving music files from your workstation to your friends on the 'Net</h4>
+
+Typically workstations in an office environment are on a private network
+which only allows outgoing connections using NAT (Network Address
+Translation). In these cases, since the workstations are on a private
+network they cannot offer services to the outside world. Here's a way to
+get around this, if you have an SSH account on the gateway machine.
+
+<p>(Can you figure this out? See if you can. Then read on.)
+
+<p>
+
+Let's say your workstation is running a webserver on the usual HTTP port
+80 serving some <code>.ogg</code> music files. A SSH connection is
+created from your workstation to the gateway which is connected to the
+Internet. The gateway <code>sshd</code> sets up a listener process for
+say port 8000. All connections on that port are forwarded back over the
+SSH connection to your workstation. From there they, just like the local
+forward, journey on to wherever the fixed address of the remote port
+forward is configured to point to. So in this example you would forward
+the connection to <code>localhost:80</code>.
+
+<p>
+
+Here is how the packets move about,
+
+<pre>
+Friend's Browser -HTTP-> http://gateway.yourcorporation.example:8000/music/...
+gateway:22 -SSH-> workstation:<i>some_high_port</i>
+workstation:<i>some_other_high_port</i> -HTTP-> localhost:80
+</pre>
+
+<p>SSH command on the local machine required for this:
+
+<p>
+<code>
+ssh -N -f -R 8000:localhost:80 user@firewall
+</code>
+
+<p>
+
+<em>Note:</em> The <code>localhost</code> might appear at first sight a
+little confusing when the remote server is somehow connecting another
+machine but don't forget localhost is relative to the initiating end of
+this SSH connection, i.e. the workstation. In the case of local port
+forwarding, localhost is relative to the other end, i.e. the
+connected-to machine.
+
+<h2>Exercises</h2>
+
+Almost needless to say, all these problems assume you have an SSH
+account and access to it.
+
+<ol>
+
+<li>What is the command line required to connect to a shell on your mail
+POP and SMTP server, <code>mail</code>, so that from your workstation
+you can send and retrieve mail? </li>
+
+<li>You are in a hurry to set a machine's clock. The problem is the
+    machine is behind a firewall that prevents all outgoing connections a
+    thousand miles away and there are no time servers yet configured on
+    its LAN. You have SSH access &amp; a shell account on the remote
+    machine, and <code>ntpdate</code> on this remote machine, and a NTP
+    server <code>ntp01</code> that your workstation uses. How might you
+    do this? </li>
+
+<li>
+
+You're on contract at a company that's operating a &quot;net-nanny&quot;
+firewall which is preventing you from booking a ticket to see a rock
+band since their website is blocked by the net-nanny software. How do
+you get access to that site? <em>(Hint: may require additional software &amp; a
+little creativity)</em>.  Bonus point for explaining why a straight
+port-forward might not work. <em>(Hint: requires a little knowledge of
+virtual hosting and/or HTTP/1.1)</em>
+
+</ul>
+
+<li>Try to think up situations where local or remote port forwarding
+might help you. If you can think of interesting
+examples, send 'em along!
+</li>
+
+</ol>
+
+<hr noshade>
+
+<p>&nbsp;</p>
+
+<div>
+
+<small>All content and code Copyright &copy; 2002 <a href="http://realprogrammers.com/">realprogrammers.com</a> &amp; <a
+href="http://paulm.com/">Paul Makepeace</a> except where specified.
+Comments &amp; feedback welcome!
+</small>
+
+</div>
+
+</Body>
+</HTML>

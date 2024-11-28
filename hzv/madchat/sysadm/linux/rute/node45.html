@@ -1,0 +1,2281 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 99.2beta8 (1.46)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>42. The LINUX Kernel Source, Modules, and Hardware Support</TITLE>
+<META NAME="description" CONTENT="42. The LINUX Kernel Source, Modules, and Hardware Support">
+<META NAME="keywords" CONTENT="rute">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v99.2beta8">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="rute.css">
+
+<LINK REL="next" HREF="node46.html">
+<LINK REL="previous" HREF="node44.html">
+<LINK REL="up" HREF="rute.html">
+<LINK REL="next" HREF="node46.html">
+</HEAD>
+
+<BODY BGCOLOR=#FFFFFF >
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD align=left bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-purchase.html"><FONT COLOR=white>Purchase</FONT></A>&nbsp;
+</FONT>
+</TD><TD align=center bgcolor="#000000">
+<FONT COLOR=white>
+Copyright&nbsp;&#169;&nbsp;2002&nbsp;Paul Sheer. <A HREF="copying.html"><FONT COLOR=white>Click here for copying permissions.</FONT></A>
+</FONT>
+</TD><TD align=right bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-home.html"><FONT COLOR=white>Home</FONT></A>&nbsp;
+</FONT>
+</TD></TR>
+<TR><TD colspan=2 align=left bgcolor="#ECEBF4">
+<IMG SRC="va-btn-small-light-60.png">
+</TD><TD align=right bgcolor="#ECEBF4">
+<IMG SRC="sflogo2-steel-60.png">
+</TD></TR>
+</TABLE><BR>
+
+<!--Navigation Panel-->
+<A NAME="tex2html2824"
+  HREF="node46.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2820"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2814"
+  HREF="node44.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2822"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2825"
+  HREF="node46.html">43. The X Window</A>
+<B> Up:</B> <A NAME="tex2html2821"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2815"
+  HREF="node44.html">41. Point-to-Point Protocol </A>
+ &nbsp <B>  <A NAME="tex2html2823"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html2826"
+  HREF="#SECTION004510000000000000000">42.1 Kernel Constitution</A>
+<LI><A NAME="tex2html2827"
+  HREF="#SECTION004520000000000000000">42.2 Kernel Version Numbers</A>
+<LI><A NAME="tex2html2828"
+  HREF="#SECTION004530000000000000000">42.3 Modules, <TT>
+<FONT COLOR="#0000ff">insmod</FONT></TT> Command, and Siblings</A>
+<LI><A NAME="tex2html2829"
+  HREF="#SECTION004540000000000000000">42.4 Interrupts, I/O Ports, and DMA Channels</A>
+<LI><A NAME="tex2html2830"
+  HREF="#SECTION004550000000000000000">42.5 Module Options and Device Configuration</A>
+<UL>
+<LI><A NAME="tex2html2831"
+  HREF="#SECTION004551000000000000000">42.5.1 Five ways to pass options to a module</A>
+<LI><A NAME="tex2html2832"
+  HREF="#SECTION004552000000000000000">42.5.2 Module documentation sources</A>
+</UL>
+<LI><A NAME="tex2html2833"
+  HREF="#SECTION004560000000000000000">42.6 Configuring Various Devices</A>
+<UL>
+<LI><A NAME="tex2html2834"
+  HREF="#SECTION004561000000000000000">42.6.1 Sound and <TT>
+<FONT COLOR="#0000ff">pnpdump</FONT></TT></A>
+<LI><A NAME="tex2html2835"
+  HREF="#SECTION004562000000000000000">42.6.2 Parallel port</A>
+<LI><A NAME="tex2html2836"
+  HREF="#SECTION004563000000000000000">42.6.3 NIC -- Ethernet, PCI, and old ISA</A>
+<LI><A NAME="tex2html2837"
+  HREF="#SECTION004564000000000000000">42.6.4 PCI vendor ID and device ID</A>
+<LI><A NAME="tex2html2838"
+  HREF="#SECTION004565000000000000000">42.6.5 PCI and sound</A>
+<LI><A NAME="tex2html2839"
+  HREF="#SECTION004566000000000000000">42.6.6 Commercial sound drivers</A>
+<LI><A NAME="tex2html2840"
+  HREF="#SECTION004567000000000000000">42.6.7 The ALSA sound project</A>
+<LI><A NAME="tex2html2841"
+  HREF="#SECTION004568000000000000000">42.6.8 Multiple Ethernet cards</A>
+<LI><A NAME="tex2html2842"
+  HREF="#SECTION004569000000000000000">42.6.9 SCSI disks</A>
+<LI><A NAME="tex2html2843"
+  HREF="#SECTION0045610000000000000000">42.6.10 SCSI termination and cooling</A>
+<LI><A NAME="tex2html2844"
+  HREF="#SECTION0045611000000000000000">42.6.11 CD writers</A>
+<LI><A NAME="tex2html2845"
+  HREF="#SECTION0045612000000000000000">42.6.12 Serial devices</A>
+</UL>
+<LI><A NAME="tex2html2846"
+  HREF="#SECTION004570000000000000000">42.7 Modem Cards</A>
+<LI><A NAME="tex2html2847"
+  HREF="#SECTION004580000000000000000">42.8 More on <TT>
+<FONT COLOR="#0000ff">LILO:</FONT></TT> Options</A>
+<LI><A NAME="tex2html2848"
+  HREF="#SECTION004590000000000000000">42.9 Building the Kernel</A>
+<UL>
+<LI><A NAME="tex2html2849"
+  HREF="#SECTION004591000000000000000">42.9.1 Unpacking and patching</A>
+<LI><A NAME="tex2html2850"
+  HREF="#SECTION004592000000000000000">42.9.2 Configuring</A>
+</UL>
+<LI><A NAME="tex2html2851"
+  HREF="#SECTION0045100000000000000000">42.10 Using Packaged Kernel Source</A>
+<LI><A NAME="tex2html2852"
+  HREF="#SECTION0045110000000000000000">42.11 Building, Installing</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION004500000000000000000">
+42. The L<SMALL>INUX</SMALL> Kernel Source, Modules, and Hardware Support</A>
+</H1>
+
+<P>
+<A NAME="chap:kernelsource"></A><A NAME="chap:modules"></A>
+<P>
+This chapter explains how to configure, patch, and build
+a kernel from source. The
+configuration of device drivers and modules
+is also discussed in detail.
+
+<P>
+
+<H1><A NAME="SECTION004510000000000000000">
+42.1 Kernel Constitution</A>
+</H1>
+
+<P>
+A kernel installation consists
+of the kernel boot image, the kernel
+modules, the
+<TT>
+<FONT COLOR="#0000ff">System.map</FONT></TT> file, the kernel headers (needed
+only for development), and various support daemons (already
+provided by your distribution). These constitute everything that is
+called ``Linux'' under L<SMALL>INUX</SMALL>, and are built from about 50 megabytes
+of <B>C</B> code of around 1.5 million lines.
+
+<P>
+
+<UL>
+<LI>The L<SMALL>INUX</SMALL> kernel image is a 400 to 600-KB file that sits in
+<TT>
+<FONT COLOR="#0000ff">/boot/</FONT></TT> (see Chapter <A HREF="node34.html#chap:lilo">31</A>). If you look in this
+directory, you might see several kernels. The choice of which to boot
+is probably available to you at boot time, through <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT>.
+
+<P>
+The kernel in <TT>
+<FONT COLOR="#0000ff">/boot/</FONT></TT> is compressed. That is, it
+is <TT>
+<FONT COLOR="#0000ff">gzip</FONT></TT> compressed and is actually about twice the size
+when unpacked into memory on boot.
+
+<P>
+</LI>
+<LI>The kernel also has detached parts called <I>modules</I>.
+These all sit in <TT>
+<FONT COLOR="#0000ff">/lib/modules/&lt;version&gt;/</FONT></TT>.
+They are categorized into the
+subdirectories below this directory. In kernel <TT>
+<FONT COLOR="#0000ff">2.2</FONT></TT> there were about 400,
+modules totaling about 9 megabytes.
+
+<P>
+Modules are actually just shared object files, like the
+<TT>
+<FONT COLOR="#0000ff">.o</FONT></TT> files we created in Section <A HREF="node26.html#sec:sharedobj">23.1</A>. They
+are not quite the same as Windows device
+drivers, in that it is not generally
+possibly to use a module on a kernel other than the one it was compiled
+for--hence the name ``module'' is used instead of ``driver.'' Modules are
+separated out of the kernel image purely to save RAM. Modules are
+sometimes <I>compiled into</I> the kernel in the same way that our
+<TT>
+<FONT COLOR="#0000ff">test</FONT></TT> program was statically linked on page <A HREF="node25.html#page:staticlinking"><IMG  ALIGN="BOTTOM" BORDER="1" ALT="[*]" SRC="crossref.png"></A>.
+In this case, they would be absent from <TT>
+<FONT COLOR="#0000ff">/lib/modules/&lt;version&gt;/</FONT></TT> and
+should not really be called modules. In this chapter I show how to create
+compiled-in
+or compiled-out 
+versions of modules when rebuilding the kernel.
+
+<P>
+</LI>
+<LI>Next is the <TT>
+<FONT COLOR="#0000ff">System.map</FONT></TT> file, also in <TT>
+<FONT COLOR="#0000ff">/boot</FONT></TT>.
+It is used by <TT>
+<FONT COLOR="#0000ff">klogd</FONT></TT> to resolve kernel address references
+to symbols, so as to write logs about them, and then also by
+<TT>
+<FONT COLOR="#0000ff">depmod</FONT></TT> to work out <I>module dependencies</I> (what
+modules need what other modules to be loaded first).
+
+<P>
+</LI>
+<LI>Finally, the kernel headers <TT>
+<FONT COLOR="#0000ff">/usr/src/linux/include</FONT></TT>
+are used when certain packages are built.
+
+<P>
+</LI>
+<LI>The ``various support daemons'' should be running
+already. Since <TT>
+<FONT COLOR="#0000ff">2.2</FONT></TT>, these have been reduced to <TT>
+<FONT COLOR="#0000ff">klogd</FONT></TT>
+only. The other kernel daemons that appear to be running are
+generated by the kernel itself.
+</LI>
+</UL>
+
+<P>
+
+<H1><A NAME="SECTION004520000000000000000">
+42.2 Kernel Version Numbers</A>
+</H1>
+
+<P>
+The kernel is versioned like other packages:
+<TT>
+<FONT COLOR="#0000ff">linux-</FONT></TT><I>major</I><TT>
+<FONT COLOR="#0000ff">.</FONT></TT><I>minor</I><TT>
+<FONT COLOR="#0000ff">.</FONT></TT><I>patch</I>.
+Development kernels are given odd minor version numbers; stable
+kernels are given even minor version numbers. At the time of writing, the
+stable kernel was <TT>
+<FONT COLOR="#0000ff">2.2.17</FONT></TT>,
+and <TT>
+<FONT COLOR="#0000ff">2.4.0</FONT></TT> was soon to be released.
+By the time you read this, <TT>
+<FONT COLOR="#0000ff">2.4.0</FONT></TT>
+will be available. This chapter should
+be entirely applicable to future stable releases of <TT>
+<FONT COLOR="#0000ff">2.4</FONT></TT>.
+
+<P>
+
+<H1><A NAME="SECTION004530000000000000000">
+42.3 Modules, <TT>
+<FONT COLOR="#0000ff">insmod</FONT></TT> Command, and Siblings</A>
+</H1>
+
+<P>
+A module is usually a device driver pertaining to some device node
+generated with the <TT>
+<FONT COLOR="#0000ff">mknod</FONT></TT> command or already existing in the
+<TT>
+<FONT COLOR="#0000ff">/dev/</FONT></TT> directory. For instance, the SCSI driver automatically locks onto
+device major = <TT>
+<FONT COLOR="#0000ff">8</FONT></TT>, minor = <TT>
+<FONT COLOR="#0000ff">0</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">1</FONT></TT>,..., when it loads;
+and the Sound module onto device major = <TT>
+<FONT COLOR="#0000ff">14</FONT></TT>, minor = <TT>
+<FONT COLOR="#0000ff">3</FONT></TT>
+(<TT>
+<FONT COLOR="#0000ff">/dev/dsp</FONT></TT>), and others. The modules people most often play with are
+SCSI, Ethernet, and Sound modules. There
+are also many modules that support extra features instead of hardware.
+
+<P>
+Modules are loaded with the <TT>
+<FONT COLOR="#0000ff">insmod</FONT></TT> command, and removed with the
+<TT>
+<FONT COLOR="#0000ff">rmmod</FONT></TT> command. This is somewhat like the operation of linking
+shown in the <TT>
+<FONT COLOR="#0000ff">Makefile</FONT></TT> on page <A HREF="node26.html#page:sharemakefile"><IMG  ALIGN="BOTTOM" BORDER="1" ALT="[*]" SRC="crossref.png"></A>. To list
+currently loaded modules, use <TT>
+<FONT COLOR="#0000ff">lsmod</FONT></TT>. Try (kernel <TT>
+<FONT COLOR="#0000ff">2.4</FONT></TT> paths are
+different and are given in braces)
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>insmod&nbsp;/lib/modules/&#060;version&#062;/fs/fat.o</code><br>
+<code>(&nbsp;insmod&nbsp;/lib/modules/&#060;version&#062;/kernel/fs/fat/fat.o&nbsp;)</code><br>
+<code>lsmod</code><br>
+<code>rmmod&nbsp;fat</code><br>
+<code>lsmod</code><br>
+</FONT></TD></TR></TABLE><P>
+<TT>
+<FONT COLOR="#0000ff">rmmod -a</FONT></TT> further removes all unused modules.
+
+<P>
+Modules sometimes need other modules to be present in order to
+load. If you try to load a module and it gives <TT>
+<FONT COLOR="#0000ff">&lt;module-name&gt;:
+unresolved symbol &lt;symbol-name&gt;</FONT></TT> error messages, then it requires
+something else to be loaded first. The <TT>
+<FONT COLOR="#0000ff">modprobe</FONT></TT> command loads
+a module along with other modules that it depends on. Try
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>insmod&nbsp;/lib/modules/2.2.12-20/fs/vfat.o</code><br>
+<code>(&nbsp;insmod&nbsp;/lib/modules/&#060;version&#062;/kernel/fs/vfat/vfat.o&nbsp;)</code><br>
+<code>modprobe&nbsp;vfat</code><br>
+</FONT></TD></TR></TABLE><P>
+<TT>
+<FONT COLOR="#0000ff">modprobe</FONT></TT>, however, requires a table of <I>module dependencies</I>.
+This table is the 
+file <TT>
+<FONT COLOR="#0000ff">/lib/modules/&lt;version&gt;/modules.dep</FONT></TT> and is
+generated automatically by your startup scripts with the command
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/sbin/depmod&nbsp;-a</code><br>
+</FONT></TD></TR></TABLE><P>
+although you can run it manually at any time. The <TT>
+<FONT COLOR="#0000ff">lsmod</FONT></TT>
+listing also shows module dependencies in brackets.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>Module&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Size&nbsp;&nbsp;Used&nbsp;by</code><br>
+<code>de4x5&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;41396&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;(autoclean)</code><br>
+<code>parport_probe&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3204&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;(autoclean)</code><br>
+<code>parport_pc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5832&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;(autoclean)</code><br>
+<code>lp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4648&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;(autoclean)</code><br>
+<code>parport&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7320&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;(autoclean)&nbsp;[parport_probe&nbsp;parport_pc&nbsp;lp]</code><br>
+<code>slip&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7932&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;(autoclean)</code><br>
+<code>slhc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4504&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;(autoclean)&nbsp;[slip]</code><br>
+<code>sb&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;33812&nbsp;&nbsp;&nbsp;0&nbsp;</code><br>
+<code>uart401&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;6224&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;[sb]</code><br>
+<code>sound&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;57464&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;[sb&nbsp;uart401]</code><br>
+<code>soundlow&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;420&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;[sound]</code><br>
+<code>soundcore&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2596&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;[sb&nbsp;sound]</code><br>
+<code>loop&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7872&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;(autoclean)</code><br>
+<code>nls_iso8859-1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2272&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;(autoclean)</code><br>
+<code>nls_cp437&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3748&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;(autoclean)</code><br>
+<code>vfat&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9372&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;(autoclean)</code><br>
+<code>fat&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;30656&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;(autoclean)&nbsp;[vfat]</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H1><A NAME="SECTION004540000000000000000">
+42.4 Interrupts, I/O Ports, and DMA Channels</A>
+</H1>
+
+<P>
+<A NAME="sec:proc"></A>A loaded module that drives hardware will often consume I/O ports,
+IRQs, and possibly a DMA channel, as explained in Chapter
+<A HREF="node6.html#chap:pchardware">3</A>. You can get a full list of occupied
+resources from the <TT>
+<FONT COLOR="#0000ff">/proc/</FONT></TT> directory:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>20</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>25</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>30</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>35</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>40</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>45</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>50</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>[root@cericon]#&nbsp;<font color="navy"><B>cat&nbsp;/proc/ioports</B></font></code><br>
+<code>&nbsp;</code><br>
+<code>0000-001f&nbsp;:&nbsp;dma1</code><br>
+<code>0020-003f&nbsp;:&nbsp;pic1</code><br>
+<code>0040-005f&nbsp;:&nbsp;timer</code><br>
+<code>0060-006f&nbsp;:&nbsp;keyboard</code><br>
+<code>0070-007f&nbsp;:&nbsp;rtc</code><br>
+<code>0080-008f&nbsp;:&nbsp;dma&nbsp;page&nbsp;reg</code><br>
+<code>00a0-00bf&nbsp;:&nbsp;pic2</code><br>
+<code>00c0-00df&nbsp;:&nbsp;dma2</code><br>
+<code>00f0-00ff&nbsp;:&nbsp;fpu</code><br>
+<code>0170-0177&nbsp;:&nbsp;ide1</code><br>
+<code>01f0-01f7&nbsp;:&nbsp;ide0</code><br>
+<code>0220-022f&nbsp;:&nbsp;soundblaster</code><br>
+<code>02f8-02ff&nbsp;:&nbsp;serial(auto)</code><br>
+<code>0330-0333&nbsp;:&nbsp;MPU-401&nbsp;UART</code><br>
+<code>0376-0376&nbsp;:&nbsp;ide1</code><br>
+<code>0378-037a&nbsp;:&nbsp;parport0</code><br>
+<code>0388-038b&nbsp;:&nbsp;OPL3/OPL2</code><br>
+<code>03c0-03df&nbsp;:&nbsp;vga+</code><br>
+<code>03f0-03f5&nbsp;:&nbsp;floppy</code><br>
+<code>03f6-03f6&nbsp;:&nbsp;ide0</code><br>
+<code>03f7-03f7&nbsp;:&nbsp;floppy&nbsp;DIR</code><br>
+<code>03f8-03ff&nbsp;:&nbsp;serial(auto)</code><br>
+<code>e400-e47f&nbsp;:&nbsp;DC21140&nbsp;(eth0)</code><br>
+<code>f000-f007&nbsp;:&nbsp;ide0</code><br>
+<code>f008-f00f&nbsp;:&nbsp;ide1</code><br>
+<code>&nbsp;</code><br>
+<code>[root@cericon]#&nbsp;<font color="navy"><B>cat&nbsp;/proc/interrupts</B></font></code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;CPU0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</code><br>
+<code>&nbsp;&nbsp;0:&nbsp;&nbsp;&nbsp;&nbsp;8409034&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XT-PIC&nbsp;&nbsp;timer</code><br>
+<code>&nbsp;&nbsp;1:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;157231&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XT-PIC&nbsp;&nbsp;keyboard</code><br>
+<code>&nbsp;&nbsp;2:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XT-PIC&nbsp;&nbsp;cascade</code><br>
+<code>&nbsp;&nbsp;3:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;104347&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XT-PIC&nbsp;&nbsp;serial</code><br>
+<code>&nbsp;&nbsp;5:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XT-PIC&nbsp;&nbsp;soundblaster</code><br>
+<code>&nbsp;&nbsp;6:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;82&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XT-PIC&nbsp;&nbsp;floppy</code><br>
+<code>&nbsp;&nbsp;7:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XT-PIC&nbsp;&nbsp;parport0</code><br>
+<code>&nbsp;&nbsp;8:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XT-PIC&nbsp;&nbsp;rtc</code><br>
+<code>&nbsp;11:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XT-PIC&nbsp;&nbsp;DC21140&nbsp;(eth0)</code><br>
+<code>&nbsp;13:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XT-PIC&nbsp;&nbsp;fpu</code><br>
+<code>&nbsp;14:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;237337&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XT-PIC&nbsp;&nbsp;ide0</code><br>
+<code>&nbsp;15:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;16919&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XT-PIC&nbsp;&nbsp;ide1</code><br>
+<code>NMI:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0</code><br>
+<code>&nbsp;</code><br>
+<code>[root@cericon]#&nbsp;<font color="navy"><B>cat&nbsp;/proc/dma</B></font></code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;1:&nbsp;SoundBlaster8</code><br>
+<code>&nbsp;2:&nbsp;floppy</code><br>
+<code>&nbsp;4:&nbsp;cascade</code><br>
+<code>&nbsp;5:&nbsp;SoundBlaster16</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+The above configuration is typical. Note that the
+second column of the IRQ listing shows the number of interrupts
+signals received from the device. Moving my mouse a little
+and listing the IRQs again gives me
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&nbsp;&nbsp;3:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;104851&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XT-PIC&nbsp;&nbsp;serial</code><br>
+</FONT></TD></TR></TABLE><P>
+showing that several hundred interrupts were since
+received. Another useful entry is <TT>
+<FONT COLOR="#0000ff">/proc/devices</FONT></TT>, which
+shows what major devices numbers were allocated and are being used.
+This file is extremely useful for seeing what peripherals are
+``alive'' on your system.
+
+<P>
+
+<H1><A NAME="SECTION004550000000000000000">
+42.5 Module Options and Device Configuration</A>
+</H1>
+
+<P>
+<A NAME="sec:modoptions"></A><A NAME="sec:moduleoptions"></A>
+Device modules often need information about their hardware
+configuration. For instance, ISA device drivers need to know the
+IRQ and I/O port that the ISA card is physically configured to
+access. This information is passed to the module as <I>module
+options</I> that the module uses to initialize itself. Note that most
+devices will <I>not</I> need options at all. PCI cards mostly
+autodetect; it is mostly ISA cards that require these options.
+
+<P>
+
+<H2><A NAME="SECTION004551000000000000000">
+42.5.1 Five ways to pass options to a module</A>
+</H2>
+
+<P>
+<A NAME="sec:passingmodoptions"></A>
+<P>
+<DL COMPACT>
+<DT>1.</DT>
+<DD>If a module is compiled into the kernel, then the module
+will be initialized at boot time. <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT> passes module options
+to the kernel from the command-line at the <TT>
+<FONT COLOR="#0000ff">LILO:</FONT></TT> prompt.
+For instance, at the <TT>
+<FONT COLOR="#0000ff">LILO:</FONT></TT> prompt, you can
+type <FONT COLOR="#ffa500">[See Section <A HREF="node7.html#sec:usagesumm">4.4</A>]</FONT>:
+</DD>
+</DL>
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>linux&nbsp;aha1542=&#060;portbase&#062;[,&#060;buson&#062;,&#060;busoff&#062;[,&#060;dmaspeed&#062;]]</code><br>
+</FONT></TD></TR></TABLE><P>
+<DL COMPACT>
+<DT></DT>
+<DD>to initialize the
+Adaptec 1542 SCSI driver. What these options are and exactly
+what goes in them can be learned from the file
+<TT>
+<FONT COLOR="#0000ff">/usr/src/linux-&lt;version&gt;/drivers/scsi/aha1542.c</FONT></TT>. Near
+the top of the file are comments explaining the meaning of these
+options.
+</DD>
+<DT>2.</DT>
+<DD>If you are using <TT>
+<FONT COLOR="#0000ff">LOADLIN.EXE</FONT></TT> or some other
+DOS or Windows kernel loader, then it, too, can take similar options.
+I will not go into these.
+</DD>
+<DT>3.</DT>
+<DD><TT>
+<FONT COLOR="#0000ff">/etc/lilo.conf</FONT></TT> can take the <TT>
+<FONT COLOR="#0000ff">append&nbsp;=</FONT></TT>
+option, as discussed on page <A HREF="node34.html#page:appendequ"><IMG  ALIGN="BOTTOM" BORDER="1" ALT="[*]" SRC="crossref.png"></A>. This options
+passes options to the kernel as though you had typed them at the
+<TT>
+<FONT COLOR="#0000ff">LILO:</FONT></TT> prompt. The equivalent <TT>
+<FONT COLOR="#0000ff">lilo.conf</FONT></TT> line is
+</DD>
+</DL>
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>append&nbsp;=&nbsp;aha1542=&#060;portbase&#062;[,&#060;buson&#062;,&#060;busoff&#062;[,&#060;dmaspeed&#062;]]</code><br>
+</FONT></TD></TR></TABLE><P>
+<DL COMPACT>
+<DT></DT>
+<DD>This is the most common way of giving kernel boot options.
+</DD>
+<DT>4.</DT>
+<DD>The <TT>
+<FONT COLOR="#0000ff">insmod</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">modprobe</FONT></TT> commands
+can take options that are passed to the module. These are
+vastly different from the way you pass
+options with <TT>
+<FONT COLOR="#0000ff">append&nbsp;=</FONT></TT>. For instance, you can give options to
+a compiled-in Ethernet module with the commands
+</DD>
+</DL>
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>append&nbsp;=&nbsp;ether=9,0x300,0xd0000,0xd4000,eth0</code><br>
+<code>append&nbsp;=&nbsp;ether=0,0,eth1</code><br>
+</FONT></TD></TR></TABLE><P>
+<DL COMPACT>
+<DT></DT>
+<DD>from within <TT>
+<FONT COLOR="#0000ff">/etc/lilo.conf</FONT></TT>. But then, using
+<TT>
+<FONT COLOR="#0000ff">modprobe</FONT></TT> on the same ``compiled-out'' modules, these
+options have to be specified like this:
+</DD>
+</DL>
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>modprobe&nbsp;wd&nbsp;irq=9&nbsp;io=0x300&nbsp;mem=0xd0000&nbsp;mem_end=0xd4000</code><br>
+<code>modprobe&nbsp;de4x5</code><br>
+</FONT></TD></TR></TABLE><P>
+<DL COMPACT>
+<DT></DT>
+<DD>Note that the <TT>
+<FONT COLOR="#0000ff">0xd0000,0xd4000</FONT></TT> are only applicable
+to a few Ethernet modules and are usually omitted. Also, the <TT>
+<FONT COLOR="#0000ff">0</FONT></TT>'s in
+<TT>
+<FONT COLOR="#0000ff">ether=0,0,eth1</FONT></TT> mean to try autodetect. To find out what
+options a module will take, you can use the <TT>
+<FONT COLOR="#0000ff">modinfo</FONT></TT> command which
+shows that the <TT>
+<FONT COLOR="#0000ff">wd</FONT></TT> driver is one of the few Ethernet drivers
+where you can set their RAM usage. <FONT COLOR="#ffa500">[This has not been discussed,
+but cards can sometimes use areas of memory directly.]</FONT>
+</DD>
+</DL>
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>[root@cericon]#&nbsp;<font color="navy"><B>modinfo&nbsp;-p&nbsp;/lib/modules/&#060;version&#062;/net/wd.o</B></font></code><br>
+<code>(&nbsp;[root@cericon]#&nbsp;<font color="navy"><B>modinfo&nbsp;-p&nbsp;/lib/modules/&#060;version&#062;/kernel/drivers/net/wd.o</B></font>&nbsp;)</code><br>
+<code>io&nbsp;int&nbsp;array&nbsp;(min&nbsp;=&nbsp;1,&nbsp;max&nbsp;=&nbsp;4)</code><br>
+<code>irq&nbsp;int&nbsp;array&nbsp;(min&nbsp;=&nbsp;1,&nbsp;max&nbsp;=&nbsp;4)</code><br>
+<code>mem&nbsp;int&nbsp;array&nbsp;(min&nbsp;=&nbsp;1,&nbsp;max&nbsp;=&nbsp;4)</code><br>
+<code>mem_end&nbsp;int&nbsp;array&nbsp;(min&nbsp;=&nbsp;1,&nbsp;max&nbsp;=&nbsp;4)</code><br>
+</FONT></TD></TR></TABLE><P>
+<DL COMPACT>
+<DT>5.</DT>
+<DD>The file <TT>
+<FONT COLOR="#0000ff">/etc/modules.conf</FONT></TT> <FONT COLOR="#ffa500">[Also sometimes
+called <TT>
+<FONT COLOR="#0000ff">/etc/conf.modules</FONT></TT>, but now deprecated.]</FONT> contains default
+options for <TT>
+<FONT COLOR="#0000ff">modprobe</FONT></TT>, instead of our giving them on the <TT>
+<FONT COLOR="#0000ff">modprobe</FONT></TT>
+command-line. This is the preferred and most
+common way of giving module options. Our Ethernet example becomes:
+</DD>
+</DL>
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>alias&nbsp;eth0&nbsp;wd</code><br>
+<code>alias&nbsp;eth1&nbsp;de4x5</code><br>
+<code>options&nbsp;wd&nbsp;irq=9&nbsp;io=0x300&nbsp;mem=0xd0000&nbsp;mem_end=0xd4000</code><br>
+</FONT></TD></TR></TABLE><P>
+<DL COMPACT>
+<DT></DT>
+<DD>Having set up an <TT>
+<FONT COLOR="#0000ff">/etc/modules.conf</FONT></TT> file allows module
+<I>dynamic loading</I> to take place. This means that the kernel
+automatically loads the necessary module whenever the device is
+required (as when <TT>
+<FONT COLOR="#0000ff">ifconfig</FONT></TT> is first used for Ethernet devices). The kernel merely
+tries an <TT>
+<FONT COLOR="#0000ff">/sbin/modprobe eth0</FONT></TT>, and the <TT>
+<FONT COLOR="#0000ff">alias</FONT></TT> line hints
+to <TT>
+<FONT COLOR="#0000ff">modprobe</FONT></TT> to actually run <TT>
+<FONT COLOR="#0000ff">/sbin/modprobe wd</FONT></TT>.
+Further, the <TT>
+<FONT COLOR="#0000ff">options</FONT></TT> line means to run <TT>
+<FONT COLOR="#0000ff">/sbin/modprobe
+wd irq=9 io=0x300 mem=0xd0000 mem_end=0xd4000</FONT></TT>. In this way,
+<TT>
+<FONT COLOR="#0000ff">/etc/modules.conf</FONT></TT> maps devices to drivers.
+</DD>
+</DL>
+
+<P>
+
+<H2><A NAME="SECTION004552000000000000000">
+42.5.2 Module documentation sources</A>
+</H2>
+
+<P>
+You might like to see a complete summary of all module options with examples of each
+of the five ways of passing options. No such summary exists at this point, simply
+because there is no overall consistency and because people are mostly interested in
+getting one particular device to work, which will doubtless have peculiarities best
+discussed in a specialized document. Further, some specialized modules are mostly
+used in compiled-out form, whereas others are mostly used in compiled-in form.
+
+<P>
+To get an old or esoteric device working, it is best to read the appropriate HOWTO
+documents: <TT>
+<FONT COLOR="#0000ff">BootPrompt-HOWTO</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">Ethernet-HOWTO</FONT></TT>, and
+<TT>
+<FONT COLOR="#0000ff">Sound-HOWTO</FONT></TT>. The device could also be documented in
+<TT>
+<FONT COLOR="#0000ff">/usr/linux-&lt;version&gt;/Documentation/</FONT></TT> or under one of its subdirectories like
+<TT>
+<FONT COLOR="#0000ff">sound/</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">networking/</FONT></TT>.
+This is documentation written by the driver
+authors themselves. Of particular interest is the file
+<TT>
+<FONT COLOR="#0000ff">/usr/src/linux/Documentation/networking/net-modules.txt</FONT></TT>, which, although
+outdated, has a fairly comprehensive list of networking modules and the module
+options they take. Another source of documentation is the driver <B>C</B> code itself, as in
+the <TT>
+<FONT COLOR="#0000ff">aha1542.c</FONT></TT> example above. It may explain the <TT>
+<FONT COLOR="#0000ff">/etc/lilo.conf</FONT></TT> or
+<TT>
+<FONT COLOR="#0000ff">/etc/modules.conf</FONT></TT> options to use but will often be quite cryptic. A driver is
+often written with only one of compiled-in or compiled-out support in mind (even
+though it really supports both). Choose whether to compile-in or
+compiled-out based on what is implied in the documentation or <B>C</B> source.
+
+<P>
+
+<H1><A NAME="SECTION004560000000000000000">
+42.6 Configuring Various Devices</A>
+</H1>
+
+<P>
+Further examples on getting common devices to work now follow but
+only a few devices are discussed. See the documentation sources
+above for more info. We concentrate here on what is <I>normally</I> done.
+
+<P>
+
+<H2><A NAME="SECTION004561000000000000000">
+42.6.1 Sound and <TT>
+<FONT COLOR="#0000ff">pnpdump</FONT></TT></A>
+</H2>
+
+<P>
+<A NAME="sec:soundsandpnpdump"></A>
+<P>
+Plug-and-Play (PnP) ISA
+sound cards (like SoundBlaster cards) are possibly the
+more popular of any cards that people have gotten to work under L<SMALL>INUX</SMALL>. Here, we use
+the sound card example to show how to get a PnP ISA card working in a few
+minutes. <I>This is, of course, applicable to cards other than sound.</I>
+
+<P>
+A utility called <TT>
+<FONT COLOR="#0000ff">isapnp</FONT></TT> takes one argument, the file
+<TT>
+<FONT COLOR="#0000ff">/etc/isapnp.conf</FONT></TT>, and configures all ISA Plug-and-Play
+devices to the IRQs and I/O ports specified therein.
+<TT>
+<FONT COLOR="#0000ff">/etc/isapnp.conf</FONT></TT> is a complicated file but can be generated
+with the <TT>
+<FONT COLOR="#0000ff">pnpdump</FONT></TT> utility. <TT>
+<FONT COLOR="#0000ff">pnpdump</FONT></TT> outputs an
+example <TT>
+<FONT COLOR="#0000ff">isapnp.conf</FONT></TT> file to stdout, which contains IRQ and I/O port
+values allowed by your devices. You must edit these to unused
+values. Alternatively, you can use <TT>
+<FONT COLOR="#0000ff">pnpdump &#45;&#45;config</FONT></TT> to get a
+<TT>
+<FONT COLOR="#0000ff">/etc/isapnp.conf</FONT></TT> file with the correct IRQ, I/O port, and DMA
+channels automatically guessed from an examination of the
+<TT>
+<FONT COLOR="#0000ff">/proc/</FONT></TT> entries. This comes down to
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red size="-1">
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue size="-1">
+<code>[root@cericon]#&nbsp;<font color="navy"><B>pnpdump&nbsp;&#45;&#45;config&nbsp;&#124;&nbsp;grep&nbsp;-v&nbsp;&#39;&#94;&#92;&#40;&#35;&#46;&#42;&#92;&#124;&#92;&#41;&#36;&#39;&nbsp;&#062;&nbsp;/etc/isapnp.conf</B></font></code><br>
+<code>[root@cericon]#&nbsp;<font color="navy"><B>isapnp&nbsp;/etc/isapnp.conf</B></font></code><br>
+<code>&nbsp;</code><br>
+<code>Board&nbsp;1&nbsp;has&nbsp;Identity&nbsp;c9&nbsp;00&nbsp;00&nbsp;ab&nbsp;fa&nbsp;29&nbsp;00&nbsp;8c&nbsp;0e:&nbsp;&nbsp;CTL0029&nbsp;Serial&nbsp;No&nbsp;44026&nbsp;[checksum&nbsp;c9]</code><br>
+<code>CTL0029/44026[0]{Audio&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}:&nbsp;Ports&nbsp;0x220&nbsp;0x330&nbsp;0x388&#059;&nbsp;IRQ5&nbsp;DMA1&nbsp;DMA5&nbsp;---&nbsp;Enabled&nbsp;OK</code><br>
+<code>CTL0029/44026[1]{IDE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}:&nbsp;Ports&nbsp;0x168&nbsp;0x36E&#059;&nbsp;IRQ10&nbsp;---&nbsp;Enabled&nbsp;OK</code><br>
+<code>CTL0029/44026[2]{Game&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}:&nbsp;Port&nbsp;0x200&#059;&nbsp;---&nbsp;Enabled&nbsp;OK</code><br>
+</FONT></TD></TR></TABLE><P>
+which gets any ISA PnP card configured with just two commands.
+Note that the <TT>
+<FONT COLOR="#0000ff">/etc/isapnp.gone</FONT></TT>
+file can be used to make <TT>
+<FONT COLOR="#0000ff">pnpdump</FONT></TT> avoid
+using certain IRQ and I/O ports. Mine contains
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>IO&nbsp;0x378,2</code><br>
+<code>IRQ&nbsp;7</code><br>
+</FONT></TD></TR></TABLE><P>
+to avoid conflicting with my parallel port.
+<TT>
+<FONT COLOR="#0000ff">isapnp /etc/isapnp.conf</FONT></TT> must be run each time at
+boot and is probably already in your startup scripts.
+
+<P>
+Now that your ISA card is enabled, you can install the necessary modules.
+You can read the <TT>
+<FONT COLOR="#0000ff">/etc/isapnp.conf</FONT></TT> file and also <TT>
+<FONT COLOR="#0000ff">isapnp</FONT></TT>'s
+output above to reference the I/O ports to the correct module options:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>alias&nbsp;sound-slot-0&nbsp;sb</code><br>
+<code>alias&nbsp;sound-service-0-0&nbsp;sb</code><br>
+<code>alias&nbsp;sound-service-0-1&nbsp;sb</code><br>
+<code>alias&nbsp;sound-service-0-2&nbsp;sb</code><br>
+<code>alias&nbsp;sound-service-0-3&nbsp;sb</code><br>
+<code>alias&nbsp;sound-service-0-4&nbsp;sb</code><br>
+<code>alias&nbsp;synth0&nbsp;sb</code><br>
+<code>post-install&nbsp;sb&nbsp;/sbin/modprobe&nbsp;"-k"&nbsp;"adlib_card"</code><br>
+<code>options&nbsp;sb&nbsp;io=0x220&nbsp;irq=5&nbsp;dma=1&nbsp;dma16=5&nbsp;mpu_io=0x330</code><br>
+<code>options&nbsp;adlib_card&nbsp;io=0x388&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;FM&nbsp;synthesizer</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Now run
+<TT>
+<FONT COLOR="#0000ff">tail -f /var/log/messages /var/log/syslog</FONT></TT>, and then at
+another terminal type:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>depmod&nbsp;-a</code><br>
+<code>modprobe&nbsp;sb</code><br>
+</FONT></TD></TR></TABLE><P>
+If you get no kernel or other errors, then the devices
+are working.
+
+<P>
+Now we want to set up dynamic loading of the module. Remove
+all the sound and other modules with <TT>
+<FONT COLOR="#0000ff">rmmod -a</FONT></TT> (or manually),
+and then try:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>aumix</code><br>
+</FONT></TD></TR></TABLE><P>
+You should get a kernel log like this:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>Sep&nbsp;24&nbsp;00:45:19&nbsp;cericon&nbsp;kernel:&nbsp;Soundblaster&nbsp;audio&nbsp;driver</code><br>
+<code>&nbsp;Copyright&nbsp;(C)&nbsp;by&nbsp;Hannu&nbsp;Savolainen&nbsp;1993-1996</code><br>
+<code>Sep&nbsp;24&nbsp;00:45:19&nbsp;cericon&nbsp;kernel:&nbsp;SB&nbsp;4.13&nbsp;detected&nbsp;OK&nbsp;(240)</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Then try:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>playmidi&nbsp;&#060;somefile&#062;.mid</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+You should get a kernel log like this one:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>Sep&nbsp;24&nbsp;00:51:34&nbsp;cericon&nbsp;kernel:&nbsp;Soundblaster&nbsp;audio&nbsp;driver</code><br>
+<code>&nbsp;Copyright&nbsp;(C)&nbsp;by&nbsp;Hannu&nbsp;Savolainen&nbsp;1993-1996</code><br>
+<code>Sep&nbsp;24&nbsp;00:51:34&nbsp;cericon&nbsp;kernel:&nbsp;SB&nbsp;4.13&nbsp;detected&nbsp;OK&nbsp;(240)</code><br>
+<code>Sep&nbsp;24&nbsp;00:51:35&nbsp;cericon&nbsp;kernel:&nbsp;YM3812&nbsp;and&nbsp;OPL-3&nbsp;driver</code><br>
+<code>&nbsp;Copyright&nbsp;(C)&nbsp;by&nbsp;Hannu&nbsp;Savolainen,&nbsp;Rob&nbsp;Hooft&nbsp;1993-1996</code><br>
+</FONT></TD></TR></TABLE><P>
+If you had to comment out the <TT>
+<FONT COLOR="#0000ff">alias</FONT></TT> lines,
+then a kernel message like <TT>
+<FONT COLOR="#0000ff">modprobe: Can't locate module
+sound-slot-0</FONT></TT> would result. This indicates that the kernel is
+attempting a <TT>
+<FONT COLOR="#0000ff">/sbin/modprobe sound-slot-0</FONT></TT>: a cue to insert an
+<TT>
+<FONT COLOR="#0000ff">alias</FONT></TT> line. Actually,
+<TT>
+<FONT COLOR="#0000ff">sound-service-0-0</FONT></TT>,<TT>
+<FONT COLOR="#0000ff">1</FONT></TT>,<TT>
+<FONT COLOR="#0000ff">2</FONT></TT>,<TT>
+<FONT COLOR="#0000ff">3</FONT></TT>,<TT>
+<FONT COLOR="#0000ff">4</FONT></TT> are
+the
+<TT>
+<FONT COLOR="#0000ff">/dev/mixer</FONT></TT>,<TT>
+<FONT COLOR="#0000ff">sequencer</FONT></TT>,<TT>
+<FONT COLOR="#0000ff">midi</FONT></TT>,<TT>
+<FONT COLOR="#0000ff">dsp</FONT></TT>,<TT>
+<FONT COLOR="#0000ff">audio</FONT></TT>
+devices,
+respectively. <TT>
+<FONT COLOR="#0000ff">sound-slot-0</FONT></TT> means a card that should
+supply all of these. The <TT>
+<FONT COLOR="#0000ff">post-install</FONT></TT> option means to run an
+additional command after installing the <TT>
+<FONT COLOR="#0000ff">sb</FONT></TT> module; this takes
+care of the Adlib sequencer driver. <FONT COLOR="#ffa500">[I was tempted to try
+removing the <TT>
+<FONT COLOR="#0000ff">post-install</FONT></TT> line and adding a
+<TT>
+<FONT COLOR="#0000ff">alias sound-service-0-1 adlib_card</FONT></TT>. This works, but not if
+you run <TT>
+<FONT COLOR="#0000ff">aumix</FONT></TT> before <TT>
+<FONT COLOR="#0000ff">playmidi</FONT></TT>, &#42;&#42;<I>shrug</I>&#42;&#42;.]</FONT>
+<P>
+
+<H2><A NAME="SECTION004562000000000000000">
+42.6.2 Parallel port</A>
+</H2>
+
+<P>
+The parallel port module is much less trouble:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>alias&nbsp;parport_lowlevel&nbsp;parport_pc</code><br>
+<code>options&nbsp;parport_lowlevel&nbsp;io=0x378&nbsp;irq=7</code><br>
+</FONT></TD></TR></TABLE><P>
+Merely make sure that your IRQ and I/O port match those
+in your CMOS (see Section <A HREF="node6.html#sec:cmos">3.3</A>), and that they do not
+conflict with any other devices.
+
+<P>
+
+<H2><A NAME="SECTION004563000000000000000">
+42.6.3 NIC -- Ethernet, PCI, and old ISA</A>
+</H2>
+
+<P>
+<A NAME="sec:nicetherisa"></A>Here I demonstrate non-PnP ISA cards and PCI cards, using Ethernet
+devices as an example. (NIC stands for Network Interface Card, that is, an
+Ethernet 10 or 100 Mb card.)
+
+<P>
+For old ISA cards with jumpers, you will need to check your
+<TT>
+<FONT COLOR="#0000ff">/proc/</FONT></TT> files for unused IRQ and I/O ports and then physically
+set the jumpers. Now you can do a <TT>
+<FONT COLOR="#0000ff">modprobe</FONT></TT> as usual, for example:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>modinfo&nbsp;-p&nbsp;ne</code><br>
+<code>modprobe&nbsp;ne&nbsp;io=0x300&nbsp;irq=9</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Of course, for dynamic loading, your <TT>
+<FONT COLOR="#0000ff">/etc/modules.conf</FONT></TT> file must
+have the lines:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>alias&nbsp;eth0&nbsp;ne</code><br>
+<code>options&nbsp;ne&nbsp;io=0x300&nbsp;irq=9</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+On some occasions you will come across a card that has
+software configurable jumpers, like PnP, but that can only be
+configured with a DOS utility. In this case compiling the
+module into the kernel will cause it to be autoprobed on startup
+<I>without needing any other configuration</I>.
+
+<P>
+A worst case scenario is <I>a card whose make is unknown, as well
+its IRQ and I/O ports</I>. The chip number on the card can sometimes give you a
+hint (<TT>
+<FONT COLOR="#0000ff">grep</FONT></TT> the kernel sources for this number), but not always. To get
+this card working, compile in support for several modules, one of which the
+card is likely to be. Experience will help you make better guesses. If one of
+your guesses is correct, your card will almost certainly be discovered on
+reboot. You can find its IRQ and I/O port values in <TT>
+<FONT COLOR="#0000ff">/proc/</FONT></TT> or you can run
+<TT>
+<FONT COLOR="#0000ff">dmesg</FONT></TT> to see the autoprobe message line; the message will begin with
+<TT>
+<FONT COLOR="#0000ff">eth0:&nbsp;</FONT></TT>...<TT>
+<FONT COLOR="#0000ff">&nbsp;</FONT></TT> and contain some information about the driver.
+This information can be used if you decide later to use modules instead of
+your custom kernel.
+
+<P>
+As explained, PCI devices almost never require IRQ or I/O ports to be given
+as options. As long as you have the correct module, a simple
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>modprobe&nbsp;&#060;module&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+will always work. Finding the correct module can still be a problem,
+however, because suppliers will call a card all sorts of marketable things
+besides the actual chipset it is compatible with. The utility
+<TT>
+<FONT COLOR="#0000ff">scanpci</FONT></TT> (which is actually part of <B>X</B>) checks your PCI slots for
+PCI devices. Running <TT>
+<FONT COLOR="#0000ff">scanpci</FONT></TT> might output something like:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&nbsp;.&nbsp;</code><br>
+<code>&nbsp;.</code><br>
+<code>&nbsp;.</code><br>
+<code>pci&nbsp;bus&nbsp;0x0&nbsp;cardnum&nbsp;0x09&nbsp;function&nbsp;0x0000:&nbsp;vendor&nbsp;0x1011&nbsp;device&nbsp;0x0009</code><br>
+<code>&nbsp;Digital&nbsp;DC21140&nbsp;10/100&nbsp;Mb/s&nbsp;Ethernet</code><br>
+<code>&nbsp;</code><br>
+<code>pci&nbsp;bus&nbsp;0x0&nbsp;cardnum&nbsp;0x0b&nbsp;function&nbsp;0x0000:&nbsp;vendor&nbsp;0x8086&nbsp;device&nbsp;0x1229</code><br>
+<code>&nbsp;Intel&nbsp;82557/8/9&nbsp;10/100MBit&nbsp;network&nbsp;controller</code><br>
+<code>&nbsp;</code><br>
+<code>pci&nbsp;bus&nbsp;0x0&nbsp;cardnum&nbsp;0x0c&nbsp;function&nbsp;0x0000:&nbsp;vendor&nbsp;0x1274&nbsp;device&nbsp;0x1371</code><br>
+<code>&nbsp;Ensoniq&nbsp;es1371</code><br>
+</FONT></TD></TR></TABLE><P>
+Another utility is <TT>
+<FONT COLOR="#0000ff">lspci</FONT></TT> from
+the <TT>
+<FONT COLOR="#0000ff">pciutils</FONT></TT> package,
+which gives comprehensive information where <TT>
+<FONT COLOR="#0000ff">scanpci</FONT></TT> sometimes
+gives none. Then a simple script (kernel <TT>
+<FONT COLOR="#0000ff">2.4</FONT></TT> paths in parentheses again),
+<A NAME="page:grepkernmodules"></A>
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>for&nbsp;i&nbsp;in&nbsp;/lib/modules/&#060;version&#062;/net/*&nbsp;&#059;&nbsp;do&nbsp;strings&nbsp;$i&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;grep&nbsp;-q&nbsp;-i&nbsp;21140&nbsp;&#038;&#038;&nbsp;echo&nbsp;$i&nbsp;&#059;&nbsp;done</code><br>
+<code>(&nbsp;for&nbsp;i&nbsp;in&nbsp;/lib/modules/&#060;version&#062;/kernel/drivers/net/*&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#059;&nbsp;do&nbsp;strings&nbsp;$i&nbsp;|&nbsp;grep&nbsp;-q&nbsp;-i&nbsp;21140&nbsp;&#038;&#038;&nbsp;echo&nbsp;$i&nbsp;&#059;&nbsp;done&nbsp;)</code><br>
+<code>for&nbsp;i&nbsp;in&nbsp;/lib/modules/&#060;version&#062;/net/*&nbsp;&#059;&nbsp;do&nbsp;strings&nbsp;$i&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;grep&nbsp;-q&nbsp;-i&nbsp;8255&nbsp;&#038;&#038;&nbsp;echo&nbsp;$i&nbsp;&#059;&nbsp;done</code><br>
+<code>(&nbsp;for&nbsp;i&nbsp;in&nbsp;/lib/modules/&#060;version&#062;/kernel/drivers/net/*&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#059;&nbsp;do&nbsp;strings&nbsp;$i&nbsp;|&nbsp;grep&nbsp;-q&nbsp;-i&nbsp;8255&nbsp;&#038;&#038;&nbsp;echo&nbsp;$i&nbsp;&#059;&nbsp;done&nbsp;)</code><br>
+</FONT></TD></TR></TABLE><P>
+faithfully outputs three modules <TT>
+<FONT COLOR="#0000ff">de4x5.o</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">eepro100.o</FONT></TT>,
+and <TT>
+<FONT COLOR="#0000ff">tulip.o</FONT></TT>, of which two are correct. On another system <TT>
+<FONT COLOR="#0000ff">lspci</FONT></TT>
+gave
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&nbsp;.</code><br>
+<code>&nbsp;.</code><br>
+<code>&nbsp;.</code><br>
+<code>00:08.0&nbsp;Ethernet&nbsp;controller:&nbsp;Macronix,&nbsp;Inc.&nbsp;[MXIC]&nbsp;MX987x5&nbsp;(rev&nbsp;20)</code><br>
+<code>00:0a.0&nbsp;Ethernet&nbsp;controller:&nbsp;Accton&nbsp;Technology&nbsp;Corporation&nbsp;SMC2-1211TX&nbsp;(rev&nbsp;10)</code><br>
+</FONT></TD></TR></TABLE><P>
+and the same <TT>
+<FONT COLOR="#0000ff">for</FONT></TT>...<TT>
+<FONT COLOR="#0000ff">grep</FONT></TT>...<TT>
+<FONT COLOR="#0000ff">Accton</FONT></TT> gave
+<TT>
+<FONT COLOR="#0000ff">rtl8139.o</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">tulip.o</FONT></TT> (the former of which was correct), and
+<TT>
+<FONT COLOR="#0000ff">for</FONT></TT>...<TT>
+<FONT COLOR="#0000ff">grep</FONT></TT>...<TT>
+<FONT COLOR="#0000ff">Macronix</FONT></TT> (or even <TT>
+<FONT COLOR="#0000ff">987</FONT></TT>) gave
+<TT>
+<FONT COLOR="#0000ff">tulip.o</FONT></TT>, which hung the machine. I have yet to get that card working,
+although Eddie across the room claims he got a similar card working fine.
+Cards are cheap--there are enough working brands so that you don't have to waist
+your time on difficult ones.
+
+<P>
+
+<H2><A NAME="SECTION004564000000000000000">
+42.6.4 PCI vendor ID and device ID</A>
+</H2>
+
+<P>
+PCI supports the useful concept that every vendor and device have unique hex IDs.
+For instance, Intel has chosen to represent themselves by the completely
+random number 0x8086 as their vendor ID. PCI cards will provide their IDs on request.
+You will see numerical values listed in the output of <TT>
+<FONT COLOR="#0000ff">lspci</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">scanpci</FONT></TT>, and
+<TT>
+<FONT COLOR="#0000ff">cat&nbsp;/proc/pci</FONT></TT>, especially if the respective utility cannot look up
+the vendor name from the ID number. The file
+<TT>
+<FONT COLOR="#0000ff">/usr/share/pci.ids</FONT></TT>
+(<TT>
+<FONT COLOR="#0000ff">/usr/share/misc/pci.ids</FONT></TT> on Debian) from the
+<TT>
+<FONT COLOR="#0000ff">pciutils</FONT></TT> package contains a complete
+table of all IDs and their corresponding names. The <TT>
+<FONT COLOR="#0000ff">kudzu</FONT></TT> package also has
+a table <TT>
+<FONT COLOR="#0000ff">/usr/share/kudzu/pcitable</FONT></TT>
+containing the information we are <I>really</I>
+looking for: ID to kernel module mappings. This enables you to
+use the intended scientific method for locating
+the correct PCI module from the kernel's <TT>
+<FONT COLOR="#0000ff">/proc/pci</FONT></TT> data.
+The file format is easy to understand, and as an exercise you should
+try writing a shell script to do the lookup automatically.
+
+<P>
+
+<H2><A NAME="SECTION004565000000000000000">
+42.6.5 PCI and sound</A>
+</H2>
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">scanpci</FONT></TT> output just above also shows the popular Ensoniq
+sound card, sometimes built into motherboards. Simply adding the line
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>alias&nbsp;sound&nbsp;es1371</code><br>
+</FONT></TD></TR></TABLE><P>
+to your <TT>
+<FONT COLOR="#0000ff">modules.conf</FONT></TT> file will get this card working.
+It is relatively easy to find the type of card from the card itself--Ensoniq
+cards actually have es1371 printed on one of the chips.
+
+<P>
+
+<H2><A NAME="SECTION004566000000000000000">
+42.6.6 Commercial sound drivers</A>
+</H2>
+
+<P>
+If your card is not listed in <TT>
+<FONT COLOR="#0000ff">/usr/src/&lt;version&gt;/Documentation/sound/</FONT></TT>,
+then you might be able to get a driver from
+<EM>Open Sound</EM> <I>&lt;<TT><A NAME="tex2html67"
+  HREF="http://www.opensound.com">http://www.opensound.com</A></TT>&gt;</I>. If you still can't find a
+driver, complain to the manufacturer by email.
+
+<P>
+<I><FONT SIZE="-1">There are a lot of sound (and other) cards whose manufacturers
+refuse to supply the Free software community with specs. Disclosure of
+programming information would enable L<SMALL>INUX</SMALL> users to buy their cards; Free
+software developers would produce a driver at no cost. Actually,
+manufacturers' reasons are often just pig-headedness.</FONT></I>
+
+<P>
+
+<H2><A NAME="SECTION004567000000000000000">
+42.6.7 The ALSA sound project</A>
+</H2>
+
+<P>
+The ALSA (<EM>Advanced Linux Sound
+Architecture</EM> <I>&lt;<TT><A NAME="tex2html68"
+  HREF="http://www.alsa-project.org/">http://www.alsa-project.org/</A></TT>&gt;</I>) project aims to provide better kernel sound support. If
+your card is not supported by the standard kernel or you are not getting
+the most out of the standard kernel drivers, then do check this web site.
+
+<P>
+
+<H2><A NAME="SECTION004568000000000000000">
+42.6.8 Multiple Ethernet cards</A>
+</H2>
+
+<P>
+If you have more than one Ethernet card, you can easily specify both in your
+<TT>
+<FONT COLOR="#0000ff">modules.conf</FONT></TT> file, as shown in Section <A HREF="node45.html#sec:modoptions">42.5</A> above.
+Modules compiled into the kernel only probe a single card (<TT>
+<FONT COLOR="#0000ff">eth0</FONT></TT>) by
+default. Adding the line
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>append&nbsp;=&nbsp;"ether=0,0,eth1&nbsp;ether=0,0,eth2&nbsp;ether=0,0,eth3"</code><br>
+</FONT></TD></TR></TABLE><P>
+will cause <TT>
+<FONT COLOR="#0000ff">eth1</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">eth2</FONT></TT>, and <TT>
+<FONT COLOR="#0000ff">eth3</FONT></TT> to be probed
+as well. Further, replacing the <TT>
+<FONT COLOR="#0000ff">0</FONT></TT>'s with actual values can force
+certain interfaces to certain physical cards. If all your cards are
+PCI, however, you will have to get the order of assignment by
+experimentation.
+
+<P>
+<I>If you have two of the same card</I>, your kernel may complain when
+you try to load the same module twice. The <TT>
+<FONT COLOR="#0000ff">-o</FONT></TT> option to
+<TT>
+<FONT COLOR="#0000ff">insmod</FONT></TT> specifies a different internal name for the driver to trick the
+kernel into thinking that the driver is not really loaded:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>alias&nbsp;eth0&nbsp;3c509</code><br>
+<code>alias&nbsp;eth1&nbsp;3c509</code><br>
+<code>options&nbsp;eth0&nbsp;-o&nbsp;3c509-0&nbsp;io=0x280&nbsp;irq=5</code><br>
+<code>options&nbsp;eth1&nbsp;-o&nbsp;3c509-1&nbsp;io=0x300&nbsp;irq=7</code><br>
+</FONT></TD></TR></TABLE><P>
+However, with the following two PCI cards that deception was not necessary:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>alias&nbsp;eth0&nbsp;rtl8139</code><br>
+<code>alias&nbsp;eth1&nbsp;rtl8139</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H2><A NAME="SECTION004569000000000000000">
+42.6.9 SCSI disks</A>
+</H2>
+
+<P>
+<A NAME="sec:scsidiskkern"></A>
+<P>
+SCSI (pronounced <I>scuzzy</I>) stands for <I>Small Computer System
+Interface</I>. SCSI is a ribbon, a specification, and an electronic protocol for communication
+between devices and computers. Like your IDE ribbons, SCSI ribbons can
+connect to their own SCSI hard disks. SCSI ribbons have gone through some
+versions to make SCSI faster, the latest ``Ultra-Wide'' SCSI ribbons are thin,
+with a dense array of pins. Unlike your IDE, SCSI can also connect tape
+drives, scanners, and many other types of peripherals. SCSI theoretically
+allows multiple computers to share the same device, although I have not
+seen this implemented in practice. Because many U<SMALL>NIX</SMALL> hardware platforms
+only support SCSI, it has become an integral part of U<SMALL>NIX</SMALL> operating
+systems.
+
+<P>
+SCSIs also introduce the concept of <I>LUN</I>s (which
+stands for <I>Logical Unit Number</I>), <I>Buses</I>, and <I>ID</I>.
+These are just numbers given to each device in order of the SCSI cards
+you are using (if more than one), the SCSI cables on those cards, and
+the SCSI devices on those cables--the SCSI 
+standard was designed to support a great many of these. The kernel
+assigns each SCSI drive in sequence as it finds them: <TT>
+<FONT COLOR="#0000ff">/dev/sda</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">/dev/sdb</FONT></TT>, and so on, so these details are usually irrelevant.
+
+<P>
+An enormous amount should be said on SCSI, but the bare bones is that for
+90% of situations, <TT>
+<FONT COLOR="#0000ff">insmod &lt;pci-scsi-driver&gt;</FONT></TT> is all you are going to
+need. You can then immediately begin accessing the device through
+<TT>
+<FONT COLOR="#0000ff">/dev/sd</FONT></TT><I>?</I> for disks, <TT>
+<FONT COLOR="#0000ff">/dev/st</FONT></TT><I>?</I> for tapes,
+<TT>
+<FONT COLOR="#0000ff">/dev/scd</FONT></TT><I>?</I> for CD-ROMs, or <TT>
+<FONT COLOR="#0000ff">/dev/sg</FONT></TT><I>?</I> for
+scanners. <FONT COLOR="#ffa500">[Scanner user programs will have docs on what devices they
+access.]</FONT> SCSIs often also come with their own BIOS
+that you can enter on startup (like your CMOS). This will enable you to set
+certain things. In some cases, where your distribution compiles-out certain
+modules, you may have to load one of <TT>
+<FONT COLOR="#0000ff">sd_mod.o</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">st.o</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">sr_mod.o</FONT></TT>, or <TT>
+<FONT COLOR="#0000ff">sg.o</FONT></TT>, respectively. The core <TT>
+<FONT COLOR="#0000ff">scsi_mod.o</FONT></TT>
+module may also need loading, and <TT>
+<FONT COLOR="#0000ff">/dev/</FONT></TT> devices may need to be
+created. A safe bet is to run
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>cd&nbsp;/dev</code><br>
+<code>./MAKEDEV&nbsp;-v&nbsp;sd</code><br>
+<code>./MAKEDEV&nbsp;-v&nbsp;st0&nbsp;st1&nbsp;st2&nbsp;st3</code><br>
+<code>./MAKEDEV&nbsp;-v&nbsp;scd0&nbsp;scd1&nbsp;scd2&nbsp;scd3</code><br>
+<code>./MAKEDEV&nbsp;-v&nbsp;sg</code><br>
+</FONT></TD></TR></TABLE><P>
+to ensure that all necessary device files exist in the first place.
+
+<P>
+It is recommended that you compile into your kernel support for your SCSI card
+(also called the <I>SCSI Host Adapter</I>) that you have, as well as
+support for tapes, CD-ROMs, etc. When your system next boots, everything
+will just autoprobe. An example system with a SCSI disk and tape gives
+the following at bootup:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>20</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>25</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>30</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>(scsi0)&nbsp;&#060;Adaptec&nbsp;AIC-7895&nbsp;Ultra&nbsp;SCSI&nbsp;host&nbsp;adapter&#062;&nbsp;found&nbsp;at&nbsp;PCI&nbsp;0/12/0</code><br>
+<code>(scsi0)&nbsp;Wide&nbsp;Channel&nbsp;A,&nbsp;SCSI&nbsp;ID=7,&nbsp;32/255&nbsp;SCBs</code><br>
+<code>(scsi0)&nbsp;Cables&nbsp;present&nbsp;(Int-50&nbsp;YES,&nbsp;Int-68&nbsp;YES,&nbsp;Ext-68&nbsp;YES)</code><br>
+<code>(scsi0)&nbsp;Illegal&nbsp;cable&nbsp;configuration!!&nbsp;&nbsp;Only&nbsp;two</code><br>
+<code>(scsi0)&nbsp;connectors&nbsp;on&nbsp;the&nbsp;SCSI&nbsp;controller&nbsp;may&nbsp;be&nbsp;in&nbsp;use&nbsp;at&nbsp;a&nbsp;time!</code><br>
+<code>(scsi0)&nbsp;Downloading&nbsp;sequencer&nbsp;code...&nbsp;384&nbsp;instructions&nbsp;downloaded</code><br>
+<code>(scsi1)&nbsp;&#060;Adaptec&nbsp;AIC-7895&nbsp;Ultra&nbsp;SCSI&nbsp;host&nbsp;adapter&#062;&nbsp;found&nbsp;at&nbsp;PCI&nbsp;0/12/1</code><br>
+<code>(scsi1)&nbsp;Wide&nbsp;Channel&nbsp;B,&nbsp;SCSI&nbsp;ID=7,&nbsp;32/255&nbsp;SCBs</code><br>
+<code>(scsi1)&nbsp;Downloading&nbsp;sequencer&nbsp;code...&nbsp;384&nbsp;instructions&nbsp;downloaded</code><br>
+<code>scsi0&nbsp;:&nbsp;Adaptec&nbsp;AHA274x/284x/294x&nbsp;(EISA/VLB/PCI-Fast&nbsp;SCSI)&nbsp;5.1.28/3.2.4</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;Adaptec&nbsp;AIC-7895&nbsp;Ultra&nbsp;SCSI&nbsp;host&nbsp;adapter&#062;</code><br>
+<code>scsi1&nbsp;:&nbsp;Adaptec&nbsp;AHA274x/284x/294x&nbsp;(EISA/VLB/PCI-Fast&nbsp;SCSI)&nbsp;5.1.28/3.2.4</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;Adaptec&nbsp;AIC-7895&nbsp;Ultra&nbsp;SCSI&nbsp;host&nbsp;adapter&#062;</code><br>
+<code>scsi&nbsp;:&nbsp;2&nbsp;hosts.</code><br>
+<code>(scsi0:0:0:0)&nbsp;Synchronous&nbsp;at&nbsp;40.0&nbsp;Mbyte/sec,&nbsp;offset&nbsp;8.</code><br>
+<code>&nbsp;&nbsp;Vendor:&nbsp;FUJITSU&nbsp;&nbsp;&nbsp;Model:&nbsp;MAE3091LP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Rev:&nbsp;0112</code><br>
+<code>&nbsp;&nbsp;Type:&nbsp;&nbsp;&nbsp;Direct-Access&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ANSI&nbsp;SCSI&nbsp;revision:&nbsp;02</code><br>
+<code>Detected&nbsp;scsi&nbsp;disk&nbsp;sda&nbsp;at&nbsp;scsi0,&nbsp;channel&nbsp;0,&nbsp;id&nbsp;0,&nbsp;lun&nbsp;0</code><br>
+<code>(scsi0:0:3:0)&nbsp;Synchronous&nbsp;at&nbsp;10.0&nbsp;Mbyte/sec,&nbsp;offset&nbsp;15.</code><br>
+<code>&nbsp;&nbsp;Vendor:&nbsp;HP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Model:&nbsp;C1533A&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Rev:&nbsp;A708</code><br>
+<code>&nbsp;&nbsp;Type:&nbsp;&nbsp;&nbsp;Sequential-Access&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ANSI&nbsp;SCSI&nbsp;revision:&nbsp;02</code><br>
+<code>Detected&nbsp;scsi&nbsp;tape&nbsp;st0&nbsp;at&nbsp;scsi0,&nbsp;channel&nbsp;0,&nbsp;id&nbsp;3,&nbsp;lun&nbsp;0</code><br>
+<code>scsi&nbsp;:&nbsp;detected&nbsp;1&nbsp;SCSI&nbsp;tape&nbsp;1&nbsp;SCSI&nbsp;disk&nbsp;total.</code><br>
+<code>SCSI&nbsp;device&nbsp;sda:&nbsp;hdwr&nbsp;sector=&nbsp;512&nbsp;bytes.&nbsp;Sectors=&nbsp;17826240&nbsp;[8704&nbsp;MB]&nbsp;[8.7&nbsp;GB]</code><br>
+<code>&nbsp;.</code><br>
+<code>&nbsp;.</code><br>
+<code>&nbsp;.</code><br>
+<code>Partition&nbsp;check:</code><br>
+<code>&nbsp;sda:&nbsp;sda1</code><br>
+<code>&nbsp;hda:&nbsp;hda1&nbsp;hda2&nbsp;hda3&nbsp;hda4</code><br>
+<code>&nbsp;hdb:&nbsp;hdb1</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+You should also check Section <A HREF="node34.html#sec:scsiinitrd">31.5</A> to find out how to boot
+SCSI disks when the needed module... is on a file system... inside a
+SCSI disk... that needs the module.
+
+<P>
+For actually using a tape drive, see page <A HREF="node21.html#page:tapebackups"><IMG  ALIGN="BOTTOM" BORDER="1" ALT="[*]" SRC="crossref.png"></A>.
+
+<P>
+
+<H2><A NAME="SECTION0045610000000000000000">
+42.6.10 SCSI termination and cooling</A>
+</H2>
+
+<P>
+<A NAME="sec:scsitermandcool"></A>This is the most important section to read regarding SCSI. You may be used
+to IDE ribbons that just plug in and work. SCSI ribbons are not of this variety;
+they need to be impedance matched and terminated. These are electrical
+technicians' terms. Basically, it means that you must use high-quality SCSI
+ribbons and <I>terminate</I> your SCSI device. SCSI ribbons allow many
+SCSI disks and tapes to be connected to one ribbon. <I>Terminating</I> means
+setting certain jumpers or switches on the last devices on the ribbon. It may
+also mean plugging the last cable connector into something else. Your
+adapter documentation and disk documentation should explain what to do. If you
+terminate incorrectly, everything may work fine, but you may get disk errors
+later in the life of the machine. Also note that some newer SCSI devices have
+automatic termination.
+
+<P>
+Cooling is another important consideration. When the documentation
+for a disk drive recommends <B>forced air cooling</B> for that drive,
+<I>it usually means it</I>. SCSI drives get extremely hot and can burn out
+in time. Forced air cooling can mean as little as buying a cheap circuit box
+fan and tying it in a strategic position. You should also use very large
+cases with several inches of space between drives. Anyone who has
+opened up an expensive high end server will see the attention paid to
+air cooling.
+
+<P>
+
+<H2><A NAME="SECTION0045611000000000000000">
+42.6.11 CD writers</A>
+</H2>
+
+<P>
+A system with an ATAPI (IDE
+CD-Writer <I>and</I> ordinary CD-ROM will
+display a message at bootup like,
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>hda:&nbsp;FUJITSU&nbsp;MPE3084AE,&nbsp;ATA&nbsp;DISK&nbsp;drive</code><br>
+<code>hdb:&nbsp;CD-ROM&nbsp;50X&nbsp;L,&nbsp;ATAPI&nbsp;CDROM&nbsp;drive</code><br>
+<code>hdd:&nbsp;Hewlett-Packard&nbsp;CD-Writer&nbsp;Plus&nbsp;9300,&nbsp;ATAPI&nbsp;CDROM&nbsp;drive</code><br>
+</FONT></TD></TR></TABLE><P>
+<I>Note that these devices should give BIOS messages before
+<TT>
+<FONT COLOR="#0000ff">LILO:</FONT></TT> starts to indicate that
+they are correctly installed.</I>
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">/etc/modules.conf</FONT></TT> lines to get the CD-writer
+working are:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>alias&nbsp;&nbsp;&nbsp;scd0&nbsp;sr_mod&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;load&nbsp;sr_mod&nbsp;upon&nbsp;access&nbsp;of&nbsp;/dev/scd0</code><br>
+<code>alias&nbsp;&nbsp;&nbsp;scsi_hostadapter&nbsp;ide-scsi&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;SCSI&nbsp;hostadaptor&nbsp;emulation</code><br>
+<code>options&nbsp;ide-cd&nbsp;ignore="hda&nbsp;hdc&nbsp;hdd"&nbsp;&nbsp;#&nbsp;Our&nbsp;normal&nbsp;IDE&nbsp;CD&nbsp;is&nbsp;on&nbsp;/dev/hdb</code><br>
+</FONT></TD></TR></TABLE><P>
+The <TT>
+<FONT COLOR="#0000ff">alias scd0</FONT></TT> line must be omitted if <TT>
+<FONT COLOR="#0000ff">sr_mod</FONT></TT> is
+compiled into the kernel--search your <TT>
+<FONT COLOR="#0000ff">/lib/modules/&lt;version&gt;/</FONT></TT>
+directory. Note that the kernel does not support ATAPI CD-Writers directly.
+The <TT>
+<FONT COLOR="#0000ff">ide-scsi</FONT></TT> module
+<I>emulates</I> a SCSI adapter on
+behalf of the ATAPI CD-ROM. CD-Writer
+software expects to speak to <TT>
+<FONT COLOR="#0000ff">/dev/scd</FONT></TT><I>?</I>, and the
+<TT>
+<FONT COLOR="#0000ff">ide-scsi</FONT></TT> module makes this device appear like a real
+SCSI CD writer. <FONT COLOR="#ffa500">[Real SCSI CD
+writers are much more expensive.]</FONT> There is
+one caveat: your ordinary IDE CD-ROM driver,
+<TT>
+<FONT COLOR="#0000ff">ide-cd</FONT></TT>, will also want to probe your CD writer as if it were a normal
+CD-ROM. The <TT>
+<FONT COLOR="#0000ff">ignore</FONT></TT> option makes the <TT>
+<FONT COLOR="#0000ff">ide-cd</FONT></TT> module overlook
+any drives that should not be probed--on this system, these would be the
+hard disk, CD writer, and non-existent secondary master. <I>However</I>,
+there is no way of giving an <TT>
+<FONT COLOR="#0000ff">ignore</FONT></TT> option to a compiled-in
+<TT>
+<FONT COLOR="#0000ff">ide-cd</FONT></TT> module (which is how many distributions ship), so
+read on.
+
+<P>
+An alternative is to compile in support for <TT>
+<FONT COLOR="#0000ff">ide-scsi</FONT></TT> and completely
+leave out support for <TT>
+<FONT COLOR="#0000ff">ide-cd</FONT></TT>. Your normal CD-ROM will work perfectly
+as a read-only CD-ROM under SCSI emulation. <FONT COLOR="#ffa500">[Even with music CDs.]</FONT>This means setting the relevant sections of your kernel configuration menu:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&#060;*&#062;&nbsp;Enhanced&nbsp;IDE/MFM/RLL&nbsp;disk/cdrom/tape/floppy&nbsp;support</code><br>
+<code>&#060;&nbsp;&#062;&nbsp;&nbsp;&nbsp;&nbsp;Include&nbsp;IDE/ATAPI&nbsp;CDROM&nbsp;support</code><br>
+<code>&#060;*&#062;&nbsp;&nbsp;&nbsp;&nbsp;SCSI&nbsp;emulation&nbsp;support</code><br>
+<code>&nbsp;</code><br>
+<code>&#060;*&#062;&nbsp;SCSI&nbsp;support</code><br>
+<code>&#060;*&#062;&nbsp;SCSI&nbsp;CD-ROM&nbsp;support</code><br>
+<code>[*]&nbsp;&nbsp;&nbsp;Enable&nbsp;vendor-specific&nbsp;extensions&nbsp;(for&nbsp;SCSI&nbsp;CDROM)</code><br>
+<code>&#060;*&#062;&nbsp;SCSI&nbsp;generic&nbsp;support</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+No further configuration is needed, and on bootup, you will find
+messages like:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>scsi0&nbsp;:&nbsp;SCSI&nbsp;host&nbsp;adapter&nbsp;emulation&nbsp;for&nbsp;IDE&nbsp;ATAPI&nbsp;devices</code><br>
+<code>scsi&nbsp;:&nbsp;1&nbsp;host.</code><br>
+<code>&nbsp;&nbsp;Vendor:&nbsp;E-IDE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Model:&nbsp;CD-ROM&nbsp;50X&nbsp;L&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Rev:&nbsp;12&nbsp;&nbsp;</code><br>
+<code>&nbsp;&nbsp;Type:&nbsp;&nbsp;&nbsp;CD-ROM&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ANSI&nbsp;SCSI&nbsp;revision:&nbsp;02</code><br>
+<code>Detected&nbsp;scsi&nbsp;CD-ROM&nbsp;sr0&nbsp;at&nbsp;scsi0,&nbsp;channel&nbsp;0,&nbsp;id&nbsp;0,&nbsp;lun&nbsp;0</code><br>
+<code>&nbsp;&nbsp;Vendor:&nbsp;HP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Model:&nbsp;CD-Writer+&nbsp;9300&nbsp;&nbsp;&nbsp;Rev:&nbsp;1.0b</code><br>
+<code>&nbsp;&nbsp;Type:&nbsp;&nbsp;&nbsp;CD-ROM&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ANSI&nbsp;SCSI&nbsp;revision:&nbsp;02</code><br>
+<code>Detected&nbsp;scsi&nbsp;CD-ROM&nbsp;sr1&nbsp;at&nbsp;scsi0,&nbsp;channel&nbsp;0,&nbsp;id&nbsp;1,&nbsp;lun&nbsp;0</code><br>
+<code>scsi&nbsp;:&nbsp;detected&nbsp;2&nbsp;SCSI&nbsp;generics&nbsp;2&nbsp;SCSI&nbsp;cdroms&nbsp;total.</code><br>
+<code>sr0:&nbsp;scsi3-mmc&nbsp;drive:&nbsp;4x/50x&nbsp;cd/rw&nbsp;xa/form2&nbsp;cdda&nbsp;tray</code><br>
+<code>Uniform&nbsp;CD-ROM&nbsp;driver&nbsp;Revision:&nbsp;3.10</code><br>
+<code>sr1:&nbsp;scsi3-mmc&nbsp;drive:&nbsp;32x/32x&nbsp;writer&nbsp;cd/rw&nbsp;xa/form2&nbsp;cdda&nbsp;tray</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+If you do have a real SCSI writer, compiling in support
+for your SCSI card will detect it in a similar fashion. Then, for this example,
+the device on which to <TT>
+<FONT COLOR="#0000ff">mount</FONT></TT> your CD-ROM is <TT>
+<FONT COLOR="#0000ff">/dev/scd0</FONT></TT> and
+your CD-Writer, <TT>
+<FONT COLOR="#0000ff">/dev/scd1</FONT></TT>.
+
+<P>
+For actually recording a CD, the <TT>
+<FONT COLOR="#0000ff">cdrecord</FONT></TT> command-line program
+is simple and robust, although there are also many pretty graphical front ends.
+To locate your CD ID, run
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>cdrecord&nbsp;-scanbus</code><br>
+</FONT></TD></TR></TABLE><P>
+which will give a comma-separated numeric sequence. You can then
+use this sequence as the argument to <TT>
+<FONT COLOR="#0000ff">cdrecord</FONT></TT>'s <TT>
+<FONT COLOR="#0000ff">dev=</FONT></TT> option.
+On my machine I type
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>mkisofs&nbsp;-a&nbsp;-A&nbsp;'Paul&nbsp;Sheer'&nbsp;-J&nbsp;-L&nbsp;-r&nbsp;-P&nbsp;PaulSheer&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-p&nbsp;www.icon.co.za/~psheer/&nbsp;-o&nbsp;my_iso&nbsp;/my/directory</code><br>
+<code>cdrecord&nbsp;dev=0,1,0&nbsp;-v&nbsp;speed=10&nbsp;-isosize&nbsp;-eject&nbsp;my_iso</code><br>
+</FONT></TD></TR></TABLE><P>
+to create an ISO9660 CD-ROM out of everything below a
+directory <TT>
+<FONT COLOR="#0000ff">/my/directory</FONT></TT>. This is most useful for backups. (The <TT>
+<FONT COLOR="#0000ff">-a</FONT></TT> option should
+be omitted in newer versions of this command.) Beware not to exceed the speed limit of your
+CD writer.
+
+<P>
+
+<H2><A NAME="SECTION0045612000000000000000">
+42.6.12 Serial devices</A>
+</H2>
+
+<P>
+<A NAME="page:serialdevices"></A><A NAME="sec:serialdevices"></A>
+<P>
+You don't need to load any modules to get your mouse and modem to work.
+Regular serial devices (COM1 through COM4 under DOS/Windows) will
+autoprobe on boot and are available as <TT>
+<FONT COLOR="#0000ff">/dev/ttyS0</FONT></TT> through
+<TT>
+<FONT COLOR="#0000ff">/dev/ttyS3</FONT></TT>. A message on boot, like
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>Serial&nbsp;driver&nbsp;version&nbsp;4.27&nbsp;with&nbsp;MANY_PORTS&nbsp;MULTIPORT&nbsp;SHARE_IRQ&nbsp;enabled</code><br>
+<code>ttyS00&nbsp;at&nbsp;0x03f8&nbsp;(irq&nbsp;=&nbsp;4)&nbsp;is&nbsp;a&nbsp;16550A</code><br>
+<code>ttyS01&nbsp;at&nbsp;0x02f8&nbsp;(irq&nbsp;=&nbsp;3)&nbsp;is&nbsp;a&nbsp;16550A</code><br>
+</FONT></TD></TR></TABLE><P>
+will testify to their correct detection.
+
+<P>
+On the other hand, multiport serial
+cards can be difficult to configure. These
+devices are in a category all of their own. Most use a chip called the
+<I>16550A UART</I> (Universal Asynchronous Receiver Transmitter),
+which is similar to that of your built-in serial port.
+The kernel's generic serial code supports them, and
+you will not need a separate driver. The UART really <I>is</I> the serial
+port and comes in the flavors <TT>
+<FONT COLOR="#0000ff">8250</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">16450</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">16550</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">16550A</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">16650</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">16650V2</FONT></TT>, and <TT>
+<FONT COLOR="#0000ff">16750</FONT></TT>.
+
+<P>
+To get these cards working requires the use of the <TT>
+<FONT COLOR="#0000ff">setserial</FONT></TT> command. It is
+used to configure the kernel's built-in serial driver. A typical example is an
+8-port non-PnP ISA card with jumpers set to unused IRQ <TT>
+<FONT COLOR="#0000ff">5</FONT></TT> and
+ports <TT>
+<FONT COLOR="#0000ff">0x180</FONT></TT>-<TT>
+<FONT COLOR="#0000ff">0x1BF</FONT></TT>. Note that unlike most devices, many
+serial devices can share the same IRQ. <FONT COLOR="#ffa500">[The reason is that serial
+devices set an I/O port to tell which device is sending the interrupt. The CPU
+just checks every serial device whenever an interrupt comes in.]</FONT> The
+card is configured with this script:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>cd&nbsp;/dev/</code><br>
+<code>./MAKEDEV&nbsp;-v&nbsp;ttyS4</code><br>
+<code>./MAKEDEV&nbsp;-v&nbsp;ttyS5</code><br>
+<code>./MAKEDEV&nbsp;-v&nbsp;ttyS6</code><br>
+<code>./MAKEDEV&nbsp;-v&nbsp;ttyS7</code><br>
+<code>./MAKEDEV&nbsp;-v&nbsp;ttyS8</code><br>
+<code>./MAKEDEV&nbsp;-v&nbsp;ttyS9</code><br>
+<code>./MAKEDEV&nbsp;-v&nbsp;ttyS10</code><br>
+<code>./MAKEDEV&nbsp;-v&nbsp;ttyS11</code><br>
+<code>/bin/setserial&nbsp;-v&nbsp;/dev/ttyS4&nbsp;irq&nbsp;5&nbsp;port&nbsp;0x180&nbsp;uart&nbsp;16550A&nbsp;skip_test</code><br>
+<code>/bin/setserial&nbsp;-v&nbsp;/dev/ttyS5&nbsp;irq&nbsp;5&nbsp;port&nbsp;0x188&nbsp;uart&nbsp;16550A&nbsp;skip_test</code><br>
+<code>/bin/setserial&nbsp;-v&nbsp;/dev/ttyS6&nbsp;irq&nbsp;5&nbsp;port&nbsp;0x190&nbsp;uart&nbsp;16550A&nbsp;skip_test</code><br>
+<code>/bin/setserial&nbsp;-v&nbsp;/dev/ttyS7&nbsp;irq&nbsp;5&nbsp;port&nbsp;0x198&nbsp;uart&nbsp;16550A&nbsp;skip_test</code><br>
+<code>/bin/setserial&nbsp;-v&nbsp;/dev/ttyS8&nbsp;irq&nbsp;5&nbsp;port&nbsp;0x1A0&nbsp;uart&nbsp;16550A&nbsp;skip_test</code><br>
+<code>/bin/setserial&nbsp;-v&nbsp;/dev/ttyS9&nbsp;irq&nbsp;5&nbsp;port&nbsp;0x1A8&nbsp;uart&nbsp;16550A&nbsp;skip_test</code><br>
+<code>/bin/setserial&nbsp;-v&nbsp;/dev/ttyS10&nbsp;irq&nbsp;5&nbsp;port&nbsp;0x1B0&nbsp;uart&nbsp;16550A&nbsp;skip_test</code><br>
+<code>/bin/setserial&nbsp;-v&nbsp;/dev/ttyS11&nbsp;irq&nbsp;5&nbsp;port&nbsp;0x1B8&nbsp;uart&nbsp;16550A&nbsp;skip_test</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+You should immediately be able to use these devices as regular ports. Note
+that you would expect to see the interrupt in use under
+<TT>
+<FONT COLOR="#0000ff">/proc/interrupts</FONT></TT>. For serial
+devices this is only true after data actually
+starts to flow. However, you can check
+<TT>
+<FONT COLOR="#0000ff">/proc/tty/driver/serial</FONT></TT> to get
+more status information. The <TT>
+<FONT COLOR="#0000ff">setserial</FONT></TT> man page contains more about
+different UARTs and their compatibility problems. It also explains
+autoprobing of the UART, IRQ, and I/O ports (although
+it is better to be sure of your card and never use autoprobing).
+
+<P>
+Serial devices give innumerable problems. There is a very long
+<TT>
+<FONT COLOR="#0000ff">Serial-HOWTO</FONT></TT> that will help you solve most of them; It goes into
+more technical detail. It will also explain special kernel support for
+many ``nonstandard'' cards.
+
+<P>
+
+<H1><A NAME="SECTION004570000000000000000">
+42.7 Modem Cards</A>
+</H1>
+
+<P>
+<A NAME="sec:internalmodemcard"></A>
+<P>
+Elsewhere in this book I refer only to ordinary external modems that connect
+to your machine's auxiliary serial port. However, internal ISA modem
+cards are cheaper and include their own internal serial port. This card
+can be treated as above, like an ISA multiport serial card with only one
+port: just set the I/O port and IRQ jumpers and then run
+<TT>
+<FONT COLOR="#0000ff">setserial /dev/ttyS3</FONT></TT>... .
+
+<P>
+Beware that a new variety of modem has been invented called the
+``win-modem.'' These cards are actually just sound cards. Your operating
+system has to generate the signals needed to talk the same protocol as
+a regular modem. Because the CPU has to be very fast to do this, such
+modems were probably not viable before 1997 or so.
+<I><TT><A NAME="tex2html69"
+  HREF="http://linmodems.technion.ac.il/">http://linmodems.technion.ac.il/</A></TT></I>,
+<I><TT><A NAME="tex2html70"
+  HREF="http://www.idir.net/~gromitkc/winmodem.html">http://www.idir.net/~gromitkc/winmodem.html</A></TT></I>, and
+<I><TT><A NAME="tex2html71"
+  HREF="http://www.linmodems.org/">http://www.linmodems.org/</A></TT></I> are three resources that cover
+these modems.
+
+<P>
+
+<H1><A NAME="SECTION004580000000000000000">
+42.8 More on <TT>
+<FONT COLOR="#0000ff">LILO:</FONT></TT> Options</A>
+</H1>
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">BootPrompt-HOWTO</FONT></TT> contains an exhaustive list of things that
+can be typed at the boot prompt to do interesting things
+like NFS root mounts.
+This document is important to read if only to get
+an idea of the features that L<SMALL>INUX</SMALL> supports.
+
+<P>
+
+<H1><A NAME="SECTION004590000000000000000">
+42.9 Building the Kernel</A>
+</H1>
+
+<P>
+Summary:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>cd&nbsp;/usr/src/linux/</code><br>
+<code>make&nbsp;mrproper</code><br>
+<code>make&nbsp;menuconfig</code><br>
+<code>make&nbsp;dep</code><br>
+<code>make&nbsp;clean</code><br>
+<code>make&nbsp;bzImage</code><br>
+<code>make&nbsp;modules</code><br>
+<code>make&nbsp;modules_install</code><br>
+<code>cp&nbsp;/usr/src/linux/arch/i386/boot/bzImage&nbsp;/boot/vmlinuz-&#060;version&#062;</code><br>
+<code>cp&nbsp;/usr/src/linux/System.map&nbsp;/boot/System.map-&#060;version&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+Finally, edit <TT>
+<FONT COLOR="#0000ff">/etc/lilo.conf</FONT></TT> and
+run <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT>. Details on each of these steps follow.
+
+<P>
+
+<H2><A NAME="SECTION004591000000000000000">
+42.9.1 Unpacking and patching</A>
+</H2>
+
+<P>
+The L<SMALL>INUX</SMALL> kernel is available from various places as
+<TT>
+<FONT COLOR="#0000ff">linux-</FONT></TT><I>?</I><TT>
+<FONT COLOR="#0000ff">.</FONT></TT><I>?</I><TT>
+<FONT COLOR="#0000ff">.</FONT></TT><I>?</I><TT>
+<FONT COLOR="#0000ff">.tar.gz</FONT></TT>,
+but primarily from <EM>the
+L<SMALL>INUX</SMALL> kernel's home</EM> <I>&lt;<TT><A NAME="tex2html72"
+  HREF="ftp://ftp.kernel.org/pub/linux/kernel/">ftp://ftp.kernel.org/pub/linux/kernel/</A></TT>&gt;</I>.
+
+<P>
+The kernel can easily be unpacked with
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>cd&nbsp;/usr/src</code><br>
+<code>mv&nbsp;linux&nbsp;linux-OLD</code><br>
+<code>tar&nbsp;-xzf&nbsp;linux-2.4.0-test6.tar.gz</code><br>
+<code>mv&nbsp;linux&nbsp;linux-2.4.0-test6</code><br>
+<code>ln&nbsp;-s&nbsp;linux-2.4.0-test6&nbsp;linux</code><br>
+<code>cd&nbsp;linux</code><br>
+</FONT></TD></TR></TABLE><P>
+and possibly patched with (see Section <A HREF="node23.html#sec:applyingpatches">20.7.3</A>):
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>bzip2&nbsp;-cd&nbsp;../patch-2.4.0-test7.bz2&nbsp;|&nbsp;patch&nbsp;-s&nbsp;-p1</code><br>
+<code>cd&nbsp;..</code><br>
+<code>mv&nbsp;linux-2.4.0-test6&nbsp;linux-2.4.0-test7</code><br>
+<code>ln&nbsp;-sf&nbsp;linux-2.4.0-test7&nbsp;linux</code><br>
+<code>cd&nbsp;linux</code><br>
+<code>make&nbsp;mrproper</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Your <TT>
+<FONT COLOR="#0000ff">2.4.0-test6</FONT></TT> kernel source tree is now a <TT>
+<FONT COLOR="#0000ff">2.4.0-test7</FONT></TT>
+kernel source tree. You will often want to patch
+the kernel with features that Linus did not include, like security patches or
+commercial hardware drivers.
+
+<P>
+Important is that the following include directories point to
+the correct directories in the kernel source tree:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red size="-1">
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue size="-1">
+<code>[root@cericon]#&nbsp;<font color="navy"><B>ls&nbsp;-al&nbsp;/usr/include/&#123;linux,asm&#125;&nbsp;/usr/src/linux/include/asm</B></font></code><br>
+<code>lrwxrwxrwx&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;24&nbsp;Sep&nbsp;&nbsp;4&nbsp;13:45&nbsp;/usr/include/asm&nbsp;-&#062;&nbsp;../src/linux/include/asm</code><br>
+<code>lrwxrwxrwx&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;26&nbsp;Sep&nbsp;&nbsp;4&nbsp;13:44&nbsp;/usr/include/linux&nbsp;-&#062;&nbsp;../src/linux/include/linux</code><br>
+<code>lrwxrwxrwx&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;8&nbsp;Sep&nbsp;&nbsp;4&nbsp;13:45&nbsp;/usr/src/linux/include/asm&nbsp;-&#062;&nbsp;asm-i386</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Before continuing, you should read the <TT>
+<FONT COLOR="#0000ff">Changes</FONT></TT>
+file (under <TT>
+<FONT COLOR="#0000ff">/usr/src/linux/Documentation/</FONT></TT>) to find out
+what is required to build the kernel. If you have a kernel
+source tree supplied by your distribution, everything will
+already be up-to-date.
+
+<P>
+
+<H2><A NAME="SECTION004592000000000000000">
+42.9.2 Configuring</A>
+</H2>
+
+<P>
+(A kernel tree that has suffered from previous builds may need you to run
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>make&nbsp;mrproper</code><br>
+</FONT></TD></TR></TABLE><P>
+before anything else. This completely cleans the tree, as though you
+had just unpacked it.)
+
+<P>
+There are three kernel configuration interfaces.
+The old line-for-line <TT>
+<FONT COLOR="#0000ff">y/n</FONT></TT> interface is painful to use. For
+a better text mode interface, you can type
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>make&nbsp;menuconfig</code><br>
+</FONT></TD></TR></TABLE><P>
+otherwise, under <B>X</B> enter
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>make&nbsp;xconfig</code><br>
+</FONT></TD></TR></TABLE><P>
+to get the graphical configurator. For this discussion, I assume that
+you are using the text-mode interface.
+
+<P>
+The configure program enables you to specify an enormous
+number of features. It is advisable to skim through all the sections to get a
+feel for the different things you can do. Most options are about specifying
+whether you want a feature <B><TT>
+<FONT COLOR="#0000ff">[*]</FONT></TT></B> compiled into the kernel image,
+<B><TT>
+<FONT COLOR="#0000ff">[M]</FONT></TT></B> compiled as a module, or <B><TT>
+<FONT COLOR="#0000ff">[ ]</FONT></TT></B> not compiled at all.
+You can also turn off module support altogether from
+<B><TT>
+<FONT COLOR="#0000ff">Loadable&nbsp;module&nbsp;support&nbsp;&nbsp;--&gt;</FONT></TT></B>. The kernel configuration
+is one L<SMALL>INUX</SMALL> program that offers lots of help--select <B><TT>
+<FONT COLOR="#0000ff">&lt; Help &gt;</FONT></TT></B> on
+any feature. The raw help file is
+<TT>
+<FONT COLOR="#0000ff">/usr/src/linux/Documentation/Configure.help</FONT></TT>
+(nearly 700 kilobytes) and is worth reading.
+
+<P>
+When you are satisfied with your selection of options, select <B><TT>
+<FONT COLOR="#0000ff">&lt; Exit &gt;</FONT></TT></B>
+and select <B><TT>
+<FONT COLOR="#0000ff">save your new kernel configuration</FONT></TT></B>.
+
+<P>
+The kernel configuration is saved in a file <TT>
+<FONT COLOR="#0000ff">/usr/src/linux/.config</FONT></TT>. Next
+time you run <TT>
+<FONT COLOR="#0000ff">make menuconfig</FONT></TT>,
+your configuration will default to these settings.
+The file
+<TT>
+<FONT COLOR="#0000ff">/usr/src/linux/arch/i386/defconfig</FONT></TT>
+contains defaults to use in the
+absence of a <TT>
+<FONT COLOR="#0000ff">.config</FONT></TT> file. Note that the command <TT>
+<FONT COLOR="#0000ff">make&nbsp;mrproper</FONT></TT> removes
+the <TT>
+<FONT COLOR="#0000ff">.config</FONT></TT> file.
+
+<P>
+
+<H1><A NAME="SECTION0045100000000000000000">
+42.10 Using Packaged Kernel Source</A>
+</H1>
+
+<P>
+Your distribution will probably have a kernel source package ready to build.
+This package is better to use than downloading the source yourself because all the default
+build options will be present; for instance, RedHat 7.0 comes with the file
+<TT>
+<FONT COLOR="#0000ff">/usr/src/linux-2.2.16/configs/kernel-2.2.16-i586-smp.config</FONT></TT>, which
+can be copied over the <TT>
+<FONT COLOR="#0000ff">/usr/src/linux-2.2.16/.config</FONT></TT> to build a kernel
+optimized for SMP (<I>Symmetric Multiprocessor Support</I>)
+with all of RedHat's defaults enabled. It also comes with a
+custom <TT>
+<FONT COLOR="#0000ff">defconfig</FONT></TT> file to
+build kernels identical to those of RedHat. Finally,
+RedHat would have applied many patches to add features that may be
+time consuming to do yourself. The same goes for Debian.
+
+<P>
+You should try to enable or ``compile-in''
+features rather than disable anything,
+since the default RedHat kernel supports almost every kernel feature, and
+later it may be more convenient to have left it that way. On the other hand, a
+minimal kernel will compile much faster.
+
+<P>
+
+<H1><A NAME="SECTION0045110000000000000000">
+42.11 Building, Installing</A>
+</H1>
+
+<P>
+Run the following commands to build the kernel; this process may take anything from
+a few minutes to several hours, depending on what you have enabled. After
+each command completes, check the last few messages for errors (or check the return
+code, <TT>
+<FONT COLOR="#0000ff">$?</FONT></TT>), rather than blindly typing the next commands.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>make&nbsp;dep&nbsp;&#038;&#038;&nbsp;\</code><br>
+<code>make&nbsp;clean&nbsp;&#038;&#038;&nbsp;\</code><br>
+<code>make&nbsp;bzImage&nbsp;&#038;&#038;&nbsp;\</code><br>
+<code>make&nbsp;modules&nbsp;&#038;&#038;&nbsp;\</code><br>
+<code>make&nbsp;modules_install</code><br>
+</FONT></TD></TR></TABLE><P>
+The command <TT>
+<FONT COLOR="#0000ff">make modules_install</FONT></TT> would have installed all modules
+into <TT>
+<FONT COLOR="#0000ff">/lib/modules/&lt;version&gt;</FONT></TT>. <FONT COLOR="#ffa500">[You may like to clear out this
+directory at some point and rerun <TT>
+<FONT COLOR="#0000ff">make modules_install</FONT></TT>, since stale
+modules cause problems with <TT>
+<FONT COLOR="#0000ff">depmod -a</FONT></TT>.]</FONT>
+<P>
+The kernel image itself, <TT>
+<FONT COLOR="#0000ff">/usr/src/linux/arch/i386/boot/bzImage</FONT></TT>,
+and <TT>
+<FONT COLOR="#0000ff">/usr/src/linux/System.map</FONT></TT> are two other files
+produced
+by the build.
+These must be copied to <TT>
+<FONT COLOR="#0000ff">/boot/</FONT></TT>, possibly creating neat symlinks:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>cp&nbsp;/usr/src/linux/arch/i386/boot/bzImage&nbsp;/boot/vmlinuz-&#060;version&#062;</code><br>
+<code>cp&nbsp;/usr/src/linux/System.map&nbsp;/boot/System.map-&#060;version&#062;</code><br>
+<code>ln&nbsp;-sf&nbsp;System.map-&#060;version&#062;&nbsp;/boot/System.map</code><br>
+<code>ln&nbsp;-sf&nbsp;/boot/vmlinuz-&#060;version&#062;&nbsp;vmlinuz</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Finally, your <TT>
+<FONT COLOR="#0000ff">lilo.conf</FONT></TT> may be
+edited as described in Chapter <A HREF="node34.html#chap:lilo">31</A>.
+Most people now forget to run <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT> and
+find their system unbootable.
+Do run <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT>, making sure that you have left your
+old kernel in as an option, in case you need to return to it.
+Also make a boot floppy from your
+kernel, as shown in Section <A HREF="node34.html#sec:bootfloppy">31.4</A>.
+
+<P>
+
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html2824"
+  HREF="node46.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2820"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2814"
+  HREF="node44.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2822"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2825"
+  HREF="node46.html">43. The X Window</A>
+<B> Up:</B> <A NAME="tex2html2821"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2815"
+  HREF="node44.html">41. Point-to-Point Protocol </A>
+ &nbsp <B>  <A NAME="tex2html2823"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+
+</BODY>
+</HTML>

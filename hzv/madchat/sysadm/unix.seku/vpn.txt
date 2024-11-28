@@ -1,0 +1,119 @@
+Les VPN et le protocole PPP
+
+Qu’est-ce qu’un VPN ?
+
+Les réseaux privés virtuels (VPN : Virtual Private Network) permettent à l’utilisateur de créer un chemin virtuel sécurisé entre une source et une destination. Avec le développement d’Internet, il est intéressant de permettre ce processus de transfert de données sécurisé et fiable. Grâce à un principe de tunnel (tunnelling) dont chaque extrémité est identifiée, les données transitent après avoir été chiffrées. 
+Un des grands intérêts des VPN est de réaliser des réseaux privés à moindre coût. En chiffrant les données, tout se passe exactement comme si la connexion se faisait en dehors d’Internet. Il faut par contre tenir compte de la toile, dans le sens où aucune qualité de service n’est garantie.
+
+Comment marche un VPN ?
+
+Le principe du VPN est basé sur la technique du tunnelling. Cela consiste à construire un chemin virtuel après avoir identifié l’émetteur et le destinataire. Ensuite la source chiffre les données et les achemine en empruntant ce chemin virtuel.
+Les données à transmettre peuvent appartenir à un protocole différent d’IP. Dans ce cas le protocole de tunnelling encapsule les données en rajoutant une entête. Permettant le routage des trames dans le tunnel. Le tunneling est l’ensemble des processus d’encapsulation, de transmission et de désencapsulation.
+
+A quoi sert un VPN ?
+
+Auparavant pour interconnecter deux LANs distants, il n’y avait que deux solutions, soit les deux sites distants étaient reliés par une ligne spécialisée permettant de réaliser un WAN entre les deux sites soient les deux réseaux communiquaient par le RTC.
+Une des première application des VPN est de permettre à un hôte distant d’accéder à l’intranet de son entreprise ou à celui d’un client grâce à Internet tout en garantissant la sécurité des échanges. Il utilise la connexion avec
+son fournisseur d’accès pour se connecter à Internet et grâce aux VPN, il crée un réseau privé virtuel entre l’appelant et le serveur de VPN de l’entreprise.
+Cette solution est particulièrement intéressantes pour des commerciaux sillonnant la France : ils peuvent se connecter de façon sécurisée et d’où ils veulent aux ressources de l’entreprise. Cela dit, les VPN peuvent également être utilisé à l’intérieur même de l’entreprise, sur l’intranet, pour l’échange de données confidentielles.
+
+Services des VPN
+
+Ces VPN n’ont pas comme seul intérêt l’extension des WAN à moindre coût mais aussi l’utilisation de services ou fonctions spécifiques assurant la QoS et la sécurité des échanges. Les fonctionnalités de sécurité sont matures mais par contre la réservation de bandes passantes pour les tunnels est encore un service en développement limité par le concept même d’Internet.
+La qualité de service (QoS) est une fonctionnalité importante des VPN n’est pas encore une technologie assez mature et les solutions proposées sur le marché à l’heure actuelle ne permettent que des garanties sur des réseaux locaux propriétaires, c’est pourquoi peu d’ISP proposent à leurs clients des solutions VPN.
+La sécurité des échanges est assurée à plusieurs niveaux et par différentes fonctions comme le cryptage des données, l’authentification des deux extrémités communicantes et le contrôle d’accès des utilisateurs aux ressources.
+
+Principaux protocoles de VPN
+
+Il existe sur le marché trois principaux protocoles :
+- PPTP (Point to Point Tunnelling Protocol) de Microsoft
+- L2F (Layer Two Forwarding) de Cisco
+- L2TP (Layer Two Tunnelling Protocol) de l’IETF
+
+PPTP (Point to Point Tunnelling Protocol)
+
+C’est un protocole de niveau 2 qui encapsule des trames PPP dans des datagrammes IP afin de les transférer sur un réseau IP. PPTP permet le cryptage des données PPP encapsulées mais aussi leur compression.
+
+Pile TCP/IP  ---->   IP    | TCP/UDP | Données |
+Soft de PPTP ---->   GRE   |   PPP   | TCP/UDP | Données |
+PPP          ---->   PPP   |   IP    |   GRE   |   PPP   |   IP    | TCP/UDP | Données |
+
+L’intérêt de PPTP est de ne nécessiter aucun matériel supplémentaire car les deux logiciels d’extrémité (le client
+et le serveur) sont intégrés dans NT4. Par contre, il ne fonctionne que sous NT pour le moment.
+
+L2F (Layer Two Forwarding)
+
+L2F est un protocole de niveau 2 qui permet à un serveur d’accès distant de véhiculer le trafic sur PPP et transférer ces données jusqu’à un serveur L2F (routeur). Ce serveur L2F désencapsule les paquets et les envoie sur le réseau. Il faut noter que contrairement à PPTP et L2PT , L2F n’a pas besoin de client.
+Ce protocole est progressivement remplacé par L2TP qui est plus souple.
+
+L2TP (Layer Two Tunnelling Protocol)
+
+Microsoft et Cisco, reconnaissant les mérites des deux protocoles L2F et PPTP , se sont associés pour créer le protocoles L2TP. Ce protocole réunit les avantages de PPTP et L2F.
+L2TP est un protocole réseau qui encapsule des trames PPP pour les envoyer sur des réseaux IP, X25, relais de trames ou ATM. Lorsqu’il est configuré pour transporter les données sur IP, L2TP peut être utilisé pour faire du tunnelling sur Internet. Mais L2TP peut aussi être directement mis en oeuvre sur des supports WAN (relais de trames) sans utiliser la couche de transport IP.
+On utilise souvent ce protocole pour créer des VPN sur Internet. Dans ce cas, L2TP transporte des trames PPP dans des paquets IP. Il se sert d’une série de messages L2TP pour assurer la maintenance du tunnel et d’UDP pour envoyer les trames PPP dans du L2TP.
+
+Pile TCP/IP  ---->   IP    | TCP/UDP | Données |
+Soft de L2TP ---->   UDP   |   PPP   |   IP    | TCP/UDP | Données |
+PPP          ---->   PPP   |   IP    |   UDP   |   PPP   |   IP    | TCP/UDP | Données |
+
+PPP : Point-to-Point Protocol
+
+Introduction
+
+PPP fut développé pour transférer des données sur des liens synchrones ou asynchrones entre deux points en utilisant HDLC comme base d’encapsulation et un Frame Check Sequence (FCS) HDLC pour la détection des erreurs. Cette liaison permet le full duplex et garantit l’ordre d’arrivée des paquets.
+Une fonctionnalité intéressante de ce protocole est le multiplexage simultané de plusieurs protocoles de niveau 3 du modèle OSI.
+Ce protocole encapsule des paquets IP,IPX et NetBEUI, … dans des trames PPP, puis transmet ces paquets PPP encapsulés à travers la liaison point à point. PPP est donc utilisé entre un client distant et un serveur d’accès distant.
+Le protocole PPP est décrit dans la RFC 1331.
+
+Format de la trame PPP
+
+|   Flag   |  Adresse | Contrôle | Protocole | Données |    FCS   |   Flag   |
+| 01111110 | 11111111 | 00000011 |  16 bits  |         |  16 bits | 01111110 |
+
+Flag : séparateur de trame. Un seul flag est nécessaire entre 2 trames.
+
+Adresse : Le champ adresse correspond à une adresse HDLC, or PPP ne permet pas un adressage
+individuel des stations donc ce champ doit être à 0xFF (toutes les stations), toute adresse non reconnue fera que la trame sera détruite.
+
+contrôle : Le champ contrôle doit être à 0x03, ce qui correspond à une trame HDLC non numérotée. Toute autre valeur fera que la trame sera détruite.
+
+Protocole : La valeur contenue dans ce champ doit être impaire, l’octet de poids fort étant pair. Ce champ identifie le protocole encapsulé dans le champ informations de la trame. Les différentes valeurs utilisables sont définies dans la RFC &laquo; assign number &raquo; et représentent les différents protocoles supportés par PPP (OSI,IP,Decnet IV,IPX,…), les NCP associés ainsi que les LCP.
+
+Informations : De longueur comprise entre 0 et 1500 octets, ce champ contient le datagramme du protocole supérieur indiqué dans le champ &raquo;protocole &raquo;. Sa longueur est détectée par le flag de fin de trame, moins 2 octets de contrôle
+
+FCS (Frame Check Sequence) : Ce champ contient la valeur du checksum de la trame. PPP vérifie le contenu du FCS lorsqu’il reçoit un paquet. Le contrôle d’erreur appliqué par PPP est conforme à X25.
+
+Le protocole LCP
+
+Ce protocole de contrôle de liens est chargé de gérer les options et les liens créés. LCP est utilisé pour établir, maintenir, et fermer la liaison physique.
+Dans l’optique d’être transportable sur un grande nombre d’environnements, PPP comprend un protocole de contrôle de liens LCP (Link Control Protocol) pour établir, configurer, tester, et terminer le lien. LCP est utilisé pour manipuler les tailles variables des paquets, en effet selon le protocole d’encapsulation sélectionné dans le champ protocole,la taille du champ options/données n’est pas la même. Ces fonctions de test permettent de détecter un
+lien bouclé sur lui même ou toute autre erreur classique de configuration. D’autres fonctionnalités optionnelles comme l’authentification d’identité des extrémités, et la détermination de l’état du lien peuvent s’avérer intéressantes.
+
+L’ en-tête est le suivant :
+
+|   Code   | Identifiant | Longueur |  Options |
+|  1 octet |   1 octet   |  2 octet |          |
+
+Code : Définit , sur un octet, le type de paquet LCP :
+1 : Configure request
+2 : Configure Ack
+3 : Configure NAK
+4 : Configure Reject
+5 : Terminate Request
+6 : Terminate Ack
+7 : Code Reject
+8 : Protocol Reject
+9 : Echo Request
+10 : Echo Reply
+11 : Discard Request
+12 : Link quality report
+
+Identifiant : Ce champ contient une valeur numérique qui sert à la gestion des requêtes et des réponses.
+
+Longueur : Longueur totale du paquet LCP. Ce paquet comprend le code, l’identifiant, la longueur et les données.
+
+Données / Options : Ce champ de taille variable peut contenir une ou plusieurs configuration
+d’options. Le format d’une configuration d’options LCP possède 3 champs : type, longueur et
+données.
+- Longueur : Longueur de la configuration d’options, c’est à dire la longueur des trois champs : type, longueur et données.
+- Type : Cet octet indique la configuration d’options ou de données choisie : Paquets de configurations, paquets de fin de connexion, paquets détruits ou paquets de test.

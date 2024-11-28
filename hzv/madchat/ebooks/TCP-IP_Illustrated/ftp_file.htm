@@ -1,0 +1,1157 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 27. FTP: File Transfer Protocol</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="27_0"><H1><I>FTP: File Transfer Protocol</I></H1></a>
+<a name="27_1"><H3>27.1 Introduction</H3></a>
+<P>
+FTP is another commonly used application. It is the
+Internet standard for file transfer. We must be careful to differentiate
+between <I>file transfer,</I> which is what FTP provides, <I>and
+file access,</I> which is provided by applications such as NFS
+(Sun's Network File System, <a href="nfs_netw.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/nfs_netw.htm">Chapter 29</a>). The file transfer provided
+by FTP copies a complete file from one system to another system.
+To use FTP we need an account to login to on the server, or we
+need to use it with a server that allows <I>anonymous FTP</I>
+(which we show an example of in this chapter).
+<P>
+Like Telnet, FTP was designed from the start to work
+between different hosts, running different operating systems,
+using different file structures, and perhaps different character
+sets. Telnet, however, achieved heterogeneity by forcing both
+ends to deal with a single standard: the NVT using 7-bit ASCII.
+FTP handles all the differences between different systems using
+a different approach. FTP supports a limited number of file types
+(ASCII, binary, etc.) and file structures (byte stream or record
+oriented).
+<P>
+RFC 959 [Postel and Reynolds 1985] is the official
+specification for FTP. This RFC contains a history of the evolution
+of file transfer over the years.
+<a name="27_2"><H3>27.2 FTP Protocol</H3></a>
+<P>
+FTP differs from the other applications that we've
+described because it uses two TCP connections to transfer a file.
+<P>
+<OL>
+<LI>The <I>control connection is</I> established in
+the normal client-server fashion. The server does a passive open
+on the well-known port for FTP (21) and waits for a client connection.
+The client does an active open to TCP port 21 to establish the
+control connection. The control connection stays up for the entire
+time that the client communicates with this server. This connection
+is used for commands from the client to the server and for the
+server's replies.
+<P>
+The IP type-of-service for the control connection
+should be &quot;minimize delay&quot; since the commands are normally
+typed by a human user (<a href="ip_inter.htm#fig_3_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_2">Figure 3.2</a>).
+<P>
+<LI>A <I>data connection</I> is created each time
+a file is transferred between the client and server. (It is also
+created at other times, as we'll see later.)
+<P>
+The IP type-of-service for the data connection should
+be &quot;maximize throughput&quot; since this connection is for
+file transfer.
+</OL>
+<P>
+Figure 27.1 shows the arrangement of the client and
+server and the two connections between them.
+<P>
+<CENTER><a name="fig_27_1"><img src="f_27_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_27_1.gif"></a><br>
+<B>Figure 27.1</B> Processes
+involved in file transfer.</CENTER>
+<P>
+This figure shows that the interactive user normally
+doesn't deal with the commands and replies that are exchanged
+across the control connection. Those details are left to the two
+protocol interpreters. The box labeled &quot;user interface&quot;
+presents whatever type of interface is desired to the interactive
+user (full-screen menu selection, line-at-a-time commands, etc.)
+and converts these into FTP commands that are sent across the
+control connection. Similarly the replies returned by the server
+across the control connection can be converted to any format to
+present to the interactive user.
+<P>
+This figure also shows that it is the two protocol
+interpreters that invoke the two data transfer functions, when
+necessary.
+<H4>Data Representation</H4>
+<P>
+Numerous choices are provided in the FTP protocol
+specification to govern the way the<BR>
+file is transferred and stored. A choice must be made in each
+of four dimensions.
+<P>
+<OL>
+<LI>File type.
+<P>
+<OL TYPE=a>
+<LI>ASCII file type.<br>
+(Default) The text file is transferred across the data connection in NVT
+ASCII. This requires the sender to convert the local text file into NVT
+ASCII, and the receiver to convert NVT ASCII to the local text file type.
+The end of each line is transferred using the NVT ASCII representation
+of a carriage return, followed by a linefeed. This means the receiver
+must scan every byte, looking for the CR, LF pair. (We saw the same scenario
+with TFTP's ASCII file transfer in <a href="tftp_tri.htm#15_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tftp_tri.htm#15_2">Section 15.2</a>.)
+<P>
+<LI>EBCDIC file type.<br>
+An alternative way of transferring text files when
+both ends are EBCDICsystems.
+<P>
+<LI>Image file type. (Also called binary.)<br>
+The data is sent as a contiguous stream of bits.
+Normally used to transfer binary files.
+<P>
+<LI>Local file type.<br>
+A way of transferring binary files between hosts with different byte sizes. 
+The number of bits per byte is specified by the sender. For systems using
+8-bit bytes, a local file type with a byte size of 8 is equivalent
+to the image file type.
+</OL>
+<P>
+<LI>Format control. This choice is available only
+for ASCII and EBCDIC file types.
+<P>
+<OL TYPE=a>
+<LI>Nonprint.<BR>
+(Default) The file contains no vertical format information.
+<P>
+<LI>Telnet format control. <BR>
+The file contains Telnet vertical format controls for a printer
+to interpret.
+<P>
+<LI>Fortran carriage control.<BR>
+The first character of each line is the Fortran format control
+character.
+</OL>
+<P>
+<LI>Structure.
+<P>
+<OL TYPE=a>
+<LI>File structure.<br>
+(Default) The file is considered as a contiguous
+stream of bytes. There is no internal file structure.
+<P>
+<LI>Record structure.<BR>
+This structure is only used with text files (ASCII or EBCDIC).
+<P>
+<LI>Page structure.<br>
+Each page is transmitted with a page number to let
+the receiver store the pages in a random order. Provided by the
+TOPS-20 operating system. (The Host Requirements RFC recommends
+against implementing this structure.)
+</OL>
+<P>
+<LI>Transmission mode. This specifies how the file
+is transferred across the data connection.
+<P>
+<OL TYPE=a>
+<LI>Stream mode.<br>
+(Default) The file is transferred as a stream of
+bytes. For a file structure, the end-of-file is indicated by the
+sender closing the data connection. For a record structure, a
+special 2-byte sequence indicates the end-of-record and end-of-file.
+<P>
+<LI>Block mode.<br>
+The file is transferred as a series of blocks, each
+preceded by one or more header bytes.
+<P>
+<LI>Compressed mode.<br>
+A simple run-length encoding compresses consecutive
+appearances of the same byte. In a text file this would commonly
+compress strings of blanks, and in a binary file this would commonly
+compress strings of 0 bytes. (This is rarely used or supported.
+There are better ways to compress files for FTP.)
+</OL>
+</OL>
+<P>
+If we calculate the number of combinations of all
+these choices, there could be 72 different ways to transfer and
+store a file. Fortunately we can ignore many of the options, because
+they are either antiquated or not supported by most implementations.
+<P>
+Common Unix implementations of the FTP client and
+server restrict us to the following choices:
+<UL>
+<LI>Type: ASCII or image.
+<LI>Format control: nonprint only.
+<LI>Structure: file structure only
+<LI>Transmission mode: stream mode only.
+</UL>
+<P>
+This limits us to one of two modes: ASCII or image
+(binary).
+<P>
+<FONT SIZE=-1>This implementation meets the minimum requirements
+of the Host Requirements RFC. (This RFC also requires support
+for the record structure, but only if the operating system supports
+it, which Unix doesn't.)
+<P>
+Many non-Unix implementations provide FTP capabilities
+to handle their own file formats. The Host Requirements RFC states
+&quot;The FTP protocol includes many features, some of which are
+not commonly implemented. However, for every feature in FTP, there
+exists at least one implementation.&quot;</FONT>
+<H4>FTP Commands</H4>
+<P>
+The commands and replies sent across the control
+connection between the client and server are in NVT ASCII. This
+requires a CR, LF pair at the end of each line (i.e., each command
+or each reply).
+<P>
+The only Telnet commands (those that begin with IAC)
+that can be sent by the client to the server are interrupt process
+(&lt;IAC, IP&gt;) and the Telnet synch signal (&lt;IAC, DM&gt;
+in urgent mode). We'll see that these two Telnet commands are
+used to abort a file transfer that is in progress, or to query
+the server while a transfer is in progress. Additionally, if the
+server receives a Telnet option command from the client (WILL,
+WONT, DO, or DONT) it responds with either DONT or WONT.
+<P>
+The commands are 3 or 4 bytes of uppercase ASCII
+characters, some with optional arguments. More than 30 different
+FTP commands can be sent by the client to the server. Figure 27.2
+shows some of the commonly used commands, most of which we'll
+encounter in this chapter.
+<P>
+<CENTER>
+<a name="fig_27_2"><TABLE BORDER=1></a>
+<TR><TD WIDTH=200><CENTER>Command</CENTER>
+</TD><TD WIDTH=420><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=200>ABOR 
+<BR>
+LIST <I>filelist<BR>
+</I>PASS <I>password<BR>
+</I>PORT <I>n1</I>,<I>n2</I>,<I>n3</I>,<I>n4</I>,<I>n5</I>,<I>n6<BR>
+</I>QUIT<BR>
+RETR <I>filename<BR>
+</I>STOP<I> filename<BR>
+</I>SYST<BR>
+TYPE<I> type<BR>
+</I>USER <I>username</I>
+</TD><TD WIDTH=420>abort previous FTP command and any data transfer<BR>
+list files or directories<BR>
+password on server<BR>
+client IP address <I>(nl.n2.n3.n4)</I> and port (<I>n5</I> x 256 + <I>n6</I>)<BR>
+logoff from server<BR>
+retrieve (get) a file<BR>
+store (put) a file<BR>
+server returns system type<BR>
+specify file type: A for ASCII, I for image<BR>
+usemame on server
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 27.2</B> Common
+FTP commands.</CENTER>
+<P>
+We'll see in the examples in the <a href="#27_3">next section</a> that
+sometimes there is a one-to-one correspondence between what the
+interactive user types and the FTP command sent across the control
+connection, but for some operations a single user command results
+in multiple FTP commands across the control connection.
+<H4>FTP Replies</H4>
+<P>
+The replies are 3-digit numbers in ASCII, with an
+optional message following the number. The intent is that the
+software needs to look only at the number to determine how to
+process the reply, and the optional string is for human consumption.
+Since the clients normally output both the numeric reply and the
+message string, an interactive user can determine what the reply
+says by just reading the string (and not have to memorize what
+all the numeric reply codes mean).
+<P>
+Each of the three digits in the reply code has a
+different meaning. (We'll see in <a href="smtp_sim.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/smtp_sim.htm">Chapter 28</a> that the Simple Mail
+Transfer Protocol, SMTP, uses the same conventions for commands
+and replies.)
+<P>
+Figure 27.3 shows the meanings of the first and second
+digits of the reply code.<BR>
+<P>
+<CENTER>
+<a name="fig_27_3"><TABLE BORDER=1></a>
+<TR><TD WIDTH=54><CENTER>Reply</CENTER></TD>
+<TD WIDTH=536><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=54><TT>1yz</TT></TD><TD WIDTH=536>Positive preliminary reply. The action is being started but expect another reply before sending another command
+</TD></TR>
+<TR><TD WIDTH=54><TT>2yz</TT></TD><TD WIDTH=536>Positive completion reply A new command can be sent
+</TD></TR>
+<TR><TD WIDTH=54><TT>3yz</TT></TD><TD WIDTH=536>Positive intermediate reply. The command has been accepted but another command must be sent
+</TD></TR>
+<TR><TD WIDTH=54><TT>4yz</TT></TD><TD WIDTH=536>Transient negative completion reply The requested action did not take place, but the error condition is temporary so the command can be reissued later.
+</TD></TR>
+<TR><TD WIDTH=54><TT>5yz</TT></TD><TD WIDTH=536>Permanent negative completion reply. The command was not accepted and should not be retried.
+</TD></TR>
+<TR><TD WIDTH=54><TT>X0z</TT></TD><TD WIDTH=536>Syntax errors.
+</TD></TR>
+<TR><TD WIDTH=54><TT>x1z</TT></TD><TD WIDTH=536>Information.
+</TD></TR>
+<TR><TD WIDTH=54><TT>x2z</TT></TD><TD WIDTH=536>Connections. Replies referring to the control or data connections.
+</TD></TR>
+<TR><TD WIDTH=54><TT>x3z</TT></TD><TD WIDTH=536>Authentication and accounting. Replies for the login or accounting commands.
+</TD></TR>
+<TR><TD WIDTH=54><TT>x4z</TT></TD><TD WIDTH=536>Unspecified.
+</TD></TR>
+<TR><TD WIDTH=54><TT>x5z</TT></TD><TD WIDTH=536>Filesystem status.
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 27.3</B> Meanings
+of first and second digits of 3-digit reply codes.</CENTER>
+<P>
+The third digit gives additional meaning to the error
+message. For example, here are some typical replies, along with
+a possible message string.
+<UL>
+<LI>125Data connection
+already open; transfer starting.
+<LI>200 Command OK.
+<LI>214 Help message (for human user).
+<LI>331 Username OK, password required.
+<LI>425 Can't open data connection.
+<LI>452 Error writing file.
+<LI>500 Syntax error (unrecognized command).
+<LI>501 Syntax error (invalid arguments).
+<LI>502 Unimplemented MODE type.
+</UL>
+<P>
+Normally each FTP command generates a one-line reply
+For example, the QUIT command could generate the reply:
+<P>
+<TT>221 Goodbye.</TT>
+<P>
+If a multiline reply is needed, the first line contains
+a hyphen instead of a space after the 3-digit reply code, and
+the final line contains the same 3-digit reply code, followed
+by a space. For example, the HELP command could generate the reply:
+<P>
+<TABLE >
+<TR><TD COLSPAN=8 WIDTH=622><TT>214- The following commands are recognized (* =&gt;'s unimplemented).</TT>
+</TD></TR>
+<TR><TD WIDTH=77><TT>USER</TT></TD><TD WIDTH=77><TT>PORT</TT>
+</TD><TD WIDTH=77><TT>STOR</TT></TD><TD WIDTH=77><TT>MSAM*</TT>
+</TD><TD WIDTH=85><TT>RNTO</TT></TD><TD WIDTH=77><TT>NLST</TT>
+</TD><TD WIDTH=77><TT>MKD</TT></TD><TD WIDTH=77><TT>CDUP</TT>
+</TD></TR>
+<TR><TD WIDTH=77><TT>PASS</TT></TD><TD WIDTH=77><TT>PASV</TT>
+</TD><TD WIDTH=77><TT>APPE</TT></TD><TD WIDTH=77><TT>MRSQ*</TT>
+</TD><TD WIDTH=85><TT>ABOR</TT></TD><TD WIDTH=77><TT>SITE</TT>
+</TD><TD WIDTH=77><TT>XMKD</TT></TD><TD WIDTH=77><TT>XCUP</TT>
+</TD></TR>
+<TR><TD WIDTH=77><TT>ACCT*</TT></TD><TD WIDTH=77><TT>TYPE</TT>
+</TD><TD WIDTH=77><TT>MLFL*</TT></TD><TD WIDTH=77><TT>MRCP*</TT>
+</TD><TD WIDTH=85><TT>DELE</TT></TD><TD WIDTH=77><TT>SYST</TT>
+</TD><TD WIDTH=77><TT>RMD</TT></TD><TD WIDTH=77><TT>STOU</TT>
+</TD></TR>
+<TR><TD WIDTH=77><TT>SMNT*</TT></TD><TD WIDTH=77><TT>STRU</TT>
+</TD><TD WIDTH=77><TT>MAIL*</TT></TD><TD WIDTH=77><TT>ALLO</TT>
+</TD><TD WIDTH=85><TT>CWD</TT></TD><TD WIDTH=77><TT>STAT</TT>
+</TD><TD WIDTH=77><TT>XRMD</TT></TD><TD WIDTH=77><TT>SIZE</TT>
+</TD></TR>
+<TR><TD WIDTH=77><TT>REIN*</TT></TD><TD WIDTH=77><TT>MODE</TT>
+</TD><TD WIDTH=77><TT>MSND*</TT></TD><TD WIDTH=77><TT>REST</TT>
+</TD><TD WIDTH=85><TT>XCWD</TT></TD><TD WIDTH=77><TT>HELP</TT>
+</TD><TD WIDTH=77><TT>PWD</TT></TD><TD WIDTH=77><TT>MDTM</TT>
+</TD></TR>
+<TR><TD WIDTH=77><TT>QUIT</TT></TD><TD WIDTH=77><TT>RETR</TT>
+</TD><TD WIDTH=77><TT>MSOM*</TT></TD><TD WIDTH=77><TT>RNFR</TT>
+</TD><TD WIDTH=85><TT>LIST</TT></TD><TD WIDTH=77><TT>NOOP</TT>
+</TD><TD WIDTH=77><TT>XPWD</TT></TD><TD WIDTH=77></TD></TR>
+<TR><TD COLSPAN=8 WIDTH=622><TT>214 Direct comments to ftp-bugs@bsdi.tuc.noao.edu.</TT>
+</TD></TR>
+</TABLE>
+<H4>Connection Management</H4>
+<P>
+There are three uses for the data connection.
+<OL>
+<LI>Sending a file from the client to the server.
+<LI>Sending a file from the server to the client.
+<LI>Sending a listing of files or directories from
+the server to the client.
+</OL>
+<P>
+The FTP server sends file listings back across the
+data connection, rather than as multiline replies across the control
+connection. This avoids any line limits that restrict the size
+of a directory listing and makes it easier for the client to save
+the output of a directory listing into a file, instead of printing
+the listing to the terminal.
+<P>
+We've said that the control connection stays up for
+the duration of the client-server connection, but the data connection
+can come and go, as required. How are the port numbers chosen
+for the data connection, and who does the active open and passive
+open?
+<P>
+First, we said earlier that the common transmission
+mode (under Unix the <I>only </I>transmission mode) is the stream
+mode, and that the end-of-file is denoted by closing the data
+connection. This implies that a brand new data connection is required
+for every file transfer or directory listing. The normal procedure
+is as follows:
+<OL>
+<LI>The creation of the data connection is under
+control of the client, because it's the client that issues the
+command that requires the data connection (get a file, put a file,
+or list a directory).
+<LI>The client normally chooses an ephemeral port
+number on the client host for its end of the data connection.
+The client issues a passive open from this port.
+<LI>The client sends this port number to the server
+across the control connection using the PORT command.
+<LI>The server receives the port number on the control
+connection, and issues an active open to that port on the client
+host. The server's end of the data connection always uses port
+20.
+</OL>
+<P>
+Figure 27.4 shows the state of the connections while
+step 3 is being performed. We assume the client's ephemeral port
+for the control connection is 1173, and the client's ephemeral
+port for the data connection is 1174. The command sent by the
+client is the PORT command and its arguments are six decimal numbers
+in ASCII, separated by commas. The first four numbers specify
+the IP address on the client that the server should issue the
+active open to (140.252.13.34 in this example), and the next two
+specify the 16-bit port number. Since the 16-bit port number is
+formed from two numbers, its value in this example is 4 x 256
++150 = 1174.
+<P>
+<CENTER><a name="fig_27_4"><img src="f_27_4.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_27_4.gif"></a><br>
+<B>Figure 27.4</B> PORT
+command going across FTP control connection.</CENTER>
+<P>
+Figure 27.5 shows the state of the connection when
+the server issues the active open to the client's end of the data
+connection. The server's end point is at port 20.
+<P>
+<CENTER><a name="fig_27_5"><img src="f_27_5.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_27_5.gif"></a><br>
+<B>Figure 27.5</B> FTP
+server doing active open of data connection.</CENTER>
+<P>
+The server always does the active open of the data
+connection. Normally the server also does the active close of
+the data connection, except when the client is sending a tile
+to the server in stream mode, which requires the client to close
+the connection (which gives the server the end-of-tile notification).
+<P>
+It is also possible for the client to not issue the
+PORT command, in which case the server issues the active open
+to the same port number being used by the client for its end of
+the control connection (1173 in this example). This is OK, since
+the server's port numbers for the two connections are different:
+one is 20 and the other is 21. Nevertheless, in the <a href="#27_3">next section</a>
+we'll see why current implementations normally don't do this.
+<a name="27_3"><H3>27.3 FTP Examples</H3></a>
+<P>
+We now look at some examples using FTP: its management
+of the data connection, how text files are sent using NVT ASCII,
+FTP'S use of the Telnet synch signal to abort an inprogress transfer,
+and finally the popular &quot;anonymous FTP.&quot;
+<H4>Connection Management: Ephemeral Data Port</H4>
+<P>
+Let's first look at FTP's connection management with
+a simple FTP session that just lists a file on the server. We
+run the client on the host <TT>svr4</TT> with
+the <TT>-d</TT> flag (debug). This tells it
+to print the commands and replies that are exchanged across the
+control connection. All the lines preceded by <TT>---&gt;</TT>
+are sent by the client to the server, and the lines that begin
+with a 3-digit number are the server's replies. The client's interactive
+prompt is <TT>ftp&gt;</TT>.
+<P>
+<TABLE >
+<TR><TD WIDTH=387><TT>svr4 % <B>ftp -d bsdi</B></TT>
+</TD><TD WIDTH=375><I>-d option for debug output</I>
+</TD></TR>
+<TR><TD WIDTH=387><TT>Connected to bsdi.</TT>
+</TD><TD WIDTH=375><I>client does active open of control connection</I>
+</TD></TR>
+<TR><TD WIDTH=387><TT>220 bsdi FTP server (Version 5.60) ready.</TT>
+</TD><TD WIDTH=375><I>server responds it is ready</I>
+</TD></TR>
+<TR><TD WIDTH=387><TT>Name (bsdi:rstevens):</TT>
+</TD><TD WIDTH=375><I>client prompts us for a login name</I>
+</TD></TR>
+<TR><TD WIDTH=387><TT>---&gt; USER rstevens</TT>
+</TD><TD WIDTH=375><I>we type RETURN, so client sends default</I>
+</TD></TR>
+<TR><TD WIDTH=387><TT>331 Password required for rstevens.</TT>
+</TD><TD WIDTH=375></TD></TR>
+<TR><TD WIDTH=387><TT>Password:</TT></TD>
+<TD WIDTH=325><I>we type our password; it's not echoed</I>
+</TD></TR>
+<TR><TD WIDTH=387><TT>---&gt; PASS XXXXXXX</TT>
+</TD><TD WIDTH=375><I>client sends it as cleartext</I>
+</TD></TR>
+<TR><TD WIDTH=387><TT>230 User rstevens logged in.</TT>
+</TD><TD WIDTH=375></TD></TR>
+<TR><TD WIDTH=387><TT>ftp&gt; <B>dir hello.c</B></TT>
+</TD><TD WIDTH=375><I>ask for directory listing of a single file</I>
+</TD></TR>
+<TR><TD WIDTH=387><TT>---&gt; PORT 140,252,13,34,4,150</TT>
+</TD><TD WIDTH=375><I>see <a href="#fig_27_4">figure 27.4</a></I>
+</TD></TR>
+<TR><TD WIDTH=387><TT>200 PORT command successful.</TT>
+</TD><TD WIDTH=375></TD></TR>
+<TR><TD WIDTH=387><TT>---&gt; LIST hello.c</TT>
+</TD><TD WIDTH=375></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=782><TT>150 Opening ASCII mode data connection for /bin/ls.</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=782><TT>-rw-r--r-- 1 rstevens staff 38 Jul 17 12:47 hello.c</TT>
+</TD></TR>
+<TR><TD WIDTH=387><TT>226 Transfer complete.</TT>
+</TD><TD WIDTH=375></TD></TR>
+<TR><TD WIDTH=387><TT>remote: hello.c</TT>
+</TD><TD WIDTH=375><I>output by client</I>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=782><TT>56 bytes received in 0.03 seconds (1.8 Kbytes/s)</TT>
+</TD></TR>
+<TR><TD WIDTH=387><TT>ftp&gt; <B>quit</B></TT>
+</TD><TD WIDTH=375><I>we're done</I></TD>
+</TR>
+<TR><TD WIDTH=387><TT>---&gt; QUIT 221 Goodbye.</TT>
+</TD><TD WIDTH=375></TD></TR>
+</TABLE>
+<P>
+When the FTP client prompts us for a login name,
+it prints the default (our login name on the client). When we
+type the RETURN key, this default is sent.
+<P>
+Asking for a directory listing of a single file causes
+a data connection to be established and used. This example follows
+the procedure we showed in <a href="#fig_27_4">Figures 27.4</a> and <a href="#fig_27_5">27.5</a>. The client asks
+its TCP for an ephemeral port number for its end of the data connection,
+and sends this port number (1174) to the server in a PORT command.
+We can also see that a single interactive user command (<TT>dir</TT>)
+becomes two FTP commands (PORT and LIST).
+<P>
+Figure 27.6 is the time line of the packet exchange
+across the control connection. (We have removed the establishment
+and termination of the control connection, along with all the
+window size advertisements.) We note in this figure where the
+data connection is opened, used, and then closed.
+<P>
+<CENTER><a name="fig_27_6"><img src="f_27_6.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_27_6.gif"></a><br>
+<B>Figure 27.6</B> Control
+connection for FTP example.</CENTER>
+<P>
+Figure 27.7 is the time line for the data connection.
+The times in this figure are from the same starting point as Figure
+27.6. We have removed all window advertisements, but have left
+in the type-of-service field, to show that the data connection
+uses a different type-of-service (maximize throughput) than the
+control connection (minimize delay). (The TOS values are in <a href="ip_inter.htm#fig_3_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_2">Figure 3.2</a>.)
+<P>
+<CENTER><a name="fig_27_7"><img src="f_27_7.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_27_7.gif"></a><br>
+<B>Figure 27.7</B> Data
+connection for FTP example.</CENTER>
+<P>
+In this time line the FTP server does the active
+open of the data connection, from port 20 (called <TT>ftp-data</TT>),
+to the port number from the PORT command (1174). Also in this
+example, where the server writes to the data connection, the server
+does the active close of the data connection, which tells the
+client when the listing is complete.
+<H4>Connection Management: Default Data Port</H4>
+<P>
+If the client does not send a PORT command to the
+server, to specify the port number for the client's end of the
+data connection, the server uses the same port number for the
+data connection that is being used for the control connection.
+This can cause problems for clients that use the stream mode (which
+the Unix FTP clients and server always use), as we show below.
+<P>
+<FONT SIZE=-1>The Host Requirements RFC recommends that an FTP
+client using the stream mode send a PORT command to use a nondefault
+port number before each use of the data connection.</FONT>
+<P>
+Returning to the previous example (<a href="#fig_27_6">Figure 27.6</a>),
+what if we asked for another directory listing a few seconds after
+the first? The client would ask its kernel to choose another ephemeral
+port number (perhaps 1175) and the next data connection would
+be between <TT>svr4</TT> port 1175 and <TT>bsdi</TT>
+port 20. But in <a href="#fig_27_7">Figure 27.7</a> the server did the active close of
+the data connection, and we showed in <a href="tcp_conn.htm#18_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#18_6">Section 18.6</a> that the server
+won't be able to assign port 20 to the new data connection, because
+that local port number was used by an earlier connection that
+is still in the 2MSL wait state.
+<P>
+The server gets around this by specifying the <TT>SO_REUSEADDR</TT>
+option that we mentioned in <a href="tcp_conn.htm#18_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#18_6">Section 18.6</a>. This lets it assign
+port 20 to the new connection, and the new connection will have
+a different foreign port number (1175) from the one that's in
+the 2MSL wait (1174), so everything is OK.
+<P>
+This scenario changes if the client does not send
+the PORT command, specifying an ephemeral port number on the client.
+We can force this to happen by executing the user command <TT>sendport</TT>
+to the FTP client. Unix FTP clients use this command to turn off
+sending PORT commands to the server before each use of a data
+connection.
+<P>
+Figure 27.8 shows the time line only for the data
+connections for two consecutive LIST commands. The control connection
+originates from port 1176 on host <TT>svr4</TT>,
+so in the absence of PORT commands, the client and server use
+this same port number for the data connection. (We have removed
+the window advertisements and type-of-service values.)
+<P>
+<CENTER><a name="fig_27_8"><img src="f_27_8.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_27_8.gif"></a><br>
+<B>Figure 27.8</B> Data
+connection for two consecutive LIST commands.</CENTER>
+<P>
+The sequence of events is as follows.
+<P>
+<OL>
+<LI>The control connection is established from the
+client port 1176 to the server port 21. (We don't show this.)
+<P>
+<LI>When the client does the passive open for the
+data connection on port 1176, it must specify the <TT>SO_REUSEADDR</TT>
+option since that port is already in use by the control connection
+on the client.
+<P>
+<LI>The server does the active open of the data connection
+(segment 1) from port 20 to port 1176. The client accepts this
+(segment 2), even though port 1176 is already in use on the client,
+because the two socket pairs
+<P>
+<TT>&lt;svr4, 1176, bsdi, 21&gt;<BR>
+&lt;svr4, 1176, bsdi, 20&gt;</TT>
+<P>
+are different (the port numbers on <TT>bsdi</TT>
+are different). TCP demultiplexes incoming segments by looking
+at the source IP address, source port number, destination IP address,
+and destination port number, so as long as one of the four elements
+differs, all is OK.
+<P>
+<LI>The server does the active close of the data connection
+(segment 5), which puts the socket pair
+<P>
+<TT>&lt;svr4, 1176, bsdi, 20&gt;</TT>
+<P>
+in a 2MSL wait on the server.
+<P>
+<LI>The client sends another LIST command across the
+control connection. (We don't show this.) Before doing this the
+client does a passive open on port 1176 for its end of the data
+connection. The client must specify the <TT>SO_REUSEADDR</TT>
+option again, since the port number 1176 is already in use.
+<P>
+<LI>The server issues an active open for the data
+connection from port 20 to port 1176. Before doing this the server
+must specify <TT>SO_REUSEADDR</TT>, since
+the local port (20) is associated with a connection that is in
+the 2MSL wait, but from what we showed in <a href="tcp_conn.htm#18_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#18_6">Section 18.6</a>, the connection
+won't succeed. The reason is that the socket pair for the connection
+request equals the socket pair from step 4 that is still in a
+2MSL wait. The rules of TCP forbid the server from sending the
+SYN. There is no way for the server to override this 2MSL wait
+of the socket pair before reusing the same socket pair.
+<P>
+At this point the BSD server retries the connection
+request every 5 seconds, up to 18 times, for a total of 90 seconds.
+We see that segment 9 succeeds about 1 minute later. (We mentioned
+in <a href="tcp_conn.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm">Chapter 18</a> that SVR4 uses an MSL of 30 seconds, for a 2MSL
+wait of 1 minute.) We don't see any SYNs from these failures in
+this time line because the active opens fail and the server's
+TCP doesn't even send a SYN.
+</OL>
+<P>
+The reason the Host Requirements RFC recommends using
+the PORT command is to avoid this 2MSL wait between successive
+uses of a data connection. By continually changing the port number
+on one end, the problem we just showed disappears.
+<H4>Text File Transfer: NVT ASCII Representation or Image?</H4>
+<P>
+Let's verify that the transmission of a text file
+uses NVT ASCII by default. This time we don't specify the <TT>-d</TT>
+flag, so we don't see the client commands, but notice that the
+client still prints the server's responses:
+<P>
+<TABLE >
+<TR><TD WIDTH=448><TT>sun % <B>ftp bsdi</B></TT>
+</TD><TD WIDTH=320></TD></TR>
+<TR><TD WIDTH=448><TT>Connected to bsdi.</TT></TD><TD WIDTH=320>
+</TD></TR>
+<TR><TD WIDTH=448><TT>220 bsdi FTP server (Version 5.60) ready.</TT>
+</TD><TD WIDTH=320></TD></TR>
+<TR><TD WIDTH=448><TT>Name (bsdi:rstevens):</TT></TD><TD WIDTH=320><I>we type RETURN</I>
+</TD></TR>
+<TR><TD WIDTH=448><TT>331 Password required for rstevens.</TT>
+</TD><TD WIDTH=320></TD></TR>
+<TR><TD WIDTH=448><TT>Password:</TT></TD><TD WIDTH=320><I>we type our password</I>
+</TD></TR>
+<TR><TD WIDTH=448><TT>230 User rstevens logged in.</TT></TD><TD WIDTH=320>
+</TD></TR>
+<TR><TD WIDTH=448><TT>ftp&gt; <B>get hello.c</B></TT>
+</TD><TD WIDTH=320><I>fetch a file</I></TD>
+</TR>
+<TR><TD WIDTH=448><TT>200 PORT command successful.</TT></TD><TD WIDTH=320>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>150 Opening ASCII mode data connection for hello.c (38 bytes).</TT>
+</TD></TR>
+<TR><TD WIDTH=448><TT>226 Transfer complete.</TT></TD><TD WIDTH=320><I>server says file contains 38 bytes</I>
+</TD></TR>
+<TR><TD WIDTH=448><TT>local: hello.c remote: hello.c</TT></TD>
+<TD WIDTH=320><I>output by client</I></TD>
+</TR>
+<TR><TD WIDTH=448><TT>42 bytes received in 0.0037 seconds (11 Kbytes/s)</TT>
+</TD><TD WIDTH=320><I>42 bytes across data connection</I>
+</TD></TR>
+<TR><TD WIDTH=448><TT>ftp&gt; <B>quit</B></TT>
+</TD><TD WIDTH=320></TD></TR>
+<TR><TD WIDTH=448><TT>221 Goodbye.</TT></TD><TD WIDTH=320></TD>
+</TR>
+<TR><TD WIDTH=448><TT>sun % <B>ls -l hello.c</B></TT>
+</TD><TD WIDTH=320></TD></TR>
+<TR><TD WIDTH=448><TT>-rw-rw-r-1 rstevens 38 Jul 18 08:48 hello.c</TT>
+</TD><TD WIDTH=320><I>but file contains 38 bytes</I>
+</TD></TR>
+<TR><TD WIDTH=448><TT>sun % <B>wc -l hello.c</B></TT>
+</TD><TD WIDTH=320><I>count the lines in the file</I>
+</TD></TR>
+<TR><TD WIDTH=448><TT>4 hello.c</TT></TD><TD WIDTH=320></TD></TR>
+</TABLE>
+<P>
+Forty-two bytes are transferred across the data connection
+because the file contains four lines. Each Unix newline character
+(<TT>\n</TT>) is converted into the NVT ASCII
+2-byte end-of-line sequence (<TT>\r\n</TT>)
+by the server for transmission, and then converted back by the
+client for storage.
+<P>
+Newer clients attempt to determine if the server
+is of the same system type, and if so, transfer files in binary
+(image file type) instead of ASCII. This helps in two ways.
+<OL>
+<LI>The sender and receiver don't have to look at
+every byte (a big savings).
+<LI>Fewer bytes are transferred if the host operating
+system uses fewer bytes for the end-of-line than the 2-byte NVT
+ASCII sequence (a smaller savings).
+</OL>
+<P>
+We can see this optimization using a BSD/386 client
+and server. We'll enable the debug mode, to see the client FTP
+commands:
+<P>
+<TABLE>
+<TR><TD WIDTH=455><TT>bsdi % <B>ftp -d slip</B></TT>
+</TD><TD WIDTH=280><I>specify -d to see client commands</I>
+</TD></TR>
+<TR><TD WIDTH=455><TT>Connected to slip.</TT>
+</TD><TD WIDTH=280></TD></TR>
+<TR><TD WIDTH=455><TT>220 slip FTP server (Version 5.60) ready.</TT>
+</TD><TD WIDTH=280></TD></TR>
+<TR><TD WIDTH=455><TT>Name (slip:rstevens):</TT>
+</TD><TD WIDTH=280><I>we type RETURN</I></TD>
+</TR>
+<TR><TD WIDTH=455><TT>---&gt; USER rstevens</TT>
+</TD><TD WIDTH=280></TD></TR>
+<TR><TD WIDTH=455><TT>331 Password required for rstevens.</TT>
+</TD><TD WIDTH=280></TD></TR>
+<TR><TD WIDTH=455><TT>Password:</TT></TD>
+<TD WIDTH=280><I>we type our password</I>
+</TD></TR>
+<TR><TD WIDTH=455><TT>---&gt; PASS XXXX</TT>
+</TD><TD WIDTH=280></TD></TR>
+<TR><TD WIDTH=455><TT>230 User rstevens logged in.</TT>
+</TD><TD WIDTH=280></TD></TR>
+<TR><TD WIDTH=455><TT>---&gt; SYST</TT></TD>
+<TD WIDTH=280><I>this is sent automatically by client</I>
+</TD></TR>
+<TR><TD WIDTH=455><TT>215 UNIX Type: L8 Version: BSD-199103</TT>
+</TD><TD WIDTH=280><I>server's reply</I></TD>
+</TR>
+<TR><TD WIDTH=455><TT>Remote system type is UNIX.</TT>
+</TD><TD WIDTH=280><I>information output by client</I>
+</TD></TR>
+<TR><TD WIDTH=455><TT>Using binary mode to transfer files.</TT>
+</TD><TD WIDTH=280><I>information output by client</I>
+</TD></TR>
+<TR><TD WIDTH=455><TT>ftp&gt; <B>get hello.c</B></TT>
+</TD><TD WIDTH=280><I>fetch a file</I></TD>
+</TR>
+<TR><TD WIDTH=455><TT>---&gt; TYPE I</TT>
+</TD><TD WIDTH=280><I>sent automatically by client</I>
+</TD></TR>
+<TR><TD WIDTH=455><TT>200 Type set to I.</TT>
+</TD><TD WIDTH=280></TD></TR>
+<TR><TD WIDTH=455><TT>---&gt; PORT 140,252,13,66,4,84</TT>
+</TD><TD WIDTH=280><I>port number=4x256+84=1108</I>
+</TD></TR>
+<TR><TD WIDTH=455><TT>200 PORT command successful.</TT>
+</TD><TD WIDTH=280></TD></TR>
+<TR><TD WIDTH=455><TT>---&gt; RETR hello.c</TT>
+</TD><TD WIDTH=280></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=690><TT>150 Opening BINARY mode data connection for hello.c (38 bytes).</TT>
+</TD></TR>
+<TR><TD WIDTH=455><TT>226 Transfer complete.</TT>
+</TD><TD WIDTH=280></TD></TR>
+<TR><TD WIDTH=455><TT>38 bytes received in 0.035 seconds (1.1 Kbytes/s)</TT>
+</TD><TD WIDTH=280><I>only 38 bytes this time</I></TD></TR>
+<TR><TD WIDTH=455><TT>ftp&gt; <B>quit</B></TT>
+</TD><TD WIDTH=280></TD></TR>
+<TR><TD WIDTH=455><TT>---&gt; QUIT</TT></TD>
+<TD WIDTH=280></TD></TR>
+<TR><TD WIDTH=455><TT>221 Goodbye.</TT></TD>
+<TD WIDTH=280></TD></TR>
+</TABLE>
+<P>
+After we login to the server, the client FTP automatically
+sends the SYST command, which the server responds to with its
+system type. If the reply begins with the string &quot;<TT>215
+UNIX Type: L8</TT>&quot;, and if the client is running
+on a Unix system with 8 bits per byte, binary mode (image) is
+used for all file transfers, unless changed by the user.
+<P>
+When we fetch the file <TT>hello.c</TT>
+the client automatically sends the command TYPE I to set the file
+type to image. Only 38 bytes are transferred across the data connection.
+<P>
+<FONT SIZE=-1>The Host Requirements RFC says an FTP server must
+support the SYST command (it was an option in RFC 959). But the
+only systems used in the text (see inside front cover) that support
+it are BSD/386 and AIX 3.2.2. SunOS 4.1.3 and Solaris 2.x reply
+with 500 (command not understood). SVR4 has the extremely unsocial
+behavior of replying with 500 <I>and</I> closing the control connection!
+</FONT>
+<H4>Aborting A File Transfer: Telnet Synch Signal</H4>
+<P>
+We now look at how the FTP client aborts a file transfer
+from the server. Aborting a file transfer from the client to the
+server is easy - the client stops sending data across the data
+connection and sends an ABOR to the server on the control connection.
+Aborting a receive, however, is more complicated, because the
+client wants to tell the server to stop sending data immediately.
+We mentioned earlier that the Telnet synch signal is used, as
+we'll see in this example.
+<P>
+We'll initiate a receive and type our interrupt key
+after it has started. Here is the interactive session, with the
+initial login deleted:
+<TABLE>
+<TR><TD WIDTH=346><TT>ftp&gt; <B>get a.out</B></TT>
+</TD><TD WIDTH=383><I>fetch a large file</I>
+</TD></TR>
+<TR><TD WIDTH=346><TT>---&gt; TYPE I</TT></TD><TD WIDTH=383><I>client and server are both 8-bit byte Unix systems</I>
+</TD></TR>
+<TR><TD WIDTH=346><TT>200 Type set to I.</TT></TD><TD WIDTH=383>
+</TD></TR>
+<TR><TD WIDTH=346><TT>---&gt; PORT 140,252,13,66,4,99</TT></TD>
+<TD WIDTH=383></TD></TR>
+<TR><TD WIDTH=346><TT>200 PORT command successful.</TT></TD><TD WIDTH=383>
+</TD></TR>
+<TR><TD WIDTH=346><TT>---&gt; RETR a.out</TT></TD><TD WIDTH=383>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=769><TT>150 Opening BINARY mode data connection for a.out (28672 bytes).</TT>
+</TD></TR>
+<TR><TD WIDTH=346><TT><B>^?</B></TT>
+</TD><TD WIDTH=383><I>type our interrupt key</I>
+</TD></TR>
+<TR><TD WIDTH=346><TT>receive aborted</TT></TD><TD WIDTH=293><I>output by client</I>
+</TD></TR>
+<TR><TD WIDTH=346><TT>waiting for remote to finish abort</TT>
+</TD><TD WIDTH=383><I>output by client</I>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=769><TT>426 Transfer aborted. Data connection closed.</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=769><TT>226 Abort successful</TT></TD>
+</TR>
+<TR><TD COLSPAN=2 WIDTH=769><TT>1536 bytes received in 1.7 seconds (0.89 Kbytes/s)</TT>
+</TD></TR>
+</TABLE>
+<P>
+After we type our interrupt key, the client immediately
+tells us it initiated the abort and is waiting for the server
+to complete. The server sends two replies: 426 and 226. Both replies
+are sent by the Unix server when it receives the urgent data from
+the client with the ABOR command.
+<P>
+Figures 27.9 and 27.10 show the time line for this
+session. We have combined the control connection (solid lines)
+and the data connection (dashed lines) to show the relationship
+between the two.
+<P>
+<CENTER><a name="fig_27_9"><img src="f_27_9.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_27_9.gif"></a><br>
+<B>Figure 27.9</B> Aborting
+a file transfer (first half).</CENTER>
+<P>
+The first 12 segments in Figure 27.9 are what we
+expect. The commands and replies across the control connection
+set up the file transfer, the data connection is opened, and the
+first segment of data is sent from the server to the client.
+<P>
+<CENTER><a name="fig_27_10"><img src="f_27_10.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_27_10.gif"></a><br>
+<B>Figure 27.10</B> Aborting
+a file transfer (second half).</CENTER>
+<P>
+In Figure 27.10, segment 13 is the receipt of the
+sixth data segment from the server on the data connection, followed
+by segment 14, which is generated by our typing the interrupt
+key. Ten bytes are sent by the client to abort the transfer:
+<P>
+&lt;IAC, IP, IAC, DM, <TT>A</TT>,
+<TT>B</TT>, <TT>O</TT>,
+<TT>R</TT>, <TT>\r</TT>,
+<TT>\n</TT>&gt;
+<P>
+We see two segments (14 and 15) because of the problem
+we detailed in <a href="tcp_bulk.htm#20_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#20_8">Section 20.8</a> dealing with TCP's urgent pointer.
+(We saw the same handling of this problem in <a href="telnet.htm#fig_26_17" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/telnet.htm#fig_26_17">Figure 26.17</a> with
+Telnet.) The Host Requirements RFC says the urgent pointer should
+point to the last byte of urgent data, while most Berkeley-derived
+implementations have it point 1 byte beyond the last byte of urgent
+data. The FTP client purposely writes the first 3 bytes as urgent
+data, knowing the urgent pointer will (incorrectly) point to the
+next byte that is written (the data mark, DM, at sequence number
+54). This first write with 3 bytes of urgent data is sent immediately,
+along with the urgent pointer, followed by the next 7 bytes. (The
+BSD FTP server does not have a problem with which interpretation
+of the urgent pointer is used by the client. When the server receives
+urgent data on the control connection it reads the next FTP command,
+looking for ABOR or STAT, ignoring any embedded Telnet commands.)
+<P>
+Notice that despite the server saying the transfer
+was aborted (segment 18, on the control connection), the client
+receives 14 more segments of data (sequence numbers 1537 through
+5120) on the data connection. These segments were probably queued
+in the network device driver on the server when the abort was
+received, but the client prints &quot;1536 bytes received&quot;
+meaning it ignores all the segments of data that it receives (segments
+17 and later) after sending the abort (segments 14 and 15).
+<P>
+In the case of a Telnet user typing the interrupt
+key, we saw in <a href="telnet.htm#fig_26_17" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/telnet.htm#fig_26_17">Figure 26.17</a> that by default the Unix client does
+not send the interrupt process command as urgent data. We said
+this was OK because there is little chance that the flow of data
+from the client to the server is stopped by flow control. With
+FTP the client is also sending an interrupt process command across
+the control connection, and since two connections are being used
+there is little chance that the control connection is stopped
+by flow control. Why does FTP send the interrupt process command
+as urgent data when Telnet does not? The answer is that FTP uses
+two connections, whereas Telnet uses one, and on some operating
+systems it may be hard for a process to monitor two connections
+for input at the same time. FTP assumes that these marginal operating
+systems at least provide notification that urgent data has arrived
+on the control connection, allowing the server to then switch
+from handling the data connection to the control connection.
+<H4>Anonymous FTP</H4>
+<P>
+One form of FTP is so popular that we'll show an
+example of it. It's called <I>anonymous FTP,</I> and when supported
+by a server, allows anyone to login and use FTP to transfer files.
+Vast amounts of free information are available using this technique.
+<P>
+How to find which site has what you're looking for
+is a totally different problem. We mention it briefly in <a href="other.htm#30_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/other.htm#30_4">Section 30.4</a>.
+<P>
+We'll use anonymous FTP to the site <TT>ftp.uu.net</TT>
+(a popular anonymous FTP site) to fetch the errata file for this
+book. To use anonymous FTP we login with the username of &quot;anonymous&quot;
+(you learn to spell it correctly after a few times). When prompted
+for a password we type our electronic mail address.
+<TABLE>
+<TR><TD WIDTH=310><TT>sun % <B>ftp ftp.uu.net</B></TT>
+</TD><TD WIDTH=387></TD></TR>
+<TR><TD WIDTH=310><TT>Connected to ftp.uu.net.</TT></TD><TD WIDTH=387>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=797><TT>220 ftp.UU.NET FTP server (Version 2.0WU(13) Fri Apr 9 20:44:32 EDT 1993) ready.</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=797><TT>Name (ftp.uu.net:rstevens): <B>anonymous</B></TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=797><TT>331 Guest login ok, send your complete e-mail address as password.</TT>
+</TD></TR>
+<TR><TD WIDTH=310><TT>Password:</TT></TD><TD WIDTH=387><I>we type</I> rstevens@noao.edu; <I>it's not echoed</I>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=797><TT>230-</TT></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=797><TT>230- Welcome to the UUNET archive.</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=797><TT>230- A service of UUNET Technologies Inc, Falls Church, Virginia</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=797><TT>230- For information about UUNET, call +1 703 204 8000, or see the files</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=797><TT>230- in /uunet-info</TT></TD>
+</TR>
+<TR><TD WIDTH=310></TD><TD WIDTH=387><I>more greeting lines</I>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=797><TT>230 Guest login ok, access restrictions apply.</TT>
+</TD></TR>
+<TR><TD WIDTH=310><TT>ftp&gt; <B>cd published/books</B></TT>
+</TD><TD WIDTH=387><I>change to the desired directory</I>
+</TD></TR>
+<TR><TD WIDTH=310><TT>250 CWD command successful.</TT></TD><TD WIDTH=387>
+</TD></TR>
+<TR><TD WIDTH=310><TT>ftp&gt; <B>binary</B></TT>
+</TD><TD WIDTH=387><I>we'll transfer a binary file</I>
+</TD></TR>
+<TR><TD WIDTH=310><TT>200 Type set to I.</TT></TD><TD WIDTH=387>
+</TD></TR>
+<TR><TD WIDTH=310><TT>ftp&gt; <B>get stevens.tcpipivl.errata.Z</B></TT>
+</TD><TD WIDTH=387><I>fetch the file</I></TD>
+</TR>
+<TR><TD WIDTH=310><TT>200 PORT command successful.</TT></TD><TD WIDTH=387>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=797><TT>150 Opening BINARY mode data connection for stevens.tcpipivl.errata.Z (105 bytes).</TT>
+</TD></TR>
+<TR><TD WIDTH=310><TT>226 Transfer complete,</TT></TD><TD WIDTH=387><I>(you may get a different file size)</I>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=797><TT>local: stevens.tcpipivl.errata.Z remote: stevens.tcpipivl.errata.Z</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=797><TT>105 bytes received in 4.1 seconds (0.83 Kbytes/s)</TT>
+</TD></TR>
+<TR><TD WIDTH=310><TT>ftp&gt; <B>quit</B></TT>
+</TD><TD WIDTH=387></TD></TR>
+<TR><TD WIDTH=310><TT>221 Goodbye.</TT></TD><TD WIDTH=387></TD>
+</TR>
+<TR><TD COLSPAN=2 WIDTH=797><TT>sun % <B>uncompress stevens.tcpipivl.errata.Z</B></TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=797><TT>sun % <B>more stevens.tcpipivl.errata</B></TT>
+</TD></TR>
+</TABLE>
+<P>
+The <TT>uncompress</TT> is because
+many files available for anonymous FTP are compressed using the
+Unix <TT>compress</TT>(l) program, resulting
+in a file extension of <TT>.Z</TT>. These
+files must be transferred using the binary file type, not the
+ASCII file type.
+<H4>Anonymous FTP from an Unknown IP Address</H4>
+<P>
+We can tie together some features of routing and
+the Domain Name System using anonymous FTP. In <a href="dns_the.htm#14_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dns_the.htm#14_5">Section 14.5</a> we
+talked about pointer queries in the DNS - taking an IP address
+and returning the hostname. Unfortunately not all system administrators
+set up their name servers correctly with regard to pointer queries.
+They often add new hosts to the file required for name-to-address
+mapping, but forget to add them to the file for address-to-name
+mapping. We often see this with <TT>traceroute</TT>,
+when it prints an IP address instead of a hostname.
+<P>
+Some anonymous FTP servers require that the client
+have a valid domain name. This allows the server to log the domain
+name of the host that's doing the transfer. Since the only client
+identification the server receives in the IP datagram from the
+client is the IP address of the client, the server can call the
+DNS to do a pointer query, and obtain the domain name of the client.
+If the name server responsible for the client host is not set
+up correctly, this pointer query can fail. To see this error we'll
+do the following steps.
+<OL>
+<LI>Change the IP address of our host <TT>slip</TT>
+(see the figure on the inside front cover) to 140.252.13.67. This
+is a valid IP address for the author's subnet, but not entered
+into the name server for the <TT>noao.edu</TT>
+domain.
+<LI>Change the destination IP address of the SLIP
+link on <TT>bsdi</TT> to 140.252.13.67.
+<LI>Add a routing table entry on <TT>sun</TT>
+that directs datagrams for 140.252.13.67 to the router <TT>bsdi</TT>.
+(Recall our discussion of this routing table in <a href="ip_rout.htm#9_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_2">Section 9.2</a>.)
+</OL>
+<P>
+Our host <TT>slip</TT> is still
+reachable across the Internet, because we saw in <a href="dynamic.htm#10_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dynamic.htm#10_4">Section 10.4</a>
+that the routers <TT>gateway</TT> and <TT>netb</TT>
+just sent any datagram destined for the subnet 140.252.13 to the
+router <TT>sun</TT>. Our router <TT>sun</TT>
+knows what to do with these datagrams from the routing table entry
+we made in step 3 above. What we have created is a host with complete
+Internet connectivity, but without a valid domain name. That is,
+a pointer query for the IP address 140.252.13.67 will fail.
+<P>
+We now use anonymous FTP to a server that we know
+requires a valid domain name:
+<TABLE>
+<TR><TD WIDTH=716><TT>slip % <B>ftp ftp.uu.net</B></TT>
+</TD></TR>
+<TR><TD WIDTH=716><TT>Connected to ftp.uu.net.</TT></TD></TR>
+<TR><TD WIDTH=716><TT>220 ftp.UU.NET FTP server (Version 2.0WU(13) Fri Apr 9 20:44:32 EDT 1993) ready.</TT>
+</TD></TR>
+<TR><TD WIDTH=716><TT>Name (ftp.uu.net:rstevens): <B>anonymous</B></TT>
+</TD></TR>
+<TR><TD WIDTH=716><TT>530- Sorry, we're unable to map your IP address 140.252.13.67 to a hostname</TT>
+</TD></TR>
+<TR><TD WIDTH=716><TT>530- in the DNS. This is probably because your nameserver does not have a</TT>
+</TD></TR>
+<TR><TD WIDTH=716><TT>530- PTR record for your address in its tables, or because your reverse</TT>
+</TD></TR>
+<TR><TD WIDTH=716><TT>530- nameservers are not registered. We refuse service to hosts whose</TT>
+</TD></TR>
+<TR><TD WIDTH=716><TT>530- names we cannot resolve. If this is simply because your nameserver is</TT>
+</TD></TR>
+<TR><TD WIDTH=716><TT>530- hard to reach or slow to respond then try again in a minute or so, and</TT>
+</TD></TR>
+<TR><TD WIDTH=716><TT>530- perhaps our nameserver will have your hostname in its cache by then.</TT>
+</TD></TR>
+<TR><TD WIDTH=716><TT>530- If not, try reaching us from a host that is in the DNS or have your</TT>
+</TD></TR>
+<TR><TD WIDTH=716><TT>530- system administrator fix your servers. </TT>
+</TD></TR>
+<TR><TD WIDTH=716><TT>530 User anonymous access denied..</TT>
+</TD></TR>
+<TR><TD WIDTH=716><TT>Login failed.</TT></TD></TR>
+<TR><TD WIDTH=716><TT>Remote system type is UNIX.</TT></TD></TR>
+<TR><TD WIDTH=716><TT>Using binary mode to transfer files.</TT>
+</TD></TR>
+<TR><TD WIDTH=716><TT>ftp&gt; <B>quit</B></TT>
+</TD></TR>
+<TR><TD WIDTH=716><TT>221 Goodbye.</TT></TD></TR>
+</TABLE>
+<P>
+The error reply from the server is self-explanatory.
+<a name="27_4"><H3>27.4 Summary</H3></a>
+<P>
+FTP is the Internet standard for file transfer. Unlike
+most other TCP applications, it uses two TCP connections between
+the client and server-a control connection that is left up for
+the duration of the client-server session, and a data connection
+that is created and deleted as necessary.
+<P>
+The connection management used by FTP for the data
+connection has let us examine in more detail the connection management
+requirements of TCP. We saw the interaction of TCP's 2MSL wait
+state on clients that don't issue PORT commands.
+<P>
+FTP uses NVT ASCII from Telnet for all commands and
+replies across the control connection. The default data transfer
+mode is often NVT ASCII also. We saw that newer Unix clients automatically
+send a command to see if the server is an 8-bit byte Unix host,
+and if so, use binary mode for all file transfers, which is more
+efficient.
+<P>
+We also showed an example of anonymous FTP, a popular
+form of software distribution on the Internet.
+<H4>Exercises</H4>
+<P>
+<B>27.1</B> In <a href="#fig_27_8">Figure 27.8</a>, what
+would change if the client did the active open of the second data
+connection instead of the server?
+<P>
+<B>27.2</B> In the FTP client
+examples in this chapter we added the notation to lines such as
+<P>
+<TT>local: hello.c remote: hello.c<BR>
+42 bytes received in 0.0037 seconds
+(11 Kbytes/s)</TT>
+<P>
+that the lines were output by the client. Without
+looking at the source code, how are we certain these are not from
+the server?
+</BODY>
+</HTML>

@@ -1,0 +1,406 @@
+Return-Path: <wirepair@roguemail.net>
+
+
+Sure, I must admit I forget which list you moderate. If
+you would like you can just forward this message, Thanks.
+Hacking Citrix:
+
+- Introduction
+- How Citrix Works
+- Peeling Citrix Back
+- Securing Citrix... Sort of.
+
+.Introduction
+
+Citrix is a Remote Desktop application that is becoming
+widely popular. It is built off of Microsoft's
+Terminal Services RDP (Remote Desktop Protocol). Unlike
+Terminal Services, Citrixs' lines of products allow the
+administrator to specify certain applications to be run on
+the server. This allows them to control which programs
+they want to allow the end user to execute. There exists
+an interesting gray line for the security of citrix
+applications
+due to the mixing of both citrix technology, and microsoft
+technology. With an application that allows users remote
+access
+to not only published programs, but remote desktops, a
+serious threat arises.
+
+In this paper I will be outlining how citrix works, and
+how to take advantage of the way citrix handles user
+access to programs.
+
+Corrections have been provided to me by Brian Madden
+(Author of Citrix MetaFrame XP: Advanced Technical Design
+Guide.)
+Note: I'm not a Citrix Administrator some of the
+descriptions of the product maybe faulty but this is not
+the main focus
+of this paper. For corrections please email me at
+wirepair@roguemail.net
+
+.How Citrix Works
+
+There are multiple solutions that citrix has available and
+I will list them here.
+
+- Citrix MetaFrame
+   Citrix MetaFrame has three different suits in its
+family; XPs, XPa, and XPe. Each come with a different set
+of tools and
+applications to help the administrator. XPe is fully
+featured with many different management options. XPa and
+XPe have
+slightly less. For this paper I will be discussing just
+XPe, but most of these tactics also apply to the other
+versions.
+Citrix uses XML over whatever port you want usually port
+80 to begin communication. Citrix listens by default on
+port
+1494 and must be connected to using the Citrix ICA client
+which can be downloaded for free from their web site.
+
+- Citrix NFuse/Citrix Secure Gateway
+   Citrix NFuse allows the administrator to lock down
+applications even further by only allowing connections in
+through
+a web browser. NFuse itself sits on IIS 5.0 by default but
+I have seen papers detailing how to set it up on apache.
+You probably understand the concerns regarding NFuse
+sitting on IIS by default and we will touch on that
+subject later.
+All communication is done over SSL at 128-bit encryption,
+IF specified.
+
+A common setup with NFuse for remote access allows the
+administrator to also implement Citrix Secure Gateway. If
+they
+properly configure NFuse, the remote user should not be
+able to directly access the Citrix Server itself. Instead,
+all connections are filtered through the NFuse server
+through the Secure Gateway connection. Here's a diagram to
+make this
+a bit easier to understand.
+[user]--->[router]--->[firewall]
+		      | |  |
+	              |	|  +-[DMZ]-->[Citrix NFuse Server]
+		      |	|    | |	    [Citrix Secure Gateway]
+                       | +----+ |              |
+		      |        +--------------+
+                       |
+                [Citrix Server]
+
+I hope that makes more sense... and you can follow my
+horrible diagram I probably confused you more.
+Now the user does not have a direct connection to the
+Citrix Server but instead follows through the DMZ ->
+internal network.
+In a configuration with the default NFuse setup (without
+Secure Gateway) the user first hits the NFuse web server,
+then
+once the published application is established, the user
+makes a direct connection to the Citrix Server. You can
+see the problem
+with this, the user can still *directly* access the Citrix
+Server and after using the published application scanner,
+gather their own list of published applications and then
+create their own .ica file containing the information they
+specify. This also means, if this configuration is for an
+external network, two holes are punched through the
+firewall,
+one for the IIS server *shudder* and one for Citrix. You
+can scan port 1494 to see if this holds true.
+
+Citrix MetaFrame usually has a very helpful management
+console which enables the administrator to set users and
+publish
+applications with relative ease. A citrix network without
+NFuse uses Independent Computing Architecture (.ICA) files
+which is a text based document that contains all of the
+configuration options and settings. These files are given
+to
+the end user who, after having the citrix client
+installed, clicks on the file and automatically connects
+to the server
+specified in the .ica file.
+
+If NFuse is in use, then these .ICA files are usually not
+required. A user opens a web browser, goes to the NFuse
+web
+server and logs in using his Domain/NT account. After this
+is successful the user is given a list of applications
+which
+they may use to access the servers or Citrix Farm.
+
+.Peeling Citrix Back
+There are so many ways to get a remote desktop on a citrix
+host its impossible for me to know where to begin. I
+imagine
+the first thing people want is remote access so let us
+begin there. Recently Ian Vitek of ixsecurity has released
+some very helpful perl tools. I use these a lot now and I
+must give him props on them. The tool I use most is
+Citrix published application scanner [you can find these
+tools at:
+http://www.securiteam.com/exploits/5CP0B1F80S.html].
+This tool enumerates the published applications that are
+allowed on the remote server. This comes in handy when
+you're
+'knocked out' of the regular login process, such as a
+script to automatically log a user out. After getting a
+list of
+the published applications, you can then modify your ICA
+file with the published application information.  At this
+point
+you can attempt to brute force login attempts, I
+personally find backup accounts to be very helpful.  If
+you find a 'test'
+account or backup account has a guess able password you're
+in luck. I find variants of test and citrixtest almost
+always
+existent.
+
+So lets assume at this point you have access to the citrix
+server. And lets suppose you are denied login, maybe guest
+doesn't have enough privileges to follow through the login
+process. Now, if you used the citrix application scanner
+and gathered a list of applications try this trick. I
+haven't seen this published and maybe this is a citrix
+flaw
+or maybe its expected. But citrix appears to only look at
+the [Application Name] in the .ICA file when verifying
+which
+application to run. So here is a regular published
+application file:
+
+[WFClinet]
+Version=2
+TcpBrowserAddress=ip.ip.ip.ip
+
+[ApplicationServers]
+word=
+
+[word]
+Address=word
+InitialProgram=#word
+TransportDriver=TCP/IP
+WinStationDriver=ICA 3.0
+DesiredHRES=800
+DesiredVRES=600
+
+So what happens if we modify the InitialProgram from #word
+to cmd.exe? or explorer.exe? Well, it happily runs what
+ever application we specify in that field. I've used this
+tactic numerous times to bypass faulty login processes.
+Just
+make sure that the application in the brackets and the
+Address is legitimate otherwise you'll get some
+interesting
+errors. So now we have a remote command prompt on the
+citrix server. Or if you like a gui and you decide you
+want this after you run cmd.exe, no problem just type in
+explorer.exe you'll get a little prompt stating that
+you are now starting a seamless remote desktop session :).
+So now you have a desktop. I'd hope at this point you
+would
+know enough to elevate your privileges so I will not cover
+that aspect. An interesting note, even when I logged in as
+guest
+to a citrix server, I was able to access the
+Administrative tools. Obviously this is rather alarming
+and to be honest
+I myself was rather surprised. I'd suggest looking at the
+user accounts to see if you can find more accounts that
+would
+most likely have default/easily guessed passwords. Never
+underestimate the power of shitty password choosing. Just
+so
+you know you are not *really* administrator, just try
+changing a password.
+
+
+So what if they are using NFuse with Citrix Secure Gateway
+and filtering all traffic through a firewall?
+Then you can not modify your .ica file in this aspect.
+Once again there are multiple ways of getting a remote
+desktop. A lot of times citrix administrators have
+published applications such as office. What a wonderful
+piece of
+software. If you have access to excel, look into vbscript
+macros for starting explorer.exe.  Or if your lazy like
+me,
+just View as Web page. This will open Internet Explorer
+and allow you to execute C:\winnt\explorer.exe. This trick
+also
+works for Microsoft Word and I assume other office
+products. In fact, most programs have a help -> View
+online help option.
+So this will also execute Internet Explorer if it is set
+to the default browser. Another issue is 'winhelp32', most
+programs have this built in, and guess what? You can "Jump
+to URL." Now you can put cmd.exe on a remote web server,
+jump
+to the url and download it. If you have write access your
+set. Modify your .ica file to execute this upon logon and
+you now have your shell.
+
+If you compromise a machine that has citrix installed, and
+you have sufficient privileges, Citrix stores all of its
+connections
+for the Citrix Program Neighborhood in a well known
+directory.
+- In NT4 browse to
+%systemroot%\profiles\username\Application Data\
+- In Win2k browse to C:\Documents and
+Settings\username\Application Data\
+steal the ICAClient directory and copy it to your
+%systemroot%\profiles\youruser\Application Data\ or
+C:\Documents and Settings\profiles\youruser\Application
+Data\ and then open Citrix Program Neighborhood. You'll
+notice
+all of that users connections. If they are using Citrix
+chances are they are lazy as well and most likely cache
+their
+passwords.  Use Revelation or another 'password reveler'
+and viola you have their password for that connection.
+
+Sniffing is yet another concern, dsniff has citrix
+sniffing capabilities and this may become a real problem
+when
+used in conjunction with arp cache poisoning.
+
+.Securing Citrix
+
+First off I'd like to say good luck. Here are some tips
+that may help an administrator locking down a Citrix
+Server.
+I spent the last few days attempting to come up with a
+magical Group Policy for windows that will lock programs
+down.
+The goal is to make it so a user may not use any programs
+which may be used to upload or transfer files to the
+citrix host.
+- Securing Externally
+1. Use the NFuse / Citrix Secure Gateway configuration
+such as the one I displayed earlier in this text.
+2. Make sure the IIS/Apache server is completely locked
+down and resides in the DMZ. Require .htaccess
+or NTLM authentication to even access the webroot of the
+NFuse server.
+3. If possible, require remote users to use SecureID for
+authentication. This gets pricy so is most likely
+not going to be an option for most people.
+4. Use a different browser than Internet Explorer per
+default. Most applications use the "default browser" for
+online
+help pages. If you install Netscape and set this as the
+default browser they will not be able to execute
+applications
+such as cmd.exe/explorer.exe.
+5. Make a group and put all remote citrix users in this
+group. Deny access (using ntfs) to cmd.exe, ftp.exe,
+tftp.exe, rcp.exe, net.exe
+and any other programs that they may execute to transfer
+files to the citrix server. I did not test whether or not
+this may break login scripts so be sure to test this
+before it is put in to production.
+6. Keep up to date on all patches for your citrix server,
+If you keep up to date on your patching you'll not need to
+worry about
+privilege escalation exploitation.
+7. Since there are ways to bypass the 'default browser'
+such as winhelp32. You can attempt to set security
+settings under
+internet options to restrict to only allow certain web
+pages. This will hopefully disallow someone from
+downloading their
+own cmd.exe.
+8. Although I've not attempted this and it may only work
+in certain situations. Disallow write access to the citrix
+server itself. This way they can not upload their own
+files. This may only be possible to achieve if you also
+disallow
+users mapping their drives to the server. Remember, users
+can map their drives and run their tools from their local
+machine.
+I'm quite sure this runs under the citrix localsystem
+context, I may be incorrect on this point.
+9. If possible, disallow users from mapping their drives.
+You can do this via the Citrix Connection Configuration
+double click on ica-tcp, select 'client settings.' And
+select the necessary boxes.
+
+ADDITIONS:
+The following fixes have been provided to me by Brian
+Madden. One of these fixes will disallow the changing of
+the
+InitialProgram. I thank Brian again for bringing these to
+my attention.
+1. Disable MetaFrame XP server broadcast response. CMC |
+Right-click on farm | MetaFrame Settings tab | Uncheck the
+two boxes in the "Broadcast Response" section. This will
+prevent that perl scanner from working.
+
+2. Configure your MetaFrame XP servers so that users can
+only run published applications.
+(Citrix Connection Configuration | double-click "ica-tcp"
+| Advanced button | Check "Only run published
+applications"
+  in the "Initial Program" section). I'd suggest first
+adding a published application for 'remote desktop' and
+only
+allow administrators to use this feature.
+
+3. This exploit does work on MetaFrame XP with Service
+Pack 2 and Feature Release 2. (The most recent version)
+
+- Securing Internally
+   Try using the same steps as listed for external, if you
+can segment your network access via a firewall + citrix
+secure gateway you are much better off then leaving it on
+the same segment. Other than that I know of no real
+good procedures for securing internally.
+
+
+
+.Questions Comments?
+This is my first paper regarding Citrix and most likely as
+I play with it more I'll add more additions. Feel free
+to email me at wirepair@roguemail.net. Disregard the lame
+banner underneath my emails, its free, and its email...
+
+Hope this helps some people realize the serious flaws with
+using citrix. It's a good idea, just not when used in
+conjunction with Microsoft Windows :(.
+
+.Editorial Note:
+After attempting to contact Citrix regarding the cmd.exe
+insert flaw, they told me this rather amusing story.
+Since I do not have a tech support agreement with citrix,
+it would cost me 400$ per incident to report this.
+I was rather astounded and made quite sure this was true.
+Here is the dialogue:
+
+citrix: We are sorry sir, you do not currently have a tech
+support agreement with us. Without one, contacting
+tech support to report this issue will cost you 400$,
+would you like to charge this to a credit card?
+
+me: Wait, so let me get this straight, I pay you 400$ to
+do you a favor by telling you, you have a possible
+security
+flaw with your program?
+
+citrix: Yes *nervous giggle* we are sorry but it is the
+only way to contact tech support, they won't even let me
+transfer
+you over.
+
+me: Ok so I have to release this to everyone and have your
+engineers find and possibly scramble to fix this issue?
+
+citrix: Yes *nervous giggle again* *mentions something
+about going through my reseller*
+
+me: Ok looks like I'll release it, Thank you.

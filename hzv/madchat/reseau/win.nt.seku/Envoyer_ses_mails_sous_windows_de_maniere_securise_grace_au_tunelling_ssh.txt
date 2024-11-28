@@ -1,0 +1,157 @@
+Ce document devrait être considéré comme un QuickStart sur le thème : 
+
+  'Envoyer ses mails sous Windows de manière sécurisé grâce au tunelling SSH'
+  
+Le concept consiste à envoyer vos mails par un tunel securisé et crypté entre vous et le serveur,
+De plus, personne ne saura qui vous êtes, ni votre IP. Cette méthode permet aussi d'éviter
+les sniffers d'eMails et les logs installés chez les ISP :)
+
+Si vous utilisez nunux, vous devriez plutôt consulter :
+
+'Envoyer vos eMails par tunel SSH, en evitant donc le sniff et log effectue par vos providers et les RG'
+ dispo à : http://madchat.org/netadm/guide.unix/smtp-ssh-tunel.html
+
+Vous verrez que cette doc s'en est fortement inspiré ;)
+
+
+
+1 .    P O U R   C O M M E N C E R
+
+Il vous faut un accès SSH chez un provider, un hébergeur de sites, un pote qui a
+un serveur mail ... Si l'admin est parano et ne veut pas vous donner un vrai compte,
+dites lui de mettre "/bin/false" comme shell pour votre compte, ainsi vous ne pourrez
+pas vous connecter sur la machine en tant qu'user, mais vous pourrez quand
+meme vous en servir comme relais SMTP, et meme le partager avec vos potes :)
+c.f. unix: http://madchat.org/netadm/guide.unix/smtp-ssh-tunel.html
+
+
+2 .   L E S   C O U R S E S
+
+Il vous faut :  OpenSSH for Windows 
+  dispo sur : http://lexa.mckenna.edu/sshwindows/download/releases/
+
+et : Hide
+  dispo sur : http://setihfr.free.fr/jwhy/hide.zip
+  Hide est une commande qui permet de masquer/montrer des fenêtres.
+  On en aura besoin, vous comprendrez pourquoi ;)
+
+
+
+3 .   I N S T A L L A T I O N
+
+- Dézippez 'hide.zip' et copiez 'hide.exe' dans %WINDIR%\STSTEM32\
+
+- Dézippez OpenSSH for Windows, et installez le, c'est un 'setup.exe' ;)
+  Note : Installez le dans 'c:\openssh' et non pas dans 'c:\program files\openssh'. 
+         Mieux vaut rester prudent avec ces bestioles..
+  
+- Le Setup vous recommendera de lire 'quickstart.txt' pour terminer l'install de OpenSSH, 
+  mais laissez tomber, vous ferez joujou avec ça plus tard..
+
+
+
+4 .   I N   Z E   T U N E L 
+
+pour eviter d'avoir à taper le passe du shell à chaque fois que le tunnel se lance, 
+Il va falloir créer une paire de clés et copier la clé ssh publique dans celle du shell..
+
+- ouvrez une console, et tapez : 
+  > cd openssh\bin
+  > ssh-keygen -t rsa
+
+  Generating public/private rsa key pair.
+  Enter file in which to save the key (/cygdrive/c/.ssh/id_rsa): ma_cle
+  Enter passphrase (empty for no passphrase): [ENTER]
+  Enter same passphrase again: [ENTER]
+  Your identification has been saved in ma_cle.
+  Your public key has been saved in ma_cle.pub.
+
+voila, en clair :
+ - votre clé privé se trouve dans le fichier 'ma_cle'
+ - et votre clé publique se trouve dans le fichier 'ma_cle.pub'
+
+  > scp ma_cle.pub login@mon_shell.org:.
+  > ssh login@mon_shell.org
+  > shell$] cat ma_cle.pub >> .ssh/authorized_keys
+  > shell$] cat ma_cle.pub >> .ssh/authorized_keys2   (pour les serv SSH2-only)
+  > shell$] logout
+  
+Dans cet exemple, on va laisser 'ma_cle.pub' et 'ma_cle' dans 'c:\openssh\bin'.
+Ceux qui sont du genre a ranger leur chambre sans qu'on leur demande, rangeront leur clés ailleur ;)
+
+A présent un petit test necessaire :
+
+- tapez : 
+  > cd C:\openssh\bin
+  > ssh -v -i ma_cle -L 2525:localhost:25 login@mon_shell.org -N -f 
+
+  Normalement la commande devrait vomir des informations a l'écran,
+  puis terminer par : 'debug1: Entering interactive session.'
+  
+  Si c'est le cas, alors tout va bien, sauf que les plus attentifs d'entre vous
+  auront remarqué 2 détails perturbants :
+
+  1. la commande n'a pas rendu le prompt, alors que c'est ce qui aurait du se passer,
+     car on a utilisé l'argument '-f' qui met le tunel en tâche de fond.
+     La console est donc bloquée. Si vous la fermez, ça ferme le tunel.
+     
+  2. Deux process 'ssh.exe' apparaissent dans le task-manager, au lieu d'un seul.
+  
+Conclusion : Il va donc se passer de l'argument '-f'
+
+Vous pouvez killer les 2 process ssh.exe qui aparaissent dans le task manager
+
+
+
+5 .   L A   M I C R O S O F T   A T T I T U D E
+
+Le but des opérations qui vont suivre consiste à créer un script qui va ouvrir 
+2 tunels SSH (un pour le POP3 et un pour le SMTP) et qui va masquer les process,
+histoire de ne pas se retrouver avec 2 évervantes fenêtres de console sur l'écran..
+
+- Allez dans c:\openssh\bin
+- créez un script que vous appellerez 'start-ssh.cmd'
+
+@echo off
+cd "C:\openssh\bin"
+start "SSH Tunel for SMTP" ssh -v -i ma_cle -L 2525:localhost:25 login@mon_shell.org -N
+start "SSH Tunel for POP3" ssh -v -i ma_cle -L 1110:localhost:110 login@mon_shell.org -N
+hide hide:"SSH Tunel for SMTP"
+hide hide:"SSH Tunel for POP3"
+exit
+
+- créez un autre script que vous nomerez 'show-ssh.cmd'
+
+@echo off
+hide show:"SSH Tunel for SMTP"
+hide show:"SSH Tunel for POP3"
+exit
+
+- et créez un dernier script nomé 'hide-ssh.cmd'
+
+@echo off
+hide hide:"SSH Tunel for SMTP"
+hide hide:"SSH Tunel for POP3"
+exit
+
+Voila, 
+- Pour lancer les tunels SSH, il faudra executer : 'start-ssh.cmd'
+- Pour afficher les fenêtres, executez : 'show-ssh.cmd'
+- Pour masquer les fenêtres, executez : 'hide-ssh.cmd'
+- Pour fermer les tunels, affichez les fenêtres, puis fermez-les.
+
+Il ne vous reste plus qu'a créer les raccourcis necessaires sur le bureau,
+dans le menu démarrer ou en quick launch. 
+
+
+
+6 .   L E   C L I E N T   M A I L 
+
+Dans votre client mail, 
+- pour le serveur SMTP, tapez 'localhost', pour le port, tapez '2525'
+- pour le serveur POP3, tapez 'localhost', pour le port, c'est '1110'
+
+
+Voila, c'est fini, vos eMails seront envoyees par un tunel securise et crypte entre vous et le serveur,
+de plus, personne ne saura qui vous etes, ni votre IP, ce sera comme si vous etiez connecte
+en local sur le `serveurSMTPami' :)

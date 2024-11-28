@@ -1,0 +1,429 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 99.2beta8 (1.46)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>23. Shared Libraries</TITLE>
+<META NAME="description" CONTENT="23. Shared Libraries">
+<META NAME="keywords" CONTENT="rute">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v99.2beta8">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="rute.css">
+
+<LINK REL="next" HREF="node27.html">
+<LINK REL="previous" HREF="node25.html">
+<LINK REL="up" HREF="rute.html">
+<LINK REL="next" HREF="node27.html">
+</HEAD>
+
+<BODY BGCOLOR=#FFFFFF >
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD align=left bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-purchase.html"><FONT COLOR=white>Purchase</FONT></A>&nbsp;
+</FONT>
+</TD><TD align=center bgcolor="#000000">
+<FONT COLOR=white>
+Copyright&nbsp;&#169;&nbsp;2002&nbsp;Paul Sheer. <A HREF="copying.html"><FONT COLOR=white>Click here for copying permissions.</FONT></A>
+</FONT>
+</TD><TD align=right bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-home.html"><FONT COLOR=white>Home</FONT></A>&nbsp;
+</FONT>
+</TD></TR>
+<TR><TD colspan=2 align=left bgcolor="#ECEBF4">
+<IMG SRC="va-btn-small-light-60.png">
+</TD><TD align=right bgcolor="#ECEBF4">
+<IMG SRC="sflogo2-steel-60.png">
+</TD></TR>
+</TABLE><BR>
+
+<!--Navigation Panel-->
+<A NAME="tex2html2230"
+  HREF="node27.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2226"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2220"
+  HREF="node25.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2228"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2231"
+  HREF="node27.html">24. Source and Binary</A>
+<B> Up:</B> <A NAME="tex2html2227"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2221"
+  HREF="node25.html">22. Trivial Introduction to</A>
+ &nbsp <B>  <A NAME="tex2html2229"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html2232"
+  HREF="#SECTION002610000000000000000">23.1 Creating DLL <TT>
+<FONT COLOR="#0000ff">.so</FONT></TT> Files</A>
+<LI><A NAME="tex2html2233"
+  HREF="#SECTION002620000000000000000">23.2 DLL Versioning</A>
+<LI><A NAME="tex2html2234"
+  HREF="#SECTION002630000000000000000">23.3 Installing DLL <TT>
+<FONT COLOR="#0000ff">.so</FONT></TT> Files</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION002600000000000000000">
+23. Shared Libraries</A>
+</H1>
+
+<P>
+<A NAME="chap:sharedlib"></A>
+<P>
+This chapter follows directly from our construction of <I>static</I> <TT>
+<FONT COLOR="#0000ff">.a</FONT></TT>
+libraries in Chapter <A HREF="node25.html#chap:trivintroc">22</A>. It discusses creation and installation
+of <I>Dynamically Linked Libraries</I> (DLLs). Here I show you both so that you
+have a good technical overview of how DLLs work on U<SMALL>NIX</SMALL>. You
+can then promptly forget everything except <TT>
+<FONT COLOR="#0000ff">ldconfig</FONT></TT> and
+<TT>
+<FONT COLOR="#0000ff">LD_LIBRARY_PATH</FONT></TT> discussed below.
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">.a</FONT></TT> library file is good for creating functions that
+many programs can include. This practice is called <I>code reuse</I>. But note
+how the <TT>
+<FONT COLOR="#0000ff">.a</FONT></TT> file is <I>linked into</I> (included) in the executable
+<TT>
+<FONT COLOR="#0000ff">mytest</FONT></TT> in Chapter <A HREF="node25.html#chap:trivintroc">22</A>. <TT>
+<FONT COLOR="#0000ff">mytest</FONT></TT> is enlarged by the size of
+<TT>
+<FONT COLOR="#0000ff">libsimple_math.a</FONT></TT>. When hundreds of programs use
+the same <TT>
+<FONT COLOR="#0000ff">.a</FONT></TT> file, that code is effectively duplicated all
+over the file system. Such inefficiency was deemed unacceptable
+long before L<SMALL>INUX</SMALL>, so library files were invented that only link
+with the program when it runs--a process known as
+<I>dynamic</I> linking. Instead of <TT>
+<FONT COLOR="#0000ff">.a</FONT></TT> files, similar <TT>
+<FONT COLOR="#0000ff">.so</FONT></TT>
+(<TT>
+<FONT COLOR="#0000ff">s</FONT></TT><I>hared</I> <TT>
+<FONT COLOR="#0000ff">o</FONT></TT><I>bject</I>) files live in <TT>
+<FONT COLOR="#0000ff">/lib/</FONT></TT>
+and <TT>
+<FONT COLOR="#0000ff">/usr/lib/</FONT></TT> and are automatically linked to a program when it
+runs.
+
+<P>
+
+<H1><A NAME="SECTION002610000000000000000">
+23.1 Creating DLL <TT>
+<FONT COLOR="#0000ff">.so</FONT></TT> Files</A>
+</H1>
+
+<P>
+<A NAME="sec:sharedobj"></A>
+<P>
+Creating a DLL requires several changes to the <TT>
+<FONT COLOR="#0000ff">Makefile</FONT></TT>
+on page <A HREF="node25.html#page:libmakefile"><IMG  ALIGN="BOTTOM" BORDER="1" ALT="[*]" SRC="crossref.png"></A>:
+
+<P>
+<A NAME="page:sharemakefile"></A>
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>20</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>OBJS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;simple_math_sqrt.o&nbsp;simple_math_pow.o</code><br>
+<code>LIBNAME&nbsp;&nbsp;&nbsp;=&nbsp;simple_math</code><br>
+<code>SONAME&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;libsimple_math.so.1.0.0</code><br>
+<code>SOVERSION&nbsp;=&nbsp;libsimple_math.so.1.0</code><br>
+<code>CFLAGS&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;-Wall</code><br>
+<code>&nbsp;</code><br>
+<code>all:&nbsp;&nbsp;&nbsp;&nbsp;lib$(LIBNAME).so&nbsp;mytest</code><br>
+<code>&nbsp;</code><br>
+<code>mytest:&nbsp;lib$(LIBNAME).so&nbsp;mytest.o</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;gcc&nbsp;$(CFLAGS)&nbsp;-o&nbsp;$@&nbsp;mytest.o&nbsp;-L.&nbsp;-l${LIBNAME}</code><br>
+<code>&nbsp;</code><br>
+<code>lib$(LIBNAME).so:&nbsp;$(OBJS)</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;gcc&nbsp;-shared&nbsp;$(CFLAGS)&nbsp;$(OBJS)&nbsp;-lc&nbsp;-Wl,-soname&nbsp;-Wl,$(SOVERSION)&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-o&nbsp;$(SONAME)&nbsp;&#038;&#038;&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ln&nbsp;-sf&nbsp;$(SONAME)&nbsp;$(SOVERSION)&nbsp;&#038;&#038;&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ln&nbsp;-sf&nbsp;$(SONAME)&nbsp;lib$(LIBNAME).so</code><br>
+<code>&nbsp;</code><br>
+<code>.c.o:</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;gcc&nbsp;-fPIC&nbsp;-DPIC&nbsp;$(CFLAGS)&nbsp;-c&nbsp;-o&nbsp;$*.o&nbsp;$&#060;</code><br>
+<code>&nbsp;</code><br>
+<code>clean:</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;rm&nbsp;-f&nbsp;*.o&nbsp;*.a&nbsp;*.so&nbsp;mytest</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">-shared</FONT></TT> option to <TT>
+<FONT COLOR="#0000ff">gcc</FONT></TT> builds our shared
+library. The <TT>
+<FONT COLOR="#0000ff">-W</FONT></TT> options are linker options that set the version
+number of the library that linking programs will load at runtime. The
+<TT>
+<FONT COLOR="#0000ff">-fPIC -DPIC</FONT></TT> means to generate
+<I>position-independent code</I>,
+that is, code suitable for dynamic linking.
+
+<P>
+After running <TT>
+<FONT COLOR="#0000ff">make</FONT></TT> we have
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red size="-2">
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue size="-2">
+<code>lrwxrwxrwx&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;23&nbsp;Sep&nbsp;17&nbsp;22:02&nbsp;libsimple_math.so&nbsp;-&#062;&nbsp;libsimple_math.so.1.0.0</code><br>
+<code>lrwxrwxrwx&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;23&nbsp;Sep&nbsp;17&nbsp;22:02&nbsp;libsimple_math.so.1.0&nbsp;-&#062;&nbsp;libsimple_math.so.1.0.0</code><br>
+<code>-rwxr-xr-x&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;6046&nbsp;Sep&nbsp;17&nbsp;22:02&nbsp;libsimple_math.so.1.0.0</code><br>
+<code>-rwxr-xr-x&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;13677&nbsp;Sep&nbsp;17&nbsp;22:02&nbsp;mytest</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H1><A NAME="SECTION002620000000000000000">
+23.2 DLL Versioning</A>
+</H1>
+
+<P>
+You may observe that our three <TT>
+<FONT COLOR="#0000ff">.so</FONT></TT> files are
+similar to the many files in <TT>
+<FONT COLOR="#0000ff">/lib/</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">/usr/lib/</FONT></TT>. This
+complicated system of linking and symlinking is part of the process
+of <I>library versioning</I>. Although generating a DLL is out of the
+scope of most system admin tasks, library versioning is important to
+understand.
+
+<P>
+DLLs have a problem. Consider a DLL that is outdated or buggy:
+simply overwriting the DLL file with an updated file will affect all the
+applications that use it. If these applications rely on certain
+behavior of the DLL code, then they will probably crash with the
+fresh DLL. U<SMALL>NIX</SMALL> has elegantly solved this problem by allowing
+multiple versions of DLLs to be present simultaneously. The
+programs themselves have their required version number built into
+them. Try
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ldd&nbsp;mytest</code><br>
+</FONT></TD></TR></TABLE><P>
+which will show the DLL files that <TT>
+<FONT COLOR="#0000ff">mytest</FONT></TT> is scheduled to link
+with:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>libsimple_math.so.1.0&nbsp;=&#062;&nbsp;./libsimple_math.so.1.0&nbsp;(0x40018000)</code><br>
+<code>libc.so.6&nbsp;=&#062;&nbsp;/lib/libc.so.6&nbsp;(0x40022000)</code><br>
+<code>/lib/ld-linux.so.2&nbsp;=&#062;&nbsp;/lib/ld-linux.so.2&nbsp;(0x40000000)</code><br>
+</FONT></TD></TR></TABLE><P>
+At the moment, we are interested in <TT>
+<FONT COLOR="#0000ff">libsimple_math.so.1.0</FONT></TT>.
+Note how it matches the <TT>
+<FONT COLOR="#0000ff">SOVERSION</FONT></TT> variable in the
+<TT>
+<FONT COLOR="#0000ff">Makefile</FONT></TT>. Note also how we have chosen our symlinks.
+We are effectively allowing <TT>
+<FONT COLOR="#0000ff">mytest</FONT></TT> to link with any future
+<TT>
+<FONT COLOR="#0000ff">libsimple_math.so.1.0.</FONT></TT><I>?</I> (were our <TT>
+<FONT COLOR="#0000ff">simple_math</FONT></TT> library
+to be upgraded to a new version) purely because of the way we have chosen
+our symlinks. However, it will not link with any
+library <TT>
+<FONT COLOR="#0000ff">libsimple_math.so.1.1.</FONT></TT><I>?</I>, for example. As developers of
+<TT>
+<FONT COLOR="#0000ff">libsimple_math</FONT></TT>, we are deciding that libraries of a different
+<I>minor</I> <FONT COLOR="#ffa500">[For this example we are considering libraries to be
+named
+<TT>
+<FONT COLOR="#0000ff">lib</FONT></TT><I>name</I><TT>
+<FONT COLOR="#0000ff">.so.</FONT></TT><I>major</I><TT>
+<FONT COLOR="#0000ff">.</FONT></TT><I>minor</I><TT>
+<FONT COLOR="#0000ff">.</FONT></TT><I>patch</I>]</FONT>version number will be incompatible, whereas libraries of a different
+<I>patch</I> level will not be incompatible.
+
+<P>
+We could also change <TT>
+<FONT COLOR="#0000ff">SOVERSION</FONT></TT> to
+<TT>
+<FONT COLOR="#0000ff">libsimple_math.so.1</FONT></TT>. This would effectively be saying that
+future libraries of different minor version numbers are compatible; only
+a change in the major version number would dictate incompatibility.
+
+<P>
+
+<H1><A NAME="SECTION002630000000000000000">
+23.3 Installing DLL <TT>
+<FONT COLOR="#0000ff">.so</FONT></TT> Files</A>
+</H1>
+
+<P>
+If you run <TT>
+<FONT COLOR="#0000ff">./mytest</FONT></TT>, you will be greeted with an <TT>
+<FONT COLOR="#0000ff">error
+while loading shared libraries</FONT></TT> message. The reason is that the
+dynamic linker does not search the current directory for <TT>
+<FONT COLOR="#0000ff">.so</FONT></TT>
+files. To run your program, you will have to install your library:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>mkdir&nbsp;-p&nbsp;/usr/local/lib</code><br>
+<code>install&nbsp;-m&nbsp;0755&nbsp;libsimple_math.so&nbsp;libsimple_math.so.1.0&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;libsimple_math.so.1.0.0&nbsp;/usr/local/lib</code><br>
+</FONT></TD></TR></TABLE><P>
+Then, edit the <TT>
+<FONT COLOR="#0000ff">/etc/ld.so.conf</FONT></TT> file and add a line
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/usr/local/lib</code><br>
+</FONT></TD></TR></TABLE><P>
+Then, reconfigure your libraries with
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ldconfig</code><br>
+</FONT></TD></TR></TABLE><P>
+Finally, run your program with
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>export&nbsp;LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib"</code><br>
+<code>./mytest</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+<A NAME="page:ldlibpathvar"></A><TT>
+<FONT COLOR="#0000ff">ldconfig</FONT></TT> configures all libraries on the system.
+It recreates appropriate symlinks (as we did) and rebuilds a lookup
+cache. The library directories it considers are <TT>
+<FONT COLOR="#0000ff">/lib</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">/usr/lib</FONT></TT>, and those listed in <TT>
+<FONT COLOR="#0000ff">/etc/ld.so.config</FONT></TT>.
+The <TT>
+<FONT COLOR="#0000ff">ldconfig</FONT></TT> command should be run automatically when the
+system boots and manually whenever libraries are installed or upgraded.
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">LD_LIBRARY_PATH</FONT></TT> environment variable is
+relevant to every executable on the system and similar to the 
+<TT>
+<FONT COLOR="#0000ff">PATH</FONT></TT> environment variable. <TT>
+<FONT COLOR="#0000ff">LD_LIBRARY_PATH</FONT></TT>
+dictates what directories should be searched for
+library files. Here, we appended <TT>
+<FONT COLOR="#0000ff">/usr/local/lib</FONT></TT> to the
+search path in case it was missing. Note that even with
+<TT>
+<FONT COLOR="#0000ff">LD_LIBRARY_PATH</FONT></TT> unset, <TT>
+<FONT COLOR="#0000ff">/lib</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">/usr/lib</FONT></TT>
+will always be searched.
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html2230"
+  HREF="node27.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2226"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2220"
+  HREF="node25.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2228"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2231"
+  HREF="node27.html">24. Source and Binary</A>
+<B> Up:</B> <A NAME="tex2html2227"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2221"
+  HREF="node25.html">22. Trivial Introduction to</A>
+ &nbsp <B>  <A NAME="tex2html2229"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+
+</BODY>
+</HTML>

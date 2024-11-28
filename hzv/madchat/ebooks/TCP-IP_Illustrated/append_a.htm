@@ -1,0 +1,331 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Appendix A: The tcpdump Program</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="A_0"><H1><I>The </I><TT>tcpdump</TT><I> Program</I></H1></a>
+<P>
+The <TT>tcpdump</TT> program
+was written by Van Jacobson, Craig Leres, and Steven McCanne,
+all of Lawrence Berkeley Laboratory, University of California,
+Berkeley. Version 2.2.1 (June 1992) is used in this text.
+<P>
+<TT>tcpdump</TT> operates by putting the network
+interface card into <I>promiscuous mode</I> so that every packet
+going across the wire is captured. Normally interface cards for
+media such as Ethernet only capture link level frames addressed
+to the particular interface or to the broadcast address (<a href="link_lay.htm#2_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_2">Section 2.2</a>).
+<P>
+The underlying operating system must allow an interface
+to be put into promiscuous mode and let a user process capture
+the frames, <TT>tcpdump</TT> support is provided
+or can be added to the following Unix systems: 4.4BSD, BSD/386,
+SunOS, Ultrix, and HP-UX. Consult the <TT>README</TT>
+file that accompanies the <TT>tcpdump</TT>
+distribution for the details on what operating system and which
+versions are supported.
+<P>
+There are alternatives to <TT>tcpdump</TT>.
+In <a href="dynamic.htm#fig_10_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dynamic.htm#fig_10_8">Figure 10.8</a> we use the Solaris 2.2 program snoop to look at
+some packets. AIX 3.2.2 provides the program <TT>iptrace</TT>,
+which provides similar features.
+<a name="A_1"><H3>A.1 BSD Packet Filter</H3></a>
+<P>
+Current BSD-derived kernels provide the <I>BSD Packet
+Filter</I> (BPF), which is one method used by <TT>tcpdump</TT>
+to capture and filter packets from a network interface that has
+been placed into promiscuous mode. BPF also works with point-to-point
+links, such as SLIP (<a href="link_lay.htm#2_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_4">Section 2.4</a>), which require nothing special
+to capture all packets going through the interface, and with the
+loopback interface (<a href="link_lay.htm#2_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_7">Section 2.7</a>).
+<P>
+<FONT SIZE=-1>BPF has a long history. The Enet packet filter was
+created in 1980 by Mike Accetta and Rick Rashid at Carnegie Mellon
+University. Jeffrey Mogul at Stanford ported the code to BSD and
+continued its development from 1983 on. Since then, it has evolved
+into the Ultrix Packet Filter at DEC, a STREAMS NIT module under
+SunOS 4.1, and BPF. Steven McCanne, of Lawrence Berkeley Laboratory,
+implemented BPF in Summer 1990. Much of the design is from Van
+Jacobson. Details of the latest version, and a comparison with
+Sun's NIT, are given in [McCanne and Jacobson 1993].</FONT>
+<P>
+Figure A.1 shows the features of BPF when used with
+an Ethernet.
+<P>
+<CENTER><a name="fig_A_1"><img src="f_a_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_a_1.gif"></a><br>
+<B>Figure A.1</B> BSD
+Packet Filter.</CENTER>
+<P>
+BPF places the Ethernet device driver into promiscuous
+mode and then receives a copy from the driver of each received
+packet and each transmitted packet. These packets are run through
+a user-specified filter, so that only packets that the user process
+considers interesting are passed to the process.
+<P>
+Multiple processes can be monitoring a given interface,
+and each process specifies its own filter. Figure A.1 shows two
+instances of <TT>tcpdump</TT> and an RARP
+daemon (<a href="rarp_rev.htm#5_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/rarp_rev.htm#5_4">Section 5.4</a>) both monitoring the same Ethernet. Each instance
+of <TT>tcpdump</TT> specifies its own filter.
+The filter for <TT>tcpdump</TT> can be specified
+by the user on the command line, while <TT>rarpd</TT>
+always uses the same filter to capture only RARP requests. '
+<P>
+In addition to specifying a filter, each user of
+BPF also specifies a timeout value. Since the data rate of the
+network can easily outrun the processing power of the CPU, and
+since it's costly for a user process to issue small reads from
+the kernel, BPF tries to pack multiple frames into a single read
+buffer and return only when the buffer is full, or the user-specified
+timeout has expired, <TT>tcpdump</TT> sets
+the timeout to 1 second since it normally receives lots of data
+from BPF, while the RARP daemon receives few frames, so <TT>rarpd</TT>
+sets the timeout to 0 (which returns when a frame is received).
+<P>
+The user-specified filter to tell BPF what frames
+the process considers interesting is a list of instructions for
+a hypothetical machine. These instructions are interpreted by
+the BPF filter in the kernel. Filtering in the kernel, and not
+in the user process, reduces the amount of data that must pass
+from the kernel to the user process. The RARP daemon always uses
+the same filter program, which is built into the program, <TT>tcpdump</TT>,
+on the other hand, lets the user specify a filter expression on
+the command line each time it's run. <TT>tcpdump</TT>
+converts the user-specified expression into the corresponding
+sequence of instructions for BPF. Examples of the <TT>tcpdump</TT>
+expressions are:
+<P>
+<TT>% <B>tcpdump tcp port 25<BR>
+</B>% <B>tcpdump 'icmp[0]
+!= 8 and icmp[0] &lt;= 0'</B></TT>
+<P>
+The first prints only TCP segments with a source
+or destination port of 25. The second prints only ICMP messages
+that are not echo requests or echo replies (i.e., not ping packets).
+This expression specifies that the first byte of the ICMP message,
+the <I>type</I> field from <a href="icmp_int.htm#fig_6_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#fig_6_2">Figure 6.2</a>, not equal 8 or 0, an echo
+request or echo reply from <a href="icmp_int.htm#fig_6_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#fig_6_3">Figure 6.3</a>. As you can see, fancy filtering
+requires knowledge of the underlying packet structure. The expression
+in the second example has been placed in single quotes to prevent
+the Unix shell from interpreting the special characters.
+<P>
+Refer to the <TT>tcpdump</TT>(l)
+manual page for complete details of the expression that the user
+can specify. The <TT>bpf</TT>(4) manual page
+details the hypothetical machine instructions used by BPF. [McCanne
+and Jacobson 1993] compare the design and performance of this
+machine against other approaches.
+<a name="A_2"><H3>A.2 SunOS Network Interface Tap</H3></a>
+<P>
+SunOS 4.1.x provides a STREAMS pseudo-device driver
+called the <I>Network Interface Tap </I>or NIT. ([Rago 1993] contains
+additional details on streams device drivers. We'll call the feature
+&quot;streams.&quot;) NIT is similar to the BSD Packet Filter,
+but not as powerful or as efficient. Figure A.2 shows the streams
+modules involved in using NIT. One difference between this figure
+and <a href="#fig_A_1">Figure A.1</a> is that BPF can capture packets received from and
+transmitted through the network interface, while NIT only captures
+packets received from the interface. Using <TT>tcpdump</TT>
+with NIT means we only see packets sent by other hosts on the
+network-we never see packets transmitted by our own host. (Although
+BPF works with SunOS 4.1.x, it requires source code changes to
+the Ethernet device driver, which are impossible for most users
+who don't have access to the source code.)
+<P>
+When the device <TT>/dev/nit</TT>
+is opened, the streams driver <TT>nit_if</TT>
+is opened. Since NIT is built using streams, processing modules
+can be pushed on top of the <TT>nit_if</TT>
+driver, <TT>tcpdump</TT> pushes the module
+<TT>nit_buf</TT> onto the STREAM. This module
+aggregates multiple network frames into a single read buffer,
+with the user process specifying a timeout value. This is similar
+to what we described with BPF. The RARP daemon doesn't push this
+module onto its stream, since it deals with a low volume of packets.
+<P>
+<CENTER><a name="fig_A_2"><img src="f_a_2.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_a_2.gif"></a><br>
+<B>Figure A.2</B> SunOS
+Network Interface Tap</CENTER>
+<P>
+The user-specified filtering is done by the streams
+module <TT>nit_pf</TT>. Notice in Figure A.2
+that this module is used by the RARP daemon, but not by <TT>tcpdump</TT>.
+Instead, under SunOS <TT>tcpdump</TT> performs
+its own filtering in the user process. The reason is that the
+hypothetical machine instructions used by <TT>nit_pf</TT>
+are different (and not as powerful) as those supported by BPF.
+This means that when the user specifies a filter expression to
+<TT>tcpdump</TT> more data crosses the kernel-to-user
+boundary with NIT than with BPF.
+<a name="A_3"><H3>A.3 SVR4 Data Link Provider Interface</H3></a>
+<P>
+SVR4 supports the <I>Data Link Provider Interface</I>
+(DLPI) which is a streams implementation of the OSI Data Link
+Service Definition. Most versions of SVR4 still support version
+1 of the DLPI, SVR4.2 supports both versions 1 and 2, and Sun's
+Solaris 2.x supports version 2, with additional enhancements.
+<P>
+Network monitoring programs such as <TT>tcpdump</TT>
+must use the DLPI for raw access to the data-link device drivers.
+In Solaris 2.x the packet filter streams module has been renamed
+<TT>pfmod</TT> and the buffer module has been
+renamed <TT>bufmod</TT>.
+<P>
+Although Solaris 2.x is still new, an implementation
+of <TT>tcpdump</TT> should appear someday.
+Sun also supplies a program named snoop that performs functions
+similar to <TT>tcpdump</TT>. (snoop replaces
+the SunOS 4.x program named <TT>etherfind</TT>.)
+The author is not aware of any port of <TT>tcpdump</TT>
+to vanilla SVR4.
+<a name="A_4"><H3>A.4 <TT>tcpdump</TT> Output</H3></a>
+<P>
+The output produced by <TT>tcpdump</TT>
+is &quot;raw.&quot; We'll modify it for inclusion in the text
+to make it easier to read.
+<P>
+First, it always outputs the name of the network
+interface on which it is listening. We'll delete this line.
+<P>
+Next, the timestamp output by <TT>tcpdump</TT>
+is of the form <TT>09:11:22.642008</TT> on
+a system with microsecond resolution, or <TT>09:11:22.64</TT>
+on a system with only 10-ms clock resolution. (In <a href="append_b.htm#B_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_b.htm#B_0">Appendix B</a> we
+talk more about computer clock resolution.) In either case the
+HH:MM:SS format is not what we want. Instead we are interested
+in both the relative time of each packet from the start of the
+dump, and the time difference between successive packets. We'll
+modify the output to show these two differences. The first difference
+we print with six digits to the right of the decimal point when
+microsecond resolution is available (two digits when only 10-ms
+resolution is provided), and the second difference we print with
+either four digits or two digits to the right of the decimal point
+(depending on the clock resolution).
+<P>
+<FONT SIZE=-1>In this text most <TT>tcpdump</TT>
+output was collected on the host <TT>sun</TT>,
+which provides microsecond resolution. Some output was collected
+on the host <TT>bsdi</TT> running BSD/386
+Version 0.9.4, which only provided 10-ms resolution (e.g.. Figure
+5.1). Some output was also collected on <TT>bsdi</TT>
+when it was running BSD/386 Version 1.0, which provides microsecond
+resolution.</FONT>
+<P>
+<TT>tcpdump</TT> always prints the name of the sending
+host, then a greater than sign, then the name of the destination
+host. This makes it hard to follow the flow of packets between
+two hosts. Although our <TT>tcpdump</TT> output
+will still show the direction of data flow like this, we'll often
+take this output and produce a time line instead. (The first of
+these in the text is <a href="icmp_int.htm#fig_6_11" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#fig_6_11">Figure 6.11</a>.) In our time lines one
+host will be on the left, and the other on the right. This makes
+it easier to see which side sends and which side receives each
+packet.
+<P>
+We add line numbers to the <TT>tcpdump</TT>
+output, allowing us to reference specific lines in the text. We
+also add additional space between certain lines, to separate some
+packet exchanges.
+<P>
+Finally, <TT>tcpdump</TT> output
+can exceed the width of the page. We wrap long lines around at
+convenient points in the line.
+<P>
+As an example, the output produced by <TT>tcpdump</TT>
+corresponding to <a href="arp_addr.htm#fig_4_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#fig_4_4">Figure 4.4</a> is shown in Figure A.3, assuming
+an 80-column terminal window.
+<P>
+We won't show our typing the interrupt key (which
+terminates <TT>tcpdump</TT>) and we won't
+show the number of packets received and dropped. (Dropped packets
+are those that arrived faster than <TT>tcpdump</TT>
+could keep up with. Since the examples in the text were often
+run on an otherwise idle network, this is always 0.)
+<P><CENTER>
+<a name="fig_A_3"><TABLE></a>
+<TR><TD COLSPAN=2 WIDTH=716><TT>sun % <B>tcpdump -e</B></TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=716><TT>tcpdump: listening on le0</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=716><TT>09:11:22.642008 0:0:c0:6f:2d:40 ff:ff:f f:ff:ff:ff arp 60: arp who-has svr4 tell bsdi</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=716><TT>09:11:22.644182 0;0:c0:c2:9b:26 0:0:c0:6f:2d:40 arp 60: arp reply svr4 is-at 0:0:c0:c2:9b:26</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=716><TT>09:11:22.644839 0:0:c0:6f:2d:40 0:0:c0:c2:9b:26 ip 60: bsdi.1030 &gt; svr4.discard: S 596459521:596459521(0) win 4096 &lt;mss 1024&gt; [tos 0x10]</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=716><TT>09:11:22.649842 0:0:c0:c2:9b:26 0:0:c0:6f:2d:40 ip 60: svr4.discard &gt; bsdi.1030: S 3562228225:3562228225(0) ack 596459522 win 4096 &lt;mss 1024&gt;</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=716><TT>09:11:22.651623 0:0:c0:6f:2d:40 0:0:c0:c2:9b:26 ip 60: bsdi.1030 &gt; svr4.discard: . ack 1 win 4096 [tos 0x10]</TT>
+</TD></TR>
+<TR><TD WIDTH=295></TD><TD WIDTH=421><I>4 other packets that we don't show</I>
+</TD></TR>
+<TR><TD WIDTH=295><TT><B>^?</B></TT>
+</TD><TD WIDTH=421><I>type our interrupt key to terminate</I>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=716><TT>9 packets received by filter</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=716><TT>0 packets dropped by kernel</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure A.3</B> <TT>tcpdump</TT>
+output for <a href="arp_addr.htm#fig_4_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#fig_4_4">Figure 4.4</a>.</CENTER>
+<a name="A_5"><H3>A.5 Security Considerations</H3></a>
+<P>
+It should be obvious that tapping into a network's
+traffic lets you see many things you shouldn't see. For example,
+the passwords typed by users of applications such as Telnet and
+FTP are transmitted across the network exactly as the user enters
+them. (This is called the <I>cleartext</I> representation of the
+password, in comparison to the <I>encrypted</I> representation.
+It is the encrypted representation that is stored in the Unix
+password file, normally <TT>/etc/passwd</TT>
+or <TT>/etc/shadow</TT>.) Nevertheless, there
+are many times when a network administrator needs to use a tool
+such as <TT>tcpdump</TT> to diagnose network
+problems.
+<P>
+Our use of <TT>tcpdump</TT> is
+as a learning tool, to see what really gets transmitted across
+the network. Access to <TT>tcpdump</TT>, and
+similar vendor-supplied utilities, depends on the system. Under
+SunOS, for example, access to the NIT device is restricted to
+the superuser. The BSD Packet Filter uses a different technique:
+access is controlled by the permissions on the devices <TT>/dev/bpf</TT>XX.
+Normally these devices are readable and writable only by the owner
+(which should be the superuser) and readable by the group (often
+the system administration group). This means normal users can't
+run programs such as <TT>tcpdump</TT>, unless
+the system administrator makes the program set-user-ID.
+<a name="A_6"><H3>A.6 Socket Debug Option</H3></a>
+<P>
+Another way to see what's going on with a TCP connection
+is to enable socket debugging, on systems that support this feature.
+This feature works only with TCP (not with other protocols) and
+requires application support (to enable a socket option when it's
+started).
+<P>
+<FONT SIZE=-1>Most Berkeley-derived implementations support this,
+including SunOS, 4.4BSD, and SVR4.</FONT>
+<P>
+The program enables a socket option, and the kernel
+then keeps a trace record of what happens on that connection.
+At some later time all this information can be output by running
+the program <TT>trpt</TT>(8). It doesn't require
+special permission to enable the socket debug option, but it requires
+special privileges to run <TT>trpt</TT>, since
+it accesses the kernel's memory.
+<P>
+Our <TT>sock</TT> program (<a href="append_c.htm#C_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_c.htm#C_0">Appendix C</a>)
+supports this feature with its <TT>-D</TT>
+option, but the information output is harder to decipher and understand
+than the corresponding <TT>tcpdump</TT> output.
+We do, however, use it in <a href="tcp_time.htm#21_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_time.htm#21_4">Section 21.4</a> to look at kernel variables
+in the TCP connection block that <TT>tcpdump</TT>
+cannot access.
+</BODY>
+</HTML>

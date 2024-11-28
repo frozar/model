@@ -1,0 +1,269 @@
+          ========================================
+              Daniels NASM bootstraps tutorial
+          ========================================
+
+author: Daniel Marjamäki (daniel.marjamaki@home.se)
+
+___________________________________________________________________________________________
+
+TRADUCTION par groar :
+---------------------
+Si vous avez des commentaires ou des conseils pour cette traduction : root@abyssal.homelinux.org . 
+Je vous remercie d avance.
+La version originale peut-être trouvée ici : http://www.nondot.org/sabre/os/files/Booting/nasmBoot.txt
+
+@@@ http://Abyssal.homelinux.org @@@
+][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][_][
+
+Preface
+-------
+Ce tutorial est un guide pour ceux qui veulent créer leur propre
+secteur de boot.
+
+
+Les bases
+---------
+Voici les règles que vous devez suivre:
+  - Le BIOS chargera votre secteur de boot à l' addresse 07C00h.
+    Malheureusement, le segment et l' offset varient.
+  - Les secteurs de boot doivent être compilés en tant que fichiers binaires.
+  - La taille du secteur de boot doit être de 512 octets.
+  - Le fichier doit finir avec AA55h.
+
+
+Un bootstrap minimal
+--------------------
+This bootstrap bloque juste le système:
+
+    ; HANG.ASM
+    ; Un bootstrap minimal
+
+    hang:                   ; Hang!
+            jmp hang
+
+    times 510-($-$$) db 0   ; Remplis le fichier avec des 0's
+    dw 0AA55h               ; La fin du fichier : AA55
+
+La ligne commençant par "times" est une commande que seul
+NASM peut comprendre. Cette ligne sert a insérer des 0's 
+jusqu'à que le fichier fasse 510 octets. Le fichier entier 
+fera donc 512 octets [NdT: AA55 = 2octets en + hein ! =)]
+La dernière instruction met un AA55 à la fin du fichier. 
+
+Pour compiler le bootstrap, utilisez cette commande:
+    nasm hang.asm -o hang.bin
+
+Si vous voulez le tester, vous devez d abord le mettre
+sur le premier secteur d une disquette. Vous pouvez par 
+exemple utiliser 'dd' ou 'rawrite'.
+Quand le bootstrap est sur la disquette, testez le en
+redémarrant votre ordinateur avec la disquette insérée. L'
+ordinateur devrait alors bloquer.
+
+
+Le problème de la mémoire
+-------------------------
+Voici un problème de mémoire.
+Car j' ai écris que les bootstraps doivent toujours être
+chargés à l' adresse 07C00. Nous ne savons pas what segment and offset the BIOS has
+put us in. Le segment peut être n importe lequel entre 0000 et 
+07C0. C' est un problème quand on veut utiliser des variables.
+La solution est simple. Commencez votre bootstrap en sautant à 
+votre bootstrap, mais sautez sur un segment connu.
+
+Voici un exemple:
+
+    ; JUMP.ASM
+    ; Fait un saut et ensuite bloque
+
+    ; Dis au compilo ke ceci est l'offset 0.
+    ; Ce nest pas l' offset 0, mais ce le sera après le saut.
+    [ORG 0]
+
+            jmp 07C0h:start         ; Goto segment 07C0
+
+    start:
+            ; Met à jour les registres de segment
+            mov ax, cs
+            mov ds, ax
+            mov es, ax
+
+    hang:                           ; Hang!
+            jmp hang
+
+    times 510-($-$$) db 0
+    dw 0AA55h
+
+Si vous compilez et testez ce bootstrap, il n y aura 
+aucune différence visible avec le bootstrap minimal 
+présenté plus haut. l' ordinateur va juste bloquer.
+
+
+Quelques exercices
+------------------
+1. Faire un bootstrap qui envoie "====" à l' écran,
+   et ensuite bloque. Astuce: modifiez le programme jump.asm.
+2. Créez un bootstrap qui affiche "Hello Cyberspace!"
+   et bloque.
+3. Créez un bootstrap qui charge un programme sur la disquette 
+et saute jusqu à lui  [NdT : c compréhensible ???].
+
+
+Solutions des exercices
+-----------------------
+
+1. 
+
+    ; 1.ASM
+    ; Affiche "====" à l' écran et bloque
+
+    ; Tell the compiler that this is offset 0.
+    ; It isn't offset 0, but it will be after the jump.
+    [ORG 0]
+
+            jmp 07C0h:start     ; Goto segment 07C0
+
+    start:
+            ; Met à jour les registres de segment
+            mov ax, cs
+            mov ds, ax
+            mov es, ax
+
+            mov ah, 9           ; affiche "===="
+            mov al, '='         ;
+            mov bx, 7           ;
+            mov cx, 4           ;
+            int 10h             ;
+
+    hang:                       ; Hang!
+            jmp hang
+
+    times 510-($-$$) db 0
+    dw 0AA55h
+
+
+2. 
+
+    ; 2.ASM
+    ; Affiche "Hello Cyberspace!" à l' écran et bloque
+
+    ; Tell the compiler that this is offset 0.
+    ; It isn't offset 0, but it will be after the jump.
+    [ORG 0]
+
+            jmp 07C0h:start     ; Goto segment 07C0
+
+    ; Déclare la chaîne qui va être affichée
+    msg     db  'Hello Cyberspace!'
+
+
+    start:
+            ; Met à jour les registres de segment
+            mov ax, cs
+            mov ds, ax
+            mov es, ax
+
+
+            mov si, msg     ; Affiche msg
+    print:
+            lodsb           ; AL=memory contents at DS:SI
+
+            cmp al, 0       ; Si AL=0 alors on bloque
+            je hang
+
+            mov ah, 0Eh     ; Affiche AL
+            mov bx, 7
+            int 10h
+
+            jmp print       ; Affiche le prochain caractère
+
+
+    hang:                   ; Hang!
+            jmp hang
+
+
+    times 510-($-$$) db 0
+    dw 0AA55h
+
+
+3.
+
+    ; 3.ASM
+    ; Charge un programme et "jump to it" [NdT: je prefere en anglais]
+
+    ; Tell the compiler that this is offset 0.
+    ; It isn't offset 0, but it will be after the jump.
+    [ORG 0]
+
+            jmp 07C0h:start     ; Goto segment 07C0
+
+    start:
+            ; Met à jour les registres de segment
+            mov ax, cs
+            mov ds, ax
+            mov es, ax
+
+
+    reset:                      ; Reset le lecteur de disquette
+            mov ax, 0           ;
+            mov dl, 0           ; Drive=0 (=A)
+            int 13h             ;
+            jc reset            ; ERROR => reset encore
+
+
+    read:
+            mov ax, 1000h       ; ES:BX = 1000:0000
+            mov es, ax          ;
+            mov bx, 0           ;
+
+            mov ah, 2           ; Charge les données du disque a ES:BX
+            mov al, 5           ; Charge 5 secteurs
+            mov ch, 0           ; Cylinder=0
+            mov cl, 2           ; Sector=2
+            mov dh, 0           ; Head=0
+            mov dl, 0           ; Drive=0
+            int 13h             ; Lecture!
+
+            jc read             ; ERROR => Essaye encore
+
+
+            jmp 1000h:0000      ; Saute au programme
+
+
+    times 510-($-$$) db 0
+    dw 0AA55h
+
+
+
+Voici un petit programme chargeable.
+
+    ; PROG.ASM
+
+            mov ah, 9
+            mov al, '='
+            mov bx, 7
+            mov cx, 10
+            int 10h
+
+    hang:
+            jmp hang
+
+
+Ce programme créé un fichier image disque qui contient 
+le bootstrap et le petit programme chargeable.
+
+    ; IMAGE.ASM
+    ; Disk image
+
+    %include '3.asm'
+    %include 'prog.asm'
+
+
+
+
+Conclusion
+----------
+Merci pour votre lecture.
+Mailez vos vos suggestions, commentaires, questions, ...
+Si vous n' avez pas NASM et avez des problèmes avec le
+code, vous pouvez me contacter. Ensemble nous pouvous le résoudre.

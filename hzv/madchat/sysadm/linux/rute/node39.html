@@ -1,0 +1,2128 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 99.2beta8 (1.46)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>36. httpd -- Apache Web Server</TITLE>
+<META NAME="description" CONTENT="36. httpd -- Apache Web Server">
+<META NAME="keywords" CONTENT="rute">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v99.2beta8">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="rute.css">
+
+<LINK REL="next" HREF="node40.html">
+<LINK REL="previous" HREF="node38.html">
+<LINK REL="up" HREF="rute.html">
+<LINK REL="next" HREF="node40.html">
+</HEAD>
+
+<BODY BGCOLOR=#FFFFFF >
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD align=left bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-purchase.html"><FONT COLOR=white>Purchase</FONT></A>&nbsp;
+</FONT>
+</TD><TD align=center bgcolor="#000000">
+<FONT COLOR=white>
+Copyright&nbsp;&#169;&nbsp;2002&nbsp;Paul Sheer. <A HREF="copying.html"><FONT COLOR=white>Click here for copying permissions.</FONT></A>
+</FONT>
+</TD><TD align=right bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-home.html"><FONT COLOR=white>Home</FONT></A>&nbsp;
+</FONT>
+</TD></TR>
+<TR><TD colspan=2 align=left bgcolor="#ECEBF4">
+<IMG SRC="va-btn-small-light-60.png">
+</TD><TD align=right bgcolor="#ECEBF4">
+<IMG SRC="sflogo2-steel-60.png">
+</TD></TR>
+</TABLE><BR>
+
+<!--Navigation Panel-->
+<A NAME="tex2html2666"
+  HREF="node40.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2662"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2656"
+  HREF="node38.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2664"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2667"
+  HREF="node40.html">37. crond and atd</A>
+<B> Up:</B> <A NAME="tex2html2663"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2657"
+  HREF="node38.html">35. The LINUX File</A>
+ &nbsp <B>  <A NAME="tex2html2665"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html2668"
+  HREF="#SECTION003910000000000000000">36.1 Web Server Basics</A>
+<LI><A NAME="tex2html2669"
+  HREF="#SECTION003920000000000000000">36.2 Installing and Configuring Apache</A>
+<UL>
+<LI><A NAME="tex2html2670"
+  HREF="#SECTION003921000000000000000">36.2.1 Sample <TT>
+<FONT COLOR="#0000ff">httpd.conf</FONT></TT></A>
+<LI><A NAME="tex2html2671"
+  HREF="#SECTION003922000000000000000">36.2.2 Common directives</A>
+<LI><A NAME="tex2html2672"
+  HREF="#SECTION003923000000000000000">36.2.3 User HTML directories</A>
+<LI><A NAME="tex2html2673"
+  HREF="#SECTION003924000000000000000">36.2.4 Aliasing</A>
+<LI><A NAME="tex2html2674"
+  HREF="#SECTION003925000000000000000">36.2.5 Fancy indexes</A>
+<LI><A NAME="tex2html2675"
+  HREF="#SECTION003926000000000000000">36.2.6 Encoding and language negotiation</A>
+<LI><A NAME="tex2html2676"
+  HREF="#SECTION003927000000000000000">36.2.7 Server-side includes -- SSI</A>
+<LI><A NAME="tex2html2677"
+  HREF="#SECTION003928000000000000000">36.2.8 CGI -- Common Gateway Interface</A>
+<LI><A NAME="tex2html2678"
+  HREF="#SECTION003929000000000000000">36.2.9 Forms and CGI</A>
+<LI><A NAME="tex2html2679"
+  HREF="#SECTION0039210000000000000000">36.2.10 Setuid CGIs</A>
+<LI><A NAME="tex2html2680"
+  HREF="#SECTION0039211000000000000000">36.2.11 Apache modules and PHP</A>
+<LI><A NAME="tex2html2681"
+  HREF="#SECTION0039212000000000000000">36.2.12 Virtual hosts</A>
+</UL></UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION003900000000000000000">
+36. <TT>
+<FONT COLOR="#0000ff">httpd</FONT></TT> -- Apache Web Server</A>
+</H1>
+
+<P>
+<A NAME="chap:apache"></A>
+<P>
+In this chapter, we will show how to set up a web
+server running virtual domains
+and dynamic CGI web
+pages. HTML is not covered, and you are expected
+to have some understanding of what HTML is, or at least where to find
+documentation about it.
+
+<P>
+
+<H1><A NAME="SECTION003910000000000000000">
+36.1 Web Server Basics</A>
+</H1>
+
+<P>
+<A NAME="sec:httpdsh"></A>
+<P>
+In Section <A HREF="node29.html#sec:telnetcnn">26.2</A> we showed a simple HTTP session
+with the <TT>
+<FONT COLOR="#0000ff">telnet</FONT></TT> command.
+A <I>web server</I> is really nothing
+more than a program that reads a file from the hard disk whenever a
+<TT>
+<FONT COLOR="#0000ff">GET&nbsp;/&lt;filename&gt;.html&nbsp;HTTP/1.0</FONT></TT> request comes in
+on port 80. Here, we will show a simple web server written in
+shell script. <FONT COLOR="#ffa500">[Not by me. The author did not put his name in the source,
+so if you are out there, please drop me an email.]</FONT> You will need to add the line
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>www&nbsp;stream&nbsp;&nbsp;tcp&nbsp;&nbsp;nowait&nbsp;&nbsp;nobody&nbsp;&nbsp;/usr/local/sbin/sh-httpd</code><br>
+</FONT></TD></TR></TABLE><P>
+to your <TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT> file. If you are running
+<TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT>, then you will need to add a file containing
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>service&nbsp;www</code><br>
+<code>{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;socket_type&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;stream</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;wait&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;no</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;user&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;nobody</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;server&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;/usr/local/sbin/sh-httpd</code><br>
+<code>}</code><br>
+</FONT></TD></TR></TABLE><P>
+to your <TT>
+<FONT COLOR="#0000ff">/etc/xinetd.d/</FONT></TT>
+directory. Then, you must stop any already running web
+servers and restart <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> (or
+<TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT>).
+
+<P>
+You will also have to create a log file
+(<TT>
+<FONT COLOR="#0000ff">/usr/local/var/log/sh-httpd.log</FONT></TT>) and at least
+one web page (<TT>
+<FONT COLOR="#0000ff">/usr/local/var/sh-www/index.html</FONT></TT>)
+for your server to serve. It can contain, say:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&#060;HTML&#062;</code><br>
+<code>&nbsp;&#060;HEAD&#062;</code><br>
+<code>&nbsp;&nbsp;&#060;TITLE&#062;My&nbsp;First&nbsp;Document&#060;/TITLE&#062;</code><br>
+<code>&nbsp;&#060;/HEAD&#062;</code><br>
+<code>&nbsp;&#060;BODY&nbsp;bgcolor=#CCCCCC&nbsp;text="#000000"&#062;</code><br>
+<code>This&nbsp;is&nbsp;my&nbsp;first&nbsp;document&#060;P&#062;</code><br>
+<code>Please&nbsp;visit</code><br>
+<code>&nbsp;&nbsp;&#060;A&nbsp;HREF="http://rute.sourceforge.net/"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;The&nbsp;Rute&nbsp;Home&nbsp;Page</code><br>
+<code>&nbsp;&nbsp;&#060;/A&#062;</code><br>
+<code>for&nbsp;more&nbsp;info.&#060;/P&#062;</code><br>
+<code>&nbsp;&#060;/BODY&#062;</code><br>
+<code>&#060;/HTML&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Note that the server runs as <TT>
+<FONT COLOR="#0000ff">nobody</FONT></TT>, so the log file must be writable
+by the <TT>
+<FONT COLOR="#0000ff">nobody</FONT></TT> user, and the <TT>
+<FONT COLOR="#0000ff">index.html</FONT></TT> file must be readable. Also
+note the use of the <TT>
+<FONT COLOR="#0000ff">getpeername</FONT></TT> command, which can be changed to <TT>
+<FONT COLOR="#0000ff">PEER=""</FONT></TT>
+if you do not have the <TT>
+<FONT COLOR="#0000ff">netpipes</FONT></TT> package installed. <FONT COLOR="#ffa500">[I am not completely
+sure if other commands used here are unavailable on other U<SMALL>NIX</SMALL>
+systems.]</FONT>.
+
+<P>
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>20</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>25</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>30</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>35</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>40</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>45</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>50</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>55</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>60</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>65</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>70</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>75</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>80</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>85</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>90</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>95</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>100</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>105</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>110</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>115</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>120</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>#!/bin/sh</code><br>
+<code>VERSION=0.1</code><br>
+<code>NAME="ShellHTTPD"</code><br>
+<code>DEFCONTENT="text/html"</code><br>
+<code>DOCROOT=/usr/local/var/sh-www</code><br>
+<code>DEFINDEX=index.html</code><br>
+<code>LOGFILE=/usr/local/var/log/sh-httpd.log</code><br>
+<code>&nbsp;</code><br>
+<code>log()&nbsp;{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;local&nbsp;REMOTE_HOST=$1</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;local&nbsp;REFERRER=$2</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;local&nbsp;CODE=$3</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;local&nbsp;SIZE=$4</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;"$REMOTE_HOST&nbsp;$REFERRER&nbsp;-&nbsp;[$REQ_DATE]&nbsp;\</code><br>
+<code>\"${REQUEST}\"&nbsp;${CODE}&nbsp;${SIZE}"&nbsp;&#062;&#062;&nbsp;${LOGFILE}&nbsp;&nbsp;&nbsp;&nbsp;</code><br>
+<code>}</code><br>
+<code>&nbsp;</code><br>
+<code>print_header()&nbsp;{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;-e&nbsp;"HTTP/1.0&nbsp;200&nbsp;OK\r"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;-e&nbsp;"Server:&nbsp;${NAME}/${VERSION}\r"&nbsp;&nbsp;&nbsp;&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;-e&nbsp;"Date:&nbsp;`date`\r"</code><br>
+<code>}</code><br>
+<code>&nbsp;</code><br>
+<code>print_error()&nbsp;{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;-e&nbsp;"HTTP/1.0&nbsp;$1&nbsp;$2\r"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;-e&nbsp;"Content-type:&nbsp;$DEFCONTENT\r"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;-e&nbsp;"Connection:&nbsp;close\r"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;-e&nbsp;"Date:&nbsp;`date`\r"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;-e&nbsp;"\r"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;-e&nbsp;"$2\r"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;exit&nbsp;1</code><br>
+<code>}</code><br>
+<code>&nbsp;</code><br>
+<code>guess_content_type()&nbsp;{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;local&nbsp;FILE=$1</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;local&nbsp;CONTENT</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;case&nbsp;${FILE##*.}&nbsp;in</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;html)&nbsp;CONTENT=$DEFCONTENT&nbsp;&#059;&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;gz)&nbsp;CONTENT=application/x-gzip&nbsp;&#059;&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*)&nbsp;CONTENT=application/octet-stream&nbsp;&#059;&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;esac</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;-e&nbsp;"Content-type:&nbsp;$CONTENT"</code><br>
+<code>}</code><br>
+<code>&nbsp;</code><br>
+<code>do_get()&nbsp;{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;local&nbsp;DIR</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;local&nbsp;NURL</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;local&nbsp;LEN</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;if&nbsp;[&nbsp;!&nbsp;-d&nbsp;$DOCROOT&nbsp;]&#059;&nbsp;then</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;log&nbsp;${PEER}&nbsp;-&nbsp;404&nbsp;0</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print_error&nbsp;404&nbsp;"No&nbsp;such&nbsp;file&nbsp;or&nbsp;directory"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;fi</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;if&nbsp;[&nbsp;-z&nbsp;"${URL##*/}"&nbsp;]&#059;&nbsp;then</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;URL=${URL}${DEFINDEX}</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;fi</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;DIR="`dirname&nbsp;$URL`"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;if&nbsp;[&nbsp;!&nbsp;-d&nbsp;${DOCROOT}/${DIR}&nbsp;]&#059;&nbsp;then</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;log&nbsp;${PEER}&nbsp;-&nbsp;404&nbsp;0</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print_error&nbsp;404&nbsp;"Directory&nbsp;not&nbsp;found"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;else</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cd&nbsp;${DOCROOT}/${DIR}</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NURL="`pwd`/`basename&nbsp;${URL}`"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;URL=${NURL}</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;fi</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;if&nbsp;[&nbsp;!&nbsp;-f&nbsp;${URL}&nbsp;]&#059;&nbsp;then</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;log&nbsp;${PEER}&nbsp;-&nbsp;404&nbsp;0</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print_error&nbsp;404&nbsp;"Document&nbsp;not&nbsp;found"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;fi</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;print_header</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;guess_content_type&nbsp;${URL}</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;LEN="`ls&nbsp;-l&nbsp;${URL}&nbsp;|&nbsp;tr&nbsp;-s&nbsp;'&nbsp;'&nbsp;|&nbsp;cut&nbsp;-d&nbsp;'&nbsp;'&nbsp;-f&nbsp;5`"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;-e&nbsp;"Content-length:&nbsp;$LEN\r\n\r"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;log&nbsp;${PEER}&nbsp;-&nbsp;200&nbsp;${LEN}</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;cat&nbsp;${URL}</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;sleep&nbsp;3</code><br>
+<code>}</code><br>
+<code>&nbsp;</code><br>
+<code>read_request()&nbsp;{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;local&nbsp;DIRT</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;local&nbsp;COMMAND</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;read&nbsp;REQUEST</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;read&nbsp;DIRT</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;REQ_DATE="`date&nbsp;+"%d/%b/%Y:%H:%M:%S&nbsp;%z"`"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;REQUEST="`echo&nbsp;${REQUEST}&nbsp;|&nbsp;tr&nbsp;-s&nbsp;[:blank:]`"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;COMMAND="`echo&nbsp;${REQUEST}&nbsp;|&nbsp;cut&nbsp;-d&nbsp;'&nbsp;'&nbsp;-f&nbsp;1`"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;URL="`echo&nbsp;${REQUEST}&nbsp;|&nbsp;cut&nbsp;-d&nbsp;'&nbsp;'&nbsp;-f&nbsp;2`"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;PROTOCOL="`echo&nbsp;${REQUEST}&nbsp;|&nbsp;cut&nbsp;-d&nbsp;'&nbsp;'&nbsp;-f&nbsp;3`"</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;case&nbsp;$COMMAND&nbsp;in</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;HEAD)</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print_error&nbsp;501&nbsp;"Not&nbsp;implemented&nbsp;(yet)"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#059;&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;GET)</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;do_get</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#059;&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*)</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print_error&nbsp;501&nbsp;"Not&nbsp;Implemented"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#059;&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;esac</code><br>
+<code>}</code><br>
+<code>&nbsp;</code><br>
+<code>#</code><br>
+<code>#&nbsp;It&nbsp;was&nbsp;supposed&nbsp;to&nbsp;be&nbsp;clean&nbsp;-&nbsp;without&nbsp;any&nbsp;non-standard&nbsp;utilities</code><br>
+<code>#&nbsp;but&nbsp;I&nbsp;want&nbsp;some&nbsp;logging&nbsp;where&nbsp;the&nbsp;connections&nbsp;come&nbsp;from,&nbsp;so</code><br>
+<code>#&nbsp;I&nbsp;use&nbsp;just&nbsp;this&nbsp;one&nbsp;utility&nbsp;to&nbsp;get&nbsp;the&nbsp;peer&nbsp;address</code><br>
+<code>#</code><br>
+<code>#&nbsp;This&nbsp;is&nbsp;from&nbsp;the&nbsp;netpipes&nbsp;package</code><br>
+<code>PEER="`getpeername&nbsp;|&nbsp;cut&nbsp;-d&nbsp;'&nbsp;'&nbsp;-f&nbsp;1`"</code><br>
+<code>&nbsp;</code><br>
+<code>read_request</code><br>
+<code>&nbsp;</code><br>
+<code>exit&nbsp;0</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Now run <TT>
+<FONT COLOR="#0000ff">telnet&nbsp;localhost&nbsp;80</FONT></TT>, as in Section <A HREF="node29.html#sec:telnetcnn">26.2</A>.
+If that works and your log files are being properly appended (use <TT>
+<FONT COLOR="#0000ff">tail&nbsp;-f&nbsp;</FONT></TT>...),
+you can try to connect to <I><TT><A NAME="tex2html50"
+  HREF="http://localhost/">http://localhost/</A></TT></I> with a web browser like Netscape.
+
+<P>
+Notice also that the command <TT>
+<FONT COLOR="#0000ff">getsockname</FONT></TT> (which
+tells you which of your own IP addresses the remote client connected
+to) could allow the script to serve pages from a different directory for
+each IP address. This is <I>virtual domains</I> in a nutshell. <FONT COLOR="#ffa500">[Groovy,
+baby, I'm in a giant nutshell.... how do I get out?]</FONT>
+<P>
+
+<H1><A NAME="SECTION003920000000000000000">
+36.2 Installing and Configuring Apache</A>
+</H1>
+
+<P>
+Because all distributions package Apache in a different way, here I
+assume Apache to have been installed from its source tree, rather
+than from a <TT>
+<FONT COLOR="#0000ff">.deb</FONT></TT> or <TT>
+<FONT COLOR="#0000ff">.rpm</FONT></TT> package.
+You can refer to Section <A HREF="node27.html#sec:gnupackages">24.1</A> on how to install Apache
+from its source <TT>
+<FONT COLOR="#0000ff">.tar.gz</FONT></TT> file like any other GNU package.
+(You can even install it under Windows, Windows NT, or OS/2.)
+The source tree is, of course, available from
+<EM>The Apache Home Page</EM> <I>&lt;<TT><A NAME="tex2html51"
+  HREF="http://www.apache.org">http://www.apache.org</A></TT>&gt;</I>.
+Here I assume you have installed it in <TT>
+<FONT COLOR="#0000ff">&#45;&#45;prefix=/opt/apache/</FONT></TT>.
+In the process, Apache will have dumped a huge reference manual
+into
+<TT>
+<FONT COLOR="#0000ff">/opt/apache/htdocs/manual/</FONT></TT>.
+
+<P>
+
+<H2><A NAME="SECTION003921000000000000000">
+36.2.1 Sample <TT>
+<FONT COLOR="#0000ff">httpd.conf</FONT></TT></A>
+</H2>
+
+<P>
+Apache has several legacy configuration files: <TT>
+<FONT COLOR="#0000ff">access.conf</FONT></TT> and
+<TT>
+<FONT COLOR="#0000ff">srm.conf</FONT></TT> are two of them. These files are now deprecated and should
+be left empty. A single configuration file <TT>
+<FONT COLOR="#0000ff">/opt/apache/conf/httpd.conf</FONT></TT>
+may contain at minimum:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>20</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>25</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>30</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>35</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>40</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ServerType&nbsp;standalone</code><br>
+<code>ServerRoot&nbsp;"/opt/apache"</code><br>
+<code>PidFile&nbsp;/opt/apache/logs/httpd.pid</code><br>
+<code>ScoreBoardFile&nbsp;/opt/apache/logs/httpd.scoreboard</code><br>
+<code>Port&nbsp;80</code><br>
+<code>User&nbsp;nobody</code><br>
+<code>Group&nbsp;nobody</code><br>
+<code>HostnameLookups&nbsp;Off</code><br>
+<code>ServerAdmin&nbsp;webmaster@cranzgot.co.za</code><br>
+<code>UseCanonicalName&nbsp;On</code><br>
+<code>ServerSignature&nbsp;On</code><br>
+<code>DefaultType&nbsp;text/plain</code><br>
+<code>ErrorLog&nbsp;/opt/apache/logs/error_log</code><br>
+<code>LogLevel&nbsp;warn</code><br>
+<code>LogFormat&nbsp;"%h&nbsp;%l&nbsp;%u&nbsp;%t&nbsp;\"%r\"&nbsp;%&#062;s&nbsp;%b"&nbsp;common</code><br>
+<code>CustomLog&nbsp;/opt/apache/logs/access_log&nbsp;common</code><br>
+<code>DocumentRoot&nbsp;"/opt/apache/htdocs"</code><br>
+<code>DirectoryIndex&nbsp;index.html</code><br>
+<code>AccessFileName&nbsp;.htaccess</code><br>
+<code>&#060;Directory&nbsp;/&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Options&nbsp;FollowSymLinks</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;AllowOverride&nbsp;None</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Order&nbsp;Deny,Allow</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Deny&nbsp;from&nbsp;All</code><br>
+<code>&#060;/Directory&#062;</code><br>
+<code>&#060;Files&nbsp;~&nbsp;"^\.ht"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Order&nbsp;allow,deny</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Deny&nbsp;from&nbsp;all</code><br>
+<code>&#060;/Files&#062;</code><br>
+<code>&#060;Directory&nbsp;"/opt/apache/htdocs"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Options&nbsp;Indexes&nbsp;FollowSymLinks&nbsp;MultiViews</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;AllowOverride&nbsp;All</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Order&nbsp;allow,deny</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Allow&nbsp;from&nbsp;all</code><br>
+<code>&#060;/Directory&#062;</code><br>
+<code>&#060;Directory&nbsp;"/opt/apache/htdocs/home/*/www"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Options&nbsp;Indexes&nbsp;MultiViews</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;AllowOverride&nbsp;None</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Order&nbsp;allow,deny</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Allow&nbsp;from&nbsp;all</code><br>
+<code>&#060;/Directory&#062;</code><br>
+<code>UserDir&nbsp;/opt/apache/htdocs/home/*/www</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+With the config file ready, you can move the
+<TT>
+<FONT COLOR="#0000ff">index.html</FONT></TT> file above to <TT>
+<FONT COLOR="#0000ff">/opt/apache/htdocs/</FONT></TT>.
+You will notice the complete Apache manual and a demo
+page already installed there; you can move them to another directory
+for the time being. Now run
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/opt/apache/bin/httpd&nbsp;-X</code><br>
+</FONT></TD></TR></TABLE><P>
+and then point your web browser to <I><TT><A NAME="tex2html52"
+  HREF="http://localhost/">http://localhost/</A></TT></I>
+as before.
+
+<P>
+
+<H2><A NAME="SECTION003922000000000000000">
+36.2.2 Common directives</A>
+</H2>
+
+<P>
+Here is a description of the options. Each option is called
+a <I>directive</I> in Apache terminology. A complete
+list of basic directives is in the file <TT>
+<FONT COLOR="#0000ff">/opt/apache/htdocs/manual/mod/core.html</FONT></TT>.
+<DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">ServerType</FONT></TT></STRONG></DT>
+<DD>As discussed in Section <A HREF="node32.html#sec:servinetdstand">29.2</A>,
+some services can run standalone or from <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> (or <TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT>).
+This directive can be exactly <TT>
+<FONT COLOR="#0000ff">standalone</FONT></TT> or <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT>. If you choose
+<TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT>, you will need to add an appropriate line into your <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT>
+configuration, although a web server should almost certainly choose standalone
+mode.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">ServerRoot</FONT></TT></STRONG></DT>
+<DD>This is the directory
+superstructure <FONT COLOR="#ffa500">[See page <A HREF="node20.html#page:directsuper"><IMG  ALIGN="BOTTOM" BORDER="1" ALT="[*]" SRC="crossref.png"></A>.]</FONT> under which
+Apache is installed. It will always be the same as the value passed to <TT>
+<FONT COLOR="#0000ff">&#45;&#45;prefix=</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">PidFile</FONT></TT></STRONG></DT>
+<DD>Many system
+services store the process ID in a file for
+shutdown and monitoring purposes. On most distributions, the
+file is <TT>
+<FONT COLOR="#0000ff">/var/run/httpd.pid</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">ScoreBoardFile</FONT></TT></STRONG></DT>
+<DD>This option is used for communication between Apache parent and child
+processes on some non-U<SMALL>NIX</SMALL> systems.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">Port</FONT></TT></STRONG></DT>
+<DD>This is the TCP port for standalone servers to listen on.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">User</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">Group</FONT></TT></STRONG></DT>
+<DD>This option is
+important for security. It forces <TT>
+<FONT COLOR="#0000ff">httpd</FONT></TT> to user
+<TT>
+<FONT COLOR="#0000ff">nobody</FONT></TT> privileges. If the web server is ever hacked, the attack will not be
+able to gain more than the privileges of the <TT>
+<FONT COLOR="#0000ff">nobody</FONT></TT> user.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">HostnameLookups</FONT></TT></STRONG></DT>
+<DD>To
+force a reverse DNS lookup
+on every connecting host, set this directive to <TT>
+<FONT COLOR="#0000ff">on</FONT></TT>. To force
+a forward lookup on every reverse lookup, set this to <TT>
+<FONT COLOR="#0000ff">double</FONT></TT>. This option is
+for logging purposes since access control does a reverse and forward reverse lookup
+anyway if required. It should certainly be <TT>
+<FONT COLOR="#0000ff">off</FONT></TT> if you want to reduce latency.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">ServerAdmin</FONT></TT></STRONG></DT>
+<DD>Error messages include this email address.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">UseCanonicalName</FONT></TT></STRONG></DT>
+<DD>If Apache has to return a URL for any reason,
+it will normally return the full name of the server. Setting to <TT>
+<FONT COLOR="#0000ff">off</FONT></TT>
+uses the very host name sent by the client.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">ServerSignature</FONT></TT></STRONG></DT>
+<DD>Add the server name to HTML error messages.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">DefaultType</FONT></TT></STRONG></DT>
+<DD>All files returned to the client have a type field
+specifying how the file should be displayed. If Apache cannot deduce the type,
+it assumes the MIME Type to be <TT>
+<FONT COLOR="#0000ff">text/plain</FONT></TT>. See Section <A HREF="node15.html#sec:mimeencap">12.6.2</A>
+for a discussion of MIME types.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">ErrorLog</FONT></TT></STRONG></DT>
+<DD>Where errors get logged, usually <TT>
+<FONT COLOR="#0000ff">/var/log/httpd/error_log</FONT></TT>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">LogLevel</FONT></TT></STRONG></DT>
+<DD>How much info to log.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">LogFormat</FONT></TT></STRONG></DT>
+<DD>Define a new log format. Here we
+defined a log format and call
+it <TT>
+<FONT COLOR="#0000ff">common</FONT></TT>. Multiple lines are allowed. Lots of interesting information can actually be
+logged: See <TT>
+<FONT COLOR="#0000ff">/opt/apache/htdocs/manual/mod/mod_log_config.html</FONT></TT> for a full description.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">CustomLog</FONT></TT></STRONG></DT>
+<DD>The log file name and its (previously defined) format.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">DocumentRoot</FONT></TT></STRONG></DT>
+<DD>This directive specifies the top-level
+directory that client connections
+will see. The string <TT>
+<FONT COLOR="#0000ff">/opt/apache/htdocs/</FONT></TT> is prepended to any file lookup, and
+hence a URL <I><TT><A NAME="tex2html53"
+  HREF="http://localhost/manual/index.html.en">http://localhost/manual/index.html.en</A></TT></I> will return the file
+<TT>
+<FONT COLOR="#0000ff">/opt/apache/htdocs/manual/index.html.en</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">DirectoryIndex</FONT></TT></STRONG></DT>
+<DD>This directive gives the default file to try serve for
+URLs that contain only a directory name. If a file <TT>
+<FONT COLOR="#0000ff">index.html</FONT></TT> does not
+exist under that directory, an index of the directory is sent to the client.
+Other common configurations use <TT>
+<FONT COLOR="#0000ff">index.htm</FONT></TT> or <TT>
+<FONT COLOR="#0000ff">default.html</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">AccessFileName</FONT></TT></STRONG></DT>
+<DD>Before serving a file to a client, Apache reads
+additional directives from a file <TT>
+<FONT COLOR="#0000ff">.htaccess</FONT></TT> in the same directory as the requested
+file. If a parent directory contains a <TT>
+<FONT COLOR="#0000ff">.htaccess</FONT></TT> instead, this one will take
+priority. The <TT>
+<FONT COLOR="#0000ff">.htaccess</FONT></TT> file contains directives that limit access to the
+directory, as discussed below.
+</DD>
+</DL>
+
+<P>
+The above is merely the general configuration of Apache. To actually
+serve pages, you need to define directories, each with a particular purpose,
+containing particular HTML or graphic files.
+The Apache configuration file is very much like an HTML document.
+Sections are started with <TT>
+<FONT COLOR="#0000ff">&lt;</FONT></TT><I>section</I><TT>
+<FONT COLOR="#0000ff">&nbsp;</FONT></TT><I>parameter</I><TT>
+<FONT COLOR="#0000ff">&gt;</FONT></TT>
+and ended with <TT>
+<FONT COLOR="#0000ff">&lt;/</FONT></TT><I>section</I><TT>
+<FONT COLOR="#0000ff">&gt;</FONT></TT>. The most common directive
+of this sort is <TT>
+<FONT COLOR="#0000ff">&lt;Directory&nbsp;/</FONT></TT><I>directory</I><TT>
+<FONT COLOR="#0000ff">&gt;</FONT></TT>
+which does such
+directory definition. Before defining any directories, we need to limit
+access to the root directory. This control is critical for security.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&#060;Directory&nbsp;/&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Options&nbsp;FollowSymLinks</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Deny&nbsp;from&nbsp;All</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Order&nbsp;Deny,Allow</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;AllowOverride&nbsp;None</code><br>
+<code>&#060;/Directory&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+This configuration tells Apache about the root directory, giving clients
+very restrictive access to it. The directives are <FONT COLOR="#ffa500">[Some of these
+are extracted from the Apache manual.]</FONT>:
+<DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">Options</FONT></TT></STRONG></DT>
+<DD>The <TT>
+<FONT COLOR="#0000ff">Options</FONT></TT> directive controls which server features are available in
+a particular directory. There is also the syntax <TT>
+<FONT COLOR="#0000ff">+</FONT></TT><I>option</I> or
+<TT>
+<FONT COLOR="#0000ff">-</FONT></TT><I>option</I> to include the options of the parent directory,
+for example, <TT>
+<FONT COLOR="#0000ff">Options&nbsp;+FollowSymLinks&nbsp;-Indexes</FONT></TT>.
+<DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">FollowSymLinks</FONT></TT></STRONG></DT>
+<DD>The server will follow any symbolic links beneath the directory. Be careful
+about what symbolic links you have beneath directories with <TT>
+<FONT COLOR="#0000ff">FollowSymLinks</FONT></TT>.
+You can, for example, give everyone access to the root directory by having 
+a link <TT>
+<FONT COLOR="#0000ff">../../../</FONT></TT> under <TT>
+<FONT COLOR="#0000ff">htdocs</FONT></TT>--not what you want.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">ExecCGI</FONT></TT></STRONG></DT>
+<DD>Execution of CGI scripts is permitted.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">Includes</FONT></TT></STRONG></DT>
+<DD>Server-side includes are permitted (more on this later).
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">IncludesNOEXEC</FONT></TT></STRONG></DT>
+<DD>Server-side includes are permitted, but the <TT>
+<FONT COLOR="#0000ff">#exec</FONT></TT> command and
+<TT>
+<FONT COLOR="#0000ff">#include</FONT></TT> of CGI scripts are disabled.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">Indexes</FONT></TT></STRONG></DT>
+<DD>If a client asks for a directory by name and no <TT>
+<FONT COLOR="#0000ff">index.html</FONT></TT>
+file (or whatever <TT>
+<FONT COLOR="#0000ff">DirectoryIndex</FONT></TT> file you specified) is present,
+then a pretty listing of the contents of that directory is created and
+returned. For security you may want to turn this option off.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">MultiViews</FONT></TT></STRONG></DT>
+<DD>Content-negotiated MultiViews are allowed (more on this later).
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">SymLinksIfOwnerMatch</FONT></TT></STRONG></DT>
+<DD>The server will only follow symbolic links for which the target
+file or directory is owned by the same user ID as the link
+(more on this later).
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">All</FONT></TT></STRONG></DT>
+<DD>All options except for <TT>
+<FONT COLOR="#0000ff">MultiViews</FONT></TT>. This is the default setting.
+</DD>
+</DL>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">Deny</FONT></TT></STRONG></DT>
+<DD>Hosts that are not allowed to connect.
+You can specify a host name or IP address, for example, as:
+</DD>
+</DL>
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>Deny&nbsp;from&nbsp;10.1.2.3</code><br>
+<code>Deny&nbsp;from&nbsp;192.168.5.0/24</code><br>
+<code>Deny&nbsp;from&nbsp;cranzgot.co.za</code><br>
+</FONT></TD></TR></TABLE><P>
+<DL>
+<DT></DT>
+<DD>which will deny access
+to <TT>
+<FONT COLOR="#0000ff">10.1.2.3</FONT></TT>, all hosts beginning with <TT>
+<FONT COLOR="#0000ff">192.168.5.</FONT></TT>,
+and all hosts ending in <TT>
+<FONT COLOR="#0000ff">.cranzgot.co.za</FONT></TT>, including the host <TT>
+<FONT COLOR="#0000ff">cranzgot.co.za</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">Allow</FONT></TT></STRONG></DT>
+<DD>Hosts that are allowed to connect. This directive uses the same
+syntax as <TT>
+<FONT COLOR="#0000ff">Deny</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">Order</FONT></TT></STRONG></DT>
+<DD>If order is <TT>
+<FONT COLOR="#0000ff">Deny,Allow</FONT></TT>, then the <TT>
+<FONT COLOR="#0000ff">Deny</FONT></TT> directives
+are checked first and any client that does not match a
+<TT>
+<FONT COLOR="#0000ff">Deny</FONT></TT> directive or does match an <TT>
+<FONT COLOR="#0000ff">Allow</FONT></TT> directive
+will be <I>allowed</I> access to the server.
+
+<P>
+If order is <TT>
+<FONT COLOR="#0000ff">Allow,Deny</FONT></TT>, then the <TT>
+<FONT COLOR="#0000ff">Allow</FONT></TT> directives
+are checked first and any client that does not match an
+<TT>
+<FONT COLOR="#0000ff">Allow</FONT></TT> directive or does match a <TT>
+<FONT COLOR="#0000ff">Deny</FONT></TT> directive
+will be <I>denied</I> access to the server.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">AllowOverride</FONT></TT></STRONG></DT>
+<DD>In addition to the directives specified
+here, additional directives will be read from the file specified by
+<TT>
+<FONT COLOR="#0000ff">AccessFileName</FONT></TT>, usually called <TT>
+<FONT COLOR="#0000ff">.htaccess</FONT></TT>. This file would
+usually exist alongside your <TT>
+<FONT COLOR="#0000ff">.html</FONT></TT> files or otherwise in a
+parent directory. If the file exists, its contents are read into the
+current <TT>
+<FONT COLOR="#0000ff">&lt;Directory</FONT></TT><I>&nbsp;...</I><TT>
+<FONT COLOR="#0000ff">&gt;</FONT></TT> directive.
+<TT>
+<FONT COLOR="#0000ff">AllowOverride</FONT></TT> says what directives the <TT>
+<FONT COLOR="#0000ff">.htaccess</FONT></TT> file is
+allowed to squash. The complete list can be found in
+<TT>
+<FONT COLOR="#0000ff">/opt/apache/htdocs/manual/mod/core.html</FONT></TT>.
+</DD>
+</DL>
+
+<P>
+You can see that we give very restrictive <TT>
+<FONT COLOR="#0000ff">Options</FONT></TT>
+to the root directory, as well as very restrictive access. The only server
+feature we allow is <TT>
+<FONT COLOR="#0000ff">FollowSymLinks</FONT></TT>, then we <TT>
+<FONT COLOR="#0000ff">Deny</FONT></TT>
+any access, and then we remove the possibility that a <TT>
+<FONT COLOR="#0000ff">.htaccess</FONT></TT>
+file could override our restrictions.
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">&lt;Files&nbsp;</FONT></TT><I>...</I><TT>
+<FONT COLOR="#0000ff">&gt;</FONT></TT> directive sets restrictions
+on all files matching a particular regular expression. As a security measure,
+we use it to prevent access to all <TT>
+<FONT COLOR="#0000ff">.htaccess</FONT></TT> files as follows:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&#060;Files&nbsp;~&nbsp;"^\.ht"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Order&nbsp;allow,deny</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Deny&nbsp;from&nbsp;all</code><br>
+<code>&#060;/Files&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+We are now finally ready to add actual web page directories.
+These take a less restrictive set of access controls:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&#060;Directory&nbsp;"/opt/apache/htdocs"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Options&nbsp;Indexes&nbsp;FollowSymLinks&nbsp;MultiViews</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;AllowOverride&nbsp;All</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Order&nbsp;allow,deny</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Allow&nbsp;from&nbsp;all</code><br>
+<code>&#060;/Directory&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H2><A NAME="SECTION003923000000000000000">
+36.2.3 User HTML directories</A>
+</H2>
+
+<P>
+Our users may require that Apache know about their
+private web page directories <TT>
+<FONT COLOR="#0000ff">~/www/</FONT></TT>. This is easy to support
+with the special <TT>
+<FONT COLOR="#0000ff">UserDir</FONT></TT> directive:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&#060;Directory&nbsp;"/opt/apache/htdocs/home/*/www"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Options&nbsp;Indexes&nbsp;MultiViews</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;AllowOverride&nbsp;None</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Order&nbsp;allow,deny</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Allow&nbsp;from&nbsp;all</code><br>
+<code>&#060;/Directory&#062;</code><br>
+<code>UserDir&nbsp;/opt/apache/htdocs/home/*/www</code><br>
+</FONT></TD></TR></TABLE><P>
+For this feature to work, you must symlink <TT>
+<FONT COLOR="#0000ff">/opt/apache/htdocs/home</FONT></TT> to <TT>
+<FONT COLOR="#0000ff">/home</FONT></TT>,
+and create a directory <TT>
+<FONT COLOR="#0000ff">www/</FONT></TT> under each user's home directory.
+Hitting the URL <I><TT><A NAME="tex2html54"
+  HREF="http://localhost/~jack/index.html">http://localhost/~jack/index.html</A></TT></I> will then retrieve
+the file <TT>
+<FONT COLOR="#0000ff">/opt/apache/htdocs/home/jack/www/index.html</FONT></TT>.
+You will find that Apache gives a <TT>
+<FONT COLOR="#0000ff">Forbidden</FONT></TT> error message when
+you try to do this. This is probably because <TT>
+<FONT COLOR="#0000ff">jack</FONT></TT>'s
+home directory's permissions are too restrictive. Your choices
+vary between now making <TT>
+<FONT COLOR="#0000ff">jack</FONT></TT>'s home directory less restricted
+or increasing the privileges of Apache. Running Apache under the <TT>
+<FONT COLOR="#0000ff">www</FONT></TT>
+group by using <TT>
+<FONT COLOR="#0000ff">Group&nbsp;www</FONT></TT>, and then running
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>groupadd&nbsp;-g&nbsp;65&nbsp;www</code><br>
+<code>chown&nbsp;jack:www&nbsp;/home/jack&nbsp;/home/jack/www</code><br>
+<code>chmod&nbsp;0750&nbsp;/home/jack&nbsp;/home/jack/www</code><br>
+</FONT></TD></TR></TABLE><P>
+is a reasonable compromise.
+
+<P>
+
+<H2><A NAME="SECTION003924000000000000000">
+36.2.4 Aliasing</A>
+</H2>
+
+<P>
+Sometimes, HTML documents will want to refer to a file or graphic
+by using a simple prefix, rather than a long directory name. Other
+times, you want two different references to source the same file.
+The <TT>
+<FONT COLOR="#0000ff">Alias</FONT></TT> directive creates virtual links between directories.
+For example, adding the following line, means that a URL <TT>
+<FONT COLOR="#0000ff">/icons/bomb.gif</FONT></TT>
+will serve the file <TT>
+<FONT COLOR="#0000ff">/opt/apache/icons/bomb.gif</FONT></TT>:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>Alias&nbsp;/icons/&nbsp;"/opt/apache/icons/"</code><br>
+</FONT></TD></TR></TABLE><P>
+We do, of course, need to tell Apache about this directory:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&#060;Directory&nbsp;"/opt/apache/icons"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Options&nbsp;None</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;AllowOverride&nbsp;None</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Order&nbsp;allow,deny</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Allow&nbsp;from&nbsp;all</code><br>
+<code>&#060;/Directory&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H2><A NAME="SECTION003925000000000000000">
+36.2.5 Fancy indexes</A>
+</H2>
+
+<P>
+You will find the directory lists generated by the preceding
+configuration rather bland. The directive
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>IndexOptions&nbsp;FancyIndexing</code><br>
+</FONT></TD></TR></TABLE><P>
+causes nice descriptive icons to be printed to the left of the file name.
+What icons match what file types is a trick issue. You can start with:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>AddIconByEncoding&nbsp;(CMP,/icons/compressed.gif)&nbsp;x-compress&nbsp;x-gzip</code><br>
+<code>AddIconByType&nbsp;(TXT,/icons/text.gif)&nbsp;text/*</code><br>
+<code>AddIconByType&nbsp;(IMG,/icons/image2.gif)&nbsp;image/*</code><br>
+<code>AddIconByType&nbsp;(SND,/icons/sound2.gif)&nbsp;audio/*</code><br>
+<code>AddIconByType&nbsp;(VID,/icons/movie.gif)&nbsp;video/*</code><br>
+<code>AddIcon&nbsp;/icons/compressed.gif&nbsp;.Z&nbsp;.z&nbsp;.tgz&nbsp;.gz&nbsp;.zip</code><br>
+<code>AddIcon&nbsp;/icons/a.gif&nbsp;.ps&nbsp;.eps</code><br>
+<code>AddIcon&nbsp;/icons/layout.gif&nbsp;.html&nbsp;.shtml&nbsp;.htm</code><br>
+</FONT></TD></TR></TABLE><P>
+This requires the <TT>
+<FONT COLOR="#0000ff">Alias</FONT></TT> directive above to be present.
+The default Apache configuration contains a far more extensive
+map of file types.
+
+<P>
+
+<H2><A NAME="SECTION003926000000000000000">
+36.2.6 Encoding and language negotiation</A>
+</H2>
+
+<P>
+You can get Apache to serve
+<TT>
+<FONT COLOR="#0000ff">gzip</FONT></TT>ped files
+with this:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>AddEncoding&nbsp;x-compress&nbsp;Z</code><br>
+<code>AddEncoding&nbsp;x-gzip&nbsp;gz</code><br>
+</FONT></TD></TR></TABLE><P>
+Now if a client requests a file <TT>
+<FONT COLOR="#0000ff">index.html</FONT></TT>, but only a file
+<TT>
+<FONT COLOR="#0000ff">index.html.gz</FONT></TT> exists, Apache decompresses it on-the-fly.
+Note that you must have the <TT>
+<FONT COLOR="#0000ff">MultiViews</FONT></TT> options enabled.
+
+<P>
+The next options cause Apache to serve <TT>
+<FONT COLOR="#0000ff">index.html.</FONT></TT><I>language-code</I>
+when <TT>
+<FONT COLOR="#0000ff">index.html</FONT></TT> is requested, filling in the preferred language code
+sent by the web browser. Adding these directives causes your Apache manual
+to display correctly and will properly show documents that have non-English
+translations. Here also, the <TT>
+<FONT COLOR="#0000ff">MultiViews</FONT></TT> must be present.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>AddLanguage&nbsp;en&nbsp;.en</code><br>
+<code>AddLanguage&nbsp;da&nbsp;.dk</code><br>
+<code>AddLanguage&nbsp;nl&nbsp;.nl</code><br>
+<code>AddLanguage&nbsp;et&nbsp;.ee</code><br>
+<code>AddLanguage&nbsp;fr&nbsp;.fr</code><br>
+<code>AddLanguage&nbsp;de&nbsp;.de</code><br>
+<code>AddLanguage&nbsp;el&nbsp;.el</code><br>
+<code>AddLanguage&nbsp;ja&nbsp;.ja</code><br>
+<code>AddLanguage&nbsp;ru&nbsp;.ru</code><br>
+<code>LanguagePriority&nbsp;en&nbsp;da&nbsp;nl&nbsp;et&nbsp;fr&nbsp;de&nbsp;el&nbsp;ja&nbsp;ru</code><br>
+</FONT></TD></TR></TABLE><P>
+The <TT>
+<FONT COLOR="#0000ff">LanguagePriority</FONT></TT> directive indicates the preferred language
+if the browser did not specify any.
+
+<P>
+Some files might contain a <TT>
+<FONT COLOR="#0000ff">.koi8-r</FONT></TT> extension,
+indicating a Russian character set encoding for this file. Many
+languages have such custom character sets. Russian files are named
+<I>webpage</I><TT>
+<FONT COLOR="#0000ff">.html.ru.koi8-r</FONT></TT>. Apache must tell the web browser
+about the encoding type, based on the extension. Here are directives
+for Japanese, Russian, and UTF-8 <FONT COLOR="#ffa500">[UTF-8 is a Unicode character set
+encoding useful for any language.]</FONT>, as follows:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>AddCharset&nbsp;ISO-2022-JP&nbsp;&nbsp;.jis</code><br>
+<code>AddCharset&nbsp;KOI8-R&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.koi8-r</code><br>
+<code>AddCharset&nbsp;UTF-8&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.utf8</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Once again, the default Apache configuration contains a far
+more extensive map of languages and character sets.
+
+<P>
+
+<H2><A NAME="SECTION003927000000000000000">
+36.2.7 Server-side includes -- SSI</A>
+</H2>
+
+<P>
+Apache actually has a built-in programming language that interprets <TT>
+<FONT COLOR="#0000ff">.shtml</FONT></TT>
+files as scripts. The output of such a script is returned to the client.
+Most of a typical <TT>
+<FONT COLOR="#0000ff">.shtml</FONT></TT> file will be ordinary HTML, which will
+be served unmodified. However, lines like
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&#060;!--#echo&nbsp;var="DATE_LOCAL"&nbsp;--&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+will be interpreted, and their output <I>included</I> into the
+HTML--hence the name <I>server-side includes</I>. Server-side includes are ideal
+for HTML pages that contain mostly static HTML with small bits of dynamic
+content. To demonstrate, add the following to your <TT>
+<FONT COLOR="#0000ff">httpd.conf</FONT></TT>:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>AddType&nbsp;text/html&nbsp;.shtml</code><br>
+<code>AddHandler&nbsp;server-parsed&nbsp;.shtml</code><br>
+<code>&#060;Directory&nbsp;"/opt/apache/htdocs/ssi"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Options&nbsp;Includes</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;AllowOverride&nbsp;None</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Order&nbsp;allow,deny</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Allow&nbsp;from&nbsp;all</code><br>
+<code>&#060;/Directory&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+Create a directory <TT>
+<FONT COLOR="#0000ff">/opt/apache/htdocs/ssi</FONT></TT> with the index
+file <TT>
+<FONT COLOR="#0000ff">index.shtml</FONT></TT>:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&#060;HTML&#062;</code><br>
+<code>The&nbsp;date&nbsp;today&nbsp;is&nbsp;&#060;!--#echo&nbsp;var="DATE_LOCAL"&nbsp;--&#062;.&#060;P&#062;</code><br>
+<code>Here&nbsp;is&nbsp;a&nbsp;directory&nbsp;listing:&#060;br&#062;</code><br>
+<code>&nbsp;&#060;PRE&#062;</code><br>
+<code>&nbsp;&nbsp;&#060;!--#exec&nbsp;cmd="ls&nbsp;-al"&nbsp;--&#062;</code><br>
+<code>&nbsp;&#060;/PRE&#062;</code><br>
+<code>&#060;!--#include&nbsp;virtual="footer.html"&nbsp;--&#062;</code><br>
+<code>&#060;/HTML&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+and then a file <TT>
+<FONT COLOR="#0000ff">footer.html</FONT></TT> containing anything you
+like. It is obvious how useful this procedure is for creating many documents with
+the same banner by means of a <TT>
+<FONT COLOR="#0000ff">#include</FONT></TT> statement. If you are wondering
+what other variables you can print besides <TT>
+<FONT COLOR="#0000ff">DATE_LOCAL</FONT></TT>, try the
+following:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&#060;HTML&#062;</code><br>
+<code>&nbsp;&#060;PRE&#062;</code><br>
+<code>&nbsp;&nbsp;&#060;!--#printenv&nbsp;--&#062;</code><br>
+<code>&nbsp;&#060;/PRE&#062;</code><br>
+<code>&#060;/HTML&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+You can also goto <I><TT><A NAME="tex2html55"
+  HREF="http://localhost/manual/howto/ssi.html">http://localhost/manual/howto/ssi.html</A></TT></I>
+to see some other examples.
+
+<P>
+
+<H2><A NAME="SECTION003928000000000000000">
+36.2.8 CGI -- Common Gateway Interface</A>
+</H2>
+
+<P>
+
+(I have actually never managed to figure out why CGI is called CGI.) CGI is
+where a URL points to a script. What comes up in your browser is the
+output of the script (were it to be executed) instead of the contents
+of the script itself. To try this, create a file <TT>
+<FONT COLOR="#0000ff">/opt/apache/htdocs/test.cgi</FONT></TT>:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>#!/bin/sh</code><br>
+<code>&nbsp;</code><br>
+<code>echo&nbsp;'Content-type:&nbsp;text/html'</code><br>
+<code>echo</code><br>
+<code>echo&nbsp;'&#060;HTML&#062;'</code><br>
+<code>echo&nbsp;'&nbsp;&#060;HEAD&#062;'</code><br>
+<code>echo&nbsp;'&nbsp;&nbsp;&#060;TITLE&#062;My&nbsp;First&nbsp;CGI&#060;/TITLE&#062;'</code><br>
+<code>echo&nbsp;'&nbsp;&#060;/HEAD&#062;'</code><br>
+<code>echo&nbsp;'&nbsp;&#060;BODY&nbsp;bgcolor=#CCCCCC&nbsp;text="#000000"&#062;'</code><br>
+<code>echo&nbsp;'This&nbsp;is&nbsp;my&nbsp;first&nbsp;CGI&#060;P&#062;'</code><br>
+<code>echo&nbsp;'Please&nbsp;visit'</code><br>
+<code>echo&nbsp;'&nbsp;&nbsp;&#060;A&nbsp;HREF="http://rute.sourceforge.net/"&#062;'</code><br>
+<code>echo&nbsp;'&nbsp;&nbsp;&nbsp;The&nbsp;Rute&nbsp;Home&nbsp;Page'</code><br>
+<code>echo&nbsp;'&nbsp;&nbsp;&#060;/A&#062;'</code><br>
+<code>echo&nbsp;'for&nbsp;more&nbsp;info.&#060;/P&#062;'</code><br>
+<code>echo&nbsp;'&nbsp;&#060;/BODY&#062;'</code><br>
+<code>echo&nbsp;'&#060;/HTML&#062;'</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Make this script executable with <TT>
+<FONT COLOR="#0000ff">chmod&nbsp;a+x&nbsp;test.cgi</FONT></TT> and
+test the output by running it on the command-line. Add the line
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>AddHandler&nbsp;cgi-script&nbsp;.cgi</code><br>
+</FONT></TD></TR></TABLE><P>
+to your <TT>
+<FONT COLOR="#0000ff">httpd.conf</FONT></TT> file. Next, modify your <TT>
+<FONT COLOR="#0000ff">Options</FONT></TT>
+for the directory <TT>
+<FONT COLOR="#0000ff">/opt/apache/htdocs</FONT></TT> to include <TT>
+<FONT COLOR="#0000ff">ExecCGI</FONT></TT>,
+like this:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&#060;Directory&nbsp;"/opt/apache/htdocs"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Options&nbsp;Indexes&nbsp;FollowSymLinks&nbsp;MultiViews&nbsp;ExecCGI</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;AllowOverride&nbsp;All</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Order&nbsp;allow,deny</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;Allow&nbsp;from&nbsp;all</code><br>
+<code>&#060;/Directory&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+After restarting Apache you should be able to visit the URL
+<I><TT><A NAME="tex2html56"
+  HREF="http://localhost/test.cgi">http://localhost/test.cgi</A></TT></I>. If you run into problems, don't forget
+to run <TT>
+<FONT COLOR="#0000ff">tail&nbsp;/opt/apache/logs/error_log</FONT></TT> to get a full report.
+
+<P>
+To get a full list of environment variables available to your
+CGI program, try the following script:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>#!/bin/sh</code><br>
+<code>&nbsp;</code><br>
+<code>echo&nbsp;'Content-type:&nbsp;text/html'</code><br>
+<code>echo</code><br>
+<code>echo&nbsp;'&#060;HTML&#062;'</code><br>
+<code>echo&nbsp;'&#060;PRE&#062;'</code><br>
+<code>set</code><br>
+<code>echo&nbsp;'&#060;/PRE&#062;'</code><br>
+<code>echo&nbsp;'&#060;/HTML&#062;'</code><br>
+</FONT></TD></TR></TABLE><P>
+The script will show ordinary <TT>
+<FONT COLOR="#0000ff">bash</FONT></TT> environment variables as well
+as more interesting variables like
+<TT>
+<FONT COLOR="#0000ff">QUERY_STRING</FONT></TT>: Change your script to
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>#!/bin/sh</code><br>
+<code>&nbsp;</code><br>
+<code>echo&nbsp;'Content-type:&nbsp;text/html'</code><br>
+<code>echo</code><br>
+<code>echo&nbsp;'&#060;HTML&#062;'</code><br>
+<code>echo&nbsp;'&#060;PRE&#062;'</code><br>
+<code>echo&nbsp;$QUERY_STRING</code><br>
+<code>echo&nbsp;'&#060;/PRE&#062;'</code><br>
+<code>echo&nbsp;'&#060;/HTML&#062;'</code><br>
+</FONT></TD></TR></TABLE><P>
+and then go to the URL <I><TT><A NAME="tex2html57"
+  HREF="http://localhost/test/test.cgi?xxx=2&amp;yyy=3">http://localhost/test/test.cgi?xxx=2&amp;yyy=3</A></TT></I>.
+It is easy to see how variables can be passed to the shell script.
+
+<P>
+The preceding example is not very interesting. However, it gets useful
+when scripts have complex logic or can access information that Apache
+can't access on its own. In Chapter <A HREF="node41.html#chap:postgres">38</A> we see how to deploy
+an SQL database. When you
+have covered SQL, you can come back here and
+replace your CGI script with,
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>#!/bin/sh</code><br>
+<code>&nbsp;</code><br>
+<code>echo&nbsp;'Content-type:&nbsp;text/html'</code><br>
+<code>echo</code><br>
+<code>&nbsp;</code><br>
+<code>psql&nbsp;-d&nbsp;template1&nbsp;-H&nbsp;-c&nbsp;"SELECT&nbsp;*&nbsp;FROM&nbsp;pg_tables&#059;"</code><br>
+</FONT></TD></TR></TABLE><P>
+This script will dump the table list of the <TT>
+<FONT COLOR="#0000ff">template1</FONT></TT>
+database if it exists. Apache will have to run as a user that can
+access this database, which means changing <TT>
+<FONT COLOR="#0000ff">User&nbsp;nobody</FONT></TT> to
+<TT>
+<FONT COLOR="#0000ff">User&nbsp;postgres</FONT></TT>. <FONT COLOR="#ffa500">[Note that for security you should <I>really</I>
+limit who can connect to the <TT>
+<FONT COLOR="#0000ff">postgres</FONT></TT> database. See
+Section <A HREF="node41.html#sec:instinitpostgres">38.4</A>.]</FONT>
+<P>
+
+<H2><A NAME="SECTION003929000000000000000">
+36.2.9 Forms and CGI</A>
+</H2>
+
+<P>
+To create a functional form, use the HTTP <TT>
+<FONT COLOR="#0000ff">&lt;FORM&gt;</FONT></TT> tag as follows.
+A file <TT>
+<FONT COLOR="#0000ff">/opt/apache/htdocs/test/form.html</FONT></TT> could contain:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>20</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>25</code></font><code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&#060;HTML&#062;</code><br>
+<code>&nbsp;&nbsp;&#060;FORM&nbsp;name="myform"&nbsp;action="test.cgi"&nbsp;method="get"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&#060;TABLE&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;TR&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;TD&nbsp;colspan="2"&nbsp;align="center"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Please&nbsp;enter&nbsp;your&nbsp;personal&nbsp;details:</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;/TD&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;/TR&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;TR&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;TD&#062;Name:&#060;/TD&#062;&#060;TD&#062;&#060;INPUT&nbsp;type="text"&nbsp;name="name"&#062;&#060;/TD&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;/TR&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;TR&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;TD&#062;Email:&#060;/TD&#062;&#060;TD&#062;&#060;INPUT&nbsp;type="text"&nbsp;name="email"&#062;&#060;/TD&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;/TR&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;TR&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;TD&#062;Tel:&#060;/TD&#062;&#060;TD&#062;&#060;INPUT&nbsp;type="text"&nbsp;name="tel"&#062;&#060;/TD&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;/TR&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;TR&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;TD&nbsp;colspan="2"&nbsp;align="center"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;INPUT&nbsp;type="submit"&nbsp;value="Submit"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;/TD&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;/TR&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&#060;/TABLE&#062;</code><br>
+<code>&nbsp;&nbsp;&#060;/FORM&#062;</code><br>
+<code>&#060;/HTML&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+which looks like:
+<DIV ALIGN="CENTER">
+<!-- MATH
+ $\epsfbox{form.ps}$
+ -->
+<IMG
+ WIDTH="201" HEIGHT="192" ALIGN="BOTTOM" BORDER="0"
+ SRC="img69.png"
+ ALT="\epsfbox{form.ps}">
+</DIV>
+
+<P>
+Note how this form calls our existing <TT>
+<FONT COLOR="#0000ff">test.cgi</FONT></TT> script.
+Here is a script that adds the entered data to a <TT>
+<FONT COLOR="#0000ff">postgres</FONT></TT> SQL table:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>20</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>25</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>30</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>#!/bin/sh</code><br>
+<code>&nbsp;</code><br>
+<code>echo&nbsp;'Content-type:&nbsp;text/html'</code><br>
+<code>echo</code><br>
+<code>&nbsp;</code><br>
+<code>opts=`echo&nbsp;"$QUERY_STRING"&nbsp;|&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;sed&nbsp;-e&nbsp;'s/[^A-Za-z0-9&nbsp;%&#038;+,.\/:=@_~-]//g'&nbsp;-e&nbsp;'s/&#038;/&nbsp;/g'&nbsp;-e&nbsp;q`</code><br>
+<code>&nbsp;</code><br>
+<code>for&nbsp;opt&nbsp;in&nbsp;$opts&nbsp;&#059;&nbsp;do</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;case&nbsp;$opt&nbsp;in</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;name=*)</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;name=${opt/name=/}</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#059;&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;email=*)</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;email=${opt/email=/}</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#059;&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tel=*)</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tel=${opt/tel=/}</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#059;&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;esac</code><br>
+<code>done</code><br>
+<code>&nbsp;</code><br>
+<code>if&nbsp;psql&nbsp;-d&nbsp;template1&nbsp;-H&nbsp;-c&nbsp;"\</code><br>
+<code>INSERT&nbsp;INTO&nbsp;people&nbsp;(name,&nbsp;email,&nbsp;tel)&nbsp;\</code><br>
+<code>VALUES&nbsp;('$name',&nbsp;'$email',&nbsp;'$tel')"&nbsp;2&#062;&#038;1&nbsp;|&nbsp;grep&nbsp;-q&nbsp;'^INSERT&nbsp;'&nbsp;&#059;&nbsp;then</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;"&#060;HTML&#062;Your&nbsp;details&nbsp;\"$name\",&nbsp;\"$email\"&nbsp;and&nbsp;\"$tel\"&#060;BR&#062;"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;"have&nbsp;been&nbsp;succesfully&nbsp;recorded.&#060;/HTML&#062;"</code><br>
+<code>else</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;echo&nbsp;"&#060;HTML&#062;Database&nbsp;error,&nbsp;please&nbsp;contact&nbsp;our&nbsp;webmaster.&#060;/HTML&#062;"</code><br>
+<code>fi</code><br>
+<code>&nbsp;</code><br>
+<code>exit&nbsp;0</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Note how the first lines of script remove all unwanted
+characters from <TT>
+<FONT COLOR="#0000ff">QUERY_STRING</FONT></TT>. Such processing is imperative for
+security because shell scripts can easily execute commands should
+characters like <TT>
+<FONT COLOR="#0000ff">$</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">&#96;</FONT></TT> be present in a string.
+
+<P>
+To use the alternative ``POST'' method, change your <TT>
+<FONT COLOR="#0000ff">FORM</FONT></TT>
+tag to
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&nbsp;&nbsp;&#060;FORM&nbsp;name="myform"&nbsp;action="test.cgi"&nbsp;method="post"&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+The POST method sends the query text through stdin of the
+CGI script. Hence, you need to also change your <TT>
+<FONT COLOR="#0000ff">opts=</FONT></TT> line to
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>opts=`cat&nbsp;|&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;sed&nbsp;-e&nbsp;'s/[^A-Za-z0-9&nbsp;%&#038;+,.\/:=@_~-]//g'&nbsp;-e&nbsp;'s/&#038;/&nbsp;/g'&nbsp;-e&nbsp;q`</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H2><A NAME="SECTION0039210000000000000000">
+36.2.10 Setuid CGIs</A>
+</H2>
+
+<P>
+<A NAME="sec:setuidcgiwrapper"></A>
+<P>
+Running Apache as a privileged user has security implications. Another
+way to get this script to execute as user <TT>
+<FONT COLOR="#0000ff">postgres</FONT></TT> is to create a
+setuid binary. To do this, create a file <TT>
+<FONT COLOR="#0000ff">test.cgi</FONT></TT> by compiling the
+following <B>C</B> program similar to that in Section <A HREF="node36.html#sec:faxsetuidbin">33.2</A>.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>#include&nbsp;&#060;unistd.h&#062;</code><br>
+<code>&nbsp;</code><br>
+<code>int&nbsp;main&nbsp;(int&nbsp;argc,&nbsp;char&nbsp;*argv[])</code><br>
+<code>{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;setreuid&nbsp;(geteuid&nbsp;(),&nbsp;geteuid&nbsp;())&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;execl&nbsp;("/opt/apache/htdocs/test/test.sh",&nbsp;"test.sh",&nbsp;0)&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;return&nbsp;0&#059;</code><br>
+<code>}</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Then run <TT>
+<FONT COLOR="#0000ff">chown postgres:www test.cgi</FONT></TT> and
+<TT>
+<FONT COLOR="#0000ff">chmod a-w,o-rx,u+s test.cgi</FONT></TT> (or <TT>
+<FONT COLOR="#0000ff">chmod 4550 test.cgi</FONT></TT>).
+Recreate your shell script as <TT>
+<FONT COLOR="#0000ff">test.sh</FONT></TT> and go to the URL again.
+Apache runs <TT>
+<FONT COLOR="#0000ff">test.cgi</FONT></TT>, which becomes user <TT>
+<FONT COLOR="#0000ff">postgres</FONT></TT>, and then
+executes the script as the <TT>
+<FONT COLOR="#0000ff">postgres</FONT></TT> user. Even with Apache as
+<TT>
+<FONT COLOR="#0000ff">User&nbsp;nobody</FONT></TT> your script will still work. Note how your setuid
+program is insecure: it takes no arguments and performs only a single
+function, but it takes environment variables (or input from stdin)
+that could influence its functionality. If a login user could execute
+the script, that user could send data via these variables that could cause
+the script to behave in an unforeseen way. An alternative is:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>#include&nbsp;&#060;unistd.h&#062;</code><br>
+<code>&nbsp;</code><br>
+<code>int&nbsp;main&nbsp;(int&nbsp;argc,&nbsp;char&nbsp;*argv[])</code><br>
+<code>{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;char&nbsp;*envir[]&nbsp;=&nbsp;{0}&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;setreuid&nbsp;(geteuid&nbsp;(),&nbsp;geteuid&nbsp;())&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;execle&nbsp;("/opt/apache/htdocs/test/test.sh",&nbsp;"test.sh",&nbsp;0,&nbsp;envir)&#059;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;return&nbsp;0&#059;</code><br>
+<code>}</code><br>
+</FONT></TD></TR></TABLE><P>
+This script nullifies the environment before starting the CGI, thus
+forcing you to use the POST method only. Because the only information
+that can be passed to the script is a single line of text (through the
+<TT>
+<FONT COLOR="#0000ff">-e&nbsp;q</FONT></TT> option to <TT>
+<FONT COLOR="#0000ff">sed</FONT></TT>) and because that line of text is
+carefully stripped of unwanted characters, we can be much more certain
+of security.
+
+<P>
+
+<H2><A NAME="SECTION0039211000000000000000">
+36.2.11 Apache modules and PHP</A>
+</H2>
+
+<P>
+CGI execution is extremely slow if Apache has to invoke a shell
+script for each hit. Apache has a number of facilities for built-in
+interpreters that will parse script files with high efficiency.
+A well-known programming language developed specifically for
+the Web is PHP. PHP can be downloaded as source from
+<EM>The PHP Home Page</EM> <I>&lt;<TT><A NAME="tex2html58"
+  HREF="http://www.php.net">http://www.php.net</A></TT>&gt;</I> and contains the
+usual GNU installation instructions.
+
+<P>
+Apache has the facility for adding functionality at runtime
+using what it calls DSO
+(<I>Dynamic Shared Object</I>) files. This feature
+is for distribution vendors who want to ship split installs of Apache
+that enable users to install only the parts of Apache they like. This is
+conceptually the same as what we saw in Section <A HREF="node26.html#sec:sharedobj">23.1</A>: To
+give your program some extra feature provided by some library, you can
+<I>either</I> statically link the library to your program <I>or</I>
+compile the library as a shared <TT>
+<FONT COLOR="#0000ff">.so</FONT></TT> file to be linked at run
+time. The difference here is that the library files are (usually) called
+<TT>
+<FONT COLOR="#0000ff">mod_</FONT></TT><I>name</I> and are stored in <TT>
+<FONT COLOR="#0000ff">/opt/apache/libexec/</FONT></TT>.
+They are also only loaded if a
+<TT>
+<FONT COLOR="#0000ff">LoadModule&nbsp;</FONT></TT><I>name</I><TT>
+<FONT COLOR="#0000ff">_module</FONT></TT> appears in
+<TT>
+<FONT COLOR="#0000ff">httpd.conf</FONT></TT>. To enable DSO support, rebuild and reinstall Apache
+starting with:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>./configure&nbsp;--prefix=/opt/apache&nbsp;--enable-module=so</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Any source package that creates an Apache module can now use
+the Apache utility <TT>
+<FONT COLOR="#0000ff">/opt/apache/bin/apxs</FONT></TT> to tell it about the
+current Apache installation, so you should make sure this executable
+is in your <TT>
+<FONT COLOR="#0000ff">PATH</FONT></TT>.
+
+<P>
+You can now follow the instructions for installing PHP,
+possibly beginning with
+<TT>
+<FONT COLOR="#0000ff">./configure &#45;&#45;prefix=/opt/php  &#45;&#45;with-apxs=/opt/apache/bin/apxs &#45;&#45;with-pgsql=/usr</FONT></TT>. (This assumes that
+you want to enable support for the <TT>
+<FONT COLOR="#0000ff">postgres</FONT></TT> SQL database and have
+<TT>
+<FONT COLOR="#0000ff">postgres</FONT></TT> previously installed as a package under <TT>
+<FONT COLOR="#0000ff">/usr</FONT></TT>.)
+Finally, check that a file <TT>
+<FONT COLOR="#0000ff">libphp4.so</FONT></TT> eventually ends up in
+<TT>
+<FONT COLOR="#0000ff">/opt/apache/libexec/</FONT></TT>.
+
+<P>
+Your <TT>
+<FONT COLOR="#0000ff">httpd.conf</FONT></TT> then needs
+to know about PHP scripts. Add the
+following lines
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>LoadModule&nbsp;php4_module&nbsp;/opt/apache/libexec/libphp4.so</code><br>
+<code>AddModule&nbsp;mod_php4.c</code><br>
+<code>AddType&nbsp;application/x-httpd-php&nbsp;.php</code><br>
+</FONT></TD></TR></TABLE><P>
+and then create a file <TT>
+<FONT COLOR="#0000ff">/opt/apache/htdocs/hello.php</FONT></TT> containing
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&#060;html&#062;</code><br>
+<code>&#060;head&#062;</code><br>
+<code>&#060;title&#062;Example&#060;/title&#062;</code><br>
+<code>&#060;/head&#062;</code><br>
+<code>&#060;body&#062;</code><br>
+<code>&#060;?php&nbsp;echo&nbsp;"Hi,&nbsp;I'm&nbsp;a&nbsp;PHP&nbsp;script!"&#059;&nbsp;?&#062;</code><br>
+<code>&#060;/body&#062;</code><br>
+<code>&#060;/html&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+and test by visiting the URL <I><TT><A NAME="tex2html59"
+  HREF="http://localhost/hello.php">http://localhost/hello.php</A></TT></I>.
+
+<P>
+Programming in the PHP language is beyond the scope of this book.
+
+<P>
+
+<H2><A NAME="SECTION0039212000000000000000">
+36.2.12 Virtual hosts</A>
+</H2>
+
+<P>
+Virtual hosting is the use of a single web server to serve the web pages of
+multiple domains. Although the web browser seems to be connecting to
+a web site that is an isolated entity, that web site may in fact be
+hosted alongside many others on the same machine.
+
+<P>
+Virtual hosting is rather trivial to configure. Let us say that we have
+three domains: <TT>
+<FONT COLOR="#0000ff">www.domain1.com</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">www.domain2.com</FONT></TT>,
+and <TT>
+<FONT COLOR="#0000ff">www.domain3.com</FONT></TT>. We want domains <TT>
+<FONT COLOR="#0000ff">www.domain1.com</FONT></TT> and
+<TT>
+<FONT COLOR="#0000ff">www.domain2.com</FONT></TT> to share IP address <TT>
+<FONT COLOR="#0000ff">196.123.45.1</FONT></TT>, while
+<TT>
+<FONT COLOR="#0000ff">www.domain3.com</FONT></TT> has its own IP address of <TT>
+<FONT COLOR="#0000ff">196.123.45.2</FONT></TT>.
+The sharing of a single IP address is called <I>name-based virtual hosting</I>,
+and
+the use of a different IP address for each domain is called
+<I>IP-based virtual hosting</I>.
+
+<P>
+If our machine has one IP address, <TT>
+<FONT COLOR="#0000ff">196.123.45.1</FONT></TT>,
+we may need to configure a separate IP address on the
+same network card as follows (see Section <A HREF="node28.html#ref:interfacealiasing">25.9</A>):
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ifconfig&nbsp;eth0:1&nbsp;196.123.45.2&nbsp;netmask&nbsp;255.255.255.0&nbsp;up</code><br>
+</FONT></TD></TR></TABLE><P>
+For each domain <TT>
+<FONT COLOR="#0000ff">/opt/apache/htdocs/www.domain</FONT></TT><I>?</I><TT>
+<FONT COLOR="#0000ff">.com/</FONT></TT>,
+we now create a top-level directory.
+We need to tell Apache that we intend to use the IP
+address <TT>
+<FONT COLOR="#0000ff">196.123.45.1</FONT></TT> for several hosts. We do that
+with the <TT>
+<FONT COLOR="#0000ff">NameVirtualHost</FONT></TT> directive.
+Then for each host, we must specify a top-level directory as follows:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>NameVirtualHost&nbsp;196.123.45.1</code><br>
+<code>&nbsp;</code><br>
+<code>&#060;VirtualHost&nbsp;196.123.45.1&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;ServerName&nbsp;www.domain1.com</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;DocumentRoot&nbsp;/opt/apache/htdocs/www.domain1.com/</code><br>
+<code>&#060;/VirtualHost&#062;</code><br>
+<code>&nbsp;</code><br>
+<code>&#060;VirtualHost&nbsp;196.123.45.1&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;ServerName&nbsp;www.domain2.com</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;DocumentRoot&nbsp;/opt/apache/htdocs/www.domain2.com/</code><br>
+<code>&#060;/VirtualHost&#062;</code><br>
+<code>&nbsp;</code><br>
+<code>&#060;VirtualHost&nbsp;196.123.45.2&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;ServerName&nbsp;www.domain3.com</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;DocumentRoot&nbsp;/opt/apache/htdocs/www.domain3.com/</code><br>
+<code>&#060;/VirtualHost&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+All that remains is to configure a correct DNS zone for each
+domain so that lookups of <TT>
+<FONT COLOR="#0000ff">www.domain1.com</FONT></TT> and
+<TT>
+<FONT COLOR="#0000ff">www.domain2.com</FONT></TT> return <TT>
+<FONT COLOR="#0000ff">196.123.45.1</FONT></TT> while lookups of
+<TT>
+<FONT COLOR="#0000ff">www.domain3.com</FONT></TT> return <TT>
+<FONT COLOR="#0000ff">196.123.45.2</FONT></TT>.
+
+<P>
+You can then add <TT>
+<FONT COLOR="#0000ff">index.html</FONT></TT> files to
+each directory.
+
+<P>
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html2666"
+  HREF="node40.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2662"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2656"
+  HREF="node38.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2664"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2667"
+  HREF="node40.html">37. crond and atd</A>
+<B> Up:</B> <A NAME="tex2html2663"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2657"
+  HREF="node38.html">35. The LINUX File</A>
+ &nbsp <B>  <A NAME="tex2html2665"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+
+</BODY>
+</HTML>

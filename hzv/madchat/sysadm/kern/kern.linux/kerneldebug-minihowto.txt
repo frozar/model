@@ -1,0 +1,326 @@
+
+			In the search of the wrong line.
+
+       	        		Daniele Bellucci
+
+
+
+
+
+Introduction.
+
+Sometimes is usefull to debug a living kernel using its core image. 
+This technique allow you to find quickly oopsy line in kernel sources and 
+device drivers too.
+We allready knows that as soon as a oops occour we can find its associated
+symbols by using ksymoops, but how do we find the exactly line, in source
+code, that caused the oops?
+
+
+Example 1:
+.....
+>>EIP; c0137094 <kmem_extra_free_checks+64/70>   <=====
+
+>>ecx; 00001000 Before first symbol
+>>edx; c16eb85c <_end+139bb44/19f0348>
+>>esi; cd96cc94 <[soundcore].bss.end+33fd331/38046fd>
+>>edi; c0eaf000 <_end+b5f2e8/19f0348>
+>>ebp; dc9d1f34 <END_OF_CODE+cfbc0c1/????>
+>>esp; dc9d1f28 <END_OF_CODE+cfbc0b5/????>
+
+Trace; c013780a <kfree+12a/270>
+Trace; c0139ba2 <__alloc_pages+62/290>
+Trace; ddbfd0f9 <END_OF_CODE+e1e7286/????>
+Trace; c011e664 <free_module+d4/f0>
+Trace; c011d95f <sys_delete_module+bf/200>
+Trace; c01094ab <system_call+33/38>
+.....
+
+What's the line of kernel source code corresponding to kmem_extra_free_checks+0x64?
+There are many quickly techniques to find corresponding line in source code.
+I'm going to show how to find the wrong line with gdb.
+
+
+
+
+
+
+
+
+
+
+Section 1  Quickly usage of gdb
+
+By grep, find, tags, ... we can found kfree in mm/slab.c. Now we need to compile it with -g:
+[root@charlie:linux-2.4.20] => gcc -g -c -DDEBUG -D__KERNEL__ -I/usr/src/linux-2.4.21-rc2-aa/
+include  -o slab.o mm/slab.c
+[root@charlie:linux-2.4.20] => gdb slab.o
+GNU gdb Red Hat Linux (5.2.1-4)
+Copyright 2002 Free Software Foundation, Inc.
+GDB is free software, covered by the GNU General Public License, and you are
+welcome to change it and/or distribute copies of it under certain conditions.
+Type "show copying" to see the conditions.
+There is absolutely no warranty for GDB.  Type "show warranty" for details.
+This GDB was configured as "i386-redhat-linux"...
+(gdb) l *kmem_extra_free_checks+0x64
+0xc10 is in kmem_extra_free_checks (mm/slab.c:1224).
+1219            if (objp != slabp->s_mem + objnr*cachep->objsize)
+1220                    BUG();
+1221
+1222            /* Check slab's freelist to see if this obj is there. */
+1223            for (i = slabp->free; i != BUFCTL_END; i = slab_bufctl(slabp)[i]) {
+1224                    if (i == objnr)
+1225                            BUG();
+1226            }
+1227            return 0;
+1228    }
+(gdb)
+
+As you can see our kernel panic was generated in mm/slab.c at line 1224.
+If you want to avoid continuos compiling of single file with "-g" you can compile all source file
+in kernel tree with "-g" by addying this well known compilation flag in Makefile.
+
+
+Go in a kernel tree dir. and open "Makefile" with your favourite text
+editor. Look for CFLAGS and add "-g" :
+
+original CFLAGS:
+CFLAGS := $(CPPFLAGS) -Wall -Wstrict-prototypes -Wno-trigraphs -O2 \
+	  -fno-strict-aliasing -fno-common
+
+modified CFLAGS:
+CFLAGS := $(CPPFLAGS) -Wall -Wstrict-prototypes -Wno-trigraphs -O2 \
+	  -fno-strict-aliasing -fno-common -g
+
+Here is a patch to compile with -g in 2.4.20 all source tree.
+
+--- linux-2.4.20/Makefile	2003-04-28 16:41:07.000000000 +0200
++++ linux-2.4.20-gdb/Makefile	2003-05-23 17:01:12.000000000 +0200
+@@ -1,7 +1,7 @@
+ VERSION = 2
+ PATCHLEVEL = 4
+ SUBLEVEL = 20
+-EXTRAVERSION =
++EXTRAVERSION = -gdb
+ 
+ KERNELRELEASE=$(VERSION).$(PATCHLEVEL).$(SUBLEVEL)$(EXTRAVERSION)
+ 
+@@ -89,7 +89,7 @@
+ CPPFLAGS := -D__KERNEL__ -I$(HPATH)
+ 
+ CFLAGS := $(CPPFLAGS) -Wall -Wstrict-prototypes -Wno-trigraphs -O2 \
+-	  -fno-strict-aliasing -fno-common
++	  -fno-strict-aliasing -fno-common -g
+ ifndef CONFIG_FRAME_POINTER
+ CFLAGS += -fomit-frame-pointer
+ endif
+
+
+
+now compile your kernel as usual and boot into it.
+
+Done?
+Well, now is time to play with a kernel module.
+
+
+
+
+
+
+
+
+
+Section 2 Debugging state of kernel module.
+
+In this section i'm going to show you how to use /proc/kcore
+to debug the state of a kernel modules. 
+Suppose that we're writing a simply device driver for a char device.
+Such device driver increment a static variable every time its open
+file operation is called.
+
+Here's the code:
+
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/init.h>
+#include <linux/fs.h>
+
+#define DEVICE_NAME "opencounter"
+
+static int opencounter_counter;
+static int opencounter_major;
+
+int opencounter_open (struct inode *inode, struct file *filp){
+	opencounter_counter++;
+	return 0;
+}
+
+struct file_operations opencounter_fops = {
+	.open = opencounter_open,
+};
+
+
+
+static int opencounter_init (void){
+	opencounter_major = register_chrdev(0, DEVICE_NAME, &opencounter_fops);
+	return (opencounter_major < 0);
+}
+
+
+static void opencounter_exit (void){
+	unregister_chrdev(opencounter_major, DEVICE_NAME);
+}
+
+module_init (opencounter_init);
+module_exit (opencounter_exit);
+
+MODULE_AUTHOR      ("Daniele Bellucci");
+MODULE_DESCRIPTION ("open counter");
+MODULE_LICENSE     ("GPL");
+
+
+Now, we want to be sure that opencounter_counter really keeps tracks
+of the number of open issued to the device. Be sure to compile the module
+with "-g".
+
+
+[root@charlie:opencounter] => insmod opencounter.o
+[root@charlie:opencounter] => gdb /usr/src/linux-2.4.20/vmlinux /proc/kcore 
+
+
+
+GNU gdb Red Hat Linux (5.2.1-4)
+Copyright 2002 Free Software Foundation, Inc.
+GDB is free software, covered by the GNU General Public License, and you are
+welcome to change it and/or distribute copies of it under certain conditions.
+Type "show copying" to see the conditions.
+There is absolutely no warranty for GDB.  Type "show warranty" for details.
+This GDB was configured as "i386-redhat-linux"...(no debugging symbols found)...
+Core was generated by `hdd=ide-scsi vga=0x0f07'.
+#0  0x00000000 in ?? ()
+(gdb) print opencounter_counter
+No symbol table is loaded.  Use the "file" command.
+(gdb) list opencounter_open
+No symbol table is loaded.  Use the "file" command.
+(gdb) quit
+[root@charlie:opencounter] =>
+
+uhmm.....
+gdb says we need to load a  symbol table for this device driver, but he didn't
+says anything about how to generate it.
+
+If you are familiar with kgdb kernel patch you know that you need a special
+script to generate such symbol table.
+This script is what we need, you can find a modified version (adapted to play
+with a non kgdb-patch kernel) at http://web.tiscali.it/bellucda/download/loadmodule.sh.
+
+well, now we can continue our debugging session.
+[root@charlie:opencounter] => wget http://web.tiscali.it/bellucda/download/loadmodule.sh
+--15:18:26--  http://web.tiscali.it/bellucda/download/loadmodule.sh
+           => `loadmodule.sh.1'
+Resolving web.tiscali.it... done.
+Connecting to web.tiscali.it[195.130.225.73]:80... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 2,507 [application/x-sh]
+
+100%[====================================================>] 2,507         24.98K/s    ETA 00:00
+
+15:18:26 (24.98 KB/s) - `loadmodule.sh' saved [2507/2507]
+
+[root@charlie:opencounter] => chmod u+x loadmodule.sh
+[root@charlie:opencounter] => ./loadmodule.sh opencounter.o .
+Loading module /root/Module/opencounter/opencounter.o
+Something goes wrong.. look at ./opencounter.o.errs
+[root@charlie:opencounter] => cat ./opencounter.o.errs
+insmod: a module named main already exists
+[root@charlie:opencounter] => rmmod opencounter
+[root@charlie:opencounter] => ./loadmodule.sh opencounter.o .
+Loading module /root/Module/opencounter/opencounter.o
+Generating script ./loadopencounter.o
+[root@charlie:opencounter] => gdb /usr/src/linux-2.4.20/vmlinux /proc/kcore
+GNU gdb Red Hat Linux (5.2.1-4)
+Copyright 2002 Free Software Foundation, Inc.
+GDB is free software, covered by the GNU General Public License, and you are
+welcome to change it and/or distribute copies of it under certain conditions.
+Type "show copying" to see the conditions.
+There is absolutely no warranty for GDB.  Type "show warranty" for details.
+This GDB was configured as "i386-redhat-linux"...(no debugging symbols found)...
+Core was generated by `hdd=ide-scsi vga=0x0f07'.
+#0  0x00000000 in ?? ()
+(gdb) source loadopencounter.o
+add symbol table from file "/root/Module/Opencounter/main.o" at
+        .text_addr = 0xd255d060
+        .rodata.str1.1_addr = 0xd255d0aa
+        __ksymtab_addr = 0xd255d168
+        __archdata_addr = 0xd255d1a0
+        __kallsyms_addr = 0xd255d1a0
+        .data_addr = 0xd255d400
+        .bss_addr = 0xd255d460
+warning: section __ksymtab not found in /root/Module/Opencounter/main.o
+warning: section __archdata not found in /root/Module/Opencounter/main.o
+warning: section __kallsyms not found in /root/Module/Opencounter/main.o
+(gdb) l opencounter_open
+6       #define DEVICE_NAME "opencounter"
+7
+8       static int opencounter_counter;
+9       static int opencounter_major;
+10
+11      int opencounter_open (struct inode *inode, struct file *filp){
+12              opencounter_counter++;
+13              return 0;
+14      }
+15
+(gdb) print opencounter_counter
+$1 = 0
+
+
+Well, it seems to work. Now, open another terminal session without quitting in gdb
+and try to write to opencounter character device.
+
+
+
+[root@charlie:opencounter] => echo hello > opencounterdev
+[root@charlie:opencounter] => echo hello > opencounterdev
+[root@charlie:opencounter] => echo hello > opencounterdev
+
+
+Now, go back in gdb and display the value open countercounter_counter
+(gdb) print opencounter_counter
+$2 = 0
+(gdb)
+
+
+Why does gdb says that opencounter_counter hasn't been modified?
+This happen because you are working on a core file (/proc/kcore)
+and you need to load an updated core image. That's why you need
+to rerun gdb in the usual way.
+
+[root@charlie:opencounter] => gdb /usr/src/linux-2.4.20/vmlinux /proc/kcore
+GNU gdb Red Hat Linux (5.2.1-4)
+Copyright 2002 Free Software Foundation, Inc.
+GDB is free software, covered by the GNU General Public License, and you are
+welcome to change it and/or distribute copies of it under certain conditions.
+Type "show copying" to see the conditions.
+There is absolutely no warranty for GDB.  Type "show warranty" for details.
+This GDB was configured as "i386-redhat-linux"...(no debugging symbols found)...
+Core was generated by `hdd=ide-scsi vga=0x0f07'.
+#0  0x00000000 in ?? ()
+(gdb) source loadopencounter.o
+add symbol table from file "/root/Module/Opencounter/main.o" at
+        .text_addr = 0xd255d060
+        .rodata.str1.1_addr = 0xd255d0aa
+        __ksymtab_addr = 0xd255d168
+        __archdata_addr = 0xd255d1a0
+        __kallsyms_addr = 0xd255d1a0
+        .data_addr = 0xd255d400
+        .bss_addr = 0xd255d460
+warning: section __ksymtab not found in /root/Module/Opencounter/main.o
+warning: section __archdata not found in /root/Module/Opencounter/main.o
+warning: section __kallsyms not found in /root/Module/Opencounter/main.o
+
+(gdb) print opencounter_counter
+$1 = 3
+
+
+That's why every time in a gdb session you print the value of jiffies you
+obtain the same value even if system hasn't been freezed.

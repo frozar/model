@@ -1,0 +1,905 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 99.2beta8 (1.46)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>31. lilo, initrd, and Booting</TITLE>
+<META NAME="description" CONTENT="31. lilo, initrd, and Booting">
+<META NAME="keywords" CONTENT="rute">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v99.2beta8">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="rute.css">
+
+<LINK REL="next" HREF="node35.html">
+<LINK REL="previous" HREF="node33.html">
+<LINK REL="up" HREF="rute.html">
+<LINK REL="next" HREF="node35.html">
+</HEAD>
+
+<BODY BGCOLOR=#FFFFFF >
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD align=left bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-purchase.html"><FONT COLOR=white>Purchase</FONT></A>&nbsp;
+</FONT>
+</TD><TD align=center bgcolor="#000000">
+<FONT COLOR=white>
+Copyright&nbsp;&#169;&nbsp;2002&nbsp;Paul Sheer. <A HREF="copying.html"><FONT COLOR=white>Click here for copying permissions.</FONT></A>
+</FONT>
+</TD><TD align=right bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-home.html"><FONT COLOR=white>Home</FONT></A>&nbsp;
+</FONT>
+</TD></TR>
+<TR><TD colspan=2 align=left bgcolor="#ECEBF4">
+<IMG SRC="va-btn-small-light-60.png">
+</TD><TD align=right bgcolor="#ECEBF4">
+<IMG SRC="sflogo2-steel-60.png">
+</TD></TR>
+</TABLE><BR>
+
+<!--Navigation Panel-->
+<A NAME="tex2html2407"
+  HREF="node35.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2403"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2397"
+  HREF="node33.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2405"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2408"
+  HREF="node35.html">32. init, ? getty,</A>
+<B> Up:</B> <A NAME="tex2html2404"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2398"
+  HREF="node33.html">30. exim and sendmail</A>
+ &nbsp <B>  <A NAME="tex2html2406"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html2409"
+  HREF="#SECTION003410000000000000000">31.1 Usage</A>
+<LI><A NAME="tex2html2410"
+  HREF="#SECTION003420000000000000000">31.2 Theory</A>
+<UL>
+<LI><A NAME="tex2html2411"
+  HREF="#SECTION003421000000000000000">31.2.1 Kernel boot sequence</A>
+<LI><A NAME="tex2html2412"
+  HREF="#SECTION003422000000000000000">31.2.2 Master boot record</A>
+<LI><A NAME="tex2html2413"
+  HREF="#SECTION003423000000000000000">31.2.3 Booting partitions</A>
+<LI><A NAME="tex2html2414"
+  HREF="#SECTION003424000000000000000">31.2.4 Limitations</A>
+</UL>
+<LI><A NAME="tex2html2415"
+  HREF="#SECTION003430000000000000000">31.3 <TT>
+<FONT COLOR="#0000ff">lilo.conf</FONT></TT> and the <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT> Command</A>
+<LI><A NAME="tex2html2416"
+  HREF="#SECTION003440000000000000000">31.4 Creating Boot Floppy Disks</A>
+<LI><A NAME="tex2html2417"
+  HREF="#SECTION003450000000000000000">31.5 SCSI Installation Complications and <TT>
+<FONT COLOR="#0000ff">initrd</FONT></TT></A>
+<LI><A NAME="tex2html2418"
+  HREF="#SECTION003460000000000000000">31.6 Creating an <TT>
+<FONT COLOR="#0000ff">initrd</FONT></TT> Image</A>
+<LI><A NAME="tex2html2419"
+  HREF="#SECTION003470000000000000000">31.7 Modifying <TT>
+<FONT COLOR="#0000ff">lilo.conf</FONT></TT> for <TT>
+<FONT COLOR="#0000ff">initrd</FONT></TT></A>
+<LI><A NAME="tex2html2420"
+  HREF="#SECTION003480000000000000000">31.8 Using <TT>
+<FONT COLOR="#0000ff">mkinitrd</FONT></TT></A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION003400000000000000000">
+31. <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT>, <TT>
+<FONT COLOR="#0000ff">initrd</FONT></TT>, and Booting</A>
+</H1>
+
+<P>
+<A NAME="chap:lilo"></A>
+<P>
+
+<TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT> stands for <TT>
+<FONT COLOR="#0000ff">li</FONT></TT><I>nux</I> <TT>
+<FONT COLOR="#0000ff">lo</FONT></TT><I>ader</I>. <TT>
+<FONT COLOR="#0000ff">LILO:</FONT></TT>
+is the prompt you first see after boot up, from which you can usually
+choose the OS you would like to boot and give certain
+boot options to the kernel. This chapter explains how to configure
+<TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT> and kernel boot options, and to get otherwise
+non-booting systems to boot.
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT> package itself contains the files
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/boot/boot.b&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/boot/message&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/sbin/lilo</code><br>
+<code>/boot/chain.b&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/boot/os2_d.b&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/usr/bin/keytab-lilo</code><br>
+<code>/usr/share/doc/lilo-&#060;version&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+which is not that interesting, except to know that
+the technical and user documentation is there if hard-core details
+are needed.
+
+<P>
+
+<H1><A NAME="SECTION003410000000000000000">
+31.1 Usage</A>
+</H1>
+
+<P>
+When you first start your L<SMALL>INUX</SMALL> system, the <TT>
+<FONT COLOR="#0000ff">LILO:</FONT></TT> prompt, at which you
+can enter boot options, is displayed. Pressing <IMG ALIGN=ABSMIDDLE BORDER=0 SRC="key-tab.png" ALT="Tab"> displays a list of
+things to type. The purpose is to allow the booting of different
+L<SMALL>INUX</SMALL> installations on the same machine, or different operating
+systems stored in
+different partitions on the same disk. Later, you
+can actually view the file <TT>
+<FONT COLOR="#0000ff">/proc/cmdline</FONT></TT>
+to see what boot options (including default boot options) were used.
+
+<P>
+
+<H1><A NAME="SECTION003420000000000000000">
+31.2 Theory</A>
+</H1>
+
+<P>
+<A NAME="sec:bootuptheory"></A>
+<P>
+
+<H2><A NAME="SECTION003421000000000000000">
+31.2.1 Kernel boot sequence</A>
+</H2>
+
+<P>
+A U<SMALL>NIX</SMALL> kernel, to be booted, must be loaded into memory from
+disk and be executed. The execution of the kernel causes it to
+uncompress itself and then run. <FONT COLOR="#ffa500">[The word <I>boot</I> itself
+comes from the concept that a computer cannot begin executing
+without program code, and program code cannot get into memory
+without other program code--like trying to lift yourself up by your
+bootstraps, and hence the name.]</FONT> The first thing the kernel does
+after it runs is initialize various hardware devices.
+It then mounts the root file system on a specified partition. Once the root
+file system is mounted, the kernel executes
+<TT>
+<FONT COLOR="#0000ff">/sbin/init</FONT></TT> to begin
+the U<SMALL>NIX</SMALL> operating system. This is how all U<SMALL>NIX</SMALL> systems begin
+life.
+
+<P>
+
+<H2><A NAME="SECTION003422000000000000000">
+31.2.2 Master boot record</A>
+</H2>
+
+<P>
+PCs begin life with a small program in the ROM BIOS that loads the
+very first sector of the disk into memory, called the <I>boot sector</I>
+of the <I>master boot record</I> or <I>MBR</I>. This piece
+of code is up to 512 bytes long and is expected to start the
+operating system. In the case of L<SMALL>INUX</SMALL>, the boot sector loads the
+file <TT>
+<FONT COLOR="#0000ff">/boot/map</FONT></TT>, which contains a list of the precise
+location of the disk sectors that the L<SMALL>INUX</SMALL> <I>kernel image</I>
+(usually the file <TT>
+<FONT COLOR="#0000ff">/boot/vmlinuz</FONT></TT>) spans. It loads each
+of these sectors, thus
+reconstructing the kernel image in memory. Then it jumps to the kernel
+to execute it.
+
+<P>
+You may ask how it is possible to load a file from a file system when
+the file system is not mounted. Further, the boot partition is a small
+and simple program and certainly does not support the
+many types of file systems and devices that the kernel image may reside
+in. Actually, <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT> doesn't have to support a file system to
+access a file, as long as it has a list of the sectors that the file
+spans and is prepared to use the BIOS
+<I>interrupts</I> <FONT COLOR="#ffa500">[Nothing to do with ``interrupting'' or
+hardware interrupts, but refers to BIOS functions that are available
+for use by the operating system. Hardware devices may insert custom
+BIOS functions to provided rudimentary support needed for themselves
+at startup. This support is distinct from
+that provided by the hardware device drivers
+of the booted kernel.]</FONT> to read those sectors. If the file is never
+modified, that sector list will never change; this is how the
+<TT>
+<FONT COLOR="#0000ff">/boot/map</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">/boot/vmlinuz</FONT></TT> files are loaded.
+
+<P>
+
+<H2><A NAME="SECTION003423000000000000000">
+31.2.3 Booting partitions</A>
+</H2>
+
+<P>
+In addition to the MBR, each primary
+partition has a boot sector that
+can boot the operating system in that partition.
+MS-DOS (Windows)
+partitions have this, and hence <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT> can optionally load and
+execute these <I>partition boot sectors</I>
+to start a Windows installation in another partition.
+
+<P>
+
+<H2><A NAME="SECTION003424000000000000000">
+31.2.4 Limitations</A>
+</H2>
+
+<P>
+<A NAME="sec:bioslimits"></A>
+<P>
+BIOSs have inherited several limitations because of lack
+of foresight of their designers.
+
+<P>
+First, some BIOSs do not support more than one
+IDE. <FONT COLOR="#ffa500">[At least according to the <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT>
+documentation.]</FONT> I myself have not come across this as a problem.
+
+<P>
+The second limitation is most important to note. As explained,
+<TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT> uses BIOS functions to access the IDE drive, <I>but
+the BIOS of a PC is often limited to accessing the
+first 1024 cylinders of
+the disk</I>. Hence, whatever LILO reads <I>must</I> reside within
+the first 1024 cylinders (the first 500 megabytes of disk space). Here
+is the list of things whose sectors are required to be within this
+space:
+<DL COMPACT>
+<DT>1.</DT>
+<DD><TT>
+<FONT COLOR="#0000ff">/boot/vmlinuz</FONT></TT>
+</DD>
+<DT>2.</DT>
+<DD>Various <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT> files <TT>
+<FONT COLOR="#0000ff">/boot/*.b</FONT></TT>
+</DD>
+<DT>3.</DT>
+<DD>Any non-L<SMALL>INUX</SMALL> partition boot sector you would like to
+          boot
+</DD>
+</DL>
+However a L<SMALL>INUX</SMALL> root partition can reside anywhere
+because the boot sector program never reads this partition except
+for the abovementioned files. A scenario where the <TT>
+<FONT COLOR="#0000ff">/boot/</FONT></TT>
+directory is a small partition below the 500 megabyte boundary and
+the <TT>
+<FONT COLOR="#0000ff">/</FONT></TT> partition is above the 500 megabyte boundary, is quite
+common. See page <A HREF="node22.html#sec:partnewdisk"><IMG  ALIGN="BOTTOM" BORDER="1" ALT="[*]" SRC="crossref.png"></A>.
+
+<P>
+Note that newer ``LBA'' BIOS's support more than the first
+512 megabytes--even up to 8 Gigabytes. I personally do
+not count on this.
+
+<P>
+
+<H1><A NAME="SECTION003430000000000000000">
+31.3 <TT>
+<FONT COLOR="#0000ff">lilo.conf</FONT></TT> and the <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT> Command</A>
+</H1>
+
+<P>
+To ``do a <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT>'' means running the <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT> command as
+<TT>
+<FONT COLOR="#0000ff">root</FONT></TT>, with a correct <TT>
+<FONT COLOR="#0000ff">/etc/lilo.conf</FONT></TT> file. The
+<TT>
+<FONT COLOR="#0000ff">lilo.conf</FONT></TT> file will doubtless have been set up by your
+distribution (check yours). A typical <TT>
+<FONT COLOR="#0000ff">lilo.conf</FONT></TT> file that allows
+booting of a Windows partition and two L<SMALL>INUX</SMALL> partitions is as follows:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>20</code></font><code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>boot=/dev/hda</code><br>
+<code>prompt</code><br>
+<code>timeout&nbsp;=&nbsp;50</code><br>
+<code>compact</code><br>
+<code>vga&nbsp;=&nbsp;extended</code><br>
+<code>lock</code><br>
+<code>password&nbsp;=&nbsp;jAN]")Wo</code><br>
+<code>restricted</code><br>
+<code>append&nbsp;=&nbsp;"ether=9,0x300,0xd0000,0xd4000,eth0&nbsp;hisax=1,3,5,0xd8000,0xd80,HiSax"</code><br>
+<code>image&nbsp;=&nbsp;/boot/vmlinuz-2.2.17</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;label&nbsp;=&nbsp;linux</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;=&nbsp;/dev/hda5</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;read-only</code><br>
+<code>image&nbsp;=&nbsp;/boot/vmlinuz-2.0.38</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;label&nbsp;=&nbsp;linux-old</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;=&nbsp;/dev/hda6</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;read-only</code><br>
+<code>other&nbsp;=&nbsp;/dev/hda2</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;label&nbsp;=&nbsp;win</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;table&nbsp;=&nbsp;/dev/hda</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Running <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT> will install into the MBR a boot loader that
+understands where to get the <TT>
+<FONT COLOR="#0000ff">/boot/map</FONT></TT> file, which in turn
+understands where to get the <TT>
+<FONT COLOR="#0000ff">/boot/vmlinuz-2.2.12-20</FONT></TT> file. It
+gives output like:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>[root@cericon]#&nbsp;<font color="navy"><B>lilo</B></font></code><br>
+<code>Added&nbsp;linux&nbsp;*</code><br>
+<code>Added&nbsp;linux-old</code><br>
+<code>Added&nbsp;win</code><br>
+</FONT></TD></TR></TABLE><P>
+It also backs up your existing MBR, if this has not previously been
+done, into a file <TT>
+<FONT COLOR="#0000ff">/boot/boot.0300</FONT></TT> (where <TT>
+<FONT COLOR="#0000ff">0300</FONT></TT> refers to
+the device's major and minor number).
+
+<P>
+Let's go through the options:
+<DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">boot</FONT></TT></STRONG></DT>
+<DD>Device to boot. It will most always be <TT>
+<FONT COLOR="#0000ff">/dev/hda</FONT></TT> or <TT>
+<FONT COLOR="#0000ff">/dev/sda</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">prompt</FONT></TT></STRONG></DT>
+<DD>Display a prompt where the user can enter the OS to boot.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">timeout</FONT></TT></STRONG></DT>
+<DD>How many tenths of a seconds to display the prompt (after which the first image is booted).
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">compact</FONT></TT></STRONG></DT>
+<DD>String together adjacent sector reads. This makes the kernel load <I>much</I> faster.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">vga</FONT></TT></STRONG></DT>
+<DD>We would like 80<FONT face=helvetica>x</FONT>50 text mode. Your startup scripts may reset this to
+	80<FONT face=helvetica>x</FONT>25--search <TT>
+<FONT COLOR="#0000ff">/etc/rc.d</FONT></TT> recursively for any file containing ``<TT>
+<FONT COLOR="#0000ff">textmode</FONT></TT>''.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">lock</FONT></TT></STRONG></DT>
+<DD>Always default to boot the last OS booted <FONT COLOR="#ffa500">[A very useful feature which is seldom used.]</FONT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">password</FONT></TT></STRONG></DT>
+<DD>Require a password to boot.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">restricted</FONT></TT></STRONG></DT>
+<DD>Require a password only if someone attempts to enter
+	special options at the <TT>
+<FONT COLOR="#0000ff">LILO:</FONT></TT> prompt.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">append</FONT></TT></STRONG></DT>
+<DD><A NAME="page:appendequ"></A> A <I>kernel boot option</I>.
+	Kernel boot options are central to <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT>
+        and kernel modules and are discussed in
+	Chapter <A HREF="node45.html#sec:moduleoptions">42.5</A>. They are mostly
+        not needed in simple installations.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">image</FONT></TT></STRONG></DT>
+<DD>A L<SMALL>INUX</SMALL> kernel to boot.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">label</FONT></TT></STRONG></DT>
+<DD>The text to type at the boot prompt to cause this kernel/partition to boot.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">root</FONT></TT></STRONG></DT>
+<DD>The root file system that the kernel must mount.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">read-only</FONT></TT></STRONG></DT>
+<DD>Flag to specify that the root file system must initially be mounted read-only.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">other</FONT></TT></STRONG></DT>
+<DD>Some other operating system to boot: in this case, a Windows partition.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">table</FONT></TT></STRONG></DT>
+<DD>Partition table info to be passed to the partition boot sector.
+</DD>
+</DL>
+
+<P>
+Further <TT>
+<FONT COLOR="#0000ff">other&nbsp;=</FONT></TT> partitions can follow, and many <TT>
+<FONT COLOR="#0000ff">image&nbsp;=</FONT></TT> kernel
+images are allowed.
+
+<P>
+The preceding <TT>
+<FONT COLOR="#0000ff">lilo.conf</FONT></TT> file assumed a partition scheme as follows:
+<DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/hda1</FONT></TT></STRONG></DT>
+<DD>10-megabyte <TT>
+<FONT COLOR="#0000ff">ext2</FONT></TT> partition to be mounted on <TT>
+<FONT COLOR="#0000ff">/boot</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/hda2</FONT></TT></STRONG></DT>
+<DD>Windows 98 partition over 500 megabytes in size.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/hda3</FONT></TT></STRONG></DT>
+<DD>Extended partition.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/hda4</FONT></TT></STRONG></DT>
+<DD>Unused primary partition.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/hda5</FONT></TT></STRONG></DT>
+<DD><TT>
+<FONT COLOR="#0000ff">ext2</FONT></TT> root file system.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/hda6</FONT></TT></STRONG></DT>
+<DD>Second <TT>
+<FONT COLOR="#0000ff">ext2</FONT></TT> root file system containing an older distribution.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/dev/hda</FONT></TT><I>?</I></STRONG></DT>
+<DD>L<SMALL>INUX</SMALL> swap, <TT>
+<FONT COLOR="#0000ff">/home</FONT></TT>, and other partitions.
+</DD>
+</DL>
+
+<P>
+
+<H1><A NAME="SECTION003440000000000000000">
+31.4 Creating Boot Floppy Disks</A>
+</H1>
+
+<P>
+<A NAME="sec:bootfloppy"></A>
+If LILO is broken or absent, we require an alternative boot method.
+A floppy disk capable of booting our system must contain a kernel
+image, the means to load the image into memory, and the means to
+mount <TT>
+<FONT COLOR="#0000ff">/dev/hda5</FONT></TT> as the root file system. To create such a
+floppy, insert a <I>new</I> floppy disk into a running L<SMALL>INUX</SMALL>
+system, and overwrite it with the following commands:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>dd&nbsp;if=/boot/vmlinuz-2.2.17&nbsp;of=/dev/fd0</code><br>
+<code>rdev&nbsp;/dev/fd0&nbsp;/dev/hda5</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Then simply boot the floppy. This procedure requires a second
+L<SMALL>INUX</SMALL> installation at least. If you only have an MS-DOS or Windows
+system at your disposal then you will have to download the
+<TT>
+<FONT COLOR="#0000ff">RAWRITE.EXE</FONT></TT> utility as well as a raw boot disk image.
+Many of these are available and will enable you to create
+a boot floppy from a DOS prompt. I will not go into detail
+about this here.
+
+<P>
+
+<H1><A NAME="SECTION003450000000000000000">
+31.5 SCSI Installation Complications and <TT>
+<FONT COLOR="#0000ff">initrd</FONT></TT></A>
+</H1>
+
+<P>
+<A NAME="sec:scsiinitrd"></A>
+<P>
+Some of the following descriptions may be difficult to understand
+without knowledge of kernel modules explained in Chapter
+<A HREF="node45.html#chap:kernelsource">42</A>. You may want to come back to it later.
+
+<P>
+Consider a system with zero IDE disks and one SCSI disk
+containing a L<SMALL>INUX</SMALL> installation. There are BIOS interrupts to read
+the SCSI disk, just as there were for the IDE, so LILO can happily
+access a kernel image somewhere inside the SCSI partition.
+However, the kernel is going to be lost without a <I>kernel
+module</I> <FONT COLOR="#ffa500">[See Chapter <A HREF="node45.html#chap:kernelsource">42</A>. The kernel
+doesn't support every possible kind of hardware out there all by
+itself. It is actually divided into a main part (the kernel image
+discussed in this chapter) and hundreds of modules (loadable parts
+that reside in <TT>
+<FONT COLOR="#0000ff">/lib/modules/</FONT></TT>)
+that support the many type of SCSI,
+network, sound etc., peripheral devices.]</FONT> that understands the
+particular SCSI driver. So although the kernel can load and execute, it
+won't be able to mount its root file system without loading a SCSI module
+first. But the module itself resides in the root file system in
+<TT>
+<FONT COLOR="#0000ff">/lib/modules/</FONT></TT>. This is a tricky situation to solve and is done
+in one of two ways: either (a) using a kernel with preenabled
+SCSI support or (b) using what is known as an <I><TT>
+<FONT COLOR="#0000ff">initrd</FONT></TT>
+preliminary root file system image</I>.
+
+<P>
+The first method is what I recommend. It's a straightforward (though
+time-consuming) procedure to create a kernel with SCSI support
+for your SCSI card built-in (and not in a separate module). Built-in
+SCSI and network drivers will also autodetect cards most of the
+time, allowing immediate access to the <TT>
+<FONT COLOR="#0000ff">dev</FONT></TT>ice--they will
+work without being given any options <FONT COLOR="#ffa500">[Discussed in Chapter
+<A HREF="node45.html#chap:modules">42</A>.]</FONT> and, most importantly, without your having to read
+up on how to configure them. This setup is known as <I>compiled-in</I>
+support for a hardware driver (as opposed to <I>module</I> support
+for the driver). The resulting kernel image will be larger by an
+amount equal to the size of module. Chapter <A HREF="node45.html#chap:kernelsource">42</A>
+discusses such kernel compiles.
+
+<P>
+The second method is faster but trickier. L<SMALL>INUX</SMALL> supports
+what is known as an <TT>
+<FONT COLOR="#0000ff">initrd</FONT></TT> image (<TT>
+<FONT COLOR="#0000ff">init</FONT></TT>ial <TT>
+<FONT COLOR="#0000ff">r</FONT></TT>AM
+<TT>
+<FONT COLOR="#0000ff">d</FONT></TT>isk image). This is a small, <U>+</U>1.5 megabyte file system that
+is loaded by LILO and mounted by the kernel instead of the real
+file system. The kernel mounts this file system as a RAM disk,
+executes the file <TT>
+<FONT COLOR="#0000ff">/linuxrc</FONT></TT>, and then only mounts the real
+file system.
+
+<P>
+
+<H1><A NAME="SECTION003460000000000000000">
+31.6 Creating an <TT>
+<FONT COLOR="#0000ff">initrd</FONT></TT> Image</A>
+</H1>
+
+<P>
+Start by creating a small file system. Make a
+directory <TT>
+<FONT COLOR="#0000ff">~/initrd</FONT></TT> and copy the following files into it.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>drwxr-xr-x&nbsp;&nbsp;&nbsp;&nbsp;7&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1024&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/</code><br>
+<code>drwxr-xr-x&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1024&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/bin/</code><br>
+<code>-rwxr-xr-x&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;436328&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/bin/insmod</code><br>
+<code>-rwxr-xr-x&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;424680&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/bin/sash</code><br>
+<code>drwxr-xr-x&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1024&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/dev/</code><br>
+<code>crw-r--r--&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5,&nbsp;&nbsp;&nbsp;1&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/dev/console</code><br>
+<code>crw-r--r--&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1,&nbsp;&nbsp;&nbsp;3&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/dev/null</code><br>
+<code>brw-r--r--&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1,&nbsp;&nbsp;&nbsp;1&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/dev/ram</code><br>
+<code>crw-r--r--&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4,&nbsp;&nbsp;&nbsp;0&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/dev/systty</code><br>
+<code>crw-r--r--&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4,&nbsp;&nbsp;&nbsp;1&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/dev/tty1</code><br>
+<code>crw-r--r--&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4,&nbsp;&nbsp;&nbsp;1&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/dev/tty2</code><br>
+<code>crw-r--r--&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4,&nbsp;&nbsp;&nbsp;1&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/dev/tty3</code><br>
+<code>crw-r--r--&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4,&nbsp;&nbsp;&nbsp;1&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/dev/tty4</code><br>
+<code>drwxr-xr-x&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1024&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/etc/</code><br>
+<code>drwxr-xr-x&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1024&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/lib/</code><br>
+<code>-rwxr-xr-x&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;76&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/linuxrc</code><br>
+<code>drwxr-xr-x&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1024&nbsp;Sep&nbsp;14&nbsp;20:12&nbsp;initrd/loopfs/</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+On my system, the file <TT>
+<FONT COLOR="#0000ff">initrd/bin/insmod</FONT></TT> is the
+<I>statically linked</I> <FONT COLOR="#ffa500">[meaning it does not require shared
+libraries.]</FONT> version copied from <TT>
+<FONT COLOR="#0000ff">/sbin/insmod.static</FONT></TT>--a member of
+the <TT>
+<FONT COLOR="#0000ff">modutils-2.3.13</FONT></TT> package.
+<TT>
+<FONT COLOR="#0000ff">initrd/bin/sash</FONT></TT> is a statically
+linked shell from the <TT>
+<FONT COLOR="#0000ff">sash-3.4</FONT></TT> package. You can recompile
+<TT>
+<FONT COLOR="#0000ff">insmod</FONT></TT> from source if you don't have a statically linked version.
+Alternatively, copy the needed DLLs from <TT>
+<FONT COLOR="#0000ff">/lib/</FONT></TT> to <TT>
+<FONT COLOR="#0000ff">initrd/lib/</FONT></TT>. (You can
+get the list of required DLLs by running <TT>
+<FONT COLOR="#0000ff">ldd /sbin/insmod</FONT></TT>. Don't forget
+to also copy symlinks and run <TT>
+<FONT COLOR="#0000ff">strip -s &lt;lib&gt;</FONT></TT> to
+reduce the size of the DLLs.)
+
+<P>
+Now copy into the <TT>
+<FONT COLOR="#0000ff">initrd/lib/</FONT></TT> directory the SCSI modules
+you require. For example, if we have an Adaptec AIC-7850 SCSI
+adapter, we would require the <TT>
+<FONT COLOR="#0000ff">aic7xxx.o</FONT></TT> module
+from <TT>
+<FONT COLOR="#0000ff">/lib/modules/&lt;version&gt;/scsi/aic7xxx.o</FONT></TT>. Then, place it in the
+<TT>
+<FONT COLOR="#0000ff">initrd/lib/</FONT></TT> directory.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>-rw-r--r--&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;129448&nbsp;Sep&nbsp;27&nbsp;&nbsp;1999&nbsp;initrd/lib/aic7xxx.o</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+The file <TT>
+<FONT COLOR="#0000ff">initrd/linuxrc</FONT></TT> should contain a script to load all
+the modules needed for the kernel to access the SCSI partition. In this
+case, just the <TT>
+<FONT COLOR="#0000ff">aic7xxx</FONT></TT> module <FONT COLOR="#ffa500">[<TT>
+<FONT COLOR="#0000ff">insmod</FONT></TT> can take options
+such as the IRQ and IO-port for the device. See Chapter <A HREF="node45.html#chap:modules">42</A>.]</FONT>:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>#!/bin/sash</code><br>
+<code>&nbsp;</code><br>
+<code>aliasall</code><br>
+<code>&nbsp;</code><br>
+<code>echo&nbsp;"Loading&nbsp;aic7xxx&nbsp;module"</code><br>
+<code>insmod&nbsp;/lib/aic7xxx.o&nbsp;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Now double-check all your permissions and then <TT>
+<FONT COLOR="#0000ff">chroot</FONT></TT> to the
+file system for testing.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>chroot&nbsp;~/initrd&nbsp;/bin/sash</code><br>
+<code>/linuxrc</code><br>
+</FONT></TD></TR></TABLE><P>
+Now, create a file system image similar to that in
+Section <A HREF="node22.html#sec:ramloop">19.9</A>:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>dd&nbsp;if=/dev/zero&nbsp;of=~/file-inird&nbsp;count=2500&nbsp;bs=1024</code><br>
+<code>losetup&nbsp;/dev/loop0&nbsp;~/file-inird</code><br>
+<code>mke2fs&nbsp;/dev/loop0</code><br>
+<code>mkdir&nbsp;~/mnt</code><br>
+<code>mount&nbsp;/dev/loop0&nbsp;~/mnt</code><br>
+<code>cp&nbsp;-a&nbsp;initrd/*&nbsp;~/mnt/</code><br>
+<code>umount&nbsp;~/mnt</code><br>
+<code>losetup&nbsp;-d&nbsp;/dev/loop0</code><br>
+</FONT></TD></TR></TABLE><P>
+Finally, <TT>
+<FONT COLOR="#0000ff">gzip</FONT></TT> the file system to an appropriately named file:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>gzip&nbsp;-c&nbsp;~/file-inird&nbsp;&#062;&nbsp;initrd-&#060;kernel-version&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H1><A NAME="SECTION003470000000000000000">
+31.7 Modifying <TT>
+<FONT COLOR="#0000ff">lilo.conf</FONT></TT> for <TT>
+<FONT COLOR="#0000ff">initrd</FONT></TT></A>
+</H1>
+
+<P>
+Your <TT>
+<FONT COLOR="#0000ff">lilo.conf</FONT></TT> file can be changed slightly to force
+use of an <TT>
+<FONT COLOR="#0000ff">initrd</FONT></TT> file system. Simply add the <TT>
+<FONT COLOR="#0000ff">initrd</FONT></TT>
+option. For example:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>boot=/dev/sda</code><br>
+<code>prompt</code><br>
+<code>timeout&nbsp;=&nbsp;50</code><br>
+<code>compact</code><br>
+<code>vga&nbsp;=&nbsp;extended</code><br>
+<code>linear</code><br>
+<code>image&nbsp;=&nbsp;/boot/vmlinuz-2.2.17</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;initrd&nbsp;=&nbsp;/boot/initrd-2.2.17</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;label&nbsp;=&nbsp;linux</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;=&nbsp;/dev/sda1</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;read-only</code><br>
+</FONT></TD></TR></TABLE><P>
+Notice the use of the <TT>
+<FONT COLOR="#0000ff">linear</FONT></TT> option. This is a BIOS
+trick that you can read about in <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT>(5). It is often necessary
+but can make SCSI disks nonportable to different BIOSs (meaning
+that you will have to rerun <TT>
+<FONT COLOR="#0000ff">lilo</FONT></TT> if you move the disk to a
+different computer).
+<BR>
+
+<P>
+
+<H1><A NAME="SECTION003480000000000000000">
+31.8 Using <TT>
+<FONT COLOR="#0000ff">mkinitrd</FONT></TT></A>
+</H1>
+
+<P>
+Now that you have learned the manual method of creating an
+<TT>
+<FONT COLOR="#0000ff">initrd</FONT></TT> image, you can read the <TT>
+<FONT COLOR="#0000ff">mkinitrd</FONT></TT> man page. It
+creates an image in a single command. This is command is peculiar
+to RedHat.
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html2407"
+  HREF="node35.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2403"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2397"
+  HREF="node33.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2405"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2408"
+  HREF="node35.html">32. init, ? getty,</A>
+<B> Up:</B> <A NAME="tex2html2404"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2398"
+  HREF="node33.html">30. exim and sendmail</A>
+ &nbsp <B>  <A NAME="tex2html2406"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+
+</BODY>
+</HTML>

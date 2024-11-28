@@ -1,0 +1,314 @@
+Proc File System
+================
+
+0 Introduction
+===============
+The proc file system are some virtual file system used in communication between different processes and the Linux kernel.
+Suppose you have some LKM (Loadable Kernel Module) running in the kernel space and you want it to get its configuration from some file on your disk.
+This can be done using some programme to parse that file and writes it to some file in the proc fs, and ont the other handyou make the LKM assign some function to get that data whenever the proc file is accessed for writing.
+
+1 User Space
+=============
+
+You can access proc files the same way as normal files. Open the proc file
+using "fopen()", then "fread()"/"fwrite()" using the file pointer returned from
+fopen. Also dont forget to include <stdio.h>. For more information see the man
+pages for the previous commands.
+
+Example:
+	
+	#include <stdio.h>
+
+	int main()
+	{
+
+		FILE* fp;
+		char buffer[2048];
+		size_t bytes_read;
+	
+		fp = fopen("/proc/cpuinfo","r");
+		bytes_read = fread(buffer,1,sizeof(buffer),fp);
+		fclose(fp);
+
+		if(( bytes_read==0 )||( bytes_read==sizeof(buffer) ))
+		{
+			perror("Reading Failed\n");
+			return -1;
+		}
+		
+		buffer[bytes_read] = '\0';
+		printf("CPU Info: %s\n",buffer);
+		
+		return 0;	
+	}
+
+
+2 Kernel Space
+===============
+
+In the module initialization create a proc entry using "create_proc_entry()",
+then initialize the returned structure from it "struct proc_dir_entry". Then
+after you finish in the module cleanup use the function "remove_proc_entry()".
+Also dont forget to include "#include <linux/proc_fs.h>".
+
+2.1 Create Proc File
+====================
+static inline struct proc_dir_entry *create_proc_entry(const char *name, mode_t mode, struct proc_dir_entry *parent)
+
+name: 	The proc file's name.
+mode: 	The permissions to use in case a  new  file is created. 
+	S_IRWXU: 00700 file owner has read, write and execute permission
+	S_IRUSR (S_IREAD): 00400 user has read permission
+	S_IWUSR (S_IWRITE): 00200 user has write permission
+       	S_IXUSR (S_IEXEC): 00100 user has execute permission                            
+        S_IRWXG: 00070 group has read, write and execute permission
+       	S_IRGRP: 00040 group has read permission
+	S_IWGRP: 00020 group has write permission
+      	S_IXGRP: 00010 group has execute permission
+	S_IRWXO: 00007 others have read, write and execute permission
+   	S_IROTH: 00004 others have read permission
+	S_IWOTH: 00002 others have write permisson
+       	S_IXOTH: 00001 others have execute permission
+parent: The parent directory to put this file in.
+	To put the file in the proc root directory use &proc_root
+	Otherwize use the pointer to other directory
+	
+retutn: A pointer to proc_dir_entry structure on success. And NULL on failure. 
+
+struct proc_dir_entry {
+        unsigned short low_ino;
+        unsigned short namelen;
+        const char *name;
+        mode_t mode;
+        nlink_t nlink;
+        uid_t uid;
+        gid_t gid;
+        unsigned long size;
+        struct inode_operations * proc_iops;
+        struct file_operations * proc_fops;
+        get_info_t *get_info;
+        struct module *owner;
+        struct proc_dir_entry *next, *parent, *subdir;
+        void *data;
+        read_proc_t *read_proc;
+        write_proc_t *write_proc;
+        atomic_t count;         /* use count */
+        int deleted;            /* delete flag */
+        kdev_t  rdev;
+};
+ 
+mode: 		Same as mentioned before
+uid:		User ID. Normally is set to 0 (Root)
+gid:		Group ID. Normally is set to 0 (Root)
+owner: 		Owner of this proc. Normally is set to THIS_MODULE
+read_proc:	Function assosiated with a user read from this file.
+		int read_proc_t(char *page, 
+				char **start, 
+				off_t off, 
+				int count, 
+				int *eof, 
+				void *data);
+write_proc:	Function assosiated with a user write to this file.
+		int write_proc_t(struct file *file, 
+				const char *buffer,
+                           	unsigned long count, 
+				void *data);
+
+2.2 Create Proc Directory
+==========================
+struct proc_dir_entry *proc_mkdir(const char *name,struct proc_dir_entry *
+parent);
+
+name: 	Name for the Directory to be created
+parent: Parent Directory for this one
+
+2.3 Remove Proc File or Directory
+=================================
+void remove_proc_entry(const char *name, struct proc_dir_entry *parent);
+
+name:	File or Directory name used in creation
+parent: Parent directory for that File or Direcory
+
+2.4 Read: Pass data to user when accessing the file
+====================================================
+ssize_t procfile_read(	char* buffer, 
+			char** buffer_location, 
+			off_t offset,
+                        int buffer_length, 
+			int* eof, 
+			void* data)
+{
+	
+	/* This is the length to be returned.
+	 * I.e. The size of Data given to the user
+	 */
+        int len =0;
+	
+ 	/* Sometimes when a user opens a file, this function is called
+	 * more than once. So we added this piece of code in order to
+   	 * set eof to 1 whenever the offset is greater than 0.
+	 * Offset should be set to 0 for reading /proc files.
+         */   
+        if(offset > 0){
+                *eof = 1;
+                return len;
+        }
+ 
+	/* Put the data into the buffer that will be passed to user.
+ 	 * Also reurn the size of that buffer
+  	 */
+        len = sprintf(buffer,"Welcome Mr. User\n");
+        return len;
+}
+
+2.5 Write: Get data from user passed to the file
+================================================= 
+ssize_t procfile_write( struct file* file, 
+			const char* buffer,
+                        unsigned long count, 
+			void* data)
+{
+	/* Create a new buffer w/ size "count+1" to hold data. 
+	 * Where count is the size of data passed by the user.
+ 	 * Then check if memory allocation was successful.
+	 */
+	char* mybuffer = (char *)kmalloc(count+1,GFP_KERNEL)
+        if(!mybuffer){
+		/* Failed to allocate buffer */
+		return 0;
+	}
+	
+	/* Copy data from buffer to our buffer (mybuffer) */
+	sprintf(mybuffer,buffer,count);
+	mybuffer[count]='\0';
+	
+	/* Print data, and return the amount of data we got */
+	printk("User said: %s\n",mybuffer);
+        return count;
+}
+
+3 Example
+==========
+This is a module that creates some directory in the /proc filesystem called
+Colours, and a file in it called Orange. Data written in this file will be
+stored in some buffer called mm_buffer, for further retreiving by users.
+
+---------------[ mymod.c ]--------------------
+#define __KERNEL__
+#define MODULE
+ 
+#include <linux/module.h>
+#include <linux/proc_fs.h>
+#include <linux/string.h>
+
+/* This is to prevent the warning message */
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Tarek Amr Abdullah");
+
+/* The buffer we will use */ 
+#define MAXBUFFSIZE 256
+static char mm_buff[MAXBUFFSIZE];
+ 
+/* Handles for our Directory and File */
+static struct proc_dir_entry* Our_Proc_File;
+static struct proc_dir_entry* Our_Proc_Dir;
+ 
+ssize_t procfile_read(  char* buffer, 
+			char** buffer_location, 
+			off_t offset,
+                        int buffer_length, 
+			int* eof, 
+			void* data)
+{
+        int len =0;
+        static int count = 1;
+ 
+        if(offset > 0){
+                *eof = 1;
+                return len;
+        }
+ 
+        len = sprintf(buffer,"[%d] %s\n",count++,mm_buff);
+        return len;
+}
+ 
+ssize_t procfile_write( struct file* file, 
+			const char* buffer,
+                        unsigned long count, 
+			void* data)
+{
+        if(count<(MAXBUFFSIZE-1)){
+                strncpy(mm_buff,buffer,count);
+                mm_buff[count] = '\0';
+                printk("Buffer: %s\n",mm_buff);
+        }
+        return count;
+}
+ 
+int init_module(void)
+{
+        
+	int rv = 0;
+                                                                                
+        printk("MyModule Loaded Successfully\n");
+ 
+        Our_Proc_Dir = proc_mkdir("Colours",&proc_root);
+        if(!current_dir){
+                printk("Failed to create directory\n");
+                return -ENOMEM;
+        }
+ 
+        Our_Proc_File = create_proc_entry("Orange",0644,Our_Proc_Dir);
+        if(Our_Proc_File == NULL){
+                remove_proc_entry("Orange",current_dir);
+                remove_proc_entry("Colours",&proc_root);
+                rv = -ENOMEM;
+        }
+ 
+        Our_Proc_File->read_proc = procfile_read;
+        Our_Proc_File->write_proc = procfile_write;
+        Our_Proc_File->owner = THIS_MODULE;
+        Our_Proc_File->mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+        Our_Proc_File->uid = 0;
+        Our_Proc_File->gid = 0;
+        Our_Proc_File->size = 37;
+ 
+        return rv;
+}
+ 
+void cleanup_module(void){
+        remove_proc_entry("Orange",Our_Proc_Dir);
+        remove_proc_entry("Colours",&proc_root);
+        printk("MyModule Exit!\n");
+}
+---------------[ mymod.c ]--------------------
+
+To compile this code
+# gcc -Wall -c mymod.c -I /lib/modules/`uname -r`/build/include
+
+Now write data to file
+# echo Helloz > /proc/Colours/Orange
+
+And read it again
+# more /proc/Colours/Orange
+ 
+4 References
+=============
+For more info see the following files:
+Note: You have to have the kernel source installed.
+/usr/src/`uname -r`/fs/proc
+/usr/src/`uname -r`/fs/proc/generic.c
+/usr/src/`uname -r`/include/linux/proc_fs.h
+
+Alse see the following man pages:
+man 5 proc
+man 2 open
+man 3 fopen
+man 3 fread
+man 3 fwrite
+
+5 Comments:
+============
+If you have any comments of bugs please feel free to contact me
+http://www.geocities.com/tarekamr20
+Tarek Amr <tarekamr20[at]yahoo[dot]com>

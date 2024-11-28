@@ -1,0 +1,42 @@
+<html><title>Envoyer vos eMails par tunel SSH, en evitant donc le sniff et log effectue par vos providers et les RG</title><pre>
+
+Il vous faut un acces SSH chez un provider, un hebergeur de sites, un pote qui a
+un serveur mail ... Si l'admin est parano et ne veut pas vous donner un vrai compte,
+dites lui de mettre "/bin/false" comme shell pour votre compte, ainsi vous ne pourrez
+pas vous connecter sur la machine en tant qu'user, mais vous pourrez quand
+meme vous en servir comme relais SMTP, et meme le partager avec vos potes :)
+
+Vous creez un shell script (executable: chmod 777 smtp.sh) avec dedans :
+ssh -L 2525:localhost:25 -l login -N serveursmtpami.org -f
+
+2525: port local (vous pouvez mettre ce que vous voulez en fait)
+localhost: vous
+25: port smtp distant
+login : votre login votre serveur ami
+-f : mettre le tunel en arriere plan
+
+Config du Mailer:
+Dans votre programme d'emails, pour le serveur SMTP, tapez: localhost
+pour le port du serveur SMTP, tapez 2525, port non-privilegie, donc si vous n'etes pas
+root vous pourrez executer ce script quand meme. Si votre programme d'eMail ne vous
+permet pas de specifier le port du serveur smtp, changez ce script et mettez 25 a la
+place de 2525, mais alors il vous faudra etre logge en root pour l'executer avant d'envoyer
+vos eMails.
+
+Ainsi vos eMails seront envoyees par un tunel securise et crypte entre vous et le serveur,
+de plus, personne ne saura qui vous etes, ni votre IP, ce sera comme si vous etiez connecte
+en local sur le `serveurSMTPami' :)
+
+Vous pouvez faire de meme pour telecharger vos eMails.
+Je vous laisse trouver ca tout seuls (le port POP distant est le port 110).
+
+
+pour eviter d'avoir a taper le passe du shell a chaque fois que le tunnel
+se lance (a la main dans un shell script ou au boot de ta machine par exemple),
+tu dois copier ta clef ssh publique dans celle du shell:
+ssh-keygen -t rsa [enter] [enter] [enter]
+scp ~/.ssh/id_rsa.pub login@mon_shell.org:.
+ssh login@mon_shell.org
+shell$] cat id_rsa.pub >> .ssh/authorized_keys
+shell$] cat id_rsa.pub >> .ssh/authorized_keys2  (pour les serv SSH2-only)
+Done.

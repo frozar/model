@@ -1,0 +1,826 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 99.2beta8 (1.46)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>29. Services Running Under inetd</TITLE>
+<META NAME="description" CONTENT="29. Services Running Under inetd">
+<META NAME="keywords" CONTENT="rute">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v99.2beta8">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="rute.css">
+
+<LINK REL="next" HREF="node33.html">
+<LINK REL="previous" HREF="node31.html">
+<LINK REL="up" HREF="rute.html">
+<LINK REL="next" HREF="node33.html">
+</HEAD>
+
+<BODY BGCOLOR=#FFFFFF >
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD align=left bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-purchase.html"><FONT COLOR=white>Purchase</FONT></A>&nbsp;
+</FONT>
+</TD><TD align=center bgcolor="#000000">
+<FONT COLOR=white>
+Copyright&nbsp;&#169;&nbsp;2002&nbsp;Paul Sheer. <A HREF="copying.html"><FONT COLOR=white>Click here for copying permissions.</FONT></A>
+</FONT>
+</TD><TD align=right bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-home.html"><FONT COLOR=white>Home</FONT></A>&nbsp;
+</FONT>
+</TD></TR>
+<TR><TD colspan=2 align=left bgcolor="#ECEBF4">
+<IMG SRC="va-btn-small-light-60.png">
+</TD><TD align=right bgcolor="#ECEBF4">
+<IMG SRC="sflogo2-steel-60.png">
+</TD></TR>
+</TABLE><BR>
+
+<!--Navigation Panel-->
+<A NAME="tex2html2352"
+  HREF="node33.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2348"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2342"
+  HREF="node31.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2350"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2353"
+  HREF="node33.html">30. exim and sendmail</A>
+<B> Up:</B> <A NAME="tex2html2349"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2343"
+  HREF="node31.html">28. Network File System,</A>
+ &nbsp <B>  <A NAME="tex2html2351"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html2354"
+  HREF="#SECTION003210000000000000000">29.1 The <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> Package</A>
+<LI><A NAME="tex2html2355"
+  HREF="#SECTION003220000000000000000">29.2 Invoking Services with <TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT></A>
+<UL>
+<LI><A NAME="tex2html2356"
+  HREF="#SECTION003221000000000000000">29.2.1 Invoking a standalone service</A>
+<LI><A NAME="tex2html2357"
+  HREF="#SECTION003222000000000000000">29.2.2 Invoking an <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> service</A>
+<LI><A NAME="tex2html2358"
+  HREF="#SECTION003223000000000000000">29.2.3 Invoking an <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> ``TCP wrapper'' service</A>
+<LI><A NAME="tex2html2359"
+  HREF="#SECTION003224000000000000000">29.2.4 Distribution conventions</A>
+</UL>
+<LI><A NAME="tex2html2360"
+  HREF="#SECTION003230000000000000000">29.3 Various Service Explanations</A>
+<LI><A NAME="tex2html2361"
+  HREF="#SECTION003240000000000000000">29.4 The <TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT> Alternative</A>
+<LI><A NAME="tex2html2362"
+  HREF="#SECTION003250000000000000000">29.5 Configuration Files</A>
+<UL>
+<LI><A NAME="tex2html2363"
+  HREF="#SECTION003251000000000000000">29.5.1 Limiting access</A>
+</UL>
+<LI><A NAME="tex2html2364"
+  HREF="#SECTION003260000000000000000">29.6 Security</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION003200000000000000000">
+29. Services Running Under <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT></A>
+</H1>
+
+<P>
+<A NAME="chap:xinetd"></A>
+<P>
+There are some hundred odd services that a common L<SMALL>INUX</SMALL> distribution
+supports. For all of these to be running simultaneously would be a strain.
+Hence, a special daemon process watches for incoming TCP connections
+and then starts the relevant executable, saving that executable from having
+to run all the time. This is used only for sparsely used
+services--that is, not web, mail, or DNS.
+
+<P>
+The daemon that performs this function is traditionally called <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT>:
+the subject of this chapter.
+
+<P>
+(Section <A HREF="node39.html#sec:httpdsh">36.1</A> contains an example of writing your own network
+service in shell script to run under <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT>.)
+
+<P>
+
+<H1><A NAME="SECTION003210000000000000000">
+29.1 The <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> Package</A>
+</H1>
+
+<P>
+Which package contains <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> depends on the taste of your distribution.
+Indeed, under RedHat, version 7.0 switched to <TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT>, a move
+that departs radically from the traditional U<SMALL>NIX</SMALL> <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT>.
+<TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT> is discussed below. The important <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> files are the
+configuration file <TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT>,
+the executable <TT>
+<FONT COLOR="#0000ff">/usr/sbin/inetd</FONT></TT>,
+the <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">inetd.conf</FONT></TT> man pages, and the startup script
+<TT>
+<FONT COLOR="#0000ff">/etc/init.d/inet</FONT></TT> (or <TT>
+<FONT COLOR="#0000ff">/etc/rc.d/init.d/inetd</FONT></TT> or <TT>
+<FONT COLOR="#0000ff">/etc/init.d/inetd</FONT></TT>).
+Another important file is <TT>
+<FONT COLOR="#0000ff">/etc/services</FONT></TT>, discussed in Section
+<A HREF="node29.html#sec:etcservices">26.4</A>.
+
+<P>
+
+<H1><A NAME="SECTION003220000000000000000">
+29.2 Invoking Services with <TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT></A>
+</H1>
+
+<P>
+<A NAME="sec:servinetdstand"></A>
+<P>
+Most services can be started in one of three ways: first as a
+standalone (resource hungry, as discussed) daemon; second, under
+<TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT>; or third as an <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> service which is ``TCP wrapper''-moderated.
+However, some services will run using <I>only</I> one method. Here, we will
+give an example showing all three methods. You will need to have an
+<TT>
+<FONT COLOR="#0000ff">ftp</FONT></TT> package installed for this example (either <TT>
+<FONT COLOR="#0000ff">wuftpd</FONT></TT> on RedHat
+or <TT>
+<FONT COLOR="#0000ff">ftpd</FONT></TT> on Debian).
+
+<P>
+
+<H2><A NAME="SECTION003221000000000000000">
+29.2.1 Invoking a standalone service</A>
+</H2>
+
+<P>
+Try the following (alternative commands in parentheses):
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/usr/sbin/in.ftpd&nbsp;-D</code><br>
+<code>(&nbsp;/usr/sbin/in.wuftpd&nbsp;-s&nbsp;)</code><br>
+</FONT></TD></TR></TABLE><P>
+The <TT>
+<FONT COLOR="#0000ff">-D</FONT></TT> option instructs the service to start in <TT>
+<FONT COLOR="#0000ff">D</FONT></TT>aemon
+mode (or <TT>
+<FONT COLOR="#0000ff">s</FONT></TT>tandalone mode). This represents the first way of running
+an Internet service.
+
+<P>
+
+<H2><A NAME="SECTION003222000000000000000">
+29.2.2 Invoking an <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> service</A>
+</H2>
+
+<P>
+With this method we can let <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> run the service for us. Edit your
+<TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT> file and add or edit the line (alternatives in parentheses):
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ftp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;stream&nbsp;tcp&nbsp;&nbsp;&nbsp;nowait&nbsp;root&nbsp;&nbsp;/usr/sbin/in.ftpd&nbsp;in.ftpd</code><br>
+<code>(&nbsp;ftp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;stream&nbsp;tcp&nbsp;&nbsp;&nbsp;nowait&nbsp;root&nbsp;&nbsp;/usr/sbin/in.wuftpd&nbsp;in.wuftpd&nbsp;)</code><br>
+</FONT></TD></TR></TABLE><P>
+Then, restart the <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> service with
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/etc/init.d/inet&nbsp;restart</code><br>
+<code>(&nbsp;killall&nbsp;-1&nbsp;inetd&nbsp;)</code><br>
+<code>(&nbsp;/etc/rc.d/init.d/inet&nbsp;restart&nbsp;)</code><br>
+</FONT></TD></TR></TABLE><P>
+and test with
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ps&nbsp;awx&nbsp;|&nbsp;grep&nbsp;ftp</code><br>
+<code>ftp&nbsp;localhost</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+The fields in the <TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT> file have the following
+meanings:
+<DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">ftp</FONT></TT></STRONG></DT>
+<DD>The name of the service. Looking in the  <TT>
+<FONT COLOR="#0000ff">/etc/services</FONT></TT> file, we
+can see that this is TCP port <TT>
+<FONT COLOR="#0000ff">21</FONT></TT>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">stream tcp</FONT></TT></STRONG></DT>
+<DD>Socket type and protocol. In this case, a TCP stream socket, and hardly ever anything else.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">nowait</FONT></TT></STRONG></DT>
+<DD>Do not wait for the process to exit before listening for a further incoming connection.
+                    Compare to <TT>
+<FONT COLOR="#0000ff">wait</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">respawn</FONT></TT> in Chapter <A HREF="node35.html#chap:bootup">32</A>.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">root</FONT></TT></STRONG></DT>
+<DD>The initial user ID under which the service must run.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">/usr/sbin/in.ftpd</FONT></TT> ( <TT>
+<FONT COLOR="#0000ff">/usr/sbin/in.wuftpd</FONT></TT> )</STRONG></DT>
+<DD>The actual executable.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">in.ftpd</FONT></TT></STRONG></DT>
+<DD>The command-line. In this case, just the program name and no options.
+</DD>
+</DL>
+
+<P>
+
+<H2><A NAME="SECTION003223000000000000000">
+29.2.3 Invoking an <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> ``TCP wrapper'' service</A>
+</H2>
+
+<P>
+With this last method we let <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> run the service for us under the
+<TT>
+<FONT COLOR="#0000ff">tcpd</FONT></TT> wrapper command. This is almost the same as before, but with a
+slight change in the <TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT> entry:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ftp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;stream&nbsp;tcp&nbsp;&nbsp;&nbsp;nowait&nbsp;root&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;/usr/sbin/in.ftpd</code><br>
+<code>(&nbsp;ftp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;stream&nbsp;tcp&nbsp;&nbsp;&nbsp;nowait&nbsp;root&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;/usr/sbin/in.wuftpd&nbsp;)</code><br>
+</FONT></TD></TR></TABLE><P>
+Then, restart the <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> service as before. These alternative lines allow
+<TT>
+<FONT COLOR="#0000ff">tcpd</FONT></TT> to invoke <TT>
+<FONT COLOR="#0000ff">in.ftpd</FONT></TT> (or <TT>
+<FONT COLOR="#0000ff">in.wuftpd</FONT></TT>) on <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT>'s behalf.
+The <TT>
+<FONT COLOR="#0000ff">tcpd</FONT></TT> command does various tests on the incoming connection to decide
+whether it should be trusted. <TT>
+<FONT COLOR="#0000ff">tcpd</FONT></TT> checks what host the connection 
+originates from and compares that host against entries in the file
+<TT>
+<FONT COLOR="#0000ff">/etc/hosts.allow</FONT></TT> and
+<TT>
+<FONT COLOR="#0000ff">/etc/hosts.deny</FONT></TT>. It can refuse connections
+from selected hosts, thus giving you finer access control to services.
+
+<P>
+<A NAME="page:hostallow"></A>Consider the preceding <TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT> entry against the following line
+in your <TT>
+<FONT COLOR="#0000ff">/etc/hosts.allow</FONT></TT> file:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>in.ftpd:&nbsp;LOCAL,&nbsp;.my.domain</code><br>
+<code>(&nbsp;in.wuftpd:&nbsp;LOCAL,&nbsp;.my.domain&nbsp;)</code><br>
+</FONT></TD></TR></TABLE><P>
+as well as the following line in the file <TT>
+<FONT COLOR="#0000ff">/etc/hosts.deny</FONT></TT>:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>in.ftpd:&nbsp;ALL</code><br>
+<code>(&nbsp;in.wuftpd:&nbsp;ALL&nbsp;)</code><br>
+</FONT></TD></TR></TABLE><P>
+This example will deny connections from all machines with host names not
+ending in <TT>
+<FONT COLOR="#0000ff">.my.domain</FONT></TT> but allow connections from the
+local <FONT COLOR="#ffa500">[The same machine on which <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> is running]</FONT> machine.
+It is useful at this point to try make an <TT>
+<FONT COLOR="#0000ff">ftp</FONT></TT> connection from different
+machines to test access control. A complete explanation of the
+<TT>
+<FONT COLOR="#0000ff">/etc/hosts.allow</FONT></TT>
+and <TT>
+<FONT COLOR="#0000ff">/etc/hosts.deny</FONT></TT>
+file format can be obtained from <TT>
+<FONT COLOR="#0000ff">hosts_access</FONT></TT>(5).
+Another example is (<TT>
+<FONT COLOR="#0000ff">/etc/hosts.deny</FONT></TT>):
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ALL:&nbsp;.snake.oil.com,&nbsp;146.168.160.0/255.255.240.0</code><br>
+</FONT></TD></TR></TABLE><P>
+which would deny access for <TT>
+<FONT COLOR="#0000ff">ALL</FONT></TT> services to all machines
+inside the <TT>
+<FONT COLOR="#0000ff">146.168.160.0</FONT></TT> (first 20 bits) network, as well as all
+machines under the <TT>
+<FONT COLOR="#0000ff">snake.oil.com</FONT></TT> domain.
+
+<P>
+
+<H2><A NAME="SECTION003224000000000000000">
+29.2.4 Distribution conventions</A>
+</H2>
+
+<P>
+Note that the above methods cannot be used simultaneously. If a
+service is already running one way, trying to start it another way will
+fail, possibly with a ``port in use'' error message. Your distribution would have
+already decided whether to make the service an <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> entry or a
+standalone daemon. In the former case, a line in <TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT> will be
+present; in the latter case, a script <TT>
+<FONT COLOR="#0000ff">/etc/init.d/&lt;service&gt;</FONT></TT> (or
+<TT>
+<FONT COLOR="#0000ff">/etc/rc.d/init.d/&lt;service&gt;</FONT></TT>) will be present to <TT>
+<FONT COLOR="#0000ff">start</FONT></TT> or <TT>
+<FONT COLOR="#0000ff">stop</FONT></TT>
+the daemon. Typically, there will be no <TT>
+<FONT COLOR="#0000ff">/etc/init.d/ftpd</FONT></TT>
+script, but there will be
+<TT>
+<FONT COLOR="#0000ff">/etc/init.d/httpd</FONT></TT> and
+<TT>
+<FONT COLOR="#0000ff">/etc/init.d/named</FONT></TT> scripts.
+Note that there will <I>always</I> be a
+<TT>
+<FONT COLOR="#0000ff">/etc/init.d/inet</FONT></TT> script.
+
+<P>
+
+<H1><A NAME="SECTION003230000000000000000">
+29.3 Various Service Explanations</A>
+</H1>
+
+<P>
+<DIV ALIGN="CENTER">
+
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD bgcolor="#FFE0FF">
+<I>All these services are potential security holes. Don't take chances:
+disable them all by commenting out all lines in <TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT>.</I>
+
+</TD></TR>
+</TABLE>
+
+</DIV>
+
+<P>
+A typical <TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT>
+file (without the comment lines) looks something like:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ftp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;stream&nbsp;&nbsp;tcp&nbsp;&nbsp;&nbsp;nowait&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;&nbsp;in.ftpd&nbsp;-l&nbsp;-a</code><br>
+<code>telnet&nbsp;&nbsp;stream&nbsp;&nbsp;tcp&nbsp;&nbsp;&nbsp;nowait&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;&nbsp;in.telnetd</code><br>
+<code>shell&nbsp;&nbsp;&nbsp;stream&nbsp;&nbsp;tcp&nbsp;&nbsp;&nbsp;nowait&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;&nbsp;in.rshd</code><br>
+<code>login&nbsp;&nbsp;&nbsp;stream&nbsp;&nbsp;tcp&nbsp;&nbsp;&nbsp;nowait&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;&nbsp;in.rlogind</code><br>
+<code>talk&nbsp;&nbsp;&nbsp;&nbsp;dgram&nbsp;&nbsp;&nbsp;udp&nbsp;&nbsp;&nbsp;wait&nbsp;&nbsp;&nbsp;&nbsp;nobody.tty&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;&nbsp;in.talkd</code><br>
+<code>ntalk&nbsp;&nbsp;&nbsp;dgram&nbsp;&nbsp;&nbsp;udp&nbsp;&nbsp;&nbsp;wait&nbsp;&nbsp;&nbsp;&nbsp;nobody.tty&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;&nbsp;in.ntalkd</code><br>
+<code>pop-3&nbsp;&nbsp;&nbsp;stream&nbsp;&nbsp;tcp&nbsp;&nbsp;&nbsp;nowait&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;&nbsp;ipop3d</code><br>
+<code>imap&nbsp;&nbsp;&nbsp;&nbsp;stream&nbsp;&nbsp;tcp&nbsp;&nbsp;&nbsp;nowait&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;&nbsp;imapd</code><br>
+<code>uucp&nbsp;&nbsp;&nbsp;&nbsp;stream&nbsp;&nbsp;tcp&nbsp;&nbsp;&nbsp;nowait&nbsp;&nbsp;uucp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;&nbsp;/usr/sbin/uucico&nbsp;-l</code><br>
+<code>tftp&nbsp;&nbsp;&nbsp;&nbsp;dgram&nbsp;&nbsp;&nbsp;udp&nbsp;&nbsp;&nbsp;wait&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;&nbsp;in.tftpd</code><br>
+<code>bootps&nbsp;&nbsp;dgram&nbsp;&nbsp;&nbsp;udp&nbsp;&nbsp;&nbsp;wait&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;&nbsp;bootpd</code><br>
+<code>finger&nbsp;&nbsp;stream&nbsp;&nbsp;tcp&nbsp;&nbsp;&nbsp;nowait&nbsp;&nbsp;nobody&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/usr/sbin/tcpd&nbsp;&nbsp;in.fingerd</code><br>
+<code>auth&nbsp;&nbsp;&nbsp;&nbsp;stream&nbsp;&nbsp;tcp&nbsp;&nbsp;&nbsp;wait&nbsp;&nbsp;&nbsp;&nbsp;root&nbsp;&nbsp;&nbsp;/usr/sbin/in.identd&nbsp;&nbsp;in.identd&nbsp;-e&nbsp;-o&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+The above services
+have the following purposes (port numbers in parentheses):
+<DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">ftp</FONT></TT> (21)</STRONG></DT>
+<DD>File Transfer Protocol, as shown above.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">telnet</FONT></TT> (23)</STRONG></DT>
+<DD>Telnet login access.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">shell</FONT></TT> (514)</STRONG></DT>
+<DD><TT>
+<FONT COLOR="#0000ff">rsh</FONT></TT> Remote shell script execution service.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">login</FONT></TT> (513)</STRONG></DT>
+<DD><TT>
+<FONT COLOR="#0000ff">rlogin</FONT></TT> Remote Login login service.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">talk</FONT></TT> (517), <TT>
+<FONT COLOR="#0000ff">ntalk</FONT></TT></STRONG></DT>
+<DD>User communication gimmick.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">pop-3</FONT></TT> (110)</STRONG></DT>
+<DD>Post Office Protocol  mail retrieval
+service--how most people get their mail through their ISP.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">imap</FONT></TT> (143)</STRONG></DT>
+<DD>Internet Mail Access Protocol--a more sophisticated and dangerously insecure version of POP.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">uucp</FONT></TT> (540)</STRONG></DT>
+<DD>Unix-to-Unix  copy operating over TCP.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">tftp</FONT></TT> (69)</STRONG></DT>
+<DD>Trivial FTP service used, for example,
+by diskless workstations to retrieve a kernel image.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">bootpd</FONT></TT> (67)</STRONG></DT>
+<DD>BOOTP IP configuration service for LANs that require automatic IP assignment.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">finger</FONT></TT> (79)</STRONG></DT>
+<DD>User lookup service.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">auth</FONT></TT> (113)</STRONG></DT>
+<DD>A service that determines the owner of a particular
+TCP connection. If you run a machine with lots of users, administrators of other machines
+can see which users are connecting to them from your machine. For tracking purposes, some
+IRC and FTP servers require that a connecting client run this service.
+Disable this service if your box does not support shell logins for many users.
+</DD>
+</DL>
+
+<P>
+
+<H1><A NAME="SECTION003240000000000000000">
+29.4 The <TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT> Alternative</A>
+</H1>
+
+<P>
+Instead of the usual <TT>
+<FONT COLOR="#0000ff">inetd&nbsp;</FONT></TT>+<TT>
+<FONT COLOR="#0000ff">&nbsp;tcpd</FONT></TT> combination, RedHat switched
+to the <TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT> package as of version 7.0.
+The <TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT> package combines the features of <TT>
+<FONT COLOR="#0000ff">tcpd</FONT></TT>
+and <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> into one neat package. The <TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT> package consists of a
+top-level config file, <TT>
+<FONT COLOR="#0000ff">/etc/xinetd.conf</FONT></TT>;
+an executable <TT>
+<FONT COLOR="#0000ff">/usr/sbin/xinetd</FONT></TT>; and then a config file for each service under the
+directory <TT>
+<FONT COLOR="#0000ff">/etc/xinetd.d/</FONT></TT>. <I>This arrangement allows a package like
+<TT>
+<FONT COLOR="#0000ff">ftpd</FONT></TT> control over its own configuration through its own separate file</I>.
+
+<P>
+
+<H1><A NAME="SECTION003250000000000000000">
+29.5 Configuration Files</A>
+</H1>
+
+<P>
+The default top-level config file, <TT>
+<FONT COLOR="#0000ff">/etc/xinetd.conf</FONT></TT>, looks simply like this:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>defaults</code><br>
+<code>{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;instances&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;60</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;log_type&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;SYSLOG&nbsp;authpriv</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;log_on_success&nbsp;&nbsp;&nbsp;=&nbsp;HOST&nbsp;PID</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;log_on_failure&nbsp;&nbsp;&nbsp;=&nbsp;HOST&nbsp;RECORD</code><br>
+<code>}</code><br>
+<code>includedir&nbsp;/etc/xinetd.d</code><br>
+</FONT></TD></TR></TABLE><P>
+The file dictates, respectively, that <TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT> does the following:
+limits the number of simultaneous connections of
+each service to <TT>
+<FONT COLOR="#0000ff">60</FONT></TT>; logs to the
+<TT>
+<FONT COLOR="#0000ff">syslog</FONT></TT> facility, using <TT>
+<FONT COLOR="#0000ff">syslog</FONT></TT>'s <TT>
+<FONT COLOR="#0000ff">authpriv</FONT></TT> channel; logs the
+<TT>
+<FONT COLOR="#0000ff">HOST</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">P</FONT></TT>rocess <TT>
+<FONT COLOR="#0000ff">ID</FONT></TT> for each successful connection;
+and logs the <TT>
+<FONT COLOR="#0000ff">HOST</FONT></TT> (and also <TT>
+<FONT COLOR="#0000ff">RECORD</FONT></TT> information about
+the connection attempt) for each failed connection. In other words,
+<TT>
+<FONT COLOR="#0000ff">/etc/xinetd.conf</FONT></TT> really says nothing interesting at all.
+
+<P>
+The last line says to look in <TT>
+<FONT COLOR="#0000ff">/etc/xinetd.d/</FONT></TT> for more (service-specific)
+files. Our FTP service would have the file
+<TT>
+<FONT COLOR="#0000ff">/etc/xinetd.d/wu-ftpd</FONT></TT>
+containing:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>service&nbsp;ftp</code><br>
+<code>{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;socket_type&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;stream</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;server&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;/usr/sbin/in.ftpd</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;server_args&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;-l&nbsp;-a</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;wait&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;no</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;user&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;root</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;log_on_success&nbsp;&nbsp;&nbsp;+=&nbsp;DURATION&nbsp;USERID</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;log_on_failure&nbsp;&nbsp;&nbsp;+=&nbsp;USERID</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;nice&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;10</code><br>
+<code>}</code><br>
+</FONT></TD></TR></TABLE><P>
+This file is similar to our <TT>
+<FONT COLOR="#0000ff">/etc/inetd.conf</FONT></TT> line above, albeit more
+verbose. Respectively, this file dictates these actions: listen with a <TT>
+<FONT COLOR="#0000ff">stream</FONT></TT> TCP
+socket; run the executable <TT>
+<FONT COLOR="#0000ff">/usr/sbin/in.ftpd</FONT></TT> on a successful incoming
+connection; pass the arguments <TT>
+<FONT COLOR="#0000ff">-l&nbsp;-a</FONT></TT> on the command-line to
+<TT>
+<FONT COLOR="#0000ff">in.ftpd</FONT></TT> (see <TT>
+<FONT COLOR="#0000ff">ftpd</FONT></TT>(8)); never <TT>
+<FONT COLOR="#0000ff">wait</FONT></TT> for <TT>
+<FONT COLOR="#0000ff">in.ftpd</FONT></TT> to exit
+before accepting the next incoming connection; run <TT>
+<FONT COLOR="#0000ff">in.ftpd</FONT></TT> as user
+<TT>
+<FONT COLOR="#0000ff">root</FONT></TT>; additionally log the <TT>
+<FONT COLOR="#0000ff">DURATION</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">USERID</FONT></TT> of 
+successful connections; additionally log the <TT>
+<FONT COLOR="#0000ff">USERID</FONT></TT> of failed
+connections; and be <TT>
+<FONT COLOR="#0000ff">nice</FONT></TT> to the CPU by running
+<TT>
+<FONT COLOR="#0000ff">in.ftpd</FONT></TT> at a priority of 10.
+
+<P>
+
+<H2><A NAME="SECTION003251000000000000000">
+29.5.1 Limiting access</A>
+</H2>
+
+<P>
+<A NAME="page:xhostallow"></A>The security options of <TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT> allow much flexibility. Most important is
+the <TT>
+<FONT COLOR="#0000ff">only_from</FONT></TT> option to limit the remote hosts allowed to use a
+service. The most extreme use is to add <TT>
+<FONT COLOR="#0000ff">only_from 127.0.0.1</FONT></TT> to the
+top-level config file:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>defaults</code><br>
+<code>{</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;only_from&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;127.0.0.1&nbsp;mymachine.local.domain</code><br>
+<code>&nbsp;.</code><br>
+<code>&nbsp;.</code><br>
+<code>&nbsp;.</code><br>
+</FONT></TD></TR></TABLE><P>
+which allows no remote machines to use any <TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT> service
+at all. Alternatively, you can add an <TT>
+<FONT COLOR="#0000ff">only_from</FONT></TT> line to any of the
+files in <TT>
+<FONT COLOR="#0000ff">/etc/xinetd.d/</FONT></TT> to restrict access on a per-service basis.
+
+<P>
+<TT>
+<FONT COLOR="#0000ff">only_from</FONT></TT> can also take IP address ranges of the form
+<I>nnn</I><TT>
+<FONT COLOR="#0000ff">.</FONT></TT><I>nnn</I><TT>
+<FONT COLOR="#0000ff">.</FONT></TT><I>nnn</I><TT>
+<FONT COLOR="#0000ff">.</FONT></TT><I>nnn</I><TT>
+<FONT COLOR="#0000ff">/</FONT></TT><I>bits</I>,
+as well as domain names. For example,
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;only_from&nbsp;&nbsp;&nbsp;=&nbsp;&nbsp;127.0.0.1&nbsp;&nbsp;192.168.128.0/17&nbsp;&nbsp;.somewhere.friendly.com</code><br>
+</FONT></TD></TR></TABLE><P>
+which in the last case allows access from all machines with host
+names ending in <TT>
+<FONT COLOR="#0000ff">.somewhere.friendly.com</FONT></TT>.
+
+<P>
+Finally there is the <TT>
+<FONT COLOR="#0000ff">no_access</FONT></TT> option that works identically
+to <TT>
+<FONT COLOR="#0000ff">only_from</FONT></TT>, dictating hosts and IP ranges from which connections
+are <I>not</I> allowed:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;no_access&nbsp;&nbsp;&nbsp;=&nbsp;&nbsp;.snake.oil.net</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H1><A NAME="SECTION003260000000000000000">
+29.6 Security</A>
+</H1>
+
+<P>
+<A NAME="sec:inetdsec"></A>
+<P>
+It may be thought that using
+<TT>
+<FONT COLOR="#0000ff">/etc/hosts.deny</FONT></TT> ( or <TT>
+<FONT COLOR="#0000ff">only_from =</FONT></TT> )
+to deny access to <I>all</I> remote machines should be enough to secure a
+system. This is <I>not</I> true: even a local user being able to access a
+local service is a potential security hole, since the service usually has
+higher privileges than the user. It is best to remove all services that
+are not absolutely necessary. For Internet machines, do not hesitate to hash
+out every last service or even uninstall <TT>
+<FONT COLOR="#0000ff">inetd</FONT></TT> ( or <TT>
+<FONT COLOR="#0000ff">xinetd</FONT></TT> )
+entirely.
+
+<P>
+See also Chapter <A HREF="node47.html#chap:security">44</A>.
+
+<P>
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html2352"
+  HREF="node33.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2348"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2342"
+  HREF="node31.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2350"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2353"
+  HREF="node33.html">30. exim and sendmail</A>
+<B> Up:</B> <A NAME="tex2html2349"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2343"
+  HREF="node31.html">28. Network File System,</A>
+ &nbsp <B>  <A NAME="tex2html2351"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+
+</BODY>
+</HTML>

@@ -1,0 +1,492 @@
+<!DOCTYPE html PUBLIC "-//w3c//dtd html 4.0 transitional//en"><html><head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Generator" content="Paws">
+   <meta name="keywords" content="Assembler, assembly, tutorial, memory, stack, push, pop, GoAsm, asm, programming"><title>Understand the stack - Part 1</title><!--Copyright Jeremy Gordon 2002-2003-->
+   
+   
+   <style>
+   <!--
+   A {color: #0000FF; font: bold 10pt times}
+   A:Visited {color: #333399}
+   A:Hover {color: #009900}
+   -->
+   </style></head>
+
+<body>
+
+<a name="top"></a>
+<center><table width="90%" cellpadding="4">
+<tbody><tr><td>
+<br><a href="http://www.godevtool.com/"><img src=".usstack1_files/GoLogo50.gif" border="0" height="22" width="50">The "Go" tools</a>
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/GoAsm.htm">The GoAsm manual</a>
+<p><b><font face="Century Gothic"><font size="+3">understand .... </font>
+<br><i><font color="#ff0000"><font size="+4">
+<dir><dir>the stack (part 1)</dir></dir></font></font></i><font color="#ff0000"></font></font></b>
+</p><p><font face="Century Gothic"><b><font size="+1">by </font></b><font size="+1">Jeremy Gordon - </font>
+<img src=".usstack1_files/mail6sblue.gif" height="13" width="93" align="top" vspace="6">
+
+</font></p><p><font face="Century Gothic"><i>This file is intended for those interested in 32 bit assembler 
+programming, in particular for Windows.</i>
+
+</font></p><p><font face="Century Gothic">All programs make extensive use of the stack at run-time.  If you program
+in a high level language you may not realise that the compiler will be 
+making use of the stack at all.  But as an assembler programmer you will
+be fully aware of this since the stack is one of the main tools at your
+disposal.  By using it directly, you can realise its full potential in your
+programs.  Although you can program in assembler without knowing anything 
+about the stack, it is helpful to know and understand something about it.  
+<a name="contents"></a>
+</font></p><p><font face="Century Gothic">In <b>Part 1</b> you will find information
+which you ought to understand if you are going to do any serious assembler
+programming.  
+
+</font></p><p>
+<table align="center" width="100%"><tbody><tr><td width="50%" valign="top">
+<b>Part 1 (essential)</b>
+<font size="-1">
+<br><a href="#features">Features and advantages of the stack</a>
+<br><a href="#pract">Practical uses for the stack</a>
+<br><a href="#point">The stack pointer: ESP register</a>
+<br><a href="#pushpop">PUSHing data onto, and POPing data from, the stack</a>
+<br><a href="#presr">Preserving register values in functions</a>
+<br><a href="#presd">Preserving data in memory</a>
+<br><a href="#movd">Move data around without using registers</a>
+<br><a href="#revd">Reverse data order</a>
+<br><a href="#callr">How CALL and RET use the stack</a>
+<br><a href="#equil">Importance of stack equilibrium</a>
+<br><a href="#passp">Using the stack to pass parameters</a>
+</font></td>
+<td width="50%" valign="top">
+<b>Part 2 (not essential):-</b>
+<font size="-1">
+<br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack2.htm#virtual"><font color="#909090">Stack is in virtual address space</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack2.htm#startc"><font color="#909090">The stack at start-up: contents</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack2.htm#starta"><font color="#909090">The stack at start-up: amount</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack2.htm#enlarge"><font color="#909090">Enlargement of the stack at run-time</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack2.htm#usable"><font color="#909090">Permitted usable stack area</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack2.htm#datas"><font color="#909090">Using the stack to keep data streams</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack2.htm#multi"><font color="#909090">The stack in multi-thread applications</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack2.htm#local"><font color="#909090">The stack frame and local data</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack2.htm#addressl"><font color="#909090">Addressing the local data</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack2.htm#params"><font color="#909090">Accessing parameters from the stack</font></a>
+<font color="#909090"><br><a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack2.htm#callbacks"><font color="#909090">Use of the stack in Window's callback procedures</font></a>
+</font></font></font></font></font></font></font></font></font></font></font></td></tr></tbody></table>
+
+<font face="Century Gothic"><a name="features"></a>
+</font></p><h3><font face="Century Gothic">Features and advantages of the stack</font></h3>
+<p><font face="Century Gothic">Basically the stack is an area of dwords (32 bit data areas) in memory
+at run-time which your application can use to store data temporarily.  It
+has certain features and real advantages over other types of memory storage 
+(data sections and run-time memory areas).  They are:-
+</font></p><ul>
+<li><font face="Century Gothic">The processor writes to and reads from the stack very rapidly since it
+is optimised to do so.
+</font></li><li><font face="Century Gothic">The simple instructions PUSH and POP can be used to write to and read
+from the stack, and these instructions are very compact being only one byte 
+each when using registers or five bytes when using memory labels or
+pointers to memory addresses.
+</font></li><li><font face="Century Gothic">Under Windows, the stack is enlarged dynamically at run-time in 4K
+chunks.  This avoids memory wastage.
+</font></li></ul>
+
+<font face="Century Gothic"><a name="pract"></a></font><h3><font face="Century Gothic">Practical uses for the stack<a href="#contents"><img src=".usstack1_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">The stack can be used to:-
+</font><ul>
+<li><font face="Century Gothic">Preserve register values in functions: <a href="#presr">example</a>.
+</font></li><li><font face="Century Gothic">Preserve data in memory: <a href="#presd">example</a>.
+</font></li><li><font face="Century Gothic">Move data around without using registers: <a href="#movd">example</a>.
+</font></li><li><font face="Century Gothic">Reverse data order: <a href="#revd">example</a>.
+</font></li><li><font face="Century Gothic">Call other functions and return back afterwards: <a href="#callr">example</a>.
+</font></li><li><font face="Century Gothic">Pass parameters to functions: <a href="#passp">example</a>.
+</font></li></ul>
+
+<font face="Century Gothic"><a name="point"></a></font><h3><font face="Century Gothic">The stack pointer: ESP register<a href="#contents"><img src=".usstack1_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">The register ESP (literally "extended stack pointer") holds the top of 
+the stack. This is the point where the instructions which use the stack 
+(PUSH, POP, CALL and RET) actually use the stack.  More about this later.
+<br>The register EBP (literally "extended base pointer") is traditionally
+moved by the programmer to a particular place on the stack at any one time, so 
+that data on the stack can be read from and written to using <i>base index addressing</i>.
+For example in the instruction MOV EAX,[EBP+8h] the register EBP is used
+as an index to an area of the stack and this instruction will move a dword 
+from 8 bytes further
+down the stack into the register EAX.  The traditional use of EBP for this
+purpose comes from the days of 16-bit processing.  Under 16-bits the register
+was just "BP" holding 16-bits of data and unlike other registers unless a 
+segment override was used it always addressed the stack in memory.  Now 
+under 32 bits, segments have been abolished and each program runs in its
+own 4GB of address space.  EBP therefore can address the whole of this
+address space and is not limited to addressing the stack unless an override
+is used.  It can therefore
+now be used as a general purpose register, but because of this history
+it is still used to address 
+particular areas of the stack mainly to access parameters passed to function
+and callback routines and to address local data.
+
+<a name="pushpop"></a></font><h3><font face="Century Gothic">PUSHing data onto, and POPing data from, the stack<a href="#contents"><img src=".usstack1_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic"><img src=".usstack1_files/plate3.gif" height="79" width="60" align="left">The stack can be 
+visualised as a caterer's plate dispenser.  This works on a "last in first
+out" basis.  The last plate pushed on the dispenser using the PUSH instruction
+will be the first one removed using the POP instruction.  The stack pointer
+in ESP always points to this top plate.
+</font><p><font face="Century Gothic">Lets look at this in a more traditional form.  Suppose the value of
+ESP is 64FE3Ch and you have the following instructions in your source code:-
+</font></p><pre><font face="Century Gothic">PUSH 2
+PUSH [hWnd]
+PUSH ADDR STRING
+</font></pre>
+<font face="Century Gothic">Then after these three instructions ESP would be 64FE30h (that is 12 
+bytes or 3 dwords less in value) and the stack would look like this:-
+</font><p>
+<table border="1" cellpadding="6" cellspacing="0" bordercolor="#ffffff">
+<tbody><tr>
+<td width="20%" align="right"><font size="-1">ESP is here &#8594;</font></td>
+<td width="10%" bordercolor="#000000" align="center"><font size="-1">64FE30h</font></td>
+<td width="30%" align="left"><font size="-1">address of STRING</font></td>
+</tr>
+<tr><td>
+</td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE34h</font></td>
+<td><font size="-1">value held by hWnd</font></td>
+</tr>
+<tr><td>
+</td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE38h</font></td>
+<td><font size="-1">the number 2</font></td>
+</tr>
+<tr><td>
+</td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE3Ch</font></td>
+<td></td>
+</tr>
+</tbody></table>
+</p><p><font face="Century Gothic">Note that each PUSH instruction <i>decreases</i> the value of ESP 
+by 4 bytes. 
+<br>Another thing to note is that since ESP points to the last dword PUSHed
+on the stack, the next PUSH actually writes to ESP-4h.  This is done by
+the processor reducing ESP by four and then writing the dword to the
+address then contained within ESP.
+</font></p><p><font face="Century Gothic">Now lets try some POPping.  Using the same values on the stack, lets
+use the following instructions:-
+</font></p><pre><font face="Century Gothic">POP EAX
+POP EBX
+POP ECX
+</font></pre>
+
+<font face="Century Gothic">Then after these three instructions the stack would look like this:-
+</font><p>
+<table border="1" cellpadding="6" cellspacing="0" bordercolor="#ffffff">
+<tbody><tr>
+<td width="20%"></td>
+<td width="10%" bordercolor="#000000" align="center"><font size="-1">64FE30h</font></td>
+<td width="30%" align="left"><font size="-1">address of STRING</font></td>
+</tr>
+<tr><td>
+</td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE34h</font></td>
+<td><font size="-1">value held by hWnd</font></td>
+</tr>
+<tr><td>
+</td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE38h</font></td>
+<td><font size="-1">the number 2</font></td>
+</tr>
+<tr><td align="right"><font size="-1">ESP is here &#8594;</font></td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE3Ch</font></td>
+<td></td>
+</tr>
+</tbody></table>
+</p><p><font face="Century Gothic">The first thing to note here is that after these three instructions ESP 
+is back at 64FE3Ch.  This means that ESP has been restored to equilibrium.
+This is an important concept, see <a href="#equil">below</a>.
+<br>The register EAX now holds the address of STRING, EBX holds the value held 
+by hWnd and ECX holds the number 2. So the data held on the stack has been
+POPed off the stack in the reverse order from the sequence in which they
+were PUSHed on.
+<br>Note also that the data on the stack is actually still there.  This is
+because the POP instructions do not write to the stack.  They just read
+data from the stack into the second part of the instruction (called the 
+"operand").
+
+<a name="presr"></a></font></p><h3><font face="Century Gothic">Preserving register values in functions<a href="#contents"><img src=".usstack1_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">Programs written in assembler are fast because they make use of the 
+registers as much as possible.  This often means however, that the 
+contents of the registers at any one time have to be preserved for later use.
+So for example, suppose a file handle is in EDI, and after carrying out
+some calculations using EDI you will eventually need to close the file handle,
+then you might preserve it like this:-
+</font><pre><font face="Century Gothic">PUSH EDI                ;save file handle
+CALL CALCULATE          ;make some calculations (uses EDI)
+POP EDI                 ;restore file handle
+CALL CLOSE_FILEHANDLE   ;close the file handle contained in EDI
+</font></pre>
+<font face="Century Gothic">As an alternative you could also preserve EDI within the CALCULATE 
+procedure itself for example:-
+</font><pre><font face="Century Gothic">CALL CALCULATE          ;make some calculations (saves EDI)
+CALL CLOSE_FILEHANDLE   ;close the file handle contained in EDI
+</font></pre>
+<font face="Century Gothic">and the CALCULATE function would be:-
+</font><pre><font face="Century Gothic">CALCULATE:
+PUSH EDI                ;save file handle
+.
+.                       ;some code using EDI
+.
+POP EDI                 ;restore file handle
+RET
+</font></pre>
+<font face="Century Gothic">Another reason why a register may need to be preserved is if a particular
+function is called externally (by another function in the same program, from 
+another program or by the system).  In most cases you would ensure that
+the EBP, EBX, EDI and ESI are preserved.  This is certainly a requirement
+of a "C" program if it calls a routine written in assembler, and it is
+also a requirement of callback procedures called by Windows itself.  An 
+example of such a callback procedure is a window procedure which is used
+by the system to pass messages to a window in your application.  In such
+circumstances you would ensure these registers are preserved by using
+for example:-
+</font><pre><font face="Century Gothic">PUSH EBP,EBX,EDI,ESI
+.
+.                       ;your code goes here
+.
+POP ESI,EDI,EBX,EBP
+</font></pre>
+<font face="Century Gothic">Of course if your code does not change these registers anyway you could
+leave out some of the PUSHes and POPs, but it may possibly be regarded as
+good practice anyway to include them in case you add to your code and
+forget to ensure that these registers are preserved.  Note how the
+POPs are all in the reverse order: this is because of the "last in, first
+out" nature of the stack.  Note also in the code above, I have put the
+registers in alphabetical order.  This helps to keep track of the PUSHes
+and it is easy to check that the POPs are in reverse alphabetical order
+too.
+<br>If you prefer, in GoAsm you can use the USES statement which will preserve
+and restore the registers automatically for you.
+
+<a name="presd"></a></font><h3><font face="Century Gothic">Preserving data in memory<a href="#contents"><img src=".usstack1_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">Just as you can preserve the value in a register using the stack, you can
+use it to preserve data in memory.  Suppose for example you have carefully
+calculated the number of widgets and want to write details of the
+widgets both to the screen and also to a file.  You might use the
+following code:-
+</font><pre><font face="Century Gothic">PUSH [NOOF_WIDGETS]     ;keep number of widgets
+L2:
+CALL REPORT_WIDGET      ;write details of the widget to the screen
+DEC D[NOOF_WIDGETS]     ;count down the number of widgets
+JNZ L2                  ;continue with next while not yet zero
+POP [NOOF_WIDGETS]      ;restore the number of widgets
+CALL WRITETO_FILE       ;and make a similar report to the file
+</font></pre>
+
+<font face="Century Gothic"><a name="movd"></a></font><h3><font face="Century Gothic">Move data around without using registers<a href="#contents"><img src=".usstack1_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">Suppose you want to move the number of widgets to another memory label.
+You could use:-
+</font><pre><font face="Century Gothic">MOV EAX,[NOOF_WIDGETS]
+MOV [COPYOF_NOOF_WIDGETS],EAX
+</font></pre>
+<font face="Century Gothic">But equally effective would be:-
+</font><pre><font face="Century Gothic">PUSH [NOOF_WIDGETS]
+POP [COPYOF_NOOF_WIDGETS]
+</font></pre>
+<font face="Century Gothic">Since this makes no use of the EAX register, that register would not 
+lose its value and could therefore be used elsewhere.
+
+<a name="revd"></a></font><h3><font face="Century Gothic">Reverse data order<a href="#contents"><img src=".usstack1_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">You can take advantage of the "last in, first out" nature of the stack
+to reverse the order of data.  One handy use for this is in writing to
+the screen a value in decimal.  Here is an example (where EAX holds
+the value to write to the screen in decimal and EDI holds the position
+in memory of a buffer which will hold the string):-
+</font><pre><font face="Century Gothic">XOR EDX,EDX             ;zero edx
+XOR ECX,ECX             ;zero ecx (used as a counter)
+MOV EBX,10              ;ebx always holds the value 10
+L2:
+DIV EBX                 ;div edx:eax by 10 = quotient in eax, remainder in edx
+PUSH EDX                ;keep result on the stack
+INC ECX                 ;count how many are done
+XOR EDX,EDX             ;zero edx
+CMP EAX,EDX             ;see if any more to do
+JNZ L2                  ;yes
+L3:                     ;now reverse the order of the digits
+POP EAX                 ;get next back from the stack
+ADD AL,48               ;convert to ascii number
+STOSB                   ;write ascii number to buffer
+LOOP L3                 ;continue while ecx is not zero
+</font></pre>
+<font face="Century Gothic">Lets just follow this code for a moment.  Suppose the value in EAX is
+123 decimal.  The first divide by ten puts 12 in EAX and 3 in EDX.  3 is
+put on the stack.  The second divide by ten puts 1 in EAX and 2 in EDX.
+2 is put on the stack.  The third divide puts zero in EAX and 1 in EDX.
+1 is put on the stack.  The result of CMP EAX,EDX is then zero and the
+code drops to the label L3.  ECX is now 3 because this has counted the 
+number of digits done.  Each is now stripped off the stack in turn.  So 48 
+is added to the values 1, 2 and 3 to make 49, 50 and 51 respectively.
+These are written to the buffer and are the ascii characters "1", "2", and
+"3" ready to be written to the screen later on.
+
+<a name="callr"></a></font><h3><font face="Century Gothic">How CALL and RET use the stack<a href="#contents"><img src=".usstack1_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">The CALL instruction is used a lot in programming.  It is used to divert
+execution to a particular procedure (or "function").  When the procedure is
+finished, execution continues at just after the call.  Calling procedures
+helps to keep your source code clear and obvious, for example:-
+</font><pre><font face="Century Gothic">MOV EAX,EDX
+CALL CALCULATE_ASSETS
+MOV [ASSETS],EAX           ;keep result of the call in memory
+</font></pre>
+<font face="Century Gothic">Here no doubt a lot of hard work is done by the CALCULATE_ASSETS procedure,
+but there is no need to worry about how it works when looking at this excerpt
+from the source script.
+<br>Using calls also helps to keep your code modular.  The CALCULATE_ASSETS
+procedure above, may also be usable in other programs.  If you like you can
+regard it as an "object".  Basically this is object orientated programming.
+</font><p><font face="Century Gothic">So how does the processor know where to continue processing after the call?
+Well it inserts the return address on the stack! 
+
+</font></p><p><font face="Century Gothic">Lets look at the stack when this happens.  Suppose the value of ESP is 
+64FE3Ch again and you have the following instructions in your source code:-
+</font></p><pre><font face="Century Gothic">401020: MOV EAX,EDX
+401022: CALL CALCULATE_ASSETS
+401027: MOV [ASSETS],EAX           ;keep result of the call in memory
+</font></pre>
+<font face="Century Gothic">I have added here the address of execution on the left hand side to illustrate
+what happens.  After the first instruction of course ESP is still 64FE3Ch and 
+the stack has not changed, because a MOV instruction does not affect the stack in
+any way.  But when the next instruction CALL CALCULATE_ASSETS is executed
+the processor PUSHes on the stack the return address 401027h.  Now in the 
+CALCULATE_ASSETS procedure there is a RET instruction (return to caller) for
+example:-
+</font><pre><font face="Century Gothic">CALCULATE_ASSETS:
+                        ;various code here
+RET                     ;return to caller
+</font></pre>
+<font face="Century Gothic">The RET instruction causes in effect, a POP into EIP in other words whatever
+is at [ESP] is given to EIP (the instruction pointer) and then ESP is increased
+by 4 bytes.
+<br>So lets look at the stack before, during and after these instructions:-
+
+</font><p>
+<table border="1" cellpadding="6" cellspacing="0" bordercolor="#ffffff">
+<tbody><tr><td colspan="3" align="center"><b>Before the call</b></td>
+<td colspan="3" align="center"><b>During the call</b></td>
+<td colspan="3" align="center"><b>After the call</b></td>
+</tr>
+<tr>
+<td width="12%" align="right"></td>
+<td width="5%" bordercolor="#000000" align="center"><font size="-1">64FE30h</font></td>
+<td width="12%" align="left"></td>
+<td width="12%" align="right"></td>
+<td width="5%" bordercolor="#000000" align="center"><font size="-1">64FE30h</font></td>
+<td width="12%" align="left"></td>
+<td width="12%" align="right"></td>
+<td width="5%" bordercolor="#000000" align="center"><font size="-1">64FE30h</font></td>
+<td width="12%" align="left"></td>
+</tr>
+<tr>
+<td></td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE34h</font></td>
+<td></td>
+<td></td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE34h</font></td>
+<td></td>
+<td></td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE34h</font></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE38h</font></td>
+<td></td>
+<td align="right"><font size="-1">ESP &#8594;</font></td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE38h</font></td>
+<td><font size="-1">401027h</font></td>
+<td></td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE38h</font></td>
+<td><font size="-1">401027h</font></td>
+</tr>
+<tr>
+<td align="right"><font size="-1">ESP &#8594;</font></td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE3Ch</font></td>
+<td></td>
+<td></td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE3Ch</font></td>
+<td></td>
+<td align="right"><font size="-1">ESP &#8594;</font></td>
+<td bordercolor="#000000" align="center"><font size="-1">64FE3Ch</font></td>
+<td></td>
+</tr>
+</tbody></table>
+</p><p><font face="Century Gothic">Note how after the call, ESP is restored to <a href="#equil">equilibrium</a>.
+
+<a name="equil"></a></font></p><h3><font face="Century Gothic">Importance of stack equilibrium<a href="#contents"><img src=".usstack1_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">We have seen how a procedure can be called and the return execution address is
+kept on the stack.  Now procedures often call other procedures, which often
+call others and so on.  So you might have, for example:-
+</font><pre><font face="Century Gothic">CALCULATE_ASSETS:
+CALL CALCULATE_FIXEDASSETS
+RET                     ;return to caller
+</font></pre>
+<font face="Century Gothic">and
+</font><pre><font face="Century Gothic">CALCULATE_FIXEDASSETS:
+                        ;various code
+CALL GET_COSTVALUES
+CALL ADJUSTFOR_DEPRECIATION
+ADD ESP,4               ;make esp out of equilibrium
+RET
+</font></pre>
+<font face="Century Gothic">Here each part of the task is divided into various components.  Now suppose
+the procedure CALCULATE_FIXEDASSETS adds 4 to ESP by mistake.  If this
+happens, when the RET instruction is executed the instruction pointer EIP will
+be loaded with the wrong value and the program will crash.
+</font><p><font face="Century Gothic">While a procedure is running it is often the case that ESP will have been 
+moved (for example when making space on the stack for, but it is vital to 
+ensure that the 
+equilibrium of the stack is restored when a procedure is about to end.
+When are sent on the stack this can be done
+with the RET xx instruction or by adjusting ESP to suit the number of parameters.
+</font></p><p><font face="Century Gothic">Stack equilibrium is also important to return to Windows in a minimalist
+application.  The simplest possible Windows application which does nothing is
+as follows:-
+</font></p><pre><font face="Century Gothic">START:
+RET
+</font></pre>
+<font face="Century Gothic">Where <i>START</i> is the entry point of the application.  In fact, normally
+Windows <i>calls</i> your application from Kernel32.dll, and so a simple RET
+ends the program quite happily.
+
+<a  name="passp"></a></font><h3><font face="Century  Gothic">Using the
+stack to pass parameters<a href="#contents"><img src=".usstack1_files/up.gif" border="0" height="12" width="24">contents</a></font></h3>
+<font face="Century Gothic">The Windows APIs expect to receive parameters on the stack.  So when you
+call an API you will be PUSHing the parameters on the stack so that they
+can be retrieved by the API.  So in this code:-
+</font><pre><font face="Century Gothic">PUSH 1,[hButton]
+CALL EnableWindow       ;enable button
+</font></pre>
+<font face="Century Gothic">You push on the stack the value 1 (ENABLE flag) first, followed by the handle to the
+window you want to enable.  Windows uses the stdcall "C" convention for
+its APIs so on return from the API the stack will be back to equilibrium.
+The convention also means that the EBP,EBX,ESI and EDI are always restored
+to their previous values by the API.  
+</font><p><font face="Century Gothic">Another aspect of the convention
+is that parameters are always pushed <i>from right to left</i>.  The
+specifications for the API EnableWindow are given in the Windows Software 
+Development Kit as:-
+</font></p><pre><font face="Century Gothic">WINAPI
+EnableWindow(
+    HWND hWnd,
+    BOOL bEnable);
+</font></pre>
+<font face="Century Gothic">In translating this to assembler, you need to read from the right hand
+side first.  This may be made slightly easier if you use the INVOKE instruction
+instead of CALL, since the parameters are now in the order in which they
+appear in the SDK:-
+</font><pre><font face="Century Gothic">INVOKE EnableWindow, [hButton], 1
+</font></pre>
+<font face="Century Gothic">That's all you need to know about passing parameters on the stack for
+the moment, but it is covered in more detail in <a href="http://www.jorgon.freeserve.co.uk/GoasmHelp/usstack2.htm">
+understanding the stack (part 2)</a>.
+
+</font><p></p><hr>
+<center><p><font face="Century Gothic">Copyright © Jeremy Gordon 2002-2003
+<br><a href="#top">Back to top</a>
+</font></p></center></td></tr>
+</tbody></table></center>
+</body></html>

@@ -1,0 +1,460 @@
+Utiliser Postfix pour securiser les passerelles SMTP
+
+Par Mick Bauer et Brenno de Winter 
+Traduit par NightBird (http://www.nightbird.free.fr/).
+
+L'E-mail est de loin le service Internet le plus populaire et le plus important
+aujourd'hui, qui a fait de lui une cible populaire des cyber-criminels et des 
+Spammers. Ajoutons au problème, la réalité indéniable a propos de la 
+configuration de sendmail, l'agent des transferts de courrier (MTA) le plus 
+généralement utilisé, qui est compliquée, non-intuitive et peut facilement 
+devenir erronée. 
+
+Wietse Venema, développeur intrépide de TCP wrappers et co-créateur de SATAN, 
+est venu à nous encore : son programme, postfix, fournit une alternative a 
+sendmail qui est plus simple dans la conception, plus modulaire, plus facile à 
+configurer et moins de travail à gérer. 
+Également important, il est conçu avec fiabilité et securite en tant que 
+conditions fondamentales. 
+
+Cet article est destiné a vous apporter rapidement la façon d'utiliser postfix 
+sur votre réseau en tant que moyen securise de reception et d'envoi d'E-mail 
+vers les serveurs Internet. En particulier nous nous concentrerons sur le 
+deploiement de postfix sur les firewalls, dans des DMZs et dans d'autres 
+configurations dans lesquelles il sera exposé au contact de systèmes 
+non-securises. 
+
+Est ce que sendmail est vraiment mauvais? Cela dépend de ce que vous avez 
+besoin de lui faire faire - la courbe d'étude ne peut être justifiée si votre 
+architecture de E-mail est simple. Mais sendmail est incontestablement une 
+application extrêmement puissante, stable et largement déployée. En fait, le 
+Paranoid Pengui contiendra probablement un article de sendmail dans les mois à 
+venir. 
+
+Introduction: Agents des transferts de Courrier
+------------------------------------------------- 
+Sendmail et postfix sont des agents de transfert de courrier (MTA). Les MTA 
+deplacent les emails d'une machine ou réseau à l'autre. Ceux-ci sont contraire 
+aux agents de distribution du courrier (MDA), qui déplacent le courrier dans un
+système (c.-à-d., d'un MTA à la boîte aux lettres d'un utilisateur local, 
+ou d'une boîte aux lettres à un fichier ou à un répertoire). En d'autres 
+termes, les MTAs sont comme les camions de courrier (et des avions, des trains,
+etc...) qui deplacent les courriers entre les postes ; les agents de 
+distribution du courrier sont comme les facteurs qui distribuent le courrier 
+aux boites aux lettres.
+
+En plus des MTAs et des MDAs, il y a également divers genres de lecteurs 
+d'E-mail, comprenant des clients POP, POP3 et IMAP pour recuperer les E-mail 
+des systèmes à distants. Ceux-ci sont également connus en tant qu'agents 
+d'utilisateurs de courrier, ou MUAs (il n'y a aucun exemple réel pour ces 
+derniers). Mais nous ne sommes pas concernés par ces derniers ou par les MDAs, 
+excepté pour mentionner comment ils s'associent aux MTAs. 
+
+D'ailleurs, si vous utilisez toujours UUCP, il est supporté dans postfix (et 
+continue à être dans Sendmail, aussi); la plupart des MTAs supportent une 
+variété d' "agents de livraison", presque toujours UUCP et SMTP. Toujours, 
+parce que dans le reste de cet article nous assumerons que vous êtes 
+intéressé d'utiliser postfix pour les transferts SMTP 
+(Simple Mail Transfer Protocol). 
+
+
+Passerelles SMTP et réseaux DMZ 
+--------------------------------
+Une utilisation très commune de SMTP, particulièrement dans les organismes qui 
+utilisent d'autres protocoles en interne, est sur une passerelle Internet 
+d'E-mail. Puisque smtp est le "lingua-franca" pour les E-mail sur Internet, il 
+doit y avoir au moins une machine smtp sur n'importe quel réseau qui doit 
+echanger les E-mail vers Internet. Dans un tel réseau, la passerelle SMTP agit 
+en tant que liason entre les serveurs de courrier non-SMTP internes et les 
+serveurs SMTP externes. 
+
+Cette fonctionnalite de "liaison" n'est pas aussi importante qu'elle était par 
+le passé; les versions en cours d'Exchange de Microsoft, Lotus Notes, et de 
+beaucoup d'autres produits de serveurs de E-mail non-SMTP n'ont aucun problème 
+à communiquer avec des serveurs SMTP directement. Mais il y a toujours des 
+raisons d'avoir tous les emails entrants (et meme sortants) arrives à un seul 
+point, la raison principale étant la sécurité. 
+
+Il y a deux avantages principaux de sécurité d'utiliser une passerelle SMTP. 
+D'abord, il est beaucoup plus facile de securiser une simple passerelle SMTP 
+des menaces extérieures que de securiser de multiples serveurs internes 
+d'E-mail. 
+En second lieu, la séparation du courrier Internet du courrier interne permet 
+d'écarter des transactions Internet le réseau interne entièrement. L'endroit 
+logique pour une passerelle SMTP est dans une DMZ ("Zone Demilitarisee"), 
+separée à la fois d'internet et du reseau local par un firewall.
+
+Comme avec le DNS, le ftp, le WWW et tout autre service publiquement 
+accessible, plus vous pourrez le placer entre les cibles des hackers potentiels
+ et votre réseau interne, mieux vous serez protege. Ajouter une NIC 
+supplémentaire à votre firewall, gardant les services publics dans un réseau 
+séparé, est un des moyens bon marché et des plus pertinents de faire cela -- 
+aussi longtemps que vous configurez le firewall pour limiter soigneusement le 
+trafic vers/à partir de la DMZ. C'est également une bonne gestion des risques; 
+dans (si tout va bien) l'événement peu probable que votre web server, par 
+exemple, soit compromis, il ne deviendra pas une plateforme de lancement 
+commode pour des attaques sur le reste de votre réseau. 
+
+Ainsi, même les organismes avec seulement un serveur E-mail doit ajouter une 
+passerelle SMTP, même si ce serveur E-mail a déjà la fonctionnalité SMTP. 
+
+Mais si votre firewall est votre serveur ftp, serveur E-mail, etc.? Bien que 
+l'utilisation de firewalls pour tout accueil de services ne soit pas 
+recommendée, ceci est une pratique courante pour les réseaux très petits (par 
+exemple, utilisateurs à la maison avec les connexions Internet à bande large). 
+Et, dans cette paranoia, BIND et Postfix pose beaucoup moins d'exposition pour 
+un firewall que d'autres applications de services. 
+
+Pour démarrer, DNS et SMTP comportent potentiellement moins de contacts directs
+ entre des utilisateurs non surs et le système de fichiers du serveur. (je dis 
+"potentiellement" parce qu'il est certainement possible, avec le logiciel mal 
+écrit ou configure sans soin, de créer des services extrêmement peu sûrs de 
+DNS et de SMTP.) 
+En outre, BIND et Postfix ont les options "chroot" et fonctionnent en tant 
+qu'utilisateurs non privilégiés, deux dispositifs qui aident à réduire le 
+danger de l'un ou l'autre service étant utilisés pour gagner d'une façon ou
+d'une autre l'accès root (nous discuterons des deux options détaillées sous 
+peu.)
+
+
+Architecture PostFix: Comment PostFix marche ?
+-------------------------------------------------
+Pour comprendre comment foonctionne Postfix, il est utile de considerer son 
+historique. Le principal but de l'existence de Postfix est la complexite de 
+Sendmail. Postfix est un MTA complet, et donc ses fonctions de base sont les 
+memes que les autres. Mais Postfix a ete ecrit avec une attention particuliere 
+sur:
+
+- Securite: Postfix a ete defini avec la securite comme element fondamental 
+plutot qu'un ajout exterieur. C'est evident que M. Venema a compris les lecons 
+de l'histoire (comme decrit par CERT, bugtraq et les autres). Par exemple, le 
+systeme ne fait confiance en aucunes donnees sauf celles de son code source. Et
+ avec moins de privileges dans une prison chroot (voir plus bas), les risques 
+sont reduits. De plus, des mesures de protection contre les buffers overflow et
+ les autres attaques basees sur la transmission de donnees utilisateurs ont ete
+ implementées. Si quelque chose ne fonctionnait pas, les mechanismes de 
+protection de Postfix essaieraient de prevenir tous les processus sous son 
+controle d'avoir des droits qu'ils ne devraient pas avoir. Depuis que Postfix 
+comprend plusieurs programmes qui fonctionnent sans reelle interaction, si 
+quelque chose allait mal, la chance qu'un tel probleme soit exploite par un 
+hacker est faible. Bien sur, nous savons qu'aucun systeme n'est à 100% sûr; le 
+but doit etre de minimiser et de gerer les risques. Postfix est definitivement 
+fait dans ce sens.
+
+- Simplicite et compatibilite: Posfixt a ete ecrit de telle sorte que le 
+mettre en plce depuis rien peut prendre 5min. Quand vous voulez remplacer  
+Sendmail ou un autre MTA, c'est encore mieux: Postfix par defaut peut etre 
+configure pour utiliser les anciens fichiers de configuration!
+
+- Robustesse et stabilite: Postfix a ete ecrit avec l'idee que certains 
+composants du reseau de messagerie (le reseau local, le lien internet, les 
+interfaces locales, etc.) peuvent occassionnellemt ne plus marcher. Par 
+anticipation, les choses qui vont mal a la fin de n'importe quelles 
+transactions, Postfix est capable de garder le serveur "up" et de fonctionner 
+dans de nombreuses (si ce n'est pas, toutes) circonstances. Si, un message ne
+peut pas etre delivre, il est programmé pour etre livrer plus tard, sans 
+commencer immediatemment des tentatives d'envoi en continue.
+Une cle contributrice a la stabilite et a la vitesse de postfix est 
+l'intelligente facon de gerer les files d'attente des mails. Postfix utilise 
+quatre  differentes queues, chacune etant configuree differemment 
+(voir figure 1):
+
+- Maildrop queue: le courrier qui est delivre localement sur le systeme est 
+accepte dans la maildrop queue. Ici, le courrier est verife pour un formatage 
+propre (et corrige si necessaire) avant d'etre dans la Incoming Queue.
+- Incoming Queue: Cette file recoit le courrier des autres machines, clients ou
+ de la Maildrop Queue. Tant que des emails arrivent et tant que postfix n'a pas
+ reellemment traite les emails, c'est la file ou sont gardes les emails.
+- Active Queue: Cette file est la file qui est utilisee reellement pour 
+delivrer les messages et ensuite elle a le plus grand risque potentiel que 
+quelque chose aille mal. Cette queue est de taille limitee, et les messages 
+seront acceptés seulement s'il reste de la place pour eux. Cela veut dire que 
+les Imcoming et Deferred Queues doivent attendre jusqu'a ce que l'Active Queue 
+puisse les accepter.
+- Deferred Queue: Courrier qui ne peut pas etre livre est place dans la 
+Deferred Queue. Cela evite au systeme d'essayer continuellement d'envoyer des 
+emails et de les garder dans l'Active Queue le moins longtemps possible pour 
+donner la priorite aux nouveaux messages. Cela ameliore la stabilite. Si le MTA
+ ne peut pas atteindre un domaine, TOUS les emails pour ce domaine sont places 
+dans la Deferred Queue, donc ces messages ne monopolisent pas inutilement les 
+ressources systeme. Le renvoi est prevu avec un temps d'attente de plus en
+plus long. Quand le temps d'attente expire, l'email est encore place dans 
+l'Active Queue pour etre livrer; le systeme garde un historique du temps 
+d'attente.
+
+Postfix pour les faineants: Procedure facile et "sale" de demarrage.
+----------------------------------------------------------------------
+Et maintenant la partie que vous attendez (ou par laquelle vous avez commence):
+ installation de postfix. Comme sendmail, Postfix utilise un fichier texte 
+".cf" comme fichier de configuration primaire appele main.cf. Cependant, les 
+fichiers .cf dans postfix utilise une syntaxe "parametre=$valeur". De plus, ces
+ fichiers sont extrememment bien commentes et utilisent des variables hautement
+ descriptives.
+
+En fait, si votre email a des besoins assez simple, c'est probablement 
+suffisant d'editer et de lire les commentaires du fichier main.cf
+
+Pour la plupart des utilisateurs, c'est l'unique besoin de configurer postfix 
+en tant que passerelle SMTP.
+
+1. Installer postfix depuis le paquet binaire via votre outil de paquets locaux
+ (rpm,etc.) et lancer le script INSTALL.sh
+2. Ouvrir /etc/postfix/main.cf avec l'editeur de texte de votre choix.
+3. De-commenter et mettre le parametre myhostname egal au nom de domaine 
+complet de votre serveur, e.g. "myhostname = buford.dogpeople.org".
+4. De-Commenter et mettre le parametre "mydestination" ainsi, en admettant que 
+c'est la passerelle SMTP pour un domaine complet.
+
+mydestination = $myhostname, localhost.$mydomain, $mydomain
+
+NOTE: Entrer la ligne suivante.
+
+1. Sauver et fermer main.cf
+2. Si vous voulez, ajouter une ligne a /etc/aliases devant le courrier de root 
+vers un compte avec moins de privileges, e.g. root: mick. Cela est aussi 
+l'endroit pour mettre les alias des autres utilisateurs qui sont servis par les
+ serveurs de courrier internes (par exemple, mick.bauer: 
+mbauer@secretserver.dogpeople.org). Puis editer et/ou ajouter aliases,
+sauver le fichier et entrer la commande newaliases pour les convertir dans la 
+base de donnees hashee.
+3. Executer la commande postfix start
+ 
+Que venez vous de faire ? En simplement 4 etapes, vous avez installe, 
+configure et demarre les services SMTP pour votre machine et son nom de domaine
+ local. Si cette machine est un firewall ou une passerelle SMTP dans une DMZ, 
+il peut etre maintenant utiliser par les utilisateurs locaux pour router le 
+courrier sortant et peut etre pointer vers votre domaine internet (i.e. il 
+pourrait etre reconnu par le monde exterieur comme le serveur de courrier
+de votre domaine). Nous avons aussi dit de traiter (plutot que de transferer) 
+les emails adresses aux machines locales. Un bon retour sur investissement pour
+ 5min de temps, non ?
+
+(NOTE: C'est suffisant pour lancer postfix mais PAS pour le securiser. Ne vous 
+arretez pas la!)
+
+
+La rapidite et la "salete" expliquees :-)
+--------------------------------------------
+Aussi cool que cela etait avant, cela n'est peut etre pas suffisant pour 
+demander a Postfix de faire ce que vous voulez qu'il fasse sur votre reseau. Et
+ meme si c'etait le cas, je recommande fortement de creuser un peu plus 
+profondement: l'ignorance mene presque toujours vers une securite mauvaise. 
+Regardons de plus pres ce que vous venons juste de faire, et on arrivera a des 
+astuces interessantes pour postfix.
+
+D'abord, pourquoi si peu d'informations ont besoin d'etre entrées dans main.cf?
+ La seule chose que nous avons ajoute est notre nom de domaine complet. En 
+fait, cela depend comment est configure votre machine, et il n'est peut etre 
+meme pas necessaire de preciser cela !
+
+Cela est du au fait que postix fait appel aux appels systemes comme 
+"gethostname" pour obtenir autant d'informations que possible directement 
+depuis le noyau. Si le nom de domaine complet est connu du noyau , il est 
+suffisamment "intelligent" pour deduire que tout ce qui est apres le "." est 
+votre nom de domaine et il configurera la variable "mydomain" correctement.
+
+Vous pourriez avoir besoin d'ajouter des noms à "mydestination" si le systeme a
+ plus d'un nom de domaine (c'est a dire les enregistrements "A" sur le DNS du 
+domaine). Par exemple, si votre passerelle SMTP est aussi votre serveur FTP 
+public, et qu'il utilise aussi le nom "ftp" associe a son nom de machine, la 
+variable "mydestination" devra ressembler a:
+
+mydestination = $myhostname, localhost.$mydomain, ftp://www.$mydomain, $mydomain
+
+C'est important que quelque soit le nom auquel le systeme va repondre, il est 
+doit etre contenu sur cette ligne.
+
+Il y a deux autres choses interessantes que nous avons fait dans cette 
+procedure. La premiere est de demarrer postfix avec la commande"postfix start".
+ Juste comme BIND utilise "ndc" pour controler les differents processus inclus 
+dans BIND, la commande postfix peut etre utilisée pour controler postfix. Comme
+ BIND, Postfix est reellement un ensemble de commandes, demons et scripts 
+plutot qu'un programme monolithique.
+
+Les commandes de postfix les plus courantes sont : postfix start, postfix stop 
+et postfix reload. Start et stop sont evidentes; reload demande a postfix de 
+recharger son fichier de configuration sans arreter et redemarrer. Une autre 
+commande utile est "postfix flush", qui force postfix à essayer d'envoyer 
+immediatement tous les messages dans la file d'attente. Cela est 
+particulierement utile apres avoir changer un parametre qui avait peut etre 
+causé des problemes -- dans le cas ou la modification marche, tous les messages
+retardes par le probleme seront envoyes immediatement.
+
+L'autre chose que nous avons fait etait d'ajouter la ligne dans /etc/aliases 
+pour detourner les emails destines a root vers un compte non privilegie. C'est 
+de la paranoia utile: nous ne voulons pas devoir nous logger en tant que root 
+pour des activites courantes comme lire les rapports systeme, qui sont parfois 
+envoye a root. Soyez prudent, cependant: si votre compte non privilegie utilise
+ un fichier ".forward" pour renvoyer le courrier vers un autre systeme, vous 
+pourriez transmettre a ce moment la des messages administratifs par la bande 
+passante publique en texte clair!
+
+
+Alias reveles
+----------------
+Comme dit dans la procedure precedente, les alias sont aussi necessaires pour 
+utiliser des adresses E-mail pour les utilisateurs qui n'ont pas réellement de 
+comptes sur la passerelle smtp. Cette pratique a deux avantages principaux. 
+D'abord, la plupart des utilisateurs préfèrent les noms signicatifs de E-mail 
+et les noms courts de centre serveur / domaine, par exemple, 
+"john.smith@acme.com" plutôt que "jsmith023@mail77.midwest.acme.com". En second
+ lieu, vous ne voulez pas probablement que vos utilisateurs se connectent et 
+stockent le courrier sur un serveur publiquement accessible. Plus la séparation
+ entre les serveurs publics et les serveurs privés est grande, mieux ca sera 
+(et n'oubliez pas que les mots de passe de POPmail sont transmis en texte 
+clair!) 
+
+Une autre utilisation des alias est toujours l'entretien des mailing-list. Un
+ alias peut se diriger  non seulement à une adresse ou à une liste à 
+virgule-séparée d'adresses, mais également à une mailing-list. 
+Ceci est réalisé avec le:include:tag -- sans ca, le suffixe ajoutera le 
+courrier au fichier indiqué plutôt que d'utiliser le fichier pour obtenir des 
+destinataires. (c'est un dispositif, pas une anomalie; il est utile parfois 
+d'écrire certains types de messages à un fichier texte plutôt que dans une 
+boîte aux lettres.) 
+
+Voici une partie d'un fichier d'exemple d'alias qui contient tous ces types de 
+tracés: 
+
+postmaster:	root<\n>
+mailer-daemon:	root
+hostmaster:	root
+root:		bdewinter
+mailguys:	bdewinter,mick.bauer
+mick.bauer:	mbauer@biscuit.stpaul.dogpeople.org
+clients:	:include:/etc/postfix/clientlist.txt
+spam-reports:	/home/bdewinter/spambucket.txt
+
+Un avertissement: si un alias pointe vers un serveur de mails différent, ce 
+serveur doit appartenir à un domaine pour lequel la passerelle smtp est 
+configurée pour transmettre par relais le courrier (c.-à-d., le FQDN ou son 
+domaine doit être énuméré dans la déclaration de mydestination dans main.cf). 
+
+N'oubliez pas d'exécuter toujours les "newaliases" ou les "postalias 
+/etc/aliases" lorsque vous éditez les alias. La commande de postalias est 
+"hipper" parce qu'elle peut recevoir n'importe quel fichier correctement 
+formaté en entrée. Les deux commandes compriment le fichier d'alias dans un 
+fichier de base de données qui peut être recherché à plusieurs reprises et 
+rapidement a chaque fois qu'une adresse de destination est analysée; ni postfix
+ ni sendmail n'utilisent directement la version texte des alias. 
+
+Si vous avez un grand nombre d'utilisateurs et/ou de serveurs internes de 
+courrier, les mises à jour des alias se prêtent à l'automatisation, 
+particulièrement par l'intermédiaire de l'interpréteur de commandes securise 
+(ssh) et la commande de copie securisee (scp). Utilisant scp avec des clés 
+null-passphrase RSA (ou DSS/El Gamal), vos serveurs internes de courrier 
+peuvent périodiquement copier leurs fichiers locaux d'alias vers la passerelle 
+smtp, qui peut alors les fusionner dans un nouveau /etc/aliases suivi de 
+"postalias /etc/aliases" (malheureusement, vous dire exactement comment 
+utiliser scp/ssh est au delà de la portée de cet article.) Cette pratique est 
+particulièrement utile dans de grands organismes où des personnes différentes 
+contrôlent différents serveurs de courrier: la gestion de jour en jour de 
+comptes E-mail peut être maintenue de facon décentralisée. 
+
+
+Se proteger contre des emails commerciaux non sollicités
+-----------------------------------------------------------
+Ces E-mail sont un des types les plus communs et les plus ennuyants d'abus 
+d' E-mail. PostFix offre la protection contre UCE (Unsolicited Commercial 
+E-mail) par l'intermédiaire d'un couple de parametres dans main.cf. Une 
+certaine attention est en règle, d'une certaine manière: il y a une limite fine
+ entre le Spam et la diffusion légitime, et il est entièrement possible que 
+même des commandes modestes d'UCE causeront un certain (c.-à-d., désiré) 
+courrier légitime d'être abandonné. 
+
+Avoir dit ca, pour la plupart des sites c'est un risque acceptable (évitable, 
+aussi, par l'éducation d'utilisateur), et nous recommandons qu'an minimum, vous
+ placiez dans main.cf: 
+
+ - smtpd_recipient_limit: Cette configuration indique combien de destinataires 
+peuvent être adressés dans l'en-tête d'un message simple. Normalement, un tel 
+nombre ne devrait pas excéder quelque chose comme 500. Il serait extrême de 
+recevoir un E-mail qui a 500 destinataires et qui n'était pas envoyé a une 
+mailing-list. 
+
+ - smtpd_recipient_restricitons: Pas chaque E-mail qui arrive à votre serveur 
+devrait être accepte. Ce paramètre demande a postfix de contrôler chaque 
+adresse destinataire des messages sur la base d'un ou plusieurs critères. 
+Un des plus facile à mettre à jour est la base de données d'accès. Ce fichier 
+énumère des domaines, des centres serveurs, des réseaux et des utilisateurs qui
+ sont permis de recevoir le courrier de votre serveur. Pour le permettre: 
+(1) check_recipient_access = hash:access; 
+(2) créer /etc/postfix/access (faites un "man 5 access" pour la syntaxe);  
+(3) executer "postmap hash:/etc/postfix/access" pour convertir le fichier en 
+base de données. Répétez l'étape (3) chaque fois que vous editez 
+/etc/postfix/access.
+
+ - smtpd_sender_restrictions: Par défaut Postfix acceptera des connexions smtp 
+de tout le monde, servant alors de relais, une méthode souvent utilisée 
+pour les envoyeurs d'UCE qui souhaitent cacher leurs identités en "bouncing" 
+leurs messages. Si ceci se produit, il est possible et même probable que 
+d'autres serveurs rejettent les E-mail de votre domaine(s). 
+D'autres mécanismes de protection se situent dans le fait qu'il est toujours 
+sage de contrôler l'expéditeur contre le DNS. Bien que ceci coûte une 
+performance, il devient plus dur pour envoyer l'information d'avoir une 
+adresse défectueuse d'expéditeur. Voyez le fichier /etc/postfix/sample-smtpd.cf
+ pour une liste d'options possibles pour ce paramètre. Notez que hash:access 
+est l'une d'elles; la base de données d'accès peut être aussi bien utilisée non
+ seulement avec les destinataires particuliers pour autoriser/interdir, mais 
+aussi avec les expéditeurs. Pour une liste complète des paramètres d'anti-UCE 
+et de leur syntaxe exacte, voir /etc/postfix/sample-smtpd.cf. 
+
+
+Des adresses internes cachees par Masquerading 
+-------------------------------------------------
+Afin d'empêcher de donner trop d'informations aux parties externes légitimes, 
+il est sage de placer dans le fichier de main.cf le parametre 
+masquerade_domains = $mydomain (rappelez-vous, "$mydomain" se rapporte à une 
+variable). Si vous souhaitez faire une exception pour le courrier envoyé par 
+"root" (probablement une bonne idée), vous pouvez placer masquerade_exceptions 
+= root. Ceci eliminera les noms d'hôte internes des FQDSes dans le champ 
+"From" des messages sortants. 
+
+
+Lancer Postfix dans une prison "chroot"
+-------------------------------------------
+Maintenant nous venons à une des choses les plus routinières que nous pouvons 
+faire pour securiser postfix: l'exécution dans une prison "chroot". 
+chroot est une commande Unix qui confine le processus "chrooted" à un 
+répertoire indiqué; ce répertoire devient "/" pour ce processus. Ceci exige 
+habituellement que vous creez d'abord des copies de choses nécessaires pour le 
+processus mais normalement gardées ailleurs. 
+Par exemple, si le processus recherche "/etc/mydaemon.conf" a la mise en route 
+mais est chrooted à "/var/mydaemon", le processus recherchera réellement 
+"/var/mydaemon/etc/mydaemon.conf". 
+
+L'avantage de chrooting devrait être évident: si postfix est chroot, 
+l'attaquant se trouvera dans une "cellule" a partir de laquelle (si tout va 
+bien) aucun fichier ou donnée de système sensible ou important ne peut être 
+consulté. Ce n'est pas une panacée, mais il augmente significativement la
+difficulté d'exploiter postfix. 
+
+Heureusement, les préparations necessaires a chrooter postfix sont fournies 
+dans un sous-répertoire de la documentation de postfix appelé les "examples". 
+Ces fichiers ne sont pas vraiment des scripts shell: ils sont des suggestions de
+ commandes.
+
+Quelques distributions binaires de postfix ont des séquences type 
+d'installation qui font automatiquement ces préparations pour vous après 
+l'installation de postfix. Dans SuSE, par exemple, le module de postfix RPM 
+exécute une séquence type qui crée un arbre complet de répertoire pour que 
+postfix l'utilise quand il est chroote (etc.., usr, lib, et ainsi de 
+suite) dans /var/spool/postfix, avec les propriétés et les permissions 
+appropriées. 
+
+En plus de fournir la prison chroot de postfix, vous avez besoin d'éditer 
+/etc/postfix/master.cf pour basculer les demons de postfix que vous souhaitez 
+exécuter chroot (c.-à-d., mettez un "y" dans la colonne "chroot" de 
+chaque dæmon pour être chroot). Cependant, ne faites pas ceci pour les dæmons dont la colonne  "command" indiquant qu'ils sont de type "pipe" ou "local". 
+Quelques distributions du module binaire basculent les demons appropriés 
+vers chroot automatiquement pendant l'installation de postfix (encore, SuSE ). 
+
+Après configuration de la prison de chroot et l'édition de master.cf, tout ce 
+que vous devez faire est de lancer postfix par la voie normale: postfix start. 
+Le processus principal de postfix  manipule chroot-ing directement. 
+
+
+Conclusion
+----------
+C'est plus qu'assez pour demarrer avec Postfix. Que vos mails arrivent bien et 
+que les spams disparaissent !

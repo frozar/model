@@ -1,0 +1,593 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 2. Link Layer</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="2_0"><H1><I>Link Layer</I></H1></a>
+<a name="2_1"><H3>2.1 Introduction</H3></a>
+<P>
+From <a href="introduc.htm#fig_1_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#fig_1_4">Figure 1.4</a> we see that the purpose of the link layer
+in the TCP/IP protocol suite is to send and receive (1) IP datagrams
+for the IP module, (2) <A NAME="OCRUncertain001">ARP</A> requests
+and replies for the ARP module, and (3) <A NAME="OCRUncertain002">RARP</A>
+requests and replies for the <A NAME="OCRUncertain003">RARP</A>
+module. TCP/IP supports many different link layers, depending
+on the type of networking hardware being used: Ethe<A NAME="OCRUncertain004">rn</A>et,
+token ring, <A NAME="OCRUncertain005">FDDI</A> (Fiber Distributed
+Data Interface), RS-232 serial lines, and the like.
+<P>
+In this chapter we'll look at some of the details involved in
+the Ethernet link layer, two specialized link layers for serial
+interfaces (SLIP and <A NAME="OCRUncertain006">PPP),</A> and the
+<A NAME="OCRUncertain007">loopback</A> driver that's part of most
+implementations. Ethernet and SLIP are the link layers used for
+most of the examples in the book. We also talk about the <A NAME="OCRUncertain008">MTU</A>
+(Maximum Transmission Unit), a characteristic of the link layer
+that we encounter numerous times in the remaining chapters. We
+also show some calculations of how to choose the MTU for a serial
+line.
+
+<a name="2_2"><H3>2.2 Ethernet and IEEE 802 Encapsulation</H3></a>
+
+The term <I>Ethernet</I> generally refers to a standard published
+in 1982 by Digital Equipment Corp., Intel Corp., and Xerox Corp.
+It is the predominant form of local area network technology used
+with TCP/IP today. It uses an access method called <A NAME="OCRUncertain009">CSMA/CD,</A>
+which stands for Carrier Sense, Multiple Access with Collision
+Detection. It operates at 10 <A NAME="OCRUncertain010">Mbits/sec</A>
+and uses 48-bit addresses.
+<P>
+A few years later the IEEE (Institute of Electrical and Electronics
+Engineers) 802 Committee published a sightly different set of
+standards. 802.3 covers an entire set of
+<P>
+<A NAME="OCRUncertain011">CSMA/CD</A> networks, 802.4 covers token
+bus networks, and 802.5 covers token ring networks. Common to
+all three of these is the 802.2 standard that defines the logical
+link control <A NAME="OCRUncertain012">(LLC)</A> common to many
+of the 802 networks. Unfortunately the combination of 802.2 and
+802.3 defines a different frame format from true Ethernet. <A NAME="OCRUncertain013">([Stallings</A>
+1987] covers all the details of these IEEE 802 standards.)
+<P>
+In the TCP/IP world, the encapsulation of IP datagrams is defined
+in <A NAME="OCRUncertain014">RFC</A> 894 <A NAME="OCRUncertain015">[Hornig</A>
+1984] for Ethernets and in RFC 1042 <A NAME="OCRUncertain016">[Postel</A>
+and Reynolds 1988] for IEEE 802 networks. The Host Requirements
+RFC requires that every Internet host connected to a 10 <A NAME="OCRUncertain017">Mbits/sec</A>
+Ethernet cable:
+<OL>
+<LI>Must be able to send and receive packets using RFC 894 (Ethernet)
+encapsulation.
+<LI>Should be able to receive RFC 1042 (IEEE 802) packets intermixed
+with RFC 894 packets.
+<LI>May be able to send packets using RFC 1042 encapsulation.
+If the host can send both types of packets, the type of packet
+sent must be configurable and the configuration option must default
+to RFC 894 packets.
+</OL>
+<P>
+RFC 894 encapsulation is most commonly used. <a href="#fig_2_1">Figure 2.1</a> shows
+the two different forms of encapsulation. The number below each
+box in the figure is the size of that box in bytes.
+<P>
+Both frame formats use 48-bit <A NAME="OCRUncertain018">(6-byte)</A>
+destination and source addresses. (802.3 allows 16-bit addresses
+to be used, but 48-bit addresses are normal.) These are what we
+call <I>hardware addresses</I> throughout the text. The <A NAME="OCRUncertain019">ARP</A>
+and <A NAME="OCRUncertain020">RARP</A> protocols (<a href="arp_addr.htm#4_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#4_0">Chapters 4</a> and
+<a href="rarp_rev.htm#5_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/rarp_rev.htm#5_0">5</a>) map between the 32-bit IP addresses and the 48-bit hardware
+addresses.
+<P>
+The next 2 bytes are different in the two frame formats. The 802
+<I>length</I> field says how many bytes follow, up to but not
+including the <I>CRC</I> at the end. The
+Ethernet <I>type </I>field identifies the type of data that follows.
+In the 802 frame the same <I>type</I> field occurs later in the
+SNAP (Sub-network Access Protocol) header. Fortunately none of
+the valid 802 <I>len<A NAME="OCRUncertain022">gt</A>h</I> values
+is the same as the Ethernet <I>type</I> values, making the two
+frame formats distinguishable.
+<P>
+In the Ethernet frame the data immediately follows the <I>type</I>
+field, while in the 802 frame format 3 bytes of 802.2 LLC and
+5 bytes of 802.2 SNAP follow. The <A NAME="OCRUncertain023"><I>DSAP</I>
+(Destination Service Access Point) and </A><A NAME="OCRUncertain024"><I>SSAP</I>
+(Source Service Access Point) are both set to </A><A NAME="OCRUncertain025"><TT>0xaa</TT>.</A>
+The <I>Ctrl</I> field is set to 3. The next 3 bytes, the <A NAME="OCRUncertain026"><I>org</I>
+code are all 0. Following this is the same </A><A NAME="OCRUncertain027">2-byte</A>
+<I>type</I> field that we had with the Ethernet frame format.
+(Additional type field values are given in RFC 1340 [Reynolds
+and Postel 1992<A NAME="OCRUncertain028">].)</A>
+<P>
+The <A NAME="OCRUncertain029"><I>CRC</I> field is a cyclic redundancy
+check (a checksum) that detects errors in the rest of the frame.
+(This is also called the </A><A NAME="OCRUncertain030"><I>FCS</I>
+or frame check sequence.)</A>
+<P>
+There is a minimum size for 802.3 and Ethernet frames. This minimum
+requires that the data portion be at least 38 bytes for 802.3
+or 46 bytes for Ethe<A NAME="OCRUncertain031">rn</A>et. To handle
+this, pad bytes are inserted to assure that the frame is long
+enough. We'll encounter this minimum when we start watching packets
+on the wire.
+<P>
+In this text we'll display the Ethe<A NAME="OCRUncertain032">rn</A>et
+encapsulation when we need to, because this is the most commonly
+used form of encapsulation.
+<P>
+<CENTER><a name="fig_2_1"><img src="f_2_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_2_1.gif"></a></CENTER>
+<CENTER><B>Figure 2.1</B> IEEE
+802.2/802.3 encapsulation (RFC 1042) and Ethernet encapsulation
+(RFC 894).</CENTER>
+<a name="2_3"><H3>2.3 Trailer Encapsulation</H3></a>
+<P>
+RFC 893 <A NAME="OCRUncertain056">[Leffler</A> and <A NAME="OCRUncertain057">Karels</A>
+1984] describes another form of encapsulation used on Ethernets,
+called <I>trailer encapsulation.</I> It was an experiment with
+early <A NAME="OCRUncertain058">BSD</A> systems on DEC VAXes that
+improved performance by rearranging the order of the fields in
+the IP datagram. &quot;<A NAME="OCRUncertain059">T</A>he variable-length
+fields at the beginning of the data portion of the Ethernet frame
+(the IP header and the TCP header) were moved to the end (right
+before the CRC). This allows the data portion of the frame to
+be mapped to a hardware page, saving a memory-to-memory copy when
+the data is copied in the kernel. TCP data that is a multiple
+of 512 bytes in size can be moved by just manipulating the kernel's
+page tables. Two hosts negotiated the use of trailer encapsulation
+using an extension of <A NAME="OCRUncertain060">ARP. </A>Different
+Ethernet frame type values are defined for these frames.
+<P>
+Nowadays trailer encapsulation is deprecated, so we won't show
+any examples of it. Interested readers are referred to <A NAME="OCRUncertain061">RFC</A>
+893 and <a href="udp_user.htm#11_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_8">Section 11.8</a> of <A NAME="OCRUncertain062">[Leffler</A>
+<A NAME="OCRUncertain063">et</A> <A NAME="OCRUncertain064">al.</A>
+1989] for additional details.
+<a name="2_4"><H3>2.4 SLIP: Serial Line IP</H3></a>
+<P>
+SLIP stands for Serial Line IP. It is a simple form of encapsulation
+for IP datagrams on serial lines, and is specified in RFC 1055
+<A NAME="OCRUncertain065">[Rornkey</A> 1988<A NAME="OCRUncertain066">].</A>
+SLIP has become popular for connecting home systems to the Internet,
+through the ubiquitous RS-232 serial port found on almost every
+computer and high-speed modems. The following rules specify the
+framing used by SLIP.
+<OL>
+<LI>The IP datagram is terminated by the special character called
+END <A NAME="OCRUncertain067">(<TT>0xc0</TT>). </A>Also, to prevent
+any line noise before this datagram from being interpreted as
+part of this datagram, most implementations transmit an END character
+at the beginning of the datagram too. (If there was some line
+noise, this END terminates that erroneous datagram, allowing the
+current datagram to be transmitted. That erroneous datagram will
+be thrown away by a higher layer when its contents are detected
+to be garbage.)
+<LI>If a byte of the IP datagram equals the END character, the
+<A NAME="OCRUncertain068">2-byte</A> sequence <A NAME="OCRUncertain069"><TT>0xdb</TT>,</A>
+<A NAME="OCRUncertain070"><TT>0xdc</TT></A> is transmitted instead.
+This special character, <A NAME="OCRUncertain071"><TT>0xdb</TT>,</A>
+is called the SLIP <A NAME="OCRUncertain072">ESC</A> character,
+but its value is different from the ASCII <A NAME="OCRUncertain073">ESC</A>
+character <A NAME="OCRUncertain074">(<TT>0xib</TT>).</A>
+<LI>If a byte of the IP datagram equals the SLIP ESC character,
+the 2-byte sequence <TT>0xdb</TT>, <A NAME="OCRUncertain075"><TT>0xdd</TT></A>
+is transmitted instead.
+</OL>
+<P>
+Figure 2.2 shows an example of this framing, assuming that one
+END character and one ESC character appear in the original IP
+datagram. In this example the number of bytes transmitted across
+the serial line is the length of the IP datagram plus 4.
+<P>
+<CENTER><a name="fig_2_2"><img src="f_2_2.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_2_2.gif"></a></CENTER>
+<CENTER><B>Figure 2.2</B> SLIP encapsulation</CENTER>
+<P>SLIP
+is a simple framing method. It has some deficiencies that are
+worth noting.
+<P>
+<OL>
+<LI>Each end must know the other's IP address. There is no method
+for one end to inform the other of its IP address.
+<LI>There is no type field (similar to the frame type field in
+Ethernet frames). If a serial line is used for SLIP, it can't
+be used for some other protocol at the same time.
+<LI>There is no checksum added by SLIP (similar to the <A NAME="OCRUncertain076">CRC</A>
+field in Ethernet frames). If a noisy phone line corrupts a datagram
+being transferred by SLIP, it's up to the higher layers to detect
+this. (Alte<A NAME="OCRUncertain077">rn</A>ately, newer modems
+can detect and correct corrupted frames.) This makes it essential
+that the upper layers provide some form of <A NAME="OCRUncertain096">CRC.</A>
+In <a href="ip_inter.htm#3_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_0">Chapters 3</a> and <a href="tcp_tran.htm#17_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_tran.htm#17_0">17</a> we'll see that there is always a checksum
+for the IP header, and for the TCP header and the TCP data. But
+in <a href="udp_user.htm#11_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_0">Chapter 11</a> we'll see that the checksum that covers the <A NAME="OCRUncertain097">UDP</A>
+header and <A NAME="OCRUncertain098">UDP </A>data is optional.
+</OL>
+<P>
+Despite these shortcomings, SLIP is a popular protocol that is
+widely used.
+<P>
+<FONT SIZE=2>The history of SLIP dates back to 1984 when Rick Adams implemented
+it in 4.2BSD. Despite its self-description as a nonstandard, it
+is becoming more popular as the speed and reliabi<A NAME="OCRUncertain099">l</A>ity
+of modems increase. Publicly available implementations abound,
+and many vendors support it today.</FONT>
+
+<a name="2_5"><H3>2.5 Compressed SLIP</H3></a>
+<P>
+Since SLIP lines are often slow (19200 bits/sec or below) and
+frequently used for interactive traffic (such as <A NAME="OCRUncertain100">Telnet</A>
+and <A NAME="OCRUncertain101">Rlogin,</A> both of which use TCP),
+there tend to be many small TCP packets exchanged across a SLIP
+line. To carry I byte of data requires a <A NAME="OCRUncertain102">20-byte</A>
+IP header and a <A NAME="OCRUncertain103">20-byte</A> TCP header,
+an overhead of 40 bytes. (<a href="tcp_int.htm#19_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_int.htm#19_2">Section 19.2</a> shows the flow of these
+small packets when a simple command is typed during an Rlogin
+session.)
+<P>
+Recognizing this performance drawback, a newer version of SLIP,
+called <A NAME="OCRUncertain105">CSLIP</A> (for compressed SLIP),
+is specified in <A NAME="OCRUncertain106">RFC</A> 1144 <A NAME="OCRUncertain107">[Jacobson</A>
+1990a<A NAME="OCRUncertain108">].</A> CSLIP normally reduces the
+<A NAME="OCRUncertain109">40-byte</A> header to 3 or 5 bytes.
+It maintains the state of up to 16 TCP connections on each end
+of the CSLIP link and knows that some of the fields in the two
+headers for a given connection normally don't change. Of the fields
+that do change, most change by a small positive amount. These
+smaller headers greatly improve the interactive response time.
+<P>
+<FONT SIZE=2>Most SLIP implementations today support CSLIP. Both SLIP links
+on the author's subnet (see inside front cover) are CSLIP links.</FONT>
+<P>
+<a name="2_6"><H3>2.6 PPP: Point-to-Point</a>
+Protocol</H3>
+<P>
+<A NAME="OCRUncertain112">PPP,</A> the Point-to-Point Protocol,
+corrects all the deficiencies in SLIP. PPP consists of three components.
+<OL>
+<LI>A way to encapsulate IP datagrams on a serial link. PPP supports
+either an asynchronous link with 8 bits of data and no parity
+(i.e., the ubiquitous serial interface found on most computers)
+or bit-oriented synchronous links.
+<LI>A <I>link control protocol</I> <A NAME="OCRUncertain113">(LCP)</A>
+to establish, configure, and test the data-link connection. This
+allows each end to negotiate various options.
+<LI>A family of <I>network control protocols</I> <A NAME="OCRUncertain114">(NCPs)</A>
+specific to different network layer protocols. <A NAME="OCRUncertain115">RFCs</A>
+currently exist for IP, the <A NAME="OCRUncertain116">OSI</A>
+network layer, <A NAME="OCRUncertain117">DECnet,</A> and <A NAME="OCRUncertain118">AppleTalk.</A>
+The IP <A NAME="OCRUncertain119">NCP,</A> for example, allows
+each end to specify if it can perform header compression, similar
+to <A NAME="OCRUncertain120">CSLIP.</A> (The acronym NCP was also
+used for the predecessor to TCP.)
+</OL>
+<P>
+<A NAME="OCRUncertain121">RFC</A> 1548 <A NAME="OCRUncertain122">[Simpson</A>
+1993] specifies the encapsulation method and the link control
+protocol. RFC 1332 <A NAME="OCRUncertain123">[McGregor</A> 1992]
+specifies the network control protocol for IP.
+<P>
+The format of the PPP frames was chosen to look like the ISO <A NAME="OCRUncertain124">HDLC</A>
+standard (high-level data link control). Figure 2.3 shows the
+format of PPP frames.
+<P>
+<CENTER><a name="fig_2_3"><img src="f_2_3.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_2_3.gif"></a></CENTER>
+<CENTER><B>Figure 2.3</B> Format of PPP frames.</CENTER>
+<P>
+Each frame begins and ends with a <I>flag</I> byte whose value
+is <TT>0x7e</TT>. This is followed by an <I>address</I> byte whose
+value is always <A NAME="OCRUncertain127"><TT>0xff</TT>,</A> and
+then a <I>control</I> byte, with a value of <TT>0x03</TT>.
+<P>
+Next comes the <I>protocol</I> field, similar in function to the
+Ethernet <I>type</I> field. A value of <TT>0x0021</TT> means the
+<I>information</I> field is an IP datagram, a value of <TT>0xc021</TT>
+means the <I>information</I> field is link control data, and a
+value of <TT>0x8021</TT> is for network control data.
+<P>
+The <A NAME="OCRUncertain130"><I>CRC</I> field (or </A><A NAME="OCRUncertain131">FCS,</A>
+for frame check sequence) is a cyclic redundancy check, to detect
+errors in the frame.
+<P>
+Since the byte value <TT>0x7e</TT> is <I>the flag</I> character,
+PPP needs to escape this byte when it appears in the <I>information</I>
+field. On a synchronous link this is done by the hardware using
+a technique called <I>bit stuffing</I> <A NAME="OCRUncertain133">[Tanenbaum</A>
+1989<A NAME="OCRUncertain134">].</A> On asynchronous links the
+special byte <TT>0x7d</TT> is used as an escape character. Whenever
+this escape character appears in a PPP frame, the next character
+in the frame has had its sixth bit complemented, as follows:
+<OL>
+<LI>The byte <TT>0x7e</TT> is transmitted as the <A NAME="OCRUncertain135">2-byte</A>
+sequence <TT>0x7d</TT>, <TT>0x5e</TT>. This is the escape of the
+<I>flag</I> byte.
+<LI>The byte <TT>0x7d</TT> is transmitted as the 2-byte sequence
+<TT>0x7d</TT>, <TT>0x5d</TT>. This is the escape of the escape
+byte.
+<LI>By default, a byte with a value less than <TT>0x20</TT> (i.e.,
+an ASCII control character) is also escaped. For example, the
+byte <TT>0x01</TT> is transmitted as the 2-byte sequence <TT>0x7d</TT>,
+<TT>0x21</TT>. (In this case the complement of the sixth bit turns
+the bit on, whereas in the two previous examples the complement
+turned the bit off.)
+<P>
+The reason for doing this is to prevent these bytes from appearing
+as ASCII control characters to the serial driver on either host,
+or to the modems, which sometimes interpret these control characters
+specially. It is also possible to use the link control protocol
+to specify which, if any, of these 32 values must be escaped.
+By default, all 32 are escaped.
+</OL><P>
+Since PPP, like SLIP, is often used across slow serial links,
+reducing the number of bytes per frame reduces the latency for
+interactive applications. Using the link control protocol, most
+implementations negotiate to omit the constant <I>address</I>
+and <I>control</I> fields and to reduce the size of the <I>protocol</I>
+field from 2 bytes to 1 byte. If we then compare the framing overhead
+in a PPP frame, versus the 2-byte framing overhead in a SLIP frame
+(<a href="#fig_2_2">Figure 2.2</a>), we see that PPP adds three additional bytes: I byte
+for the <I>protocol</I> field, and 2 bytes for the CRC. Additionally,
+using the IP network control protocol, most implementations then
+negotiate to use Van <A NAME="OCRUncertain136">Jacobson</A> header
+compression (identical to <A NAME="OCRUncertain137">CSLIP</A>
+compression) to reduce the size of the IP and TCP headers.
+<P>
+In summary, PPP provides the following advantages over SLIP: (1)
+support for multiple protocols on a single serial line, not just
+IP datagrams, (2) a cyclic redundancy check on every frame, (3)
+dynamic negotiation of the IP address for each end (using the
+IP network control protocol), (4) TCP and IP header compression
+similar to CSLIP, and (5) a link control protocol for negotiating
+many data-link options. The price we pay for all these features
+is 3 bytes of additional overhead per frame, a few frames of negotiation
+when the link is established, and a more complex implementation.
+<P>
+<FONT SIZE=2>Despite all the added benefits of PPP over SLIP, today there are
+more SLIP users than PPP users. As implementations become more
+widely available, and as vendors start to support PPP, it should
+(eventually) replace SLIP.</FONT>
+<a name="2_7"><H3>2.7 Loopback Interface</H3></a>
+<P>
+Most implementations support a <I>loopback interface</I> that
+allows a client and server on the same host to communicate with
+each other using TCP/IP. The class A network ID 127 is reserved
+for the loopback interface. By convention, most systems assign
+the IP address of 127.0.0.1 to this interface and assign it the
+name <A NAME="OCRUncertain139"><TT>localhost</TT>.</A> An IP datagram
+sent to the loopback interface must not appear on any network.
+<P>
+Although we could imagine the transport layer detecting that the
+other end is the loopback address, and short circuiting some of
+the transport layer logic and all of the network layer logic,
+most implementations perform complete processing of the data in
+the transport layer and network layer, and only loop the IP datagram
+back to itself when the datagram leaves the bottom of the network
+layer.
+<P>
+Figure 2.4 shows a simplified diagram of how the loopback interface
+processes IP datagrams.
+<P>
+<CENTER><a name="fig_2_4"><img src="f_2_4.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_2_4.gif"></a></CENTER>
+<CENTER><B>Figure 2.4 </B>Processing of IP datagrams by loopback
+interface.</CENTER>
+<P>
+The key points to note in this figure are as follows:
+<OL>
+<LI>Everything sent to the <A NAME="OCRUncertain141">loopback</A>
+address (normally 127.0.0.1) appears as IP input.
+<LI>Datagrams sent to a broadcast address or a multicast address
+are copied to the loopback interface and sent out on the Ethernet.
+This is because the definition of broadcasting and multicasting
+(<a href="broadcas.htm#12_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm#12_0">Chapter 12</a>) includes the sending host.
+<LI>Anything sent to one of the host's own IP addresses is sent
+to the loopback interface.
+</OL>
+<P>
+While it may seem inefficient to perform all the transport layer
+and IP layer processing of the loopback data, it simplifies the
+design because the loopback interface appears as just another
+link layer to the network layer. The network layer passes a datagram
+to the loopback interface like any other link layer, and it happens
+that the loopback interface then puts the datagram back onto IP<A NAME="OCRUncertain142">'</A>s
+input queue.
+<P>
+Another implication of <a href="#fig_2_4">Figure 2.4</a> is that IP datagrams sent to
+the one of the host's own IP addresses normally do not appear
+on the corresponding network. For example, on an Ethernet, normally
+the packet is not transmitted and then read back. Comments in
+some of the <A NAME="OCRUncertain143">BSD</A> Ethernet device
+drivers indicate that many Ethernet interface cards are not capable
+of reading their own transmissions. Since a host must process
+IP datagrams that it sends to itself, handling these packets as
+shown in <a href="#fig_2_4">Figure 2.4</a> is the simplest way to accomplish this.
+<P>
+<FONT SIZE=2>The 4.4BSD implementation defines the variable <A NAME="OCRUncertain144"><TT>useloopback</TT></A>
+and initializes it to 1. If this variable is set to 0, however,
+the Ethernet driver sends local packets onto the network instead
+of sending them to the loopback driver. This may or may not work,
+depending on your Ethernet interface card and device driver.</FONT>
+<a name="2_8"><H3>2.8 MTU</H3></a>
+<P>
+As we can see from <a href="#fig_2_1">Figure 2.1</a>, there is a limit on the size of
+the frame for both Ethernet encapsulation and 802.3 encapsulation.
+This limits the number of bytes of data to 1500 and 1492, respectively.
+This characteristic of the link layer is called the <I>MTU,</I>
+its maximum transmission unit. Most types of networks have an
+upper limit.
+<P>
+If IP has a datagram to send, and the datagram is larger than
+the link layer's MTU, IP performs <I>fragmentation,</I> breaking
+the datagram up into smaller pieces (fragments), so that each
+fragment is smaller than the MTU. We discuss IP fragmentation
+in <a href="udp_user.htm#11_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_5">Section 11.5</a>.
+<P>
+Figure 2.5 lists some typical MTU values, taken from <A NAME="OCRUncertain146">RFC</A>
+1191 [Mogul and <A NAME="OCRUncertain147">Deering </A>1990<A NAME="OCRUncertain148">].</A>
+The listed MTU for a point-to-point link (e.g., SLIP or <A NAME="OCRUncertain149">PPP)</A>
+is not a physical characteristic of the network media. Instead
+it is a logical limit to provide adequate response time for interactive
+use. In the <a href="#2_10">Section 2.10</a> we'll see where this limit comes from.
+<P>
+In <a href="ip_inter.htm#3_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_9">Section 3.9</a> we'll use the <A NAME="OCRUncertain150"><TT>netstat</TT></A>
+command to print the MTU of an interface.
+
+<P><CENTER>
+<a name="fig_2_5"><TABLE BORDER=1></a>
+<TR><TD WIDTH=253><CENTER>Network</CENTER></TD><TD WIDTH=123><CENTER>MTU (bytes)</CENTER>
+</TD></TR>
+<TR><TD WIDTH=253>Hyperchannel
+<BR>
+16 Mbits/sec token ring (IBM)<BR>
+4 Mbits/sec token ring (IEEE 802.5)<BR>
+FDDI<BR>
+Ethernet<BR>
+IEEE 802.3/802.2<BR>
+X.25<BR>
+Point-to-Point (low delay)
+</TD><TD WIDTH=123><CENTER>65535<BR>
+17914<BR>
+4464<BR>
+4352<BR>
+1500<BR>
+1492<BR>
+576<BR>
+296</CENTER>
+</TD></TR>
+</TABLE>
+</CENTER>
+
+<CENTER><B>Figure 2.5</B> Typical maximum transmission units
+<A NAME="OCRUncertain154">(MTUs).</A></CENTER>
+<a name="2_9"><H3>2.9 Path MTU</H3></a>
+<P>
+When two hosts on the same network are communicating with each
+other, it is the MTU of the network that is important. But when
+two hosts are communicating across multiple networks, each link
+can have a different MTU. The important numbers are not the MTUs
+of the two networks to which the two hosts connect, but rather
+the smallest MTU of any data link that packets traverse between
+the two hosts. This is called the <I>path MTU.</I>
+<P>
+The path MTU between any two hosts need not be constant. It depends
+on the route being used at any time. Also, routing need not be
+symmetric (the route from A to <A NAME="OCRUncertain155">B</A>
+may not be the reverse of the route from <A NAME="OCRUncertain156">B</A>
+to A), hence the path MTU need not be the same in the two directions.
+<P>
+<A NAME="OCRUncertain157">RFC</A> 1191 [Mogul and <A NAME="OCRUncertain158">Deering</A>
+1990] specifies the &quot;path MTU discovery mechanism,&quot;
+a way to determine the path MTU at any time. We<A NAME="OCRUncertain159">'</A>ll
+see how this mechanism operates after we've described <A NAME="OCRUncertain160">ICMP</A>
+and IP fragmentation. In <a href="udp_user.htm#11_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_6">Section 11.6</a> we'll examine the ICMP <A NAME="OCRUncertain161">unreachable</A>
+error that is used with this discovery mechanism and in <a href="udp_user.htm#11_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_7">Section 11.7</a>
+we'll show a version of the <A NAME="OCRUncertain162"><TT>traceroute</TT></A>
+program that uses this mechanism to determine the path MTU to
+a destination. <a href="udp_user.htm#11_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_8">Sections 11.8</a> and <a href="tcp_fut.htm#24_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_fut.htm#24_2">24.2</a> show how <A NAME="OCRUncertain163">UDP</A>
+and TCP operate when the implementation supports path MTU discovery.
+
+<a name="2_10"><H3>2.10 Serial Line Throughput Calculations</H3></a>
+
+If the line speed is 9600 bits/sec, with 8 bits per byte, plus
+I start bit and I stop bit, the line speed is 960 bytes/sec. Transferring
+a <A NAME="OCRUncertain165">1024-byte</A> packet at this speed
+takes 1066 <A NAME="OCRUncertain166">ms. </A>If we're using the
+SLIP link for an interactive application, along with an application
+such as FTP that sends or receives 1024-byte packets, we have
+to wait, on the average, half of this time (533 ms) to send our
+interactive packet.
+<P>
+This assumes that our interactive packet will be sent across the
+link before any further &quot;big&quot; packets. Most SLIP implementations
+do provide this <A NAME="OCRUncertain167">type-of-service</A>
+queuing, placing interactive traffic ahead of bulk data traffic.
+The interactive traffic is normally <A NAME="OCRUncertain168">Telnet,</A>
+<A NAME="OCRUncertain169">Rlogin,</A> and the control portion
+(the user commands, not the data) of F<A NAME="OCRUncertain170">T</A>P.
+<P>
+This type of service <A NAME="OCRUncertain171">queuing</A> is
+imperfect. It cannot affect noninteractive traffic that is already
+queued downstream (e.g., at the serial driver). Also newer modems
+have large buffers so noninteractive traffic may already be buffered
+in the modem.
+<P>
+Waiting 533 <A NAME="OCRUncertain172">ms</A> is unacceptable for
+interactive response. Human factors studies have found that an
+interactive response time longer than 100-200 ms is perceived
+as bad <A NAME="OCRUncertain173">[Jacobson</A> 1990a<A NAME="OCRUncertain174">].</A>
+This is the round-trip time for an interactive packet to be sent
+and something to be returned (normally a character echo).
+<P>
+Reducing the <A NAME="OCRUncertain175">MTU</A> of the SLIP link
+to 256 means the maximum amount of time the link can be busy with
+a single frame is 266 ms, and half of this (our average wait)
+is 133 ms. This is better, but still not perfect. The reason we
+choose this value (as compared to 64 or 128) is to provide good
+utilization of the line for bulk data transfers (such as large
+file transfers). Assuming a <A NAME="OCRUncertain176">5-byte</A>
+<A NAME="OCRUncertain177">CSLIP</A> header, 256 bytes of data
+in a <A NAME="OCRUncertain178">261-byte</A> frame gives 98.1%
+of the line to data and 1.9% to headers, which is good utilization.
+Reducing the <A NAME="OCRUncertain179">MTU</A> below 256 reduces
+the maximum throughput that we can achieve for bulk data transfers.
+<P>
+The MTU value listed in <a href="#fig_2_5">Figure 2.5</a>, 296 for a point-to-point link,
+assumes 256 bytes of data and the <A NAME="OCRUncertain180">40-byte</A>
+TCP and IP headers. Since the MTU is a value that IP queries the
+link layer for, the value must include the normal TCP and IP headers.
+This is how IP makes its fragmentation decision. IP knows nothing
+about the header compression that CSLIP performs.
+<P>
+Our average wait calculation (one-half the time required to transfer
+a maximum sized frame) only applies when a SLIP link (or <A NAME="OCRUncertain181">PPP</A>
+link) is used for both interactive traffic and bulk data transfer.
+When only interactive traffic is being exchanged, 1 byte of data
+in each direction (assuming 5-byte compressed headers) takes around
+12.5 ms for the round trip at 9600 bits/sec. This is well within
+the 100-200 ms range mentioned earlier. Also notice that compressing
+the headers from 40 bytes to 5 bytes reduces the round-trip time
+for the I byte of data from 85 to 12.5 ms.
+<P>
+Unfortunately these types of calculations are harder to make when
+newer error correcting, compressing modems are being used. The
+compression employed by these modems reduces the number of bytes
+sent across the wire, but the error correction may increase the
+amount of time to transfer these bytes. Nevertheless, these calculations
+give us a starting point to make reasonable decisions.
+<P>
+In later chapters we'll use these serial line calculations to
+verify some of the timings that we see when watching packets go
+across a serial link.
+
+<a name="2_11"><H3>2.11 Summary</H3></a>
+
+This chapter has examined the lowest layer in the Internet protocol
+suite, the link layer. We looked at the difference between Ethernet
+and IEEE 802.2/802.3 encapsulation, and the encapsulation used
+by SLIP and PPP. Since both SLIP and PPP are often used on slow
+links, both provide a way to compress the common fields that don't
+often change. This provides better interactive response.
+<P>
+The <A NAME="OCRUncertain182">loopback</A> interface is provided
+by most implementations. Access to this interface is either through
+the special loopback address, normally 127.0.0.1, or by sending
+IP datagrams to one of the host's own IP addresses. <A NAME="OCRUncertain183">Loopback</A>
+data has been completely processed by the transport layer and
+by IP when it loops around to go up the protocol stack.
+<P>
+We described an important feature of many link layers, the <A NAME="OCRUncertain184">MTU,</A>
+and the related concept of a path MTU. Using the typical <A NAME="OCRUncertain185">MTUs</A>
+for serial lines, we calculated the latency involved in SLIP and
+<A NAME="OCRUncertain186">CSLIP</A> links.
+<P>
+This chapter has covered only a few of the common data-link technologies
+used with TCP/IP today. One reason for the success of TCP/IP is
+its ability to work on top of almost any data-link technology.
+
+<H4>Exercises</H4>
+
+<B>2.1</B> If your system supports the <TT>netstat(1)</TT> command (see
+<a href="ip_inter.htm#3_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_9">Section 3.9</a> also), use it to determine the interfaces on your
+system and their MTUs.
+</BODY>
+</HTML>

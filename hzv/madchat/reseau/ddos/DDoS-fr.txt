@@ -1,0 +1,135 @@
+Attaques Distributed Denial of Service. Une proposition basé sur le routage.
+(version 1.0)
+
+Translate by eberkut (eberkut@nexen.net) - http://www.chez.com/keep
+
+Disclaimer
+----------
+
+	Les opinions exprimées ici sont uniquement les miennes. Mon employeur actuel ne peut
+pas être tenu pour responsable.
+
+	Ceci est uniquement une proposition qui peut être considérée comme un _draft_ ou un
+_work in progress_. Il est rendu disponible à la communauté Internet comme une contribution
+au combat contre la menace des DDoS. Il est publié comme un point de départ de réflexion
+plutôt que comme une solution fermée.
+
+	Faites attention au fait que l'évalutation présentée ici pourrait être fausse.
+J'attends vos corrections et réfutations.
+
+Résumé
+------
+
+	Cet article décrit une technique qui -je l'espère- peut être utilisée pour combattre
+les récentes attaques DDoS. La solution présentée ici est basée sur le routage. Il requiert
+une certaine quantité d'infrastrucutre réseau supplémentaire. 
+
+Introduction
+------------
+
+	Les recentes attaques contre d'importants sites Internet de Yahoo! à CNN fait planée
+une menace sur la sécurité d'Internet. Le problème avec ces DDoS est que les paquets
+viennent d'adresses spoofée et remonter la source devient une tâche très complexe impliquant
+la coopération de cross-AS et une énorme quantité de temps.
+
+	Quelques mesures ont été proposé, mais elles sont basées sur le filtrage à l'origine
+de paquets forgés, et cela signifie une action -a priori- non-intéressée. En outre peu de
+choses ont été proposé pour stopper les attaques pendant leur déroulement.
+
+	Cet article introduit une méthode qui peut être utilisée dans quelques situations
+pour éviter ce type d'attaque à court-terme. Son efficacité augmente effectivement si il est
+combiné avec des techniques d'analyse d'origines.
+
+Description
+-----------
+
+	Nous introduirons la technique proposée au moyen d'un exemple. Supposons
+qu'exemple.com est un important site web. Dans cet article nous ne nous sommes intéressé
+qu'au service www, bien que cette méthode puisse être appliquée pour protéger d'autres
+services (mais pas tous). Une autre simplification sera de supposer qu'exemple.com n'a qu'un
+seul lien avec Internet.
+
+	Nous pouvons décrire l'infrastructure actuelle d'exemple.com comme ceci :
+
+    +--------+
+-a--|        |            +---------------+
+    |        |            |     border    |     +-----------------+
+-b--|  ISP   +-----d------+     routeur   +-----+ www.exemple.com |
+    |        |            |  exemple.com  |     +-----------------+
+-c--|        |            +---------------+     \
+    +--------+                             \     10.0.0.2
+                                            10.0.0.1
+
+État : a, b et c liens entre ISP et Internet, et d un lien entre l'ISP et exemple.com.
+Laissez 10.0.0.1 être l'IP assigné à l'interface interne du routeur limite et 10.0.0.2 l'IP
+assigné au serveur web public de www.exemple.com.
+
+	On peut arguer qu'il doit y avoir un firewall dans l'intervalle, mais ce n'est pas
+approprié à la situation.
+
+	La technique proposée consiste à changer les adresses IP des centres serveurs
+attaqués et détourner le bloc d'IP sous l'attaque en stub network où le trafic peut être
+analysé pour la dépister, ou juste relâché [NdT : à la manière d'une barrage].
+
+	Afin d'être prêt à une attaque massive de DDoS, exemple.com devrait changer sa
+structure de réseau en quelque chose comme :
+
+                          +--------------+
+               +----e-----+ stub network |
+	       |          +--------------+
+    +--------+ |
+-a--|        | |          +---------------+
+    |        | |          | border routeur|     +-----------------+
+-b--|  ISP   +-+---d------+  exemple.com  +-----+ www.exemple.com |
+    |        |            |               |     +-----------------+
+-c--|        |            +---------------+     \
+    +--------+                             \     10.0.0.2 et 10.0.1.2
+                                            10.0.0.1 et 10.0.1.1
+ +---------------+
+ |  DNS serveur  |
+ | d'exemple.com |
+ |      où       |
+ | www=10.0.0.2  |
+ +---------------+
+
+	Au cas où une attaque DDoS contre exemple.com serait détectée, les actions suivantes
+devraient être menées :
+
+1- la connexion dial up au serveur extérieurement localisé d'exemple.com DNS (beaucoup
+d'entre eux possibles afin de compliquer le DDoS des serveurs WWW et DNS) pour faire la
+conversion de www.example.com à 10.0.1.2.
+
+2- appel téléphonique à l'ISP pour conduire le trafic de 10.0.0.x au stub network et pour
+commencer à router le réseau 10.0.1.
+
+	Ces étapes simples détourneraient l'attaque à un endroit où elle ne perturbera pas
+le fonctionnement d'exemple.com et où elle pourrait être pistée.
+
+	Naturellement l'attaquant peut noter le changement, et :
+
+a) Attaquer aussi le nouveau réseau. Dans ce cas-ci sa 'puissance de feu' contre chaque
+réseau serait diminué de moitié. Si tout va bien, un nombre suffisant de réseaux rendrait la
+quantité du trafic reçue par chacun assez faible pour être manipulé par l'infrastructure.
+
+b) Attaquer uniquement le nouveau réseau. Exemple.com peut se commuter de nouveau au vieux
+réseau, ou même à un nouveau. Peut-être est-ce le meilleur que puisse faire l'attaquant,
+mais s'il compromet les machines, il créerait un configuration du trafic facilement
+identifiable par un logiciel distribué d'analyse réseau consultable depuis un lieu principal
+pour les configurations et executé périodiquement par les ISP préoccupés par la sécurité
+Internet.
+
+Conclusion
+----------
+
+	Une méthode pour combattre les attaques DDoS en temps réel a été décrite. Cette
+méthode n'est pas à toutes épreuves et requiert une certaine quantité d'infrastructure
+réseau supplémentaire.
+
+	Sa publication dans sa forme actuelle consiste à l'améliorer par la communauté
+Internet.
+
+Fernando P. Schapachnik
+Administración de la red
+VIA NET.WORKS ARGENTINA S.A.
+fernando@via-net-works.net.ar
+(54-11) 4323-3333

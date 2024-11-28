@@ -1,0 +1,191 @@
+<html><title>iptables firewall script commente dans un horrible franglais</title><pre>
+#!/bin/sh
+#
+# firewall iptables. local: ftp/ssh server - lan: regular desktop masq. client
+# dhcp and dsl. -forget- the commented lines, they only remain to provide code
+# sources: man, iptables-tutorial, advanced routing howto, netfilter.samba.org
+#
+# perso: attention ip-up.d/exim bloque,le virer sinon ce script n'est pas exec
+
+# --- debian ip-up original script ---
+PATH=/usr/local/sbin:/usr/sbin:/sbin:/usr/local/bin:/usr/bin:/bin
+export PATH
+# These variables are for the use of the scripts run by run-parts
+PPP_IFACE="$1"
+PPP_TTY="$2"
+PPP_SPEED="$3"
+PPP_LOCAL="$4"
+PPP_REMOTE="$5"
+PPP_IPPARAM="$6"
+export PPP_IFACE PPP_TTY PPP_SPEED PPP_LOCAL PPP_REMOTE PPP_IPPARAM
+# as an additional convenience, $PPP_TTYNAME is set to the tty name,
+# stripped of /dev/ (if present) for easier matching.
+PPP_TTYNAME=`/usr/bin/basename "$2"`
+export PPP_TTYNAME 
+# Main Script starts here
+run-parts /etc/ppp/ip-up.d
+
+# --- firewall ---
+LAN="192.168.0.0/24"
+#pretty but useless in this script:
+EXTIP="`ifconfig ppp0|grep inet|awk '{print $2}'|awk -F":" '{print $2}'`"; 
+
+#modprobe everything just in case (incompetent ;)
+/sbin/depmod -a
+modprobe ip_tables
+insmod ip_conntrack
+insmod ip_conntrack_ftp
+insmod ip_conntrack_irc
+modprobe ipt_LOG
+modprobe ipt_MASQUERADE
+modprobe ipt_TCPMSS
+modprobe ipt_REJECT
+modprobe iptable_nat
+modprobe iptable_filter
+insmod ip_nat_ftp
+modprobe iptable_filter
+#activer la magie
+echo 1 > /proc/sys/net/ipv4/ip_forward
+echo 1 > /proc/sys/net/ipv4/ip_dynaddr
+#armageddon
+iptables -F
+iptables -t nat -F
+iptables -t mangle -F
+iptables -X
+
+# Gal policies: hardcore drop (REJECT sends back an error packet)
+iptables -P INPUT DROP
+iptables -P OUTPUT ACCEPT
+iptables -P FORWARD ACCEPT
+
+#iptables -t nat -A POSTROUTING -o ppp0 -j SNAT --to-source $EXTIP
+#use SNAT w/ static ips (snat connections are not forgotten when link is down) 
+iptables -t nat -A POSTROUTING -o ppp0 -j MASQUERADE
+
+### good b4
+### iptables -A FORWARD -i ppp0 -o eth0 -m state --state ESTABLISHED,RELATED -j ACCEPT
+### iptables -A FORWARD -i eth0 -o ppp0 -j ACCEPT
+### iptables -A FORWARD -j LOG
+
+# FORWARD
+### iptables -A FORWARD -p tcp ! --syn -m state --state NEW -j LOG 
+### iptables -A FORWARD -p tcp ! --syn -m state --state NEW -j DROP
+#iptables -A FORWARD -i eth0 -j ACCEPT
+#iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT 
+### iptables -A FORWARD -m limit --limit 3/minute --limit-burst 3 -j LOG
+### iptables -I FORWARD -j TCPMSS -o ppp0 --clamp-mss-to-pmtu -p TCP --tcp-flags SYN,RST SYN
+### also: ifconfig eth1 (=my internet) mtu 1490 --- pppoe MSS=1412 safe; clampmss=1452 ok here.. (MTU max=1500, theoretically mss+header(50)=mtu on ethernet)
+
+#create drop+log table
+iptables -N droplog
+iptables -A droplog -m limit --limit 15/minute -j LOG --log-prefix droplog:
+iptables -A droplog -j DROP
+
+#accept ourselves
+iptables -A INPUT -i lo -j ACCEPT
+
+#loose rasta
+iptables -A INPUT -p icmp -j ACCEPT
+
+iptables -A INPUT -i ppp0 -p tcp --dport 20 -j ACCEPT
+iptables -A INPUT -i ppp0 -p tcp --dport 21 -j ACCEPT
+iptables -A INPUT -i ppp0 -p tcp --dport 22 -j ACCEPT
+iptables -A INPUT -i ppp0 -p tcp --dport 25 -j ACCEPT
+iptables -A INPUT -i ppp0 -p tcp --dport 80 -j ACCEPT
+iptables -A INPUT -i ppp0 -p tcp --dport 700:899 -j ACCEPT
+iptables -A INPUT -i ppp0 -p tcp --dport 935:2047 -j ACCEPT
+iptables -A INPUT -i ppp0 -p tcp --dport 2050:6350 -j ACCEPT
+iptables -A INPUT -i ppp0 -p tcp --dport 32000: -j ACCEPT
+iptables -A INPUT -i ppp0 -p tcp --dport 6960:6980 -j ACCEPT
+iptables -A INPUT -i ppp0 -p tcp -s 63.64.164.92 --source-port 1227 --dport 2500:4000 -j ACCEPT
+iptables -A INPUT -i ppp0 -p tcp -s 63.64.164.93 --source-port 1227 --dport 2500:4000 -j ACCEPT
+iptables -A INPUT -i ppp0 -p tcp -s 63.149.6.93 --source-port 1227 --dport 2500:4000 -j ACCEPT
+iptables -A INPUT -i ppp0 -p tcp -s 63.149.6.8 --source-port 1227 --dport 2500:4000 -j ACCEPT
+
+iptables -A INPUT -i ppp0 -p udp --dport 53 -j ACCEPT
+#alien VS pred  iptables -A INPUT -i ppp0 -p udp --dport 137 -j ACCEPT
+iptables -A INPUT -i ppp0 -p udp --dport 6960:6980 -j ACCEPT
+iptables -A INPUT -i ppp0 -p udp --source-port 53 -j ACCEPT
+iptables -A INPUT -i ppp0 -p udp --dport 27000: -j ACCEPT
+iptables -A INPUT -i ppp0 -p udp -s 63.64.164.92 --source-port 1227 -j ACCEPT
+iptables -A INPUT -i ppp0 -p udp -s 63.64.164.93 --source-port 1227 -j ACCEPT
+iptables -A INPUT -i ppp0 -p udp -s 63.149.6.93 --source-port 1227 -j ACCEPT
+iptables -A INPUT -i ppp0 -p udp -s 63.149.6.8 --source-port 1227 -j ACCEPT
+
+#no pbs
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+#the rest
+iptables -A INPUT -j droplog
+
+
+
+# Chains
+#iptables -N icmp_packets
+#iptables -N tcp_packets
+#iptables -N udpincoming_packets
+
+# incoming from internet
+#iptables -A INPUT -p ICMP -i ppp0 -j icmp_packets
+#iptables -A INPUT -p TCP -i ppp0 -j tcp_packets
+#iptables -A INPUT -p UDP -i ppp0 -j udpincoming_packets
+#iptables -A INPUT -j droplog
+
+# tcp allowed def
+#iptables -N allowed
+#iptables -A allowed -p TCP --syn -j ACCEPT
+#iptables -A allowed -p TCP -m state --state ESTABLISHED,RELATED -j ACCEPT
+#iptables -A allowed -p TCP -j DROP
+#iptables -A INPUT -p tcp ! --syn -m state --state NEW -j LOG
+#iptables -A INPUT -p tcp ! --syn -m state --state NEW -j DROP
+
+# icmp
+#iptables -A icmp_packets -p ICMP -s 0/0 --icmp-type 8 -j ACCEPT
+#iptables -A icmp_packets -p ICMP -s 0/0 --icmp-type 11 -j ACCEPT
+
+# PREROUTING check spoof
+#iptables -t nat -A PREROUTING -i ppp0 -s 192.168.0.0/16 -j DROP
+iptables -t nat -A PREROUTING -i ppp0 -s 192.168.0.0/24 -j DROP
+iptables -t nat -A PREROUTING -i ppp0 -s 10.0.0.0/8 -j DROP
+iptables -t nat -A PREROUTING -i ppp0 -s 172.16.0.0/12 -j DROP
+
+# Rules for special networks not part of the Internet
+iptables -A INPUT -i eth0 -s $LAN -j ACCEPT
+#iptables -A INPUT -i ppp0 -m state --state ESTABLISHED,RELATED -j ACCEPT
+#iptables -A INPUT -m limit --limit 3/minute --limit-burst 3 -j LOG
+
+# OUTPUT chain
+#iptables -A OUTPUT -p tcp ! --syn -m state --state NEW -j LOG
+#iptables -A OUTPUT -p tcp ! --syn -m state --state NEW -j DROP
+#iptables -A OUTPUT -p ALL -s 127.0.0.1 -j ACCEPT
+#iptables -A OUTPUT -p ALL -o eth0 -j ACCEPT
+#iptables -A OUTPUT -p ALL -o ppp0 -j ACCEPT
+#iptables -A OUTPUT -p ALL -o lo -j ACCEPT
+#iptables -A OUTPUT -m limit --limit 3/minute --limit-burst 3 -j LOG --log-level DEBUG
+
+#??
+##iptables -A OUTPUT -i eth0 -s 0.0.0.0/0 -d $LAN -j ACCEPT 
+##iptables -A OUTPUT -i ppp0 -s $EXTIP/32 -d 0.0.0.0/0 -j ACCEPT 
+
+#expl: manage ISP's DNS servers auth
+#DNS1="207.69.188.185" 
+#DNS2="207.69.188.186" 
+#DNS3="207.69.188.187"
+#for dns in $DNS1 $DNS2 $DNS3 
+#do 
+#iptables -A INPUT -i ppp0 -p UDP -s $dns --source-port 53 -d $EXTIP/32 -j ACCEPT 
+#iptables -A INPUT -i ppp0 -p TCP -s $dns --source-port 53 -d $EXTIP/32 -j ACCEPT 
+#TCP not needed for dns normalement
+#done 
+
+#exmpl:route incoming ppp0 at port 21 to the ftp server on the internal network...
+#iptables -A PREROUTING -t nat -p tcp -i ppp0 --dport 21 -j DNAT --to 192.168.0.4:21
+
+#pour faire yoli :)
+echo $EXTIP
+logger -t "*! ip-up" firewall restarted $EXTIP;
+
+#pas de pitie
+killall -9 dns2go
+/usr/local/bin/dns2go
+

@@ -1,0 +1,491 @@
+<!DOCTYPE HTML PUBLIC "-//W3c//DTD HTML 3.2//EN">
+<html>
+
+<head>
+<title>LJ 60: Network Programming with Perl</title>
+</head>
+
+<body bgcolor="#FFFFFF" text="000000">
+
+<p><font size="2" face="Verdana"><b>Network Programming with Perl</b></font></p>
+<p><i><font face="Verdana" size="2">Using Perl to make network tasks
+easy--here's how.</font></i>
+<p><i><font face="Verdana" size="2">by James Lee</font></i>
+<p><font face="Verdana" size="2">Perl has been called the glue that holds the
+Internet together because it is an extremely powerful text processing and CGI
+programming language. Although Perl was designed in the beginning to be a text
+manipulation language, it has evolved into a potent multi-purpose programming
+language. One area in which Perl has shown its power is that of network
+programming.</font>
+<p><font face="Verdana" size="2">Perl makes network programming easy by
+providing built-in functions that can be used to create low-level client/server
+programs from scratch. Also, many modules are freely available that make
+programming common networking tasks simple and quick. These tasks include
+pinging remote machines, TELNET and FTP sessions. This article presents examples
+of each of these types of network programs.</font>
+<p><font face="Verdana" size="2"><b>Introduction</b></font></p>
+<p><font face="Verdana" size="2">Client/server network programming requires a
+server running on one machine to serve one or more clients running on either the
+same machine or different machines. These different machines can be located
+anywhere on the network.</font>
+<p><font face="Verdana" size="2">To create a server, simply perform the
+following steps using the built-in Perl function indicated :</font>
+<ul>
+  <li><font face="Verdana" size="2">Create a socket with <b>socket</b>.</font>
+  <li><font face="Verdana" size="2">Bind the socket to a port address with <b>bind</b>.</font>
+  <li><font face="Verdana" size="2">Listen to the socket at the port address
+    with <b>listen</b>.</font>
+  <li><font face="Verdana" size="2">Accept client connections with <b>accept</b>.</font>
+</ul>
+<p><font face="Verdana" size="2">Establishing a client is even easier:</font>
+<ul>
+  <li><font face="Verdana" size="2">Create a socket with <b>socket</b>.</font>
+  <li><font face="Verdana" size="2">Connect (the socket) to the remote machine
+    with <b>connect</b>.</font>
+</ul>
+<p><font face="Verdana" size="2">Several other required functions and variables
+are defined in the <b>Socket.pm</b> module. This module is probably already
+installed on your machine, but if not, it is available at the Comprehensive Perl
+Archive Network (CPAN), the official Perl source code repository (see Resources).
+To use this module in our programs, the following statement is required at the
+top of the program:</font>
+<p><font face="Courier New" size="2">use Socket;</font></p>
+<p><b><font face="Verdana" size="2">Viewing Module Documentation</font></b></p>
+<p><font face="Verdana" size="2">All examples in this article use modules that
+are available at no cost from CPAN.</font>
+<p><font face="Verdana" size="2">Perl modules are usually self-documenting. If
+the author of the module follows the generally accepted rules of creating a Perl
+module, they will add Plain Old Documentation (POD) to the module's .pm file.
+One way to view the POD for the Socket module (assuming Perl and Socket.pm were
+installed correctly) is to execute the following at the shell :</font>
+<p><font size="2" face="Courier New">perldoc Socket</font></p>
+This command displays Socket.pm's POD converted to a man page. The output is a
+relatively thorough discussion of the functions and variables defined in this
+module.
+<p><font size="2" face="Courier New">Another way to view the documentation is to
+convert the POD to text using:</font>
+<p><font size="2" face="Courier New">pod2text \<br>
+/usr/lib/perl5/i686-linux/5.00404/Socket.pm | more</font></p>
+The program pod2textis included in the Perl distribution, as are the programs
+pod2html, pod2man, pod2usageand pod2latex.<b></b><b></b><b></b><b></b><b></b>
+<p><font size="2" face="Verdana"><b>A Simple Server</b></font></p>
+<p><a href="../standby/3237l1.html"><font size="2" face="Verdana">Listing 1.</font></a>
+<p><font size="2" face="Verdana">Our first programming example is a simple
+server running on one machine that can service only one client program at a time
+connecting from the same or a different machine. Recall that the steps for
+creating a server were to create a socket, bind it to a port, listen at the port
+and accept client connections.</font>
+<p><font size="2" face="Verdana">Listing 1, server1.pl, is the source code for
+this simple server. First, it is generally a good idea to compile using Perl's
+strict rules :</font>
+<p><font size="2" face="Courier New">use strict;</font></p>
+This requires all variables to be declared with the myfunction before they are
+used. Using my may be inconvenient, but it can catch many common syntactically
+correct yet logically incorrect programming bugs.<b></b>
+<p><font size="2" face="Verdana">The variable <tt>$port</tt> is assigned the
+first command-line argument or port 7890 as the default. When choosing a port
+for your server, pick one that is unused on your machine. Note that the only way
+to ensure you select a port that does not have a predefined use is to look at
+the appropriate RFC (see Resources).</font>
+<p><font size="2" face="Verdana">Next, the socket is created using the socket
+function. A socket is like a file handle--it can be read from, written to or
+both. The function <b>setsockopt</b> is called to ensure that the port will be
+immediately reusable.</font>
+<p><font size="2" face="Verdana">The <b>sockaddr_in</b> function obtains a port
+on the server. The argument <tt>INADDR_ANY</tt> chooses one of the server's
+virtual IP addresses. You could instead decide to bind only one of the virtual
+IP addresses by replacing <tt>INADDR_ANY</tt> with</font>
+<p><font face="Courier New" size="2">inet_aton(&quot;192.168.1.1&quot;)</font></p>
+or
+<p><font face="Courier New" size="2">gethostbyname(&quot;server.onsight.com&quot;)</font></p>
+The bind function binds the socket to the port, i.e., plugs the socket into that
+port. Then, the listen function causes the server to begin listening at the
+port. The second argument to the listen function is the maximum queue length or
+the maximum number of pending client connections. The value SOMAXCONNis the
+maximum queue length for the machine being used.<tt></tt>
+<p><font size="2" face="Verdana">Once the server begins listening at the port,
+it can accept client connections using the accept function. When the client is
+accepted, a new socket is created named <tt>CLIENT</tt> which can be used like a
+file handle. Reading from the socket reads the client's output and printing to
+the socket sends data to the client.</font>
+<p><font size="2" face="Verdana">To read from a file handle or socket in Perl,
+wrap it in angle brackets (&lt;<i>FH</i>&gt;). To write to it, use the <b>print</b>
+function :</font>
+<p><font size="2" face="Courier New">print SOCKET;</font></p>
+The return value of the accept function is the Internet address of the client in
+a packed format. The function sockaddr_in takes that format and returns the
+client's port number and the client's numeric Internet address in a packed
+format. The packed numeric Internet address can be converted to a text string
+representing the numeric IP using inet_ntoa(numeric to ASCII). To convert the
+packed numeric address to a host name, the function gethostbyaddris used.<b></b><b></b>
+<p><font size="2" face="Verdana">Let's assume all of the servers referred to in
+this article are started on the machine named server.onsight.com. To start the
+server on this machine, execute :</font>
+<p><font size="2" face="Courier New">[james@server networking]$ server1.pl<br>
+SERVER started on port 7890</font></p>
+The server is now listening at port 7890 on server.onsight.com, waiting for
+clients to connect.
+<p><font size="2" face="Verdana"><b>A Simple Client</b></font></p>
+<p><a href="../standby/3237l2.html"><font size="2" face="Verdana">Listing 2.</font></a>
+<p><font size="2" face="Verdana">Listing 2, client1.pl, shows a simple client.
+The first command-line argument to this program is the host name to which it
+should connect, which defaults to server.onsight.com. The second command-line
+argument is the port number which defaults to 7890.</font>
+<p><font size="2" face="Verdana">The host name and the port number are used to
+generate the port address using <b>inet_aton</b> (ASCII to numeric) and
+sockaddr_in. A socket is then created using socket and the client connects the
+socket to the port address using connect.</font>
+<p><font size="2" face="Verdana">The <tt>while</tt> loop then reads the data the
+server sends to the client until the end-of-file is reached, printing this input
+to STDOUT. Then the socket is closed.</font>
+<p><font size="2" face="Verdana">Let's assume all of the clients are started on
+the the machine named client.avue.com, although they could be executed from any
+machine on the network. To execute the client, type :</font>
+<p><font size="2" face="Courier New">[james@client networking]$ client1.pl
+server.onsight.com<br>
+Hello from the server: Tue Oct 27 09:48:40 1998</font></p>
+The following is the standard output from the server:
+<p><font size="2" face="Courier New">got a connection from: client.avue.com
+[192.168.1.2]</font></p>
+<p><b><font size="2" face="Verdana">Perl Makes Life Easy</font></b></p>
+<p><font size="2" face="Verdana">Creating sockets using the functions described
+above is good when you want to control how the socket is created, the protocol
+to be used, etc. But using the functions above is too hard; I prefer the easy
+way--<b>IO::Socket</b>.</font>
+<p><font size="2" face="Verdana">The module IO::Socket provides an easy way to
+create sockets which can then be used like file handles. If you don't have it
+installed on your machine, it can be found on CPAN. To see this module's POD,
+type :</font>
+<p><font size="2" face="Courier New">perldoc IO::Socket</font></p>
+<p><b><font face="Verdana" size="2">A Simple Server Using IO::Socket</font></b></p>
+<p><a href="../standby/3237l3.html"><font size="2" face="Verdana">Listing 3.</font></a>
+<p><font size="2" face="Verdana">Listing 3, serverIO.pl, is a simple server
+using IO::Socket. A new <tt>IO::Socket::INET</tt> object is created using the <b>new</b>
+method. Note that the arguments to the method include the host name, port number,
+protocol, queue length and an option indicating we want this port to be
+immediately reusable. The new method returns a socket that is assigned to <tt>$sock</tt>.
+This socket can be used like a file handle--we can either read the client output
+from it, or write to it by sending data to the client.</font>
+<p><font size="2" face="Verdana">A client connection is accepted using the
+accept method. Note the accept method returns the client socket when evaluated
+in scalar context :</font>
+<p><font size="2" face="Courier New">$new_sock = $sock-&gt;accept()<br>
+($new_sock, $client_addr) = $sock-&gt;accept()</font></p>
+The client address is computed and printed the same as in Listing 1, server1.pl.
+Then the socket associated with that client is read until end-of-file. The data
+read is printed to STDOUT. This example illustrates that the server can read
+from a client using &lt;&gt; around the socket variable.
+<p><font size="2" face="Verdana"><b>A Simple Client Using IO::Socket</b></font></p>
+<p><a href="../standby/3237l4.html"><font size="2" face="Verdana">Listing 4.</font></a>
+<p><font size="2" face="Verdana">Listing 4, clientIO.pl, is a simple client
+using <tt>IO::Socket</tt>. This time, a new object is created that connects to a
+host at a port using the TCP protocol. Ten strings are then printed to that
+server, then the socket is closed.</font>
+<p><font size="2" face="Verdana">If the server in Listing 3, serverIO.pl, is
+executed and then the client Listing 4, clientIO.pl, connects, the output would
+be :</font>
+<p><font face="Courier New" size="2">[james@server networking]$ serverIO.pl</font></p>
+<p><font face="Courier New" size="2">got a connection from: client.avue.com
+[192.168.1.2]<br>
+hello, world: 1<br>
+hello, world: 2<br>
+hello, world: 3<br>
+hello, world: 4<br>
+hello, world: 5<br>
+hello, world: 6<br>
+hello, world: 7<br>
+hello, world: 8<br>
+hello, world: 9<br>
+hello, world: 1</font></p>
+<p><font size="2" face="Verdana"><b>Bidirectional Communication</b></font></p>
+<p><font size="2" face="Verdana">It is possible to create servers and clients
+that communicate with one another in both directions. For instance, the client
+may send information to the server, then the server may send information back to
+the client. Therefore, network programs can be written so that the server and
+client follow some predetermined protocol.</font>
+<p><a href="../standby/3237l5.html"><font size="2" face="Verdana">Listing 5.</font></a>
+<p><font size="2" face="Verdana">Listing 5, server2way.pl, shows how a simple
+server can be created to read a command from a client, then print out an
+appropriate response to the client. The module <b>Sys::Hostname</b> provides a
+function named <b>hostname</b> that returns the host name of the server. To
+insure output is seen as we print, IO buffering is turned off for the STDOUT
+file handle using the <b>autoflush</b> function. Then a <tt>while</tt> loop is
+executed that accepts connections. When a client connects, the server reads a
+line from the client, chopping off the newline character. Then a <tt>switch</tt>
+statement is executed. (The <tt>switch</tt> is cleverly disguised as a <tt>foreach</tt>
+loop, which happens to be one of my favorite ways of writing a <tt>switch</tt>.)
+Depending on the input entered by the client, the server outputs an appropriate
+response. All lines from the client are read until end-of-file.</font>
+<p><a href="../standby/3237l6.html"><font size="2" face="Verdana">Listing 6.</font></a>
+<p><font size="2" face="Verdana">Listing 6, client2way.pl, shows the companion
+client. A connection to the server is made, then the client prints a few
+commands to the server reads the response and prints the response to <tt>STDOUT</tt>.</font>
+<p><font size="2" face="Verdana">The following is the output of the client code
+in Listing 6 :</font>
+<p><font size="2" face="Courier New">[james@client networking]$ client2way.pl<br>
+server.onsight.com<br>
+Hi<br>
+server.onsight.com<br>
+Tue Oct 27 15:36:19 1998<br>
+DEFAULT</font></p>
+<p><font face="Verdana" size="2"><b>A Forking Client</b></font></p>
+<p><font size="2" face="Verdana">If you want to write a client that accepts
+commands from STDIN and sends them to the server, the easiest solution is to
+write a client that forks a child. (A solution can be written using <b>select</b>
+that does not fork, but it is more complicated.) The client's parent process
+will read the commands from the user through STDIN and print them to the server.
+The client's child process will then read from the server and print the
+responses to STDOUT.</font>
+<p><a href="../standby/3237l7.html"><font size="2" face="Verdana">Listing 7.</font></a>
+<p><font size="2" face="Verdana">Listing 7, clientfork.pl, is an example of a
+client that forks.</font>
+<p><font size="2" face="Verdana">To fork in Perl, call the cleverly named <b>fork</b>
+function. It returns <tt>undef</tt> if the fork fails. If it succeeds, it
+returns <tt>0</tt> to the child, non-zero (the child's pid) to the parent. In
+clientfork.pl, an <tt>if</tt> statement checks the value of <tt>$kid</tt>, the
+return value from the fork. If <tt>$kid</tt> is true (non-zero, the child's pid),
+parent executes reading from STDIN printing to the server. If <tt>$kid</tt> is
+false (zero), the child executes reading from the server printing to STDOUT.</font>
+<p><font size="2" face="Verdana">The following is the example session executing
+the client code in Listing 7, clientfork.pl connecting to the code in Listing 5,
+server2way.pl :</font>
+<p><font size="2" face="Courier New">[james@client networking]$ clientfork.pl<br>
+server.onsight.com<br>
+NAME<br>
+server.onsight.com<br>
+DATE<br>
+Tue Oct 27 15:42:58 1998<br>
+HELP<br>
+DEFAULT<br>
+HELLO<br>
+Hi</font></p>
+When the parent process is finished reading from STDIN, it executes the
+killfunction to kill the child process. It is very important the parent reap its
+child so that the child does not outlive the parent and become a zombie.<b></b>
+<p><font size="2" face="Verdana"><b>A Forking Server</b></font></p>
+<p><a href="../standby/3237l8.html"><font size="2" face="Verdana">Listing 8.</font></a>
+<p><font size="2" face="Verdana">Servers usually don't handle only one client at
+a time. One approach to a server that can handle more than one client is a
+server that forks a child process to handle each client connection. Listing 8,
+serverfork.pl, is an example of a forking server.</font>
+<p><font size="2" face="Verdana">One way for the parent process to reap its
+children is to define a subroutine and assign a reference to that subroutine to <tt>$SIG{CHLD}</tt>.
+(The hash <tt>%SIG</tt> is Perl's way of handling signals.) In this example, a
+subroutine named <b>REAP</b> is defined and a reference to this subroutine is
+assigned to <tt>$SIG{CHLD}</tt>. When the parent receives the <tt>CHLD</tt> (child
+terminated) signal, the REAP subroutine will be invoked.</font>
+<p><font size="2" face="Verdana">Within the <tt>while</tt> loop that accepts all
+the client connections, the server forks. If the fork returns true, the parent
+is running and it executes the <tt>next</tt> statement which immediately
+transfers control to the <tt>continue</tt> block, performs the housecleaning
+step of closing the child socket and waits for the next client to connect. If
+the fork returns <tt>undef</tt>, then the fork failed, so the server dies. If
+the fork returns neither true nor <tt>undef</tt>, then the child is running, so
+the parent socket is closed and the child reads from the client and processes
+the client. When the child is finished processing the client, the child exits
+and is reaped by the parent.</font>
+<p><font size="2" face="Verdana"><b>Thread Programming in Perl5.005</b></font></p>
+<p><font size="2" face="Verdana">Perl version 5.005 supports thread programming.
+This means a threaded networking program can be created to be either a server or
+a client.</font>
+<p><font size="2" face="Verdana">Listings 9, 10, and 11 are three different
+versions of a client that logs into several web servers and determines the type
+of server being used (Apache, Netscape, etc).</font>
+<p><a href="../standby/3237l9.html"><font size="2" face="Verdana">Listing 9.</font></a>
+<p><font size="2" face="Verdana">Listing 9, getservertype1.pl, shows a
+non-forking, non-threaded client. First, an array of hosts is created and
+initialized to a few web sites. The subroutine <b>doit</b> is defined to receive
+the web server name as an argument, open a client connection to that server at
+port 80 (the HTTP port), send the HTTP request and read each line of response.
+When the line starting <tt>Server:</tt> is read, it will extract the server name
+and store it in <tt>$1</tt>. Then the host name and web server name are printed.
+This subroutine is called for each host in the array of hosts.</font>
+<p><font size="2" face="Verdana">Here is the output of getservertype1.pl :</font>
+<p><font face="Courier New" size="2">processing www.ssc.com...<br>
+www.ssc.com: Stronghold/2.2 Apache/1.2.5 PHP/FI-2.0b12<br>
+processing www.linuxjournal.com...<br>
+www.linuxjournal.com: Stronghold/2.2 Apache/1.2.5 PHP/FI-2.0b12<br>
+processing www.perl.com...<br>
+www.perl.com: Apache/1.2.6 mod_perl/1.11<br>
+processing www.perl.org...<br>
+www.perl.org: Apache/1.2.5<br>
+processing www.nytimes.com...<br>
+www.nytimes.com: Netscape-Enterprise/2.01<br>
+processing www.onsight.com...<br>
+www.onsight.com: Netscape-Communications/1.12<br>
+processing www.avue.com...<br>
+www.avue.com: Netscape-Communications/1.12</font></p>
+Note that the hosts are processed in the same order as stored in @hosts.<tt></tt>
+<p><a href="../standby/3237l10.html"><font size="2" face="Verdana">Listing 10.</font></a>
+<p><font size="2" face="Verdana">Listing 10, getservertype2.pl, is a forking
+version of getservertype1.pl. The forking occurs within the <tt>foreach</tt>
+loop. The fork is executed and if it returns true, the parent then executes the <tt>next</tt>
+statement to the next host name. If the fork returns <tt>undef</tt>, then the
+program dies. Otherwise, the child calls the doit function passing in the host,
+then exits. After the parent completes its work in the <tt>while</tt> loop, it
+waits for all child processes to finish, then exits.</font>
+<p><font size="2" face="Verdana">Here is the output of getservertype2.pl :</font>
+<p><font face="Courier New" size="2">processing www.ssc.com...<br>
+processing www.linuxjournal.com...<br>
+processing www.perl.com...<br>
+processing www.perl.org...<br>
+processing www.nytimes.com...<br>
+processing www.onsight.com...<br>
+processing www.avue.com...<br>
+www.onsight.com: Netscape-Communications/1.12<br>
+www.nytimes.com: Netscape-Enterprise/2.01<br>
+www.avue.com: Netscape-Communications/1.12<br>
+www.linuxjournal.com: Stronghold/2.2 Apache/1.2.5 PHP/FI-2.0b12<br>
+www.perl.com: Apache/1.2.6 mod_perl/1.11<br>
+www.ssc.com: Stronghold/2.2 Apache/1.2.5 PHP/FI-2.0b12<br>
+www.perl.org: Apache/1.2.5<br>
+Parent exiting...</font></p>
+Note that the hosts are not printed in the order stored in @hosts. They are
+printed in the order processed, the slower hosts taking longer than the faster
+ones.<tt></tt>
+<p><a href="../standby/3237l11.html"><font size="2" face="Verdana">Listing 11.</font></a>
+<p><font size="2" face="Verdana">Listing 11, getservertype3.pl, is a threaded
+version. In the loop through the host names, a new <tt>Thread</tt> object is
+created. When creating the <tt>Thread</tt>, the new method is passed a reference
+to a subroutine that the thread will execute, as well as the arguments passed
+into that subroutine. The thread then executes its subroutine and when the
+subroutine returns, the thread is destroyed. Here is the output of
+getservertype3.pl :</font>
+<p><font face="Courier New" size="2">processing www.ssc.com...<br>
+processing www.linuxjournal.com...<br>
+processing www.perl.com...<br>
+processing www.perl.org...<br>
+processing www.nytimes.com...<br>
+processing www.onsight.com...<br>
+processing www.avue.com...<br>
+www.nytimes.com: Netscape-Enterprise/2.01<br>
+www.onsight.com: Netscape-Communications/1.12<br>
+www.avue.com: Netscape-Communications/1.12<br>
+www.linuxjournal.com: Stronghold/2.2 Apache/1.2.5 PHP/FI-2.0b12<br>
+www.perl.com: Apache/1.2.6 mod_perl/1.11<br>
+www.ssc.com: Stronghold/2.2 Apache/1.2.5 PHP/FI-2.0b12<br>
+www.perl.org: Apache/1.2.5</font></p>
+<p><font face="Courier New" size="2">Net::Ping Module</font></p>
+<p><a href="../standby/3237l12.html"><font size="2" face="Verdana">Listing 12.</font></a>
+<p><font size="2" face="Verdana">The <b>Net::Ping</b> module makes pinging hosts
+easy. Listing 12, ping.pl, is a program similar to a program on my server that
+pings my ISP to keep my connection alive. First, a new <tt>Net::Ping</tt> object
+is created. The protocol chosen is <tt>tcp</tt> (the choices are <tt>tcp</tt>, <tt>udp</tt>
+and <tt>icmp</tt>; the default is <tt>udp</tt>). The second argument is the
+timeout (two seconds). Then an infinite loop is executed, pinging the desired
+host. The <tt>ping()</tt> method returns true if the host responds, false
+otherwise, and an appropriate message is printed. Then the program sleeps ten
+seconds and pings again.</font>
+<p><font size="2" face="Verdana">An example output of Listing 12, ping.pl, is :</font>
+<p><font face="Courier New" size="2">Success: Wed Nov&nbsp; 4 14:47:58 1998<br>
+Success: Wed Nov&nbsp; 4 14:48:08 1998<br>
+Success: Wed Nov&nbsp; 4 14:48:18 1998<br>
+Success: Wed Nov&nbsp; 4 14:48:28 1998<br>
+Success: Wed Nov&nbsp; 4 14:48:38 1998<br>
+Success: Wed Nov&nbsp; 4 14:48:48 1998</font></p>
+<p><font face="Courier New" size="2">Net::Telnet Module</font></p>
+<p><a href="../standby/3237l13.html"><font size="2" face="Verdana">Listing 13.</font></a>
+<p><font size="2" face="Verdana">The <b>Net::Telnet</b> module makes automating
+TELNET sessions easy. Listing 13, telnet.pl, is an example of connecting to a
+machine, sending a few system commands and printing the result.</font>
+<p><font size="2" face="Verdana">First, a server and a user name are used. The
+user name defaults to the user running the script by assigning to <tt>$user</tt>
+the value <tt>$ENV{USER}</tt>. (The hash <tt>%ENV</tt> contains all of the
+environment variables the script inherits from the shell.)</font>
+<p><font size="2" face="Verdana">Next, the password is requested, then read in.
+Note that turning off the stty echoing is done through a <b>system</b> call. It
+can also be done using the <b>Term::ReadKey</b> module.</font>
+<p><font size="2" face="Verdana">Then, a <tt>Net::Telnet</tt> object is created.
+To log in to the server using this object, the <b>login</b> method is called.
+Several system commands are executed using the <b>cmd</b> method which returns
+the STDOUT of the system command which is then printed. Note that part of that
+output is the system prompt, which is printed along with the output of the
+command.</font>
+<p><font size="2" face="Verdana">Also note that the code <tt>$tn-&gt;cmd('/usr/bin/who')</tt>
+is evaluated in list context and stored in <tt>@who</tt>, which is an array that
+contains all the lines of ouptut of that command, one line of output per array
+element.</font>
+<p><font size="2" face="Verdana">After all of the system commands are executed,
+the TELNET session is closed.</font>
+<p><font size="2" face="Verdana">Here is an example output of Listing 13,
+telnet.pl :</font>
+<p><font size="2" face="Verdana">Enter password : </font></p>
+<p><font size="2" face="Courier New">Hostname: server.onsight.com<br>
+[james@server james]<br>
+Here's who:<br>
+james&nbsp;&nbsp;&nbsp; tty1&nbsp;&nbsp;&nbsp;&nbsp; Oct 24 21:07<br>
+james&nbsp;&nbsp;&nbsp; ttyp1&nbsp;&nbsp;&nbsp; Oct 27 20:59 (:0.0)<br>
+james&nbsp;&nbsp;&nbsp; ttyp2&nbsp;&nbsp;&nbsp; Oct 24 21:11 (:0.0)<br>
+james&nbsp;&nbsp;&nbsp; ttyp6&nbsp;&nbsp;&nbsp; Oct 28 07:16 (:0.0)<br>
+james&nbsp;&nbsp;&nbsp; ttyp8&nbsp;&nbsp;&nbsp; Oct 28 19:02 (:0.0)<br>
+[james@server james]<br>
+What is your command: date<br>
+Thu Oct 29 14:39:57 EST 1998<br>
+[james@server james]</font></p>
+<p><font size="2" face="Courier New">Net::FTP Module</font></p>
+<p><a href="../standby/3237l14.html"><font face="Verdana" size="2">Listing 14.</font></a>
+<p><font face="Verdana" size="2">The <b>Net::FTP</b> module makes automating FTP
+sessions easy. Listing 14, ftp.pl, is an example of connecting and getting a
+file.</font>
+<p><font face="Verdana" size="2">A <tt>Net::FTP</tt> object is created, the
+login is called to log in to the machine, the <b>cwd</b> changes the working
+directory and the <b>get</b> method gets the file. Then the session is
+terminated with <b>quit</b>.</font>
+<p><font face="Verdana" size="2">There are methods to do many common FTP
+operations: <b>put</b>, <b>binary</b>, <b>rename</b>, <b>delete</b>, etc. To see
+a list of all the available methods, type :</font>
+<p><font size="2" face="Courier New">perldoc Net::FTP</font></p>
+Here is an example output of Listing 14, ftp.pl:
+<p><font size="2" face="Courier New">[james@k2 networking]$ ftp.pl
+server.onsight.com<br>
+Enter your password: <br>
+Before<br>
+----------------------------------------<br>
+/bin/ls: *.gz: No such file or directory<br>
+----------------------------------------<br>
+<br>
+After<br>
+----------------------------------------<br>
+perl5.005_51.tar.gz<br>
+----------------------------------------</font></p>
+<p><b><font face="Verdana" size="2">Archive a Web Site</font></b></p>
+<p><font face="Verdana" size="2">Using both Net::Telnet and Net::FTP, a very
+simple script can be created that can archive a directory structure on a remote
+machine.</font>
+<p><a href="../standby/3237l15.html"><font face="Verdana" size="2">Listing 15.</font></a>
+<p><font face="Verdana" size="2">Listing 15, taritup.pl, is a Perl program that
+is similar to a program I use that logs in to my ISP and archives my web site.</font>
+<p><font face="Verdana" size="2">The steps this program follows are :</font>
+<ul>
+  <li><font face="Verdana" size="2">Start a session on the remote machine with
+    TELNET.</font>
+  <li><font face="Verdana" size="2">Go to the web page directory using <b>cd</b>.</font>
+  <li><font face="Verdana" size="2">Archive the directory using <b>tar</b>.</font>
+  <li><font face="Verdana" size="2">Start an FTP session to the remote machine.</font>
+  <li><font face="Verdana" size="2">Change to the directory containing the tar
+    file.</font>
+  <li><font face="Verdana" size="2">Get the tar file.</font>
+  <li><font face="Verdana" size="2">Quit the FTP session.</font>
+  <li><font face="Verdana" size="2">Back in the TELNET session, delete the tar
+    file on the remote machine.</font>
+  <li><font face="Verdana" size="2">Close the TELNET session.</font>
+</ul>
+<p><font face="Verdana" size="2">This program outputs text to let the user know
+how the script is progressing.</font>
+<p><b><font face="Verdana" size="2">Summary</font></b></p>
+<p><font face="Verdana" size="2">Perl is a powerful, easy-to-use programming
+language. That power and ease of use includes network programming due to many
+built-in functions and modules. Best of all, it's free.</font>
+<p><a href="../standby/3237s1.html"><font face="Verdana" size="2">Resources</font></a>
+<p>&nbsp;
+<blockquote>
+  <i><font face="Verdana" size="2">James Lee is the president and founder of
+  Onsight (http://www.onsight.com/). When he is not teaching Perl classes or
+  writing Perl code on his Linux machine, he likes to spend time with his kids,
+  root for the Northwestern Wildcats (it was a long season), and daydream about
+  his next climbing trip. He also likes to receive e-mail at james@onsight.com.</font></i>
+</blockquote>
+
+</body>
+
+</html>

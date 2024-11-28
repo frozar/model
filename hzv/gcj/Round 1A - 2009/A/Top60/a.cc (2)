@@ -1,0 +1,77 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <map>
+#include <utility>
+#include <algorithm>
+#include <complex>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cmath>
+#include <cassert>
+
+using namespace std;
+
+#define REP(i,n) for(int i = 0; i < (int)(n); i++)
+#define FOR(i,c) for(__typeof((c).begin()) i = (c).begin(); i != (c).end(); ++i)
+#define ALLOF(c) (c).begin(), (c).end()
+
+typedef double decimal;
+const decimal EPS = 1e-8;
+
+map<int, int> memo[9];
+
+int nCases;
+
+static inline int reduce(int n, int b){
+  return n < b ? n*n : reduce(n/b, b) + (n%b)*(n%b);
+}
+
+static inline bool solve(int n, int b){
+  map<int, int>& m = memo[b-2];
+  map<int, int>::iterator it = m.find(n);
+  if(it != m.end()){
+    return (*it).second == 1;
+  }
+  int nx = reduce(n, b);
+  m[n] = nx;
+  bool ret = true;
+  if(nx != 1){
+    ret = solve(nx, b);
+  }
+  if(ret){
+    m[n] = 1;
+  }
+  return ret;
+}
+
+int main(){
+  scanf("%d ", &nCases);
+  REP(ic, nCases){
+    vector<int> a;
+    REP(i, 16){
+      int n;
+      char c;
+      scanf("%d%c", &n, &c);
+      a.push_back(n);
+      if(c == '\n') break;
+    }
+    for(int n = 2; ; n++){
+      bool ok = true;
+      REP(b, a.size()){
+        if(!solve(n, a[b])){
+          ok = false;
+          break;
+        }
+      }
+      if(ok){
+        cout << "Case #" << ic+1 << ": " << n << endl;
+        break;
+      }
+    }
+  }
+
+  return 0;
+}
+

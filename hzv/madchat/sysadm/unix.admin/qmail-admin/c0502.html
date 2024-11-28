@@ -1,0 +1,248 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML
+><HEAD
+><TITLE
+>Contrôle de relayage </TITLE
+><META
+NAME="CREATOR"
+CONTENT="Modular DocBook HTML Stylesheet version 1.07"><META
+NAME="form"
+CONTENT="html"><META
+NAME="Description"
+CONTENT="Introduction to qmail in french"><META
+NAME="Keywords"
+CONTENT="qmail mta"><META
+NAME="Robot"
+CONTENT="index,follow"><META
+NAME="Author"
+CONTENT="Djalil Chafai"></HEAD
+><BODY
+BGCOLOR="#FFFFFF"
+TEXT="#000000"
+><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TH
+COLSPAN="3"
+ALIGN="center"
+>Introduction à qmail</TH
+></TR
+><TR
+><TD
+WIDTH="10%"
+ALIGN="left"
+VALIGN="bottom"
+><A
+HREF="c05.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="80%"
+ALIGN="center"
+VALIGN="bottom"
+>Chapitre 5. Configuration : pour aller plus loin</TD
+><TD
+WIDTH="10%"
+ALIGN="right"
+VALIGN="bottom"
+><A
+HREF="c0503.html"
+>Suivant</A
+></TD
+></TR
+></TABLE
+><HR
+ALIGN="LEFT"
+WIDTH="515"><H1
+><A
+NAME="RELAYAGE"
+>Contrôle de relayage</A
+></H1
+><P
+>Lisez pour commencer <A
+HREF="c04.html#RCPTHOSTS"
+>la section <I
+>rcpthosts</I
+> du Chapitre 4</A
+>
+sur le fichier de contrôle <TT
+CLASS="FILENAME"
+>rcpthosts</TT
+>.</P
+><P
+>On associe souvent le contrôle de relayage par <TT
+CLASS="FILENAME"
+>rcpthosts</TT
+>
+à un contrôle de connexion TCP par un «wrapper» TCP. Le cas typique est
+l'utilisation de <I
+CLASS="APPLICATION"
+>tcpd</I
+> via
+<I
+CLASS="APPLICATION"
+>inetd</I
+> pour lancer 
+<I
+CLASS="APPLICATION"
+>qmail-smtpd</I
+>. Le contrôle TCP est alors effectué par
+les fichiers <TT
+CLASS="FILENAME"
+>/etc/hosts.allow</TT
+> et
+<TT
+CLASS="FILENAME"
+>/etc/hosts.deny</TT
+>.
+Voici par exemple ce que l'on peut mettre dans
+<TT
+CLASS="FILENAME"
+>/etc/inetd.conf</TT
+> :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>smtp    stream  tcp     nowait.200  qmaild  /usr/sbin/tcpd smtp</PRE
+></TD
+></TR
+></TABLE
+>
+
+et dans <TT
+CLASS="FILENAME"
+>/etc/hosts.allow</TT
+> :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>smtp: .mondomaine.amoi 127.0.0.1: \
+      setenv RELAYCLIENT:\
+      twist { { /usr/bin/tcp-env /usr/sbin/qmail-smtpd 1&#62;&#38;3;} \
+      2&#62;&#38;1|splogger qmail;} 3&#62;&#38;1
+smtp: ALL: \
+      twist { { /usr/bin/tcp-env /usr/sbin/qmail-smtpd 1&#62;&#38;3;} \
+      2&#62;&#38;1|splogger qmail;} 3&#62;&#38;1</PRE
+></TD
+></TR
+></TABLE
+>
+
+Ainsi, le contrôle de relayage par <TT
+CLASS="FILENAME"
+>rcpthosts</TT
+> ne sera
+actif que pour les courriels provenants de connexions SMTP avec des machines
+extérieures au domaine <TT
+CLASS="LITERAL"
+>mondomaine.amoi</TT
+>. </P
+><P
+>Bien sûr, il ne faudra pas oublier de faire un 
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>root:bash$ kill -HUP $(pidof inetd)</PRE
+></TD
+></TR
+></TABLE
+>
+pour que <I
+CLASS="APPLICATION"
+>inetd</I
+> relise son fichier de
+configuration.</P
+><P
+>Voir les pages de manuel <TT
+CLASS="LITERAL"
+>inetd.conf</TT
+>(5),
+<TT
+CLASS="LITERAL"
+>tcpd</TT
+>(8),
+<TT
+CLASS="LITERAL"
+>hosts_access</TT
+>(5) et
+<TT
+CLASS="LITERAL"
+>hosts_options</TT
+>(5).</P
+><HR
+ALIGN="LEFT"
+WIDTH="515"><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+><A
+HREF="c05.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+><A
+HREF="book01.html"
+>Page principale</A
+></TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+><A
+HREF="c0503.html"
+>Suivant</A
+></TD
+></TR
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+>Configuration : pour aller plus loin</TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+><A
+HREF="c05.html"
+>Niveau précédent</A
+></TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+>PPP et serialmail</TD
+></TR
+></TABLE
+></BODY
+></HTML
+>

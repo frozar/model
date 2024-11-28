@@ -1,0 +1,183 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Appendix C: The sock Program</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<H1><a name="C_0">The <TT>sock</TT> Program</a></H1>
+<P>
+A simple test program named <TT>sock</TT>
+is used throughout the book to generate TCP and UDP data. It is
+used as both a client and server process. Having a test program
+like this, which is executable from a shell prompt, prevents us
+from having to write new client and server C programs for each
+specific feature that we want to examine. Since the purpose of
+this book is to understand the networking protocols, and not network
+programming, in this Appendix we only describe the program and
+its various options.
+<P>
+<FONT SIZE=-1>There are numerous other programs with functionality
+similar to <TT>sock</TT>. Juergen Nickelsen
+wrote a program named <TT>socket</TT> and
+Dave Yost wrote a program named <TT>sockio</TT>.
+Both contain many similar features. Pieces of the <TT>sock</TT>
+program have also been inspired by the public domain <TT>ttcp</TT>
+program, written by Mike Muuss and Terry Slattery.</FONT>
+<P>
+The <TT>sock</TT> program operates
+in one of four modes:
+<P>
+<OL>
+<LI>Interactive client: the default. The program connects
+to a server and then copies standard input to the server and copies
+everything received from the server to standard output. This is
+shown in Figure C.1.
+<P>
+<CENTER><a name="fig_C_1"><img src="f_c_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_c_1.gif"></a><br>
+<B>Figure C.1</B> Default
+operation of <TT>sock</TT> as interactive
+client.</CENTER>
+<P>
+We must specify the name of the server host and the
+name of the service to connect to. The host can also be specified
+as a dotted-decimal number, and the service can be specified as
+an integer port number. Connecting to the standard echo server
+(<a href="introduc.htm#1_12" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#1_12">Section 1.12</a>), from <TT>sun</TT> to <TT>bsdi</TT>
+echoes everything we type:
+<TABLE>
+<TR><TD WIDTH=215><TT>sun % <B>sock bsdi echo</B></TT>
+</TD><TD WIDTH=375></TD></TR>
+<TR><TD WIDTH=215><TT><B>a test line</B></TT>
+</TD><TD WIDTH=375><I>we type this line</I>
+</TD></TR>
+<TR><TD WIDTH=215><TT>a test line</TT></TD><TD WIDTH=375><I>and the echo server returns a copy</I>
+</TD></TR>
+<TR><TD WIDTH=215><TT><B>^D</B></TT>
+</TD><TD WIDTH=375><I>type our end-of-file character to terminate</I>
+</TD></TR>
+</TABLE>
+<P>
+<LI>Interactive server:
+the <TT>-s</TT> option is specified. The service
+name (or port number) is required:
+<TABLE>
+<TR><TD WIDTH=215><TT>sun % <B>sock -s 5555</B></TT>
+</TD><TD WIDTH=375><I>act as server listening on port 5555</I>
+</TD></TR>
+</TABLE>
+<P>
+The program waits for a connection from a client
+and then copies standard input to the client and copies everything
+received from the client to standard output. An Internet address
+can precede the port number on the command line, to specify on
+which local interface connections are accepted:
+<TABLE>
+<TR><TD WIDTH=295><TT>sun % <B>sock -s 140.252.13.33 5555</B></TT>
+</TD><TD WIDTH=295><I>accept connections only on Ethernet</I>
+</TD></TR>
+</TABLE>
+<P>
+The default mode is to accept a connection request
+on any local interface.
+<P>
+<LI>Source client: the <TT>-i</TT>
+option is specified. By default a 1024-byte buffer is written
+to the network 1024 times. The <TT>-n</TT>
+and <TT>-w</TT> options can change these defaults.
+For example,
+<P>
+<TT>sun % <B>sock -i -nl2 -w4096
+bsdi discard</B></TT>
+<P>
+writes 12 buffers, each containing 4096 bytes of
+data, to the discard server on host <TT>bsdi</TT>.
+<P>
+<LI>Sink server: the <tt>-i</tt> and <tt>-s</tt> options are specified.
+Data is read from the network and discarded.
+</OL>
+<P>
+Although these examples used TCP (the default), the
+<TT>-u</TT> option specifies UDP.
+<P>
+There are a multitude of options that provide finer
+control over exactly how the program operates. These options are
+needed to generate all the test conditions used throughout the
+text.
+<P>
+<TABLE BORDER="1">
+<TR><TD WIDTH=125><TT>-b</tt> <i>n</i></TD><TD WIDTH=600>Bind <I>n</I> as the client's local port number.
+(By default an ephemeral port number assigned by the system is used by the client.)
+</TD></TR>
+<TR><TD WIDTH=125><TT>-c</TT></TD><TD WIDTH=600>Convert newline characters that are read on 
+standard input into a carriage return and a linefeed. Similarly, when reading from the network, convert the
+sequence &lt;carriage return, linefeed&gt; into a single newline character. Many Internet applications 
+expect NVT ASCII (<a href="telnet.htm#26_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/telnet.htm#26_4">Section 26.4</a>), which uses the carriage return and line-feed to terminate each line.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-f <I>a.b.c.d.p</I></TT>
+</TD><TD WIDTH=600>Specify the foreign IP address <I>(a.b.c.d)</I> and the foreign port number <I>(p)</I> for a UDP end point (<a href="udp_user.htm#11_12" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_12">Section 11.12</a>).
+</TD></TR>
+<TR><TD WIDTH=125><TT>-h</TT></TD><TD WIDTH=600>Implement TCP's half-close facility (<a href="tcp_conn.htm#18_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#18_5">Section 18.5</a>). That is, do not terminate when an end-of-file is encountered on standard input. Instead, issue a half-close on the TCP connection but continue reading from the network until the peer closes the connection.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-i</TT></TD><TD WIDTH=600>Source client or sink server. Either write data to the network (default) or if used in conjunction with the <TT>-s</TT> option, read data from the network. The <TT>-n</TT> option can specify the number of buffers to write (or read), the <TT>-w</TT> option can specify the size of each write, and the <TT>-r</TT> option can specify the size of each read.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-n <I>n</I></TT>
+</TD><TD WIDTH=600>When used with the <TT>-i</TT> option, <I>n</I> specifies the number of buffers to read or write. The default value of <I>n</I> is 1024.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-p <I>n</I></TT>
+</TD><TD WIDTH=600>Specify the number of seconds to pause between each read or write. This can be used with the source client (<TT>-i</TT>) or sink server (<TT>-is</TT>) to delay between each read or write of network. Also see the <TT>-P</TT> option to pause before the first read or write.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-q <I>n</I></TT>
+</TD><TD WIDTH=600>Specify the size of the pending connection queue for the TCP server: the number of accepted connections that TCP will queue for the application (<a href="tcp_conn.htm#fig_18_23" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#fig_18_23">Figure 18.23</a>). The default is 5.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-r <I>n</I></TT>
+</TD><TD WIDTH=600>When used with the <TT>-is</TT> options, <I>n</I> specifies the size of each read from the network. The default is 1024 bytes per read.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-s</TT></TD><TD WIDTH=600>Operate as a server instead of as a client.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-u</TT></TD><TD WIDTH=600>Use UDP instead of TCP.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-v</TT></TD><TD WIDTH=600>Verbose. Print additional details (such as the client and server ephemeral port numbers) onto standard error.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-w <I>n</I></TT>
+</TD><TD WIDTH=600>When used with the <TT>-i</TT> option, specifies the size of each write to the network. The default is 1024 bytes per write.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-A</TT></TD><TD WIDTH=600>Enable the <TT>SO_REUSEADDR</TT> socket option. With TCP this allows the process to assign itself a port number that is part of a connection that is in the 2MSL wait. With UDP on a system that supports multicasting, it allows multiple processes to use the same local port to receive broadcast or multicast datagrams.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-B</TT></TD><TD WIDTH=600>Enable the <TT>SO_BROADCAST</TT> socket option to allow UDP datagrams to be sent to a broadcast IP address.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-D</TT></TD><TD WIDTH=600>Enable the <TT>SO_DEBUG</TT> socket option. This causes additional debugging information to be maintained by the kernel for this TCP connection (<a href="append_a.htm#A_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_a.htm#A_6">Section A.6</a>). This information can be output later by running the <TT>trpt</TT>(8) program.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-E</TT></TD><TD WIDTH=600>Enable the <TT>IP_RECVDSTADDR</TT> socket option, if supported by the implementation (<a href="javascript:if(confirm('http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/usp_user.htm  \n\nThis file was not retrieved by Teleport Pro, because the server reports that this file cannot be found.  \n\nDo you want to open it from the server?'))window.location='http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/usp_user.htm#11_12'" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/usp_user.htm#11_12">Section 11.12</a>). This is intended for UDP servers, to print the destination IP address of the received UDP datagram.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-F</TT></TD><TD WIDTH=600>Specifies a concurrent TCP server. That is, the server creates a new process using the fork function for each client connection.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-K</TT></TD><TD WIDTH=600>Enable TCP's <TT>SO_KEEPALIVE</TT> socket option (<a href="javascript:if(confirm('http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/TCP_Keep.htm  \n\nThis file was not retrieved by Teleport Pro, because the server reports that this file cannot be found.  \n\nDo you want to open it from the server?'))window.location='http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/TCP_Keep.htm#23_0'" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/TCP_Keep.htm#23_0">Chapter 23</a>).
+</TD></TR>
+<TR><TD WIDTH=125><TT>-L <I>n</I></TT>
+</TD><TD WIDTH=600>Set the linger time (<TT>SO_LINGER</TT> socket option) for a TCP end point to <I>n.</I> A linger time of 0 means when the network connection is closed, any data still queued for sending is discarded and a reset is sent to the peer (<a href="tcp_conn.htm#18_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#18_7">Section 18.7</a>). A positive linger time is the time (in 100ths of a second) that a close on the network connection should wait for all outstanding data to be sent and acknowledged. If, after closing the network connection, all the pending data has not been sent and acknowledged when this timer expires, the close will return an error.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-N</TT></TD><TD WIDTH=600>Set the <TT>TCP_NODELAY</TT> socket option to disable the Nagle algorithm (<a href="tcp_int.htm#19_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_int.htm#19_4">Section 19.4</a>).
+</TD></TR>
+<TR><TD WIDTH=125><TT>-O <I>n</I></TT>
+</TD><TD WIDTH=600>Specify the number of seconds for a TCP server to pause before accepting the first client connection.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-P <I>n</I></TT>
+</TD><TD WIDTH=600>Specify the number of seconds to pause before the first read or write of the network. This can be used with the sink server (<TT>-is</TT>) to delay after accepting the connection request from the client but before performing the first read from the network. When used with the source client (<TT>-i</TT>) it delays after the connection has been established, but before the first write to the network. Also see the <TT>-p </TT>option to pause between each successive read or write.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-Q <I>n</I></TT>
+</TD><TD WIDTH=600>Specify the number of seconds for a TCP client or server to pause after receiving an end-of-file from the other end, but before closing its end of the connection.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-R <I>n</I></TT>
+</TD><TD WIDTH=600>Set the socket's receive buffer (<TT>SO_RCVBUF</TT> socket option) to <I>n.</I> This can directly affect the size of the receive window advertised by TCP. With UDP this specifies the largest UDP datagram that can be received.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-S <I>n</I></TT>
+</TD><TD WIDTH=600>Set the socket's send buffer (<TT>SO_SNDBUF</TT> socket option) to <I>n.</I> With UDP this specifies the largest UDP datagram that can be sent.
+</TD></TR>
+<TR><TD WIDTH=125><TT>-U </TT><I>n</I></TD><TD WIDTH=600>Enter TCP's urgent mode after write number <I>n</I> to the network. One byte of data is written to initiate urgent mode (<a href="tcp_bulk.htm#20_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#20_8">Section 20.8</a>).
+</TD></TR>
+</TABLE>
+<P>
+</BODY>
+</HTML>

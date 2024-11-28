@@ -1,0 +1,1051 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 99.2beta8 (1.46)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>26. TCP and UDP</TITLE>
+<META NAME="description" CONTENT="26. TCP and UDP">
+<META NAME="keywords" CONTENT="rute">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v99.2beta8">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="rute.css">
+
+<LINK REL="next" HREF="node30.html">
+<LINK REL="previous" HREF="node28.html">
+<LINK REL="up" HREF="rute.html">
+<LINK REL="next" HREF="node30.html">
+</HEAD>
+
+<BODY BGCOLOR=#FFFFFF >
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD align=left bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-purchase.html"><FONT COLOR=white>Purchase</FONT></A>&nbsp;
+</FONT>
+</TD><TD align=center bgcolor="#000000">
+<FONT COLOR=white>
+Copyright&nbsp;&#169;&nbsp;2002&nbsp;Paul Sheer. <A HREF="copying.html"><FONT COLOR=white>Click here for copying permissions.</FONT></A>
+</FONT>
+</TD><TD align=right bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-home.html"><FONT COLOR=white>Home</FONT></A>&nbsp;
+</FONT>
+</TD></TR>
+<TR><TD colspan=2 align=left bgcolor="#ECEBF4">
+<IMG SRC="va-btn-small-light-60.png">
+</TD><TD align=right bgcolor="#ECEBF4">
+<IMG SRC="sflogo2-steel-60.png">
+</TD></TR>
+</TABLE><BR>
+
+<!--Navigation Panel-->
+<A NAME="tex2html2295"
+  HREF="node30.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2291"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2285"
+  HREF="node28.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2293"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2296"
+  HREF="node30.html">27. DNS and Name</A>
+<B> Up:</B> <A NAME="tex2html2292"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2286"
+  HREF="node28.html">25. Introduction to IP</A>
+ &nbsp <B>  <A NAME="tex2html2294"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html2297"
+  HREF="#SECTION002910000000000000000">26.1 The TCP Header</A>
+<LI><A NAME="tex2html2298"
+  HREF="#SECTION002920000000000000000">26.2 A Sample TCP Session</A>
+<LI><A NAME="tex2html2299"
+  HREF="#SECTION002930000000000000000">26.3 User Datagram Protocol (UDP)</A>
+<LI><A NAME="tex2html2300"
+  HREF="#SECTION002940000000000000000">26.4 <TT>
+<FONT COLOR="#0000ff">/etc/services</FONT></TT> File</A>
+<LI><A NAME="tex2html2301"
+  HREF="#SECTION002950000000000000000">26.5 Encrypting and Forwarding TCP</A>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION002900000000000000000">
+26. Transmission Control Protocol (TCP) and User Datagram Protocol (UDP)</A>
+</H1>
+
+<P>
+<A NAME="chap:tcpudp"></A><A NAME="chap:tcp"></A>
+<P>
+In the previous chapter we talked about communication between
+machines in a generic sense. However, when you have two
+applications on opposite sides of the Atlantic Ocean, being able to
+send a packet that may or may not reach the other side is not
+sufficient. What you need is <I>reliable</I> communication.
+
+<P>
+Ideally, a programmer wants to be able to establish a link to a remote
+machine and then feed bytes in one at a time and be sure that the bytes
+are being read on the other end, and vice-versa. Such communication
+is called <I>reliable stream</I> communication.
+
+<P>
+If your only tools are discrete, unreliable packets, implementing
+a reliable, continuous stream is tricky. You can send single packets and then
+wait for the remote machine to confirm receipt, but this approach
+is inefficient (packets can take a long time to get to and from
+their destination)--you really want to be able to send as many
+packets as possible at once and then have some means of
+negotiating with the remote machine when to resend packets
+that were not received. What <I>TCP</I>
+(<I>Transmission Control Protocol</I>) does is to send data packets
+one way and then <I>acknowledgment packets</I> the other way,
+saying how much of the stream has been properly received.
+
+<P>
+We therefore say that <I>TCP is implemented on top of IP</I>. This is
+why Internet communication is sometimes called TCP/IP.
+
+<P>
+TCP communication has three stages: <I>negotiation</I>,
+<I>transfer</I>, and
+<I>detachment</I>. <FONT COLOR="#ffa500">[This is all my
+own terminology. This is also somewhat of a schematic
+representation.]</FONT>
+<P>
+<DL>
+<DT><STRONG>Negotiation</STRONG></DT>
+<DD>The <I>client</I> application (say, a web
+browser) first initiates the connection by using a <B>C</B>
+<TT>
+<FONT COLOR="#0000ff">connect()</FONT></TT> (see <TT>
+<FONT COLOR="#0000ff">connect</FONT></TT>(2)) function. This causes the kernel to send a
+<I>SYN</I> (<I>SYN</I>chronization) packet to the remote
+TCP server (in this case, a web server). The web server responds
+with a <I>SYN-ACK</I> packet (<I>ACK</I>nowledge),
+and
+finally the client responds with a final SYN packet. This packet
+negotiation is unbeknown to the programmer.
+
+<P>
+</DD>
+<DT><STRONG>Transfer:</STRONG></DT>
+<DD>The programmer will use the <TT>
+<FONT COLOR="#0000ff">send()</FONT></TT> (<TT>
+<FONT COLOR="#0000ff">send</FONT></TT>(2)) and
+<TT>
+<FONT COLOR="#0000ff">recv()</FONT></TT> (<TT>
+<FONT COLOR="#0000ff">recv</FONT></TT>(2)) <B>C</B> function calls to send and
+receive an actual stream of bytes. The stream of bytes will be
+broken into packets, and the packets sent individually to the remote
+application. In the case of the web server, the first bytes sent
+would be the line <TT>
+<FONT COLOR="#0000ff">GET /index.html
+HTTP/1.0&lt;CR&gt;&lt;NL&gt;&lt;CR&gt;&lt;NL&gt;</FONT></TT>. On the remote side, reply
+packets (also called ACK packets) are sent back as the data
+arrives, indicating whether parts of the stream went missing and
+require retransmission. Communication is
+<I>full-duplex</I>--meaning that there are streams in both directions--both
+data and acknowledge packets are going both ways
+simultaneously.
+
+<P>
+</DD>
+<DT><STRONG>Detachment:</STRONG></DT>
+<DD>The programmer will use the <B>C</B> function call
+<TT>
+<FONT COLOR="#0000ff">shutdown()</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">close()</FONT></TT> (see <TT>
+<FONT COLOR="#0000ff">shutdown() and
+<TT>
+<FONT COLOR="#0000ff">close</FONT></TT>(2))</FONT></TT> to terminate the connection. A <I>FIN</I> packet
+will be sent and TCP communication will cease.
+</DD>
+</DL>
+
+<P>
+
+<H1><A NAME="SECTION002910000000000000000">
+26.1 The TCP Header</A>
+</H1>
+
+<P>
+TCP packets are obviously <I>encapsulated</I> within IP packets.
+The TCP packet is inside the <B>Data begins at...</B>
+part of the IP packet. A TCP packet has a header part and
+a data part. The data part may sometimes be empty (such as in
+the negotiation stage).
+
+<P>
+Table <A HREF="node29.html#tab:tcpheader">26.1</A> shows the full TCP/IP header.
+
+<P>
+<A NAME="42766"></A>
+<TABLE CELLPADDING=1 BORDER="1">
+<CAPTION><STRONG>Table 26.1:</STRONG>
+Combined TCP and IP header</CAPTION>
+<TR><TD ALIGN="LEFT"><A NAME="tab:tcpheader"></A><B>Bytes (IP)</B></TD>
+<TH ALIGN="LEFT"><B>Description</B></TH>
+</TR>
+<TR><TD ALIGN="LEFT">0</TD>
+<TD ALIGN="LEFT">Bits 0-3: Version, Bits 4-7: Internet Header Length (IHL)</TD>
+</TR>
+<TR><TD ALIGN="LEFT">1</TD>
+<TD ALIGN="LEFT">Type of service (TOS)</TD>
+</TR>
+<TR><TD ALIGN="LEFT">2-3</TD>
+<TD ALIGN="LEFT">Length</TD>
+</TR>
+<TR><TD ALIGN="LEFT">4-5</TD>
+<TD ALIGN="LEFT">Identification</TD>
+</TR>
+<TR><TD ALIGN="LEFT">6-7</TD>
+<TD ALIGN="LEFT">Bits 0-3: Flags, bits 4-15: Offset</TD>
+</TR>
+<TR><TD ALIGN="LEFT">8</TD>
+<TD ALIGN="LEFT">Time to live (TTL)</TD>
+</TR>
+<TR><TD ALIGN="LEFT">9</TD>
+<TD ALIGN="LEFT">Type</TD>
+</TR>
+<TR><TD ALIGN="LEFT">10-11</TD>
+<TD ALIGN="LEFT">Checksum</TD>
+</TR>
+<TR><TD ALIGN="LEFT">12-15</TD>
+<TD ALIGN="LEFT">Source IP address</TD>
+</TR>
+<TR><TD ALIGN="LEFT">16-19</TD>
+<TD ALIGN="LEFT">Destination IP address</TD>
+</TR>
+<TR><TD ALIGN="LEFT">20-IHL*4-1</TD>
+<TD ALIGN="LEFT">Options + padding to round up to four bytes</TD>
+</TR>
+<TR><TH ALIGN="LEFT"><B>Bytes (TCP)</B></TH>
+<TD ALIGN="LEFT"><B>Description</B></TD>
+</TR>
+<TR><TD ALIGN="LEFT">0-1</TD>
+<TD ALIGN="LEFT">Source port</TD>
+</TR>
+<TR><TD ALIGN="LEFT">2-3</TD>
+<TD ALIGN="LEFT">Destination port</TD>
+</TR>
+<TR><TD ALIGN="LEFT">4-7</TD>
+<TD ALIGN="LEFT">Sequence number</TD>
+</TR>
+<TR><TD ALIGN="LEFT">8-11</TD>
+<TD ALIGN="LEFT">Acknowledgment number</TD>
+</TR>
+<TR><TD ALIGN="LEFT">12</TD>
+<TD ALIGN="LEFT">Bits 0-3: number of bytes of additional TCP options / 4</TD>
+</TR>
+<TR><TD ALIGN="LEFT">13</TD>
+<TD ALIGN="LEFT">Control</TD>
+</TR>
+<TR><TD ALIGN="LEFT">14-15</TD>
+<TD ALIGN="LEFT">Window</TD>
+</TR>
+<TR><TD ALIGN="LEFT">16-17</TD>
+<TD ALIGN="LEFT">Checksum</TD>
+</TR>
+<TR><TD ALIGN="LEFT">18-19</TD>
+<TD ALIGN="LEFT">Urgent pointer</TD>
+</TR>
+<TR><TD ALIGN="LEFT">20-(20 + options * 4)</TD>
+<TD ALIGN="LEFT">Options + padding to round up to four bytes</TD>
+</TR>
+<TR><TD ALIGN="CENTER" COLSPAN=2>TCP data begins at IHL * 4 + 20 + options * 4 and ends at Length - 1</TD>
+</TR>
+</TABLE>
+
+<P>
+The minimum combined TCP/IP header is thus 40 bytes.
+
+<P>
+With Internet machines, several applications often
+communicate simultaneously. The <B>Source port</B> and
+<B>Destination port</B> fields identify and distinguish individual streams.
+In the case of web communication, the destination port
+(from the clients point of view) is port 80, and hence all outgoing
+traffic will have the number 80 filled in this field. The source
+port (from the client's point of view) is chosen randomly to any
+unused port number above 1024 before the connection is
+negotiated; these, too, are filled into outgoing packets. No
+two streams have the same combinations of source and
+destination port numbers. The kernel uses the port numbers on
+incoming packets to determine which application requires those
+packets, and similarly for the remote machine.
+
+<P>
+<B>Sequence number</B> is the offset within the stream that this
+particular packet of data belongs to. The <B>Acknowledge
+number</B> is the point in the stream up to which all data has been
+received. <B>Control</B> is various other flag bits.
+<B>Window</B> is the maximum amount that the receiver is
+prepared to accept. <B>Checksum</B> is used to verify data integrity,
+and <B>Urgent pointer</B> is for interrupting the stream. Data needed
+by extensions to the protocol are appended after the header as
+options.
+
+<P>
+
+<H1><A NAME="SECTION002920000000000000000">
+26.2 A Sample TCP Session</A>
+</H1>
+
+<P>
+<A NAME="sec:telnetcnn"></A>
+<P>
+It is easy to see TCP working by using <TT>
+<FONT COLOR="#0000ff">telnet</FONT></TT>. You are probably
+familiar with using <TT>
+<FONT COLOR="#0000ff">telnet</FONT></TT> to log in to remote systems, but
+<TT>
+<FONT COLOR="#0000ff">telnet</FONT></TT> is actually a generic program to connect to <I>any</I>
+TCP socket as we did in Chapter <A HREF="node13.html#chap:mailclient">10</A>. Here we will
+try connect to <TT>
+<FONT COLOR="#0000ff">cnn.com</FONT></TT>'s web page.
+
+<P>
+We first need to get an IP address of <TT>
+<FONT COLOR="#0000ff">cnn.com</FONT></TT>:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>[root@cericon]#&nbsp;host&nbsp;<font color="navy"><B>cnn.com</B></font></code><br>
+<code>cnn.com&nbsp;has&nbsp;address&nbsp;207.25.71.20</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Now, in one window we run
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red size="-1">
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue size="-1">
+<code>[root@cericon]#&nbsp;<font color="navy"><B>tcpdump&nbsp;&#92;</B></font></code><br>
+<code><font color="navy"><B>&#39;(&nbsp;src&nbsp;192.168.3.9&nbsp;and&nbsp;dst&nbsp;207.25.71.20&nbsp;)&nbsp;or&nbsp;(&nbsp;src&nbsp;207.25.71.20&nbsp;and&nbsp;dst&nbsp;192.168.3.9&nbsp;)&#39;</B></font></code><br>
+<code>Kernel&nbsp;filter,&nbsp;protocol&nbsp;ALL,&nbsp;datagram&nbsp;packet&nbsp;socket</code><br>
+<code>tcpdump:&nbsp;listening&nbsp;on&nbsp;all&nbsp;devices</code><br>
+</FONT></TD></TR></TABLE><P>
+which says to list all packets having source (<TT>
+<FONT COLOR="#0000ff">src</FONT></TT>)
+or destination (<TT>
+<FONT COLOR="#0000ff">dst</FONT></TT>) addresses of either us or CNN.
+
+<P>
+Then we use the HTTP protocol to grab the page.
+Type in the HTTP command <TT>
+<FONT COLOR="#0000ff">GET&nbsp;/&nbsp;HTTP/1.0</FONT></TT> and then
+press <IMG ALIGN=ABSMIDDLE BORDER=0 SRC="key-enter.png" ALT="Enter"> <I>twice</I> (as required by the HTTP protocol). The
+first and last few lines of the sessions are shown below:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red size="-1">
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>20</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>25</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>30</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue size="-1">
+<code>[root@cericon&nbsp;root]#&nbsp;<font color="navy"><B>telnet&nbsp;207.25.71.20&nbsp;80</B></font></code><br>
+<code>Trying&nbsp;207.25.71.20...</code><br>
+<code>Connected&nbsp;to&nbsp;207.25.71.20.</code><br>
+<code>Escape&nbsp;character&nbsp;is&nbsp;'^]'.</code><br>
+<code><font color="navy"><B>GET&nbsp;/&nbsp;HTTP/1.0</B></font></code><br>
+<code>&nbsp;</code><br>
+<code>HTTP/1.0&nbsp;200&nbsp;OK</code><br>
+<code>Server:&nbsp;Netscape-Enterprise/2.01</code><br>
+<code>Date:&nbsp;Tue,&nbsp;18&nbsp;Apr&nbsp;2000&nbsp;10:55:14&nbsp;GMT</code><br>
+<code>Set-cookie:&nbsp;CNNid=cf19472c-23286-956055314-2&#059;&nbsp;expires=Wednesday,&nbsp;30-Dec-2037&nbsp;16:00:00&nbsp;GMT&#059;&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;path=/&#059;&nbsp;domain=.cnn.com</code><br>
+<code>Last-modified:&nbsp;Tue,&nbsp;18&nbsp;Apr&nbsp;2000&nbsp;10:55:14&nbsp;GMT</code><br>
+<code>Content-type:&nbsp;text/html</code><br>
+<code>&nbsp;</code><br>
+<code>&#060;HTML&#062;</code><br>
+<code>&#060;HEAD&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;TITLE&#062;CNN.com&#060;/TITLE&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;META&nbsp;http-equiv="REFRESH"&nbsp;content="1800"&#062;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;!--CSSDATA:956055234--&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;SCRIPT&nbsp;src="/virtual/2000/code/main.js"&nbsp;language="javascript"&#062;&#060;/SCRIPT&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;LINK&nbsp;rel="stylesheet"&nbsp;href="/virtual/2000/style/main.css"&nbsp;type="text/css"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;SCRIPT&nbsp;language="javascript"&nbsp;type="text/javascript"&#062;</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;!--//</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if&nbsp;((navigator.platform=='MacPPC')&#038;&#038;(navigator.ap</code><br>
+<code>&nbsp;</code><br>
+<code>..............</code><br>
+<code>..............</code><br>
+<code>&nbsp;</code><br>
+<code>&#060;/BODY&#062;</code><br>
+<code>&#060;/HTML&#062;</code><br>
+<code>Connection&nbsp;closed&nbsp;by&nbsp;foreign&nbsp;host.</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+The above commands produce the front page of CNN's web site in raw HTML. This is easy
+to paste into a file and view off-line.
+
+<P>
+In the other window, <TT>
+<FONT COLOR="#0000ff">tcpdump</FONT></TT> is showing
+us what packets are being exchanged. <TT>
+<FONT COLOR="#0000ff">tcpdump</FONT></TT> nicely
+shows us host names instead of IP addresses and the letters <TT>
+<FONT COLOR="#0000ff">www</FONT></TT>
+instead of the port number 80. The local ``random'' port in this
+case was <TT>
+<FONT COLOR="#0000ff">4064</FONT></TT><A NAME="page:tcpsession"></A>.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red size="-1">
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>20</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>25</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>30</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>35</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>40</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>45</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>50</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>55</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>60</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-2"><code>65</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue size="-1">
+<code>[root@cericon]#&nbsp;<font color="navy"><B>tcpdump&nbsp;&#92;</B></font></code><br>
+<code><font color="navy"><B>&#39;(&nbsp;src&nbsp;192.168.3.9&nbsp;and&nbsp;dst&nbsp;207.25.71.20&nbsp;)&nbsp;or&nbsp;(&nbsp;src&nbsp;207.25.71.20&nbsp;and&nbsp;dst&nbsp;192.168.3.9&nbsp;)&#39;</B></font></code><br>
+<code>Kernel&nbsp;filter,&nbsp;protocol&nbsp;ALL,&nbsp;datagram&nbsp;packet&nbsp;socket</code><br>
+<code>tcpdump:&nbsp;listening&nbsp;on&nbsp;all&nbsp;devices</code><br>
+<code>12:52:35.467121&nbsp;eth0&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064&nbsp;&#062;&nbsp;www1.cnn.com.www:</code><br>
+<code>&nbsp;&nbsp;&nbsp;S&nbsp;2463192134:2463192134(0)&nbsp;win&nbsp;32120&nbsp;&#060;mss&nbsp;1460,sackOK,timestamp&nbsp;154031689&nbsp;0,nop,wscale&nbsp;0</code><br>
+<code>12:52:35.964703&nbsp;eth0&nbsp;&#060;&nbsp;www1.cnn.com.www&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064:</code><br>
+<code>&nbsp;&nbsp;&nbsp;S&nbsp;4182178234:4182178234(0)&nbsp;ack&nbsp;2463192135&nbsp;win&nbsp;10136&nbsp;&#060;nop,nop,timestamp&nbsp;1075172823&nbsp;154031</code><br>
+<code>12:52:35.964791&nbsp;eth0&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064&nbsp;&#062;&nbsp;www1.cnn.com.www:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;1:1(0)&nbsp;ack&nbsp;1&nbsp;win&nbsp;32120&nbsp;&#060;nop,nop,timestamp&nbsp;154031739&nbsp;1075172823&#062;&nbsp;(DF)</code><br>
+<code>12:52:46.413043&nbsp;eth0&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064&nbsp;&#062;&nbsp;www1.cnn.com.www:</code><br>
+<code>&nbsp;&nbsp;&nbsp;P&nbsp;1:17(16)&nbsp;ack&nbsp;1&nbsp;win&nbsp;32120&nbsp;&#060;nop,nop,timestamp&nbsp;154032784&nbsp;1075172823&#062;&nbsp;(DF)</code><br>
+<code>12:52:46.908156&nbsp;eth0&nbsp;&#060;&nbsp;www1.cnn.com.www&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;1:1(0)&nbsp;ack&nbsp;17&nbsp;win&nbsp;10136&nbsp;&#060;nop,nop,timestamp&nbsp;1075173916&nbsp;154032784&#062;</code><br>
+<code>12:52:49.259870&nbsp;eth0&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064&nbsp;&#062;&nbsp;www1.cnn.com.www:</code><br>
+<code>&nbsp;&nbsp;&nbsp;P&nbsp;17:19(2)&nbsp;ack&nbsp;1&nbsp;win&nbsp;32120&nbsp;&#060;nop,nop,timestamp&nbsp;154033068&nbsp;1075173916&#062;&nbsp;(DF)</code><br>
+<code>12:52:49.886846&nbsp;eth0&nbsp;&#060;&nbsp;www1.cnn.com.www&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064:</code><br>
+<code>&nbsp;&nbsp;&nbsp;P&nbsp;1:278(277)&nbsp;ack&nbsp;19&nbsp;win&nbsp;10136&nbsp;&#060;nop,nop,timestamp&nbsp;1075174200&nbsp;154033068&#062;</code><br>
+<code>12:52:49.887039&nbsp;eth0&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064&nbsp;&#062;&nbsp;www1.cnn.com.www:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;19:19(0)&nbsp;ack&nbsp;278&nbsp;win&nbsp;31856&nbsp;&#060;nop,nop,timestamp&nbsp;154033131&nbsp;1075174200&#062;&nbsp;(DF)</code><br>
+<code>12:52:50.053628&nbsp;eth0&nbsp;&#060;&nbsp;www1.cnn.com.www&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;278:1176(898)&nbsp;ack&nbsp;19&nbsp;win&nbsp;10136&nbsp;&#060;nop,nop,timestamp&nbsp;1075174202&nbsp;154033068&#062;</code><br>
+<code>12:52:50.160740&nbsp;eth0&nbsp;&#060;&nbsp;www1.cnn.com.www&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064:</code><br>
+<code>&nbsp;&nbsp;&nbsp;P&nbsp;1176:1972(796)&nbsp;ack&nbsp;19&nbsp;win&nbsp;10136&nbsp;&#060;nop,nop,timestamp&nbsp;1075174202&nbsp;154033068&#062;</code><br>
+<code>12:52:50.220067&nbsp;eth0&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064&nbsp;&#062;&nbsp;www1.cnn.com.www:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;19:19(0)&nbsp;ack&nbsp;1972&nbsp;win&nbsp;31856&nbsp;&#060;nop,nop,timestamp&nbsp;154033165&nbsp;1075174202&#062;&nbsp;(DF)</code><br>
+<code>12:52:50.824143&nbsp;eth0&nbsp;&#060;&nbsp;www1.cnn.com.www&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;1972:3420(1448)&nbsp;ack&nbsp;19&nbsp;win&nbsp;10136&nbsp;&#060;nop,nop,timestamp&nbsp;1075174262&nbsp;154033131&#062;</code><br>
+<code>12:52:51.021465&nbsp;eth0&nbsp;&#060;&nbsp;www1.cnn.com.www&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;3420:4868(1448)&nbsp;ack&nbsp;19&nbsp;win&nbsp;10136&nbsp;&#060;nop,nop,timestamp&nbsp;1075174295&nbsp;154033165&#062;</code><br>
+<code>&nbsp;</code><br>
+<code>..............</code><br>
+<code>..............</code><br>
+<code>&nbsp;</code><br>
+<code>12:53:13.856919&nbsp;eth0&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064&nbsp;&#062;&nbsp;www1.cnn.com.www:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;19:19(0)&nbsp;ack&nbsp;53204&nbsp;win&nbsp;30408&nbsp;&#060;nop,nop,timestamp&nbsp;154035528&nbsp;1075176560&#062;&nbsp;(DF)</code><br>
+<code>12:53:14.722584&nbsp;eth0&nbsp;&#060;&nbsp;www1.cnn.com.www&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;53204:54652(1448)&nbsp;ack&nbsp;19&nbsp;win&nbsp;10136&nbsp;&#060;nop,nop,timestamp&nbsp;1075176659&nbsp;154035528&#062;</code><br>
+<code>12:53:14.722738&nbsp;eth0&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064&nbsp;&#062;&nbsp;www1.cnn.com.www:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;19:19(0)&nbsp;ack&nbsp;54652&nbsp;win&nbsp;30408&nbsp;&#060;nop,nop,timestamp&nbsp;154035615&nbsp;1075176659&#062;&nbsp;(DF)</code><br>
+<code>12:53:14.912561&nbsp;eth0&nbsp;&#060;&nbsp;www1.cnn.com.www&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;54652:56100(1448)&nbsp;ack&nbsp;19&nbsp;win&nbsp;10136&nbsp;&#060;nop,nop,timestamp&nbsp;1075176659&nbsp;154035528&#062;</code><br>
+<code>12:53:14.912706&nbsp;eth0&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064&nbsp;&#062;&nbsp;www1.cnn.com.www:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;19:19(0)&nbsp;ack&nbsp;58500&nbsp;win&nbsp;30408&nbsp;&#060;nop,nop,timestamp&nbsp;154035634&nbsp;1075176659&#062;&nbsp;(DF)</code><br>
+<code>12:53:15.706463&nbsp;eth0&nbsp;&#060;&nbsp;www1.cnn.com.www&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;58500:59948(1448)&nbsp;ack&nbsp;19&nbsp;win&nbsp;10136&nbsp;&#060;nop,nop,timestamp&nbsp;1075176765&nbsp;154035634&#062;</code><br>
+<code>12:53:15.896639&nbsp;eth0&nbsp;&#060;&nbsp;www1.cnn.com.www&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;59948:61396(1448)&nbsp;ack&nbsp;19&nbsp;win&nbsp;10136&nbsp;&#060;nop,nop,timestamp&nbsp;1075176765&nbsp;154035634&#062;</code><br>
+<code>12:53:15.896791&nbsp;eth0&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064&nbsp;&#062;&nbsp;www1.cnn.com.www:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;19:19(0)&nbsp;ack&nbsp;61396&nbsp;win&nbsp;31856&nbsp;&#060;nop,nop,timestamp&nbsp;154035732&nbsp;1075176765&#062;&nbsp;(DF)</code><br>
+<code>12:53:16.678439&nbsp;eth0&nbsp;&#060;&nbsp;www1.cnn.com.www&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;61396:62844(1448)&nbsp;ack&nbsp;19&nbsp;win&nbsp;10136&nbsp;&#060;nop,nop,timestamp&nbsp;1075176864&nbsp;154035732&#062;</code><br>
+<code>12:53:16.867963&nbsp;eth0&nbsp;&#060;&nbsp;www1.cnn.com.www&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;62844:64292(1448)&nbsp;ack&nbsp;19&nbsp;win&nbsp;10136&nbsp;&#060;nop,nop,timestamp&nbsp;1075176864&nbsp;154035732&#062;</code><br>
+<code>12:53:16.868095&nbsp;eth0&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064&nbsp;&#062;&nbsp;www1.cnn.com.www:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;19:19(0)&nbsp;ack&nbsp;64292&nbsp;win&nbsp;31856&nbsp;&#060;nop,nop,timestamp&nbsp;154035829&nbsp;1075176864&#062;&nbsp;(DF)</code><br>
+<code>12:53:17.521019&nbsp;eth0&nbsp;&#060;&nbsp;www1.cnn.com.www&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064:</code><br>
+<code>&nbsp;&nbsp;&nbsp;FP&nbsp;64292:65200(908)&nbsp;ack&nbsp;19&nbsp;win&nbsp;10136&nbsp;&#060;nop,nop,timestamp&nbsp;1075176960&nbsp;154035829&#062;</code><br>
+<code>12:53:17.521154&nbsp;eth0&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064&nbsp;&#062;&nbsp;www1.cnn.com.www:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;19:19(0)&nbsp;ack&nbsp;65201&nbsp;win&nbsp;31856&nbsp;&#060;nop,nop,timestamp&nbsp;154035895&nbsp;1075176960&#062;&nbsp;(DF)</code><br>
+<code>12:53:17.523243&nbsp;eth0&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064&nbsp;&#062;&nbsp;www1.cnn.com.www:</code><br>
+<code>&nbsp;&nbsp;&nbsp;F&nbsp;19:19(0)&nbsp;ack&nbsp;65201&nbsp;win&nbsp;31856&nbsp;&#060;nop,nop,timestamp&nbsp;154035895&nbsp;1075176960&#062;&nbsp;(DF)</code><br>
+<code>12:53:20.410092&nbsp;eth0&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064&nbsp;&#062;&nbsp;www1.cnn.com.www:</code><br>
+<code>&nbsp;&nbsp;&nbsp;F&nbsp;19:19(0)&nbsp;ack&nbsp;65201&nbsp;win&nbsp;31856&nbsp;&#060;nop,nop,timestamp&nbsp;154036184&nbsp;1075176960&#062;&nbsp;(DF)</code><br>
+<code>12:53:20.940833&nbsp;eth0&nbsp;&#060;&nbsp;www1.cnn.com.www&nbsp;&#062;&nbsp;cericon.cranzgot.co.za.4064:</code><br>
+<code>&nbsp;&nbsp;&nbsp;.&nbsp;65201:65201(0)&nbsp;ack&nbsp;20&nbsp;win&nbsp;10136&nbsp;&#060;nop,nop,timestamp&nbsp;1075177315&nbsp;154035895&#062;</code><br>
+<code>&nbsp;</code><br>
+<code>103&nbsp;packets&nbsp;received&nbsp;by&nbsp;filter</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+The preceding output requires some explanation: Line 5, 7, and 9
+are the negotiation stage. <TT>
+<FONT COLOR="#0000ff">tcpdump</FONT></TT> uses the format
+<TT>
+<FONT COLOR="#0000ff">&lt;Sequence number&gt;:&lt;Sequence number + data
+length&gt;(&lt;data length&gt;)</FONT></TT> on each line to show the context of the
+packet within the stream. <B>Sequence number</B>, however, is
+chosen randomly at the outset, so <TT>
+<FONT COLOR="#0000ff">tcpdump</FONT></TT> prints the
+relative sequence number after the first two packets to make it
+clearer what the actual position is within the stream. Line
+11 is where I pressed <I>Enter</I> the first time, and Line 15 was
+<I>Enter</I> with an empty line. The
+``<TT>
+<FONT COLOR="#0000ff">ack 19</FONT></TT>''s indicates the point to which CNN's web server has
+received incoming data; in this case we only ever typed in 19
+bytes, hence the web server sets this value in every one of its
+outgoing packets, while our own outgoing packets are mostly
+empty of data.
+
+<P>
+Lines 61 and 63 are the detachment stage.
+
+<P>
+More information about the <TT>
+<FONT COLOR="#0000ff">tcpdump</FONT></TT> output
+can be had from <TT>
+<FONT COLOR="#0000ff">tcpdump</FONT></TT>(8) under the section
+<B>TCP Packets</B>.
+
+<P>
+
+<H1><A NAME="SECTION002930000000000000000">
+26.3 User Datagram Protocol (UDP)</A>
+</H1>
+
+<P>
+You don't <I>always</I> need reliable communication.
+
+<P>
+Sometimes you want to directly control packets for efficiency,
+or because you don't really mind if
+packets get lost. Two examples are name server communications,
+for which single packet transmissions are desired, or voice
+transmissions for which reducing lag time is more important than
+data integrity. Another is NFS (Network File System), which uses
+UDP to implement exclusively high bandwidth data transfer.
+
+<P>
+With UDP the programmer sends and receives
+individual packets, again encapsulated within IP. Ports are used
+in the same way as with TCP, but these are merely identifiers and
+there is no concept of a stream. The full UDP/IP header is listed in
+Table <A HREF="node29.html#tab:udpinip">26.2</A>.
+
+<P>
+<A NAME="42885"></A>
+<TABLE CELLPADDING=1 BORDER="1">
+<CAPTION><STRONG>Table 26.2:</STRONG>
+Combined UDP and IP header</CAPTION>
+<TR><TD ALIGN="LEFT"><A NAME="tab:udpinip"></A><B>Bytes (IP)</B></TD>
+<TH ALIGN="LEFT"><B>Description</B></TH>
+</TR>
+<TR><TD ALIGN="LEFT">0</TD>
+<TD ALIGN="LEFT">bits 0-3: Version, bits 4-7: Internet Header Length (IHL)</TD>
+</TR>
+<TR><TD ALIGN="LEFT">1</TD>
+<TD ALIGN="LEFT">Type of service (TOS)</TD>
+</TR>
+<TR><TD ALIGN="LEFT">2-3</TD>
+<TD ALIGN="LEFT">Length</TD>
+</TR>
+<TR><TD ALIGN="LEFT">4-5</TD>
+<TD ALIGN="LEFT">Identification</TD>
+</TR>
+<TR><TD ALIGN="LEFT">6-7</TD>
+<TD ALIGN="LEFT">bits 0-3: Flags, bits 4-15: Offset</TD>
+</TR>
+<TR><TD ALIGN="LEFT">8</TD>
+<TD ALIGN="LEFT">Time to live (TTL)</TD>
+</TR>
+<TR><TD ALIGN="LEFT">9</TD>
+<TD ALIGN="LEFT">Type</TD>
+</TR>
+<TR><TD ALIGN="LEFT">10-11</TD>
+<TD ALIGN="LEFT">Checksum</TD>
+</TR>
+<TR><TD ALIGN="LEFT">12-15</TD>
+<TD ALIGN="LEFT">Source IP address</TD>
+</TR>
+<TR><TD ALIGN="LEFT">16-19</TD>
+<TD ALIGN="LEFT">Destination IP address</TD>
+</TR>
+<TR><TD ALIGN="LEFT">20-(IHL * 4 - 1)</TD>
+<TD ALIGN="LEFT">Options + padding to round up to four bytes</TD>
+</TR>
+<TR><TH ALIGN="LEFT"><B>Bytes (UDP)</B></TH>
+<TD ALIGN="LEFT"><B>Description</B></TD>
+</TR>
+<TR><TD ALIGN="LEFT">0-1</TD>
+<TD ALIGN="LEFT">Source port</TD>
+</TR>
+<TR><TD ALIGN="LEFT">2-3</TD>
+<TD ALIGN="LEFT">Destination port</TD>
+</TR>
+<TR><TD ALIGN="LEFT">4-5</TD>
+<TD ALIGN="LEFT">Length</TD>
+</TR>
+<TR><TD ALIGN="LEFT">6-7</TD>
+<TD ALIGN="LEFT">Checksum</TD>
+</TR>
+<TR><TD ALIGN="CENTER" COLSPAN=2>UDP data begins at IHL * 4 + 8 and ends at Length - 1</TD>
+</TR>
+</TABLE>
+
+<P>
+
+<H1><A NAME="SECTION002940000000000000000">
+26.4 <TT>
+<FONT COLOR="#0000ff">/etc/services</FONT></TT> File</A>
+</H1>
+
+<P>
+<A NAME="sec:etcservices"></A>
+<P>
+Various
+standard port numbers are used exclusively
+for particular types of services. Port 80 is for web as shown
+earlier. Port numbers 1 through 1023 are reserved for such
+standard services and each is given a convenient textual name.
+
+<P>
+All services are defined for both TCP as well as
+UDP, even though there is, for example, no such thing as
+UDP FTP access.
+
+<P>
+Port numbers below 1024 are used exclusively for
+<TT>
+<FONT COLOR="#0000ff">root</FONT></TT> uid programs such as mail, DNS, and web services.
+Programs of ordinary users are not allowed to <I>bind</I> to
+ports below 1024. <FONT COLOR="#ffa500">[Port binding is where a program reserves a
+port for listening for an incoming connection, as do all network
+services. Web servers, for example, <I>bind</I> to port 80.]</FONT>The place where these ports are defined is in the
+<TT>
+<FONT COLOR="#0000ff">/etc/services</FONT></TT> file. These mappings
+are mostly for descriptive purposes--programs can look up
+port names from numbers and visa versa. <I>The <TT>
+<FONT COLOR="#0000ff">/etc/services</FONT></TT>
+file has nothing to do with the availability of a service.</I>
+
+<P>
+Here is an extract of the <TT>
+<FONT COLOR="#0000ff">/etc/services</FONT></TT>.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>20</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>25</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>30</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>35</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>tcpmux&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;TCP&nbsp;port&nbsp;service&nbsp;multiplexer</code><br>
+<code>echo&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7/tcp</code><br>
+<code>echo&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7/udp</code><br>
+<code>discard&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sink&nbsp;null</code><br>
+<code>discard&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;9/udp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sink&nbsp;null</code><br>
+<code>systat&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;11/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;users</code><br>
+<code>daytime&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;13/tcp</code><br>
+<code>daytime&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;13/udp</code><br>
+<code>netstat&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;15/tcp</code><br>
+<code>qotd&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;17/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;quote</code><br>
+<code>msp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;18/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;message&nbsp;send&nbsp;protocol</code><br>
+<code>msp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;18/udp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;message&nbsp;send&nbsp;protocol</code><br>
+<code>ftp-data&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;20/tcp</code><br>
+<code>ftp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;21/tcp</code><br>
+<code>fsp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;21/udp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fspd</code><br>
+<code>ssh&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;22/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;SSH&nbsp;Remote&nbsp;Login&nbsp;Protocol</code><br>
+<code>ssh&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;22/udp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;SSH&nbsp;Remote&nbsp;Login&nbsp;Protocol</code><br>
+<code>telnet&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;23/tcp</code><br>
+<code>smtp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mail</code><br>
+<code>time&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;37/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;timserver</code><br>
+<code>time&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;37/udp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;timserver</code><br>
+<code>rlp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;39/udp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;resource&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;resource&nbsp;location</code><br>
+<code>nameserver&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;42/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;name&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;IEN&nbsp;116</code><br>
+<code>whois&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;43/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nicname</code><br>
+<code>domain&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;53/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nameserver&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;name-domain&nbsp;server</code><br>
+<code>domain&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;53/udp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nameserver</code><br>
+<code>mtp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;57/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;deprecated</code><br>
+<code>bootps&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;67/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;BOOTP&nbsp;server</code><br>
+<code>bootps&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;67/udp</code><br>
+<code>bootpc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;68/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;BOOTP&nbsp;client</code><br>
+<code>bootpc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;68/udp</code><br>
+<code>tftp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;69/udp</code><br>
+<code>gopher&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;70/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;Internet&nbsp;Gopher</code><br>
+<code>gopher&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;70/udp</code><br>
+<code>rje&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;77/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;netrjs</code><br>
+<code>finger&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;79/tcp</code><br>
+<code>www&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;80/tcp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;http&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;WorldWideWeb&nbsp;HTTP</code><br>
+<code>www&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;80/udp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;HyperText&nbsp;Transfer&nbsp;Protocol</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H1><A NAME="SECTION002950000000000000000">
+26.5 Encrypting and Forwarding TCP</A>
+</H1>
+
+<P>
+The TCP stream can easily be reconstructed by anyone listening on
+a wire who happens to see your network traffic, so TCP is known as
+an inherently insecure service. We would like to
+encrypt our data so that anything captured between the client and server
+will appear garbled. Such an encrypted stream should have several
+properties:
+
+<OL>
+<LI>It should ensure that the connecting client <I>really</I> is
+connecting to the server in question. In other words it should
+authenticate the server to ensure that the server is not a Trojan.
+</LI>
+<LI>It should prevent any information being gained by a snooper.
+This means that any traffic read should appear cryptographically
+garbled.
+</LI>
+<LI>It should be impossible for a listener to modify the traffic
+without detection.
+</LI>
+</OL>
+
+<P>
+The above is relatively easily accomplished with at least two packages.
+Take the example where we would like to use POP3 to retrieve mail
+from a remote machine. First, we can verify that POP3 is working
+by logging in on the POP3 server. Run a <TT>
+<FONT COLOR="#0000ff">telnet</FONT></TT> to port 110
+(i.e., the POP3 service) as follows:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>telnet&nbsp;localhost&nbsp;110</code><br>
+<code>Connected&nbsp;to&nbsp;localhost.localdomain.</code><br>
+<code>Escape&nbsp;character&nbsp;is&nbsp;'^]'.</code><br>
+<code>+OK&nbsp;POP3&nbsp;localhost.localdomain&nbsp;v7.64&nbsp;server&nbsp;ready</code><br>
+<code>QUIT</code><br>
+<code>+OK&nbsp;Sayonara</code><br>
+<code>Connection&nbsp;closed&nbsp;by&nbsp;foreign&nbsp;host.</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+For our first example, we use the OpenSSH package.
+We can initialize and run the <TT>
+<FONT COLOR="#0000ff">sshd</FONT></TT> Secure Shell daemon if it
+has not been initialized before. The following commands would be run
+on the POP3 server:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ssh-keygen&nbsp;-b&nbsp;1024&nbsp;-f&nbsp;/etc/ssh/ssh_host_key&nbsp;-q&nbsp;-N&nbsp;''</code><br>
+<code>ssh-keygen&nbsp;-d&nbsp;-f&nbsp;/etc/ssh/ssh_host_dsa_key&nbsp;-q&nbsp;-N&nbsp;''</code><br>
+<code>sshd</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+To create an encrypted channel shown in Figure <A HREF="node29.html#fig:popforward">26.1</A>,
+we use the <TT>
+<FONT COLOR="#0000ff">ssh</FONT></TT> client login program in a special way.
+We would like it to listen on a particular
+TCP port and then encrypt and forward all traffic to the remote TCP port
+ on the server. This is known as <I>(encrypted) port
+forwarding</I>. On the client machine we choose an arbitrary unused port to
+listen on, in this case <TT>
+<FONT COLOR="#0000ff">12345</FONT></TT>:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>ssh&nbsp;-C&nbsp;-c&nbsp;arcfour&nbsp;-N&nbsp;-n&nbsp;-2&nbsp;-L&nbsp;12345:&#060;pop3-server.doma.in&#062;:110&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#060;pop3-server.doma.in&#062;&nbsp;-l&nbsp;&#060;user&#062;&nbsp;-v</code><br>
+</FONT></TD></TR></TABLE><P>
+where <TT>
+<FONT COLOR="#0000ff">&lt;user&gt;</FONT></TT> is the name of a shell account on the POP3 server.
+Finally, also on the client machine, we run:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>telnet&nbsp;localhost&nbsp;12345</code><br>
+<code>Connected&nbsp;to&nbsp;localhost.localdomain.</code><br>
+<code>Escape&nbsp;character&nbsp;is&nbsp;'^]'.</code><br>
+<code>+OK&nbsp;POP3&nbsp;localhost.localdomain&nbsp;v7.64&nbsp;server&nbsp;ready</code><br>
+<code>QUIT</code><br>
+<code>+OK&nbsp;Sayonara</code><br>
+<code>Connection&nbsp;closed&nbsp;by&nbsp;foreign&nbsp;host.</code><br>
+</FONT></TD></TR></TABLE><P>
+Here we get results identical to those above, because, as far as the
+server is concerned, the POP3 connection comes from a client on the server
+machine itself, unknowing of the fact that it has originated from
+<TT>
+<FONT COLOR="#0000ff">sshd</FONT></TT>, which in turn is forwarding from a remote <TT>
+<FONT COLOR="#0000ff">ssh</FONT></TT> client.
+In addition, the <TT>
+<FONT COLOR="#0000ff">-C</FONT></TT> option compresses all data (useful for low-speed
+connections). Also note that you should generally never use any encryption
+besides <TT>
+<FONT COLOR="#0000ff">arcfour</FONT></TT> and SSH
+Protocol 2 (option <TT>
+<FONT COLOR="#0000ff">-2</FONT></TT>).
+
+<P>
+
+<P></P>
+<DIV ALIGN="CENTER"><A NAME="fig:popforward"></A><A NAME="43031"></A>
+<TABLE>
+<CAPTION ALIGN="BOTTOM"><STRONG>Figure 26.1:</STRONG>
+Forwarding between two machines</CAPTION>
+<TR><TD><IMG
+   BORDER="0"
+ SRC="frwrdbtwn.png"
+ ALT="\begin{figure}\begin{center}
+\setlength{\unitlength}{0.00075in}\begin{picture}(4...
+...otect\leavevmode{\color{blue}{ipop3d}}})}}
+\end{picture}\end{center}\end{figure}"></TD></TR>
+</TABLE>
+</DIV><P></P>
+
+<P>
+The second method is the
+<TT>
+<FONT COLOR="#0000ff">forward</FONT></TT> program of the <TT>
+<FONT COLOR="#0000ff">mirrordir</FONT></TT>
+package. It has a unique encryption protocol
+that does much of what OpenSSH can, although the protocol has not been
+validated by the community at large (and therefore should be used with
+caution). On the server machine you can just
+type <TT>
+<FONT COLOR="#0000ff">secure-mcserv</FONT></TT>. On the client run
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>forward&nbsp;&#060;user&#062;@&#060;pop3-server.doma.in&#062;&nbsp;&#060;pop3-server.doma.in&#062;:110&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;12345&nbsp;--secure&nbsp;-z&nbsp;-K&nbsp;1024</code><br>
+</FONT></TD></TR></TABLE><P>
+and then run <TT>
+<FONT COLOR="#0000ff">telnet&nbsp;12345</FONT></TT> to test as before.
+
+<P>
+With forwarding enabled you can use any POP3 client as you normally would. Be sure,
+though, to set your host and port addresses to <TT>
+<FONT COLOR="#0000ff">localhost</FONT></TT> and
+<TT>
+<FONT COLOR="#0000ff">12345</FONT></TT> within your POP3 client.
+
+<P>
+This example can, of course, be applied to <I>almost</I> any service.
+Some services will not work if they do special things like create
+reverse TCP connections back to the client (for example, FTP). Your
+luck may vary.
+
+<P>
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html2295"
+  HREF="node30.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2291"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2285"
+  HREF="node28.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2293"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2296"
+  HREF="node30.html">27. DNS and Name</A>
+<B> Up:</B> <A NAME="tex2html2292"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2286"
+  HREF="node28.html">25. Introduction to IP</A>
+ &nbsp <B>  <A NAME="tex2html2294"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+
+</BODY>
+</HTML>

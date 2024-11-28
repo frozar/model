@@ -1,0 +1,78 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Draft//EN">
+<HTML>
+<HEAD>
+<TITLE>Fiche sur les fichiers SUID ET/OU SGID</TITLE>
+</HEAD>
+<BODY>
+<H1>Fiche sur les fichiers SUID ET/OU SGID</H1>
+
+<H2>Paul RICHY (CNET), Herve DESROUSSEAUX (Rectorat de Versailles), Yves DELARUE (Control Data), remise en forme Tristan Debeaupuis (HSC)</H2>
+<P><HR>
+<EM>References:
+"Guide de securite pour les administrateurs de systemes UNIX"
+de Christian Pelissier Decembre 90 et
+"Practical Unix Security de Simon Garfinkel et Gene Spafford"
+chez O'Reilly Associates.</EM>
+<HR>
+<H2><A NAME="s1">1. Risques potentiels</A></H2>
+
+<P>Les permissions SUID et SGID permettent d'obtenir les droits du proprietaire et/ou
+du groupe d'un fichier quand celui-ci est execute par un autre utilisateur.
+Leur utilisation est particulierement sensible quand elles permettent l'execution
+en tant qu'utilisateur 'root'.
+<P> 
+L'utilisation de procedures shell SUID appartenant a 'root' est a proscrire.  
+Il n'y en a pas dans les systemes livres par les constructeurs, il ne faut pas
+en creer.   
+<P>
+<H2><A NAME="s2">2. Fonctionnalites disponibles ou &agrave; rechercher</A></H2>
+
+<P>Pour obtenir dans le fichier 'ListeCourante' la liste des fichiers ayant
+la permission SUID ou SGID, utiliser la commande:
+<HR>
+<PRE>
+$ find /bin -type f \( -perm -4000 -perm -2000 \)-exec ls -lg {} \; &gt; ListeCourante
+</PRE>
+<HR>
+<P>Vous pouvez aussi utiliser la commande 'find' pour detecter les procedures shell 
+SUID ou SGID, exemple:
+<HR>
+<PRE>
+$ find / -type f \( -perm -4000 -perm -2000 \)-exec file {} \; | grep shell
+</PRE>
+<HR>
+<P>Le logiciel COPS du domaine public fournit entre autres cette fonctionnalite.
+Il verifie egalement que les fichiers SUID appartenant a 'root' ne sont pas
+reinscriptibles de maniere publique.
+<P>Sur la plupart des systemes la commande 'mount' a une option 'nosuid' qui inhibe
+la permission SUID pour les fichiers appartenant au file system monte.
+<P>
+<H2><A NAME="s3">3. A faire</A></H2>
+
+<P>Les fichiers avec les permissions SUID et/ou SGID doivent faire l'objet d'une
+surveillance reguliere.  La liste obtenue avec la commande 'find' sera comparee
+a une liste de reference pour detecter les changements intervenus.  On peut 
+utiliser la commande:
+<HR>
+<PRE>
+$ diff ListeReference ListeCourante
+</PRE>
+<HR>
+<P>La liste de reference sera etablie avec la plus grande attention lors de 
+l'installation ou d'un changement de version du systeme.
+<P>
+<H2><A NAME="s4">4. A eviter</A></H2>
+
+<P>Comme il a ete dit, les procedures shell SUID root sont a proscrire.  Dans bien 
+des cas elles peuvent etre avantageusement remplacees par un programme C.
+<P>La creation de fichiers executables avec la permission SUID root est a deconseiller.
+On lui preferera le regroupement des objets dont l'acces est rendu necessaire
+pour la fonctionnalite recherchee dans un groupe specifique.  Les fichiers executables
+auront alors la permission SGID sur ce groupe.
+<P>Il faut refuser d'installer un programme SUID root si on ne dispose pas du code
+source.  La qualite de celui-ci doit etre verifiee avant l'installation.  On
+verifiera notamment qu'il n'appelle pas des commandes autorisant le lancement 
+de shell fils ou d'editeurs donnant a l'utilisateur les privileges de 'root'  de
+maniere incontrolee. 
+</BODY>
+</HTML>

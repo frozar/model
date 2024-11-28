@@ -1,0 +1,530 @@
+<html><head><title>Understanding the Stack</title></head>
+
+<body bgcolor="white">
+<center>
+<h1>
+Understanding the Stack
+</h1>
+</center>
+
+
+<h3>
+Introduction
+</h3>
+
+   Assembly languages provide you the ability to implement
+conditional statements.  If you add and jump/branches (the
+assembly equivalent of "goto" statements), you can implement
+loops.
+<p>
+   The next step is some kind of support for functions.  Functions are
+perhaps the most fundamental language feature for abstraction and code
+reuse. It allows us to refer to some piece of code by a name.  All we
+need to know is how many arguments are needed, what type of arguments,
+and what the function returns, and what the function computes to use
+the function.
+</p><p>
+   In particular, it's not necessary to know how the function does
+what it does.
+</p><p>
+    How does assembly language give us this kind of support.
+</p><p>
+   To think about what's required, let's think about what happens
+in a function call.
+</p><p>
+  </p><ul type="disc">
+    <li> When a function call is executed, the arguments need to
+be evaluated to values (at least, for C-like programming languages).
+    </li><li> Then, control flow jumps to the body of the function,
+and code begins executing there.
+    </li><li> Once a return statement has been encountered, we're
+done with the function, and return back to the function call.
+  </li></ul>
+<p>
+    Programming languages make functions easy to maintain and write
+by giving each function its own section of memory to operate in.
+</p><p>
+    For example, suppose you have the following function.
+</p><p>
+<font size="+1">
+<pre>  int pickMin( int x, int y, int z ) {
+     int min = x ;
+     if ( y &lt; min )
+        min = y ;
+     if ( z &lt; min )
+        min = z ;
+     return min ;
+   }
+</pre>
+</font>
+    You declare parameters <b>x</b>, <b>y</b>, and <b>z</b>.  You also
+declare local variables, <b>min</b>.  You know that these variables
+won't interfere with other variables in other functions, even if
+those functions use the same variable names.
+</p><p>
+   In fact, you also know that these variables won't interfere with
+separate invocations of itself.
+</p><p>
+   For example, consider this recursive function,
+<font size="+1">
+<pre>  int fact( int n ) {
+     if ( n == 0 )
+        return 1 ;
+     else
+        return fact( n - 1 ) * n ;
+   }
+</pre>
+</font>
+</p><p>
+   Each call to <b>fact</b> produces a new memory location for <b>n</b>.
+Thus, each separate call (or invocation) to <b>fact</b> has its own
+copy of <b>n</b>.
+</p><p>
+    How does this get implemented?  In order to understand function
+calls, you need to understand the stack, and you need to understand
+how assembly languages like MIPS deal with the stack.
+</p><h3>
+Stack
+</h3>
+   When a program starts executing, a certain contiguous section
+of memory is set aside for the program called the <b>stack</b>.
+<p>
+   Let's look at a stack.
+</p><p>
+</p><center>
+<img src=".stack_files/stack1.png">
+</center>
+<p>
+   The stack pointer is usually a register that contains the
+top of the stack.   The stack pointer contains the smallest
+address <b>x</b> such that any address smaller than <b>x</b>
+is considered garbage, and any address greater than or equal
+to <b>x</b> is considered valid.
+</p><p>
+   In the example above, the stack pointer contains the
+value <b>0x0000 1000</b>, which was somewhat arbitrarily chosen.
+</p><p>
+   The shaded region of the diagram represents valid parts of 
+the stack.
+</p><p>
+   It's useful to think of the following aspects of a stack.
+</p><ul type="disc">
+  <li> <b>stack bottom</b> The largest valid address of a stack.
+  When a stack is initialized, the stack pointer points to the
+  stack bottom.
+<p>
+  </p></li><li> <b>stack limit</b> The smallest valid address of a stack.
+  If the stack pointer gets smaller than this, then there's
+  a <i>stack overflow</i> (this should not be confused with
+  overflow from math operations).
+</li></ul>
+   Other sections of memory are used for the program and for the heap
+(the section of memory used for dynamic memory allocation).
+<h4>
+Push and Pop
+</h4>
+   Like the data structure by the same name, there are two operations
+on the stack: push and pop.
+<p>
+    Usually, push and pop are defined as follows:
+</p><ul type="disc">
+   <li> <b>push</b>  You can push one or more registers, by
+setting the stack pointer to a smaller value (usually by subtracting
+4 times the number of registers to be pushed on the stack) and
+copying the registers to the stack.
+<p>
+    </p></li><li> <b>pop</b> You can pop one or more registers, by copying the
+data from the stack to the registers, then to add a value to the stack
+pointer (usually adding 4 times the number of registers to be popped
+on the stack) 
+</li></ul>
+   Thus, pushing is a way of saving the contents of the register to
+memory, and popping is a way of restoring the contents of the register
+from memory.
+<h4>
+MIPS support for push and pop
+</h4>
+   Some ISAs have an explicit <b>push</b> and <b>pop</b> instruction.
+However, MIPS does not.  However, you can get the same behavior as
+<b>push</b> and <b>pop</b> by manipulating the stack pointer directly.
+<p>
+   The stack pointer, by convention, is $r29.  That is, it's
+register 29.  We say, "by convention",  because MIPS ISA does
+not force you to use register 29.  However, because it's a convention,
+you should follow it, if you expect your code to work with
+other pieces of code.
+</p><p>
+   Here's how to implement the equivalent of <b>push $r2</b> in MIPS,
+which is to push register <b>$r2</b> onto the stack.
+<b>
+<font size="+1">
+<pre>push:  addi $sp, $sp, -4  <font color="red"># Decrement stack pointer by 4</font>
+       sw   $r3, 0($sp)   <font color="red"># Save $r3 to stack</font>
+</pre>
+</font>
+</b>
+   The label "push" is unnecessary.  It's there just to make it
+easier to tell it's a push.  The code would work just fine without
+this label.
+</p><p>
+   Here's a diagram of a push operation.
+</p><p>
+</p><center>
+<img src=".stack_files/stack2.png">
+</center>
+<p>
+   The diagram on the left shows the stack before the push operation.
+</p><p>
+   The diagram in the center shows the stack pointer being
+decremented by 4.
+</p><p>
+   The diagram on the right shows the stack after the 4 bytes
+from register 3 has been copied to address <b>0x000f fffc</b>
+</p><p>
+   You might wonder why it's necessary to update the stack pointer.
+Couldn't you just do the following?
+<b>
+<font size="+1">
+<pre>push:  sw $r3, -4($sp)   <font color="red"># Copy $r3 to stack</font>
+</pre>
+</font>
+</b>
+   Certainly, this is equivalent in behavior as far as register 3
+being saved to the stack.
+</p><p>
+   However, we'd like to maintain the invariant that all addresses
+greater than or equal to the stack pointer hold valid data, and all the  
+addresses less than the stack pointer hold invalid data.  If we
+ran the above code, then there would be valid data at an address
+smaller than the stack pointer. 
+</p><p>
+   It just makes bookkeeping that much easier if we follow these
+conventions.
+</p><h4>
+Popping off the stack
+</h4>
+   Popping off the stack is the opposite of pushing on the stack.
+First, you copy the data from the stack to the register, then
+you adjust the stack pointer.
+<p>
+<b>
+<font size="+1">
+<pre>pop:  lw   $r3, 0($sp)   <font color="red"># Copy from stack to $r3</font>
+      addi $sp, $sp, 4   <font color="red"># Increment stack pointer by 4</font>
+</pre>
+</font>
+</b>
+</p><p>
+   Here's a diagram of the pop operation.
+</p><p>
+</p><center>
+<img src=".stack_files/stack3.png">
+</center>
+<p>
+   The diagram on the left is the initial state of the stack.
+</p><p>
+   The data is copied from the stack to the register 3.  Thus,
+the diagram in the center is the same as the one on the left.
+If I had drawn a picture of the contents of register 3, it would
+have been updated with the data from the stack.
+</p><p>
+   Then, the stack pointer is moved down (shown in the diagram
+on the right).
+</p><p>
+   As you can see, the data still is on the stack, but once the
+pop operation is completed, we consider that part of the data
+invalid.  Thus, the next push operation overwrites this data.
+But that's OK, because we assume that after a pop operation,
+the data that's popped off is considered garbage.
+</p><p>
+   If you've ever made the error of returning a pointer to a
+local variable or to a parameter that was passed by value
+and wondered why the value stayed valid initially, but later
+on got corrupted, you should now know the reason.   
+</p><p>
+   The data still stays on the garbage part of the stack
+until the next push operation overwrites it (that's when
+the data gets corrupted).
+</p><h3>
+Pushing and Popping, Part 2
+</h3>
+   It turns out you don't have to adjust the stack pointer
+each time you want to save a register to the stack.  If you
+know you are going to push several registers to the stack,
+you can adjust the stack pointer at once.
+<p>
+   For example, suppose you want to push registers $r2, $r3, and
+$r2 on the stack.  This is code to do that:
+<b>
+<font size="+1">
+<pre>push:  addi $sp, $sp, -12  <font color="red"># Decrement stack pointer by 12</font>
+       sw   $r2, 0($sp)   <font color="red"># Save $r2 to stack</font>
+       sw   $r3, 4($sp)   <font color="red"># Save $r3 to stack</font>
+       sw   $r4, 8($sp)   <font color="red"># Save $r4 to stack</font>
+</pre>
+</font>
+</b>
+   Since each register takes up 4 bytes and since each memory address
+stores 1 byte, we need to decrement the value of the stack pointer
+by 12 to give us the space to store 3 registers.
+</p><p>
+   At this point, we can copy the contents of registers 2, 3, and 4
+to the stack.  It's somewhat arbitrary which order we put the registers
+on the stack.  In the code above, register 2 is on the very top of
+the stack.  We could just have easily put register 3 or 4 on the top
+of the stack.  The way shown above just seems more "orderly".
+</p><p>
+   Popping is very similar.
+<b>
+<font size="+1">
+<pre>pop:  sw   $r2, 0($sp)   <font color="red"># Copy from stack to $r2</font>
+      sw   $r3, 4($sp)   <font color="red"># Copy from stack to $r3</font>
+      sw   $r4, 8($sp)   <font color="red"># Copy from stack to $r4</font>
+      addi $sp, $sp, 12  <font color="red"># Increment stack pointer by 12</font>
+</pre>
+</font>
+</b>
+</p><h3>
+Stacks and Functions
+</h3>
+   Let's now see how the stack is used to implement functions.  
+For each function call, there's a section of the stack reserved
+for the function.   This is usually called a <i>stack frame</i>.
+<p>
+   Let's imagine we're starting in <b>main()</b> in a C program.
+The stack looks something like this:
+</p><p>
+</p><center>
+<img src=".stack_files/mstack1.png">
+</center>
+<p>
+   We'll call this the <i>stack frame</i> for <b>main()</b>.  It
+is also called the <i>activation record</i>.   A stack frame
+exists whenever a function has started, but yet to complete.
+</p><p>
+   Suppose, inside of body of <b>main()</b> there's a call to
+<b>foo()</b>.  Suppose <b>foo()</b> takes two arguments.  One way to
+pass the arguments to <b>foo()</b> is through the stack.  Thus, there
+needs to be assembly language code in <b>main()</b> to "push"
+arguments for <b>foo()</b> onto the the stack.  The result looks like:
+</p><p>
+</p><center>
+<img src=".stack_files/mstack2.png">
+</center>
+<p>
+   As you can see, by placing the arguments on the stack, the stack
+frame for <b>main()</b> has increased in size.  We also reserved
+some space for the return value.  The return value is computed
+by <b>foo()</b>, so it will be filled out once <b>foo()</b> is
+done.
+</p><p>
+   Once we get into code for <b>foo()</b>, the function <b>foo()</b>
+may need local variables, so <b>foo()</b> needs to push some space
+on the stack, which looks like:
+</p><p>
+</p><center>
+<img src=".stack_files/mstack3.png">
+</center>
+<p>
+   <b>foo()</b> can access the arguments passed to it from
+<b>main()</b> because the code in <b>main()</b> places the arguments
+just as <b>foo()</b> expects it.
+</p><p> 
+    We've added a new pointer called <b>FP</b> which stands for 
+<i>frame pointer</i>.  The frame pointer points to the location where
+the stack pointer <i>was</i>, just before <b>foo()</b> moved the stack
+pointer for <b>foo()</b>'s own local variables.
+</p><p>
+    Having a frame pointer is convenient when a function is likely
+to move the stack pointer several times throughout the course
+of running the function.  The idea is to keep the frame pointer
+fixed for the duration of <b>foo()</b>'s stack frame.  The
+stack pointer, in the meanwhile, can change values.
+</p><p>
+   Thus, we can use the frame pointer to compute the locations in
+memory for both arguments as well as local variables.  Since it doesn't
+move, the computations for those locations should be some fixed offset
+from the frame pointer.
+</p><p>
+   And, once it's time to exit <b>foo()</b>, you just have to set the
+stack pointer to where the frame pointer is, which effectively pops
+off <b>foo()</b>'s stack frame.  It's quite handy to have a frame
+pointer.
+</p><p>
+   We can imagine the stack growing if <b>foo()</b> calls another
+function, say, <b>bar()</b>. <b>foo()</b> would push arguments on the
+stack just as <b>main()</b> pushed arguments on the stack for
+<b>foo()</b>.
+</p><p>
+    So when we exit <b>foo()</b> the stack looks just as it did
+before we pushed on <b>foo()</b>'s stack frame, except this time
+the return value has been filled in. 
+</p><p>
+</p><center>
+<img src=".stack_files/mstack2.png">
+</center>
+<p>
+   Once <b>main()</b> has the return value, it can pop that and the
+arguments to <b>foo()</b> off the stack.
+</p><p>
+</p><center>
+<img src=".stack_files/mstack1.png">
+</center>
+<h4>
+Recursive Functions
+</h4>
+   Surprisingly enough, there's very little to say about
+recursive functions, because it behaves just as non-recursive
+functions do.  To call a recursive function, push arguments
+and a return value on the stack, and call it like any other
+function.
+<p>
+   It returns back the same way as well.
+</p><h3>
+Stack Overflow
+</h3>
+   While stacks are generally large, they don't occupy all of
+memory.  It is possible to run out of stack space.
+<p>
+   For example, consider the code we had for <b>factorial</b>.
+<font size="+1">
+<pre>  int fact( int n ) {
+     if ( n == 0 )
+        return 1 ;
+     else
+        return fact( n - 1 ) * n ;
+   }
+</pre>
+</font>
+    Suppose <b>fact(-1)</b> is called.  Then, the base case
+is never reached (well, it might be reached once we decrement
+so far that <b>n</b> wraps around to 0 again).  This causes
+one stack frame after another to be pushed.  Once the stack
+limit has been reached, we enter into invalid memory addresses,
+and the operating system takes over and kills your programming,
+telling you your program has a stack overflow.
+</p><p>
+   Probably the most common cause of stack overflow is a recursive
+function that doesn't hit the base case soon enough.  For fans of
+recursion, this can be a problem, so just keep that in mind.
+</p><p>
+   Some languages (say, ML) can convert certain kinds of
+recursive functions (called "tail-recursive" functions) into
+loops, so that only a constant amount of space is used.
+</p><h3>
+How MIPS Does It
+</h3>
+    In the previous discussion of function calls, we said that
+arguments are pushed on the stack and space for the return
+value is also pushed.
+<p>
+    This is how CPUs used to do it.  With the RISC revolution (admittedly,
+nearly 20 years old now) and large numbers of registers used in typical
+RISC machines, the goal is to (try and) avoid using the stack.
+</p><p>
+   Why?  The stack is in physical memory, which is RAM.   Compared
+to accessing registers, accessing memory is much slower---probably on
+the order of 100 to 500 times as slow to access RAM than to access
+a register.
+</p><p>
+   MIPS has many registers, so it does the following:
+</p><ul type="disc">
+  <li> There are four registers used to pass arguments: <b>$a0</b>,
+<b>$a1</b>, <b>$a2</b>, <b>$a3</b>.
+
+  </li><li> If a function has more than four arguments, or if any of
+the arguments is a large structure that's passed by value, then 
+the stack is used.
+
+  </li><li> There must be a set procedure for passing arguments that's
+known to everyone based on the types of the functions.  That way,
+the caller of the function knows how to pass the arguments, and
+the function being called knows how to access them.  Clearly,
+if this protocol is not established and followed, the function
+being called would not get its arguments properly, and would likely
+compute bogus values or, worse, crash.
+
+  </li><li> The return value is placed in registers <b>$v0</b>, and
+if necessary, in <b>$v1</b>.
+</li></ul>
+<p>
+   In general, this makes calling functions a little easier. In
+particular, the calling function usually does not need to place anything
+on the stack for the function being called.
+</p><p>
+   However, this is clearly not a panacea.  In particular, imagine
+<b>main()</b> calls <b>foo()</b>.   Arguments are passed using
+<b>$a0</b> and <b>$a1</b>, say.
+</p><p>
+   What happens when <b>foo()</b> calls <b>bar()</b>?  If <b>foo()</b>
+has to pass arguments too, then by convention, it's supposed to pass
+them using <b>$a0</b> and <b>$a1</b>, etc.  What if <b>foo()</b> needs
+the argument values from <b>main()</b> afterwards?   
+</p><p>
+   To prevent its own arguments from getting overwritten, <b>foo()</b>
+needs to save the arguments to the stack.
+</p><p>
+   Thus, we don't entirely avoid using the stack.  
+</p><h3>
+Leaf Procedures
+</h3>
+   In general, using registers to pass arguments and for return values
+doesn't prevent the use of the stack.   Thus, it almost seems like
+we postpone the inevitable use of the stack.  Why bother using
+registers for return values and arguments?
+<p>
+   Eventually, we have to run code from a leaf procedure.  This
+is a function that does not make any calls to any other functions.
+Clearly, if there were no leaf procedures, we wouldn't exit the
+program, at least, not in the usual way.  (If this isn't obvious
+to you, try to think about why there must be leaf procedures).
+</p><p>
+   In a leaf procedure, there are no calls to other functions,
+so there's no need to save arguments on the stack.  There's
+also no need to save return values on the stack.   You just
+use the argument values from the registers, and place the return
+value in the return value registers.
+</p><h3>
+Stackless Languages?
+</h3>
+   Is the stack absolutely necessary?  FORTRAN 77 (77 refers to the
+year 1977) did not use a stack.  Basically, each function had a
+section of memory for its own arguments and data.  Because there were
+no stacks, you couldn't write recursive functions in FORTRAN 77.
+However, it goes to show you that a stack isn't always needed.
+<p>
+   There's also a complicated language feature called <i>continuations</i>
+(which appear in languages like <b>Scheme</b>).  <i>Continuations</i>
+can be coded in a way that doesn't require a stack, and in effect,
+acts like a queue.
+</p><p>
+    Nevertheless, the vast majority of languages that implement
+functions use the stack.
+</p><h3>
+Heaps?
+</h3>
+   What about heaps?  The heap is a section of memory used for
+dynamic memory allocation.  Heaps are more difficult to implement.
+Typically, you need some code that manages the heap.  You request
+memory from the heap, and the heap code must have data structures
+to keep track of which memory has been allocated.
+<p>
+   The code can be written in, say, C in a few hundred lines of
+code, but is rather unwieldy to write in assembly language.
+</p><p>
+   Notice that the heap in memory is not the same as the heap data
+structure.  Those two are different kinds of heaps, and aren't really
+related.
+</p><h3>
+Summary
+</h3>
+   To understand how functions work, you need to understand the
+behavior of the stack.
+<p>
+   We've discussed how arguments and return values are used in the
+stack, and how each function call results in a stack frame being
+pushed on the stack.   We've also talked about how a stack
+can overflow, typically, from a recursive function that's either
+got a bad base case or unexpected arguments.  Occasionally,
+stack overflow can just occur because the stack just grows too big.
+</p></body></html>

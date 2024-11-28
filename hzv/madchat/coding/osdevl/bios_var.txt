@@ -1,0 +1,253 @@
+Les variables du BIOS
+
+
+Qu'est-ce que le BIOS?  
+
+Il s'agit d'un programme assurant le bon fonctionnement de votre ordinateur: tout
+comme le système d'exploitation (DOS, Windows 95, OS/2, ...). Son but est de
+permettre à votre machine de fonctionner. 
+
+En fait, votre système d'exploitation englobe le BIOS (Basic Input-Output
+System), c'est-à-dire que d'un point de vue strictement hiérarchique, le BIOS est
+plus proche du matériel que ne l'est le système d'exploitation; lequel se base sur
+des fonctions du BIOS pour pouvoir fonctionner.
+
+A la différence du système d'exploitation qui est stocké sur votre disque dur, le
+BIOS l'est dans la ROM de votre ordinateur ce qui revient à dire qu'il est déjà
+présent lors de l'achat de votre ordinateur et qu'il est sauvé soit sur les cartes
+d'extension, soit sur une petite puce alimentée par une pile.
+
+Mais bon, le but de cette page est tout de même de vous permettre de tirer parti
+des variables gérées par ce BIOS.
+
+
+Que sont les variables du BIOS?
+
+Le BIOS, tout comme n'importe quel programme informatique, a besoin de
+variables afin de pouvoir travailler.  Ces variables sont présentes dès l'instant où
+vous allumez votre ordinateur et sont mises à jour selon certaines conditions. 
+
+Par exemple, à chaque fois que vous tapez une touche au clavier, la valeur de
+cette touche est stockée dans une variable du BIOS avant d'être prise en compte
+par le système d'exploitation qui permet alors à votre programme d'en prendre
+connaissance.  Si comme moi, vous êtes capable de dactylographier assez vite à
+dix doigts, vous savez pertinemment bien que si vous avez une cadence très
+haute, l'ordinateur rouspète en émettant un petit beep signalant que vous tapez
+bien trop vite pour lui.  Ce petit beep est émis par le BIOS qui signale que sa zone
+tampon où il stocke tous les caractères saisis est pleine. Il en résulte que le BIOS
+possède un buffer (sous forme de tableau cyclique) où il va stocker les caractères
+saisis.
+
+De la même manière, le BIOS connait l'adresse des interfaces série/parallèle,
+votre configuration matérielle, le mode graphique courant, le nombre de colonnes
+à l'écran, la taille en octets d'une page écran, ... et plein d'autres choses fort
+intéressantes.
+
+
+Le problème pour vous est celui-ci: comment puis-je accèder à ces données? 
+
+De manière fort simple!
+
+Le BIOS possède un data segment (une zone où il stocke ses données) qui est
+immobile: à chaque fois que vous allumez votre ordinateur, l'emplacement
+mémoire des variables du BIOS est toujours le même. Il vous suffit alors de
+connaître l'adresse d'une variable du BIOS pour pouvoir l'utiliser dans votre
+programmation.
+
+
+Ci-dessous vous pourrez trouver une liste non-exhaustive de ces variables (pour
+de plus amples informations, je vous conseille la lecture du 'Ralf Brown's
+Interrupt List' disponible un peu partout).
+
+
+Adresse     Type     Description 
+
+0040:0000   4 Mots   Adresses des interfaces série
+
+0040:0008   4 Mots   Adresses des interfaces parallèles
+
+0040:0010   1 Mot    Configuration du système
+
+0040:0012   1 Octet  Etat POST numéro 1
+
+0040:0013   1 Mot    Taille de la RAM (uniquement la RAM conventionnelle)
+
+0040:0015   1 Mot    Etat POST numéro 2
+
+0040:0017   1 Octet  Etat clavier numéro 1
+
+0040:0018   1 Octet  Etat clavier étendu
+
+0040:0019   1 Octet  Saisie du code ASCII sur le pavé numérique
+
+0040:001A   1 Mot    Caractère suivant dans le tampon du clavier
+
+0040:001C   1 Mot    Dernier caractère dans le tampon du clavier
+
+0040:001E  16 Mots   Tampon du clavier (circulaire)
+
+0040:003E   1 Octet  Recalibrage des lecteurs de disquettes
+
+0040:003F   1 Octet  Etat du moteur d'un lecteur de disquettes
+
+0040:0040   1 Octet  Chronomètre, lecteurs de disquettes
+
+0040:0041   1 Octet  Etat des disquettes
+
+0040:0042   7 Octets Etat du contrôleur de disquettes
+
+0040:0049   1 Octet  Mode graphique courant
+
+0040:004A   1 Mot    Nombre des colonnes de l'écran
+
+0040:004C   1 Mot    Taille en octets de la page écran
+
+0040:004E   1 Mot    Adresse de la page écran affichée
+
+0040:0050   8 Mots   Position du curseur dans les huits pages d'écran
+
+0040:0060   1 Octet  Première ligne du curseur de l'écran
+
+0040:0061   1 Octet  Dernière ligne du curseur de l'écran
+
+0040:0062   1 Octet  Numéro de la page écran affichée
+
+0040:0063   1 Mot    Adresse du port du contrôleur graphique
+
+0040:0065   1 Octet  Contenu du registre de sélection de mode
+
+0040:0066   1 Octet  Contenu du registre de palette
+
+0040:0067   5 Octets Plus utilisés : magnétophone à cassette
+
+0040:006C   1 DMot   Chronomètre
+
+0040:0070   1 Octet  Flag des 24 heures
+
+0040:0071   1 Octet  Flag Control Break
+
+0040:0072   1 Mot    Test POST
+
+0040:0074*  1 Octet  Etat de la dernière opération sur disque dur
+
+0040:0075*  1 Octet  Nombre de disques durs
+
+0040:0076*  1 Octet  Octet de contrôle de disque dur
+
+0040:0077*  1 Octet  Port de disque dur
+
+0040:0078   4 Octets Compteur de time out, interface parallèle
+
+0040:007C   4 Octets Compteur de time out, interface série
+
+0040:0080*  1 Mot    Adresse du tampon clavier
+
+0040:0082*  1 Mot    Fin du tampon de clavier
+
+0040:0084+  1 Mot    Nombre de lignes écran
+
+0040:0085+  1 Mot    Hauteur des caractères en points
+
+0040:0087+  4 Octets Zone d'état EGVA/VGA
+
+0040:008B- 11 Octets Paramètres des disquettes et disques durs PS/2
+
+0040:0096*  1 Octet  Etat clavier étendu
+
+0040:0097*  1 Octet  Etat des LED
+
+0040:0098*  1 DMot   Pointeur sur le flag "Wait"
+
+0040:009C*  1 DMot   Chronomètre
+
+0040:00A0*  1 Octet  Etat d'attente
+
+0040:00A1* 95 Octets Réservés
+
+0040:0100   1 Octet  Flag de récursion de copie d'écran
+
+
+* = AT seulement
+
++ = EGA/VGA uniquement
+
+- = PS/2 seulement
+
+
+Accès à ces variables. Ex: en Turbo Pascal
+
+En Turbo Pascal, il existe trois méthodes afin de pouvoir travailler avec ces
+variables: l'usage des variables déclarées ABSOLUTE, l'usage des pointeurs et
+l'usage du mot clef MEM (et apparentés).
+
+
+Les variables ABSOLUTE
+
+Dans la liste ci-dessus, on peut voir que le mode graphique courant est stocké à
+l'adresse 0040:0049 et prend un octet de longueur (un byte). Si l'on sait cela, on
+pourrait déclarer dans la section Var d'un programme pascal la ligne suivante:
+
+Var
+   wCurrentMode : Byte ABSOLUTE $0040:$0049;
+
+Cette déclaration quelque peu étrange a pour effet de déclarer une variable de
+type byte (un octet de longueur, exactement ce qu'il me fallait) et de forcer son
+adresse mémoire.  Et c'est exactement ici que le mot clef ABSOLUTE est
+particulièrement intéressant: si on avait omis ce mot clef et l'adresse qui suit,
+Pascal aurait créé une nouvelle variable wCurrentMode n'importe où en mémoire
+(dans votre segment de données), où il peut le faire; il va donc prendre un
+emplacement mémoire qui était libre.  Ce n'est pas ce que nous voulons puisque
+nous désirons qu'il prenne la place de la variable du BIOS qui est en 0040:0049.
+Voila pourquoi l'on utilise ce mot clef.
+
+Cette variable va donc être créée sur l'emplacement de la variable du BIOS ce qui
+aura pour effet qu'elle sera initialisée automatiquement par celui-ci.  Dans notre
+exemple qui était de prendre connaissance du mode graphique courant, notre
+variable, dès sa déclaration, contiendra la valeur décimale du mode graphique actif
+et ceci, sans que nous ayions quoi que ce soit à faire! De plus, dès l'instant où ce
+mode graphique sera modifié, le contenu de notre variable sera automatiquement
+mis à jour par le BIOS. Nous n'avons donc qu'à déclarer une variable de type
+ABSOLUTE pour pouvoir utiliser la variable du BIOS et profiter du travail de
+celui-ci sans aucune fatigue de notre part.
+
+
+L'usage des pointeurs
+
+Les pointeurs sont des variables qui ont une adresse mémoire qu'il nous est
+loisible de modifier.
+
+Var
+   pCurrentMode : Pointer;
+
+La déclaration ci-dessus crée une variable pCurrentMode qui est de type pointeur
+et avec laquelle, il nous est, pour l'heure, impossible de travailler. En effet cette
+variable nécessite qu'on lui spécifie sur quelle adresse mémoire elle doit travailler.
+Cette déclaration peut se faire tout simplement par l'allocation de mémoire au
+pointeur (dans ce cas on ne se soucie pas de l'adresse mémoire de la variable et
+on laisse faire le système d'exploitation); soit on utilise la fonction Ptr.
+
+  pCurrentMode := Ptr ($0040, $0049);
+
+Notre variable maintenant sait qu'elle doit aller se loger en adresse 0040:0049;
+c'est-à-dire à l'emplacement de la variable BIOS qui nous intéresse.
+
+Vous désirez connaître quel est le mode vidéo actuel? Simple! Ecrivez la ligne
+suivante dans votre code:
+
+   Writeln (Byte(pCurrentMode^));
+
+(Ici, nous devons dire que nous désirons prendre connaissance du contenu de la
+mémoire pointée par notre variable comme s'il s'agissait d'une variable de type
+Byte.  Cela se fait par le casting.)
+
+
+L'usage de MEM, MEMW
+
+Cette approche est un peu différente des deux autres puisqu'elle ne fait pas appel
+à des variables.
+
+   Writeln (Byte(Mem[$0040:$0049]));
+
+La ligne ci-dessus demande l'affichage de la valeur sous forme d'octet du contenu
+de l'emplacement mémoire 0040:0049; l'adresse de la variable BIOS contenant le
+mode graphique courant.

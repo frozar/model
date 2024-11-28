@@ -1,0 +1,116 @@
+OverPeer:65.174.255.255
+OverPeer:65.160.0.0-65.160.127.255
+Ranger:216.122.0.0-216.122.255.255
+Ranger:204.92.244.0-204.92.244.255
+MediaForce:65.192.0.0-65.192.0.255
+MediaForce:65.223.0.0-65.223.255.255
+MediaForce:4.43.96.0-4.43.96.255
+MediaDefender:66.79.0.0-66.79.255.255
+MediaDefender:64.225.202.0/25
+RIAA:208.192.0.0-208.255.255.255
+RIAA:208.225.90.0-208.225.90.255
+RIAA:12.150.191.0-12.150.191.255
+MPAA:63.199.57.96-63.199.57.128
+MPAA:64.166.187.128-64.166.187.192
+MPAA:198.70.114.0-198.70.114.255
+MPAA:209.67.0.0-209.67.255.255
+NetPD:207.155.128.0-207.155.255.255
+NetPD:128.241.0.0-128.241.255.255
+UnknownC&DCop:64.106.170.128-64.106.170.192
+BayTSP:209.204.128.0-209.204.191.255
+Vidius:207.155.128.0-207.155.255.255
+Xupiter.com:63.236.32.50
+
+
+---
+
+
+#rc.firewall - iptables GNU/Linux kernel 2.4.*
+
+# flusher les regles precedentes (ne pas ajouter ca sur un firewall existant)
+iptables -F
+
+# creer une simple table droplog (DROP+LOG tentatives dans /var/log/messages)
+iptables -N droplog
+iptables -A droplog -j LOG --log-level info --log-prefix droplog 
+iptables -A droplog -j DROP 
+
+
+##### Xupiter.com:
+# 63.236.32.50
+iptables -A INPUT -p ALL -s 63.236.32.50 -j droplog
+# Internext Media         Xupiter.com
+iptables -A INPUT -p ALL -s 63.236.32.0/26 -j droplog  
+
+##### OverPeer:
+# 65.174.0.0 - 255.255
+iptables -A INPUT -p ALL -s 65.174.0.0/16 -j droplog
+# 65.160.0.0 - 65.160.127.255
+iptables -A INPUT -p ALL -s 65.160.0.0/17 -j droplog
+
+##### Ranger:
+# 216.122.0.0 - 216.122.255.255
+iptables -A INPUT -p ALL -s 216.122.0.0/16 -j droplog
+# 204.92.244.0 - 204.92.244.255
+iptables -A INPUT -p ALL -s 204.92.244.0/24 -j droplog
+
+##### MediaForce:
+# 65.192.0.0 - 65.192.0.255
+iptables -A INPUT -p ALL -s 65.192.0.0/24 -j droplog
+# 65.223.0.0 - 65.223.255.255
+iptables -A INPUT -p ALL -s 65.223.0.0/16 -j droplog
+# 4.43.96.0 - 4.43.96.255
+iptables -A INPUT -p ALL -s 4.43.96.0/24 -j droplog
+
+##### Mebtel Communications, MediaDefender:
+# 66.79.0.0 - 66.79.95.255
+iptables -A INPUT -p ALL -s 66.79.0.0/17 -j droplog
+# 64.225.202.0/25 Northwest Link, MediaDefender
+iptables -A INPUT -p ALL -s 64.225.202.0/25 -j droplog
+
+##### RIAA:
+# 208.192.0.0 - 208.255.255.255
+iptables -A INPUT -p ALL -s 208.192.0.0/10 -j droplog
+# 12.150.191.0 - 12.150.191.255
+iptables -A INPUT -p ALL -s 12.150.191.0/24 -j droplog
+
+##### MPAA:
+# 63.199.57.96 - 63.199.57.128
+iptables -A INPUT -p ALL -s 63.199.57.96/24 -j droplog
+# 64.166.187.128 - 64.166.187.192
+iptables -A INPUT -p ALL -s 64.166.187.128/26 -j droplog
+# 198.70.114.0 - 198.70.114.255
+iptables -A INPUT -p ALL -s 198.70.114.0/24 -j droplog
+# 209.67.0.0 - 209.67.255.255
+iptables -A INPUT -p ALL -s 209.67.0.0/16 -j droplog
+
+##### NetPD:
+# 207.155.128.0 - 207.155.255.255
+iptables -A INPUT -p ALL -s 207.155.128.0/17 -j droplog
+# 128.241.0.0 - 128.241.255.255
+iptables -A INPUT -p ALL -s 128.241.0.0/16 -j droplog
+
+##### UnknownC&DCop Warner:
+# 64.106.170.128 - 64.106.170.192
+iptables -A INPUT -p ALL -s 64.106.170.128/25 -j droplog
+
+##### BayTSP:
+# 209.204.128.0 - 209.204.191.255
+iptables -A INPUT -p ALL -s 209.204.128.0/18 -j droplog
+
+##### Vidius:
+# 207.155.128.0 - 207.155.255.255
+iptables -A INPUT -p ALL -s 207.155.128.0/17 -j droplog
+
+# Gator.com               GAIN (spyware)  correct registration
+iptables -A INPUT -p ALL -s 64.94.89.0/24 -j droplog
+# Cable & Wireless        GAINCME (spyware)
+iptables -A INPUT -p ALL -s 66.35.247.0/24 -j droplog  
+# Cable & Wireless        GAINCME (spyware)
+iptables -A INPUT -p ALL -s 66.35.229.0/24 -j droplog  
+# Cyveillance            Cyveillance correct registration
+iptables -A INPUT -p ALL -s 63.148.99.224/27 -j droplog 
+# CYVEILLANCE            Cyveillance correct registration
+iptables -A INPUT -p ALL -s 65.118.41.192/27 -j droplog 
+# NameProtect           NameProtect (spider domain is: crawler918.com)
+iptables -A INPUT -p ALL -s 12.148.209.192/26 -j droplog 

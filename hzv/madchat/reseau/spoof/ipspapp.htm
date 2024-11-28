@@ -1,0 +1,873 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!-- saved from url=(0065)http://projet7.tuxfamily.org/factory/articles/ipsapp/ipspapp.html -->
+<HTML><HEAD><TITLE>Ip Spoofing Appliqué By truff (truff@projet7.org)</TITLE>
+<META http-equiv=Content-Type content="text/html; charset=iso-8859-1">
+<META content="MSHTML 5.50.4522.1800" name=GENERATOR></HEAD>
+<BODY vLink=#551a8b aLink=#0000ee link=#0000ee bgColor=#ffffff><B><FONT 
+face=Arial,Helvetica><FONT size=+1>IP Spoofing Appliqué</FONT></FONT></B> 
+<BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+truff@projet7.org&nbsp; (01/2002)</FONT> 
+<P><FONT 
+face=Arial,Helvetica>--------------------------------------------------------------------</FONT> 
+<BR><FONT 
+face=Arial,Helvetica>--------------------------------------------------------------------</FONT> 
+<BR><FONT face=Arial,Helvetica>1.0. Introduction</FONT> 
+<P><FONT face=Arial,Helvetica>2.0. Etude de faisabilité.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; 2.1. Génération d'ISN de différents 
+systèmes d'exploitation.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2.1.1. 
+Développement du programme Analysor.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2.1.2. 
+Acquisition des données.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; 2.2. Analyse des données.</FONT> 
+<BR><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2.2.1. 
+Graphiques.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2.2.2. 
+Régressions linéaires.</FONT> 
+<P><FONT face=Arial,Helvetica>3.0. Description de l'attaque.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; 3.1. Premier type d'attaque: prédiction 
+par régression linéaire.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3.1.1. Tests 
+contre Windows 98.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3.1.2. 
+Résultats, remarques.</FONT> <BR><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; 
+3.2. Attaque plus évoluée: méthode statistique d'étude des générateurs 
+aléatoires.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3.2.1. Spacial 
+Phase Analysis.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3.2.2. 
+Dévellopement de l'utilitaire Blindy.</FONT> 
+<P><FONT face=Arial,Helvetica>4.0. Modification du générateur de nombre pseudo 
+aléatoires du noyeau Linux.</FONT> 
+<P><FONT face=Arial,Helvetica>5.0. Bibliographie.</FONT> 
+<P><FONT face=Arial,Helvetica>6.0. Remerciements.</FONT> <BR><FONT 
+face=Arial,Helvetica>--------------------------------------------------------------------</FONT> 
+<BR><FONT 
+face=Arial,Helvetica>--------------------------------------------------------------------</FONT> 
+<BR>&nbsp; <BR>&nbsp; <BR>&nbsp; 
+<P><U><FONT face=Arial,Helvetica><FONT size=+1>1.0. 
+Introduction.</FONT></FONT></U> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; L'Ip spoofing est une attaque 
+bien connue dans son principe de nos jours, c'est pourquoi je ne reviendrai pas 
+sur une explication qui a déja été faite de nombreuses fois. Je m'atarderai ici 
+dans une explication plus applicative en m'appuyant sur mes recherches 
+personnelles dans ce domaine.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; La première partie de cette attaque 
+consiste en une étude de la génération des ISN de différents systèmes 
+d'exploitations. Dans un premier temps j'ai réalisé un utililitaire destiné à 
+étudier la génération d'ISN par différents systèmes d'exploitation. A partir des 
+résultats obtenus j'ai pu juger de la difficulté de l'attaque suivant les 
+systèmes d'exploitation et ainsi pouvoir déterminer une méthode grossière de 
+prédiction des ISNs qui m'a permis de réussir l'attaque sur des systèmes 
+d'exploitation de type Win98. Enfin, j'ai amélioré ce code en utilisant une 
+méthode mathématique beaucoups plus évoluée qui m'a permis d'attaquer d'autres 
+systèmes d'exploitation.</FONT> <BR>&nbsp; <BR>&nbsp; <BR>&nbsp; <BR>&nbsp; 
+<P><U><FONT face=Arial,Helvetica><FONT size=+1>2.0. Etude de 
+faisabilité.</FONT></FONT></U> <BR><FONT face=Arial,Helvetica><FONT 
+size=+1>&nbsp;&nbsp;&nbsp; <U>2.1. Génération d'ISN de différents systèmes 
+d'exploitation.</U></FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+size=+1>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <U>2.1.1. Développement du 
+programme Analysor.</U></FONT></FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; A l'époque de la parution de 
+l'article "IP Spoofing Demystified" [1] les générateurs d'ISN des systèmes 
+d'exploitaion étaient dépendants de seulement deux variables qui sont le temps 
+et le nombre de connexion. Ceci permettait de prévoir trés facilement par un 
+simple calcul mathématique la valeur d'un ISN à partir de celle d'un ISN 
+précédemment acquis. L'ISN augmentait de 128000 chaque seconde et de 64000 à 
+chaque nouvelle connexion. En réalisant l'attaque rapidement on pouvait 
+considérer qu'aucune connexion ne serai établie et cela rendait donc la 
+prédiction d'ISN assez triviale.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Une première phase d'étude consistait 
+donc a étudier la génération d'ISN de plusieurs systèmes d'exploitation de 
+manière à établir des corrélation entre le temps et l'évolution des ISN. Pour 
+cela j'ai dévellopé un utilitaire nommé Analysor [2] dont un des modes de 
+fonctionnement permet de créer des listes de valeurs d'ISNs en fonction du 
+temps.</FONT> <BR>&nbsp; <BR>&nbsp; 
+<CENTER>
+<TABLE cellSpacing=0 cols=1 width="95%" bgColor=#000000 border=1 NOSAVE>
+  <TBODY>
+  <TR NOSAVE>
+    <TD bgColor=#666600 NOSAVE><B><FONT face=Arial,Helvetica><FONT 
+      color=#ffffff>Terminal</FONT></FONT></B></TD></TR>
+  <TR NOSAVE>
+    <TD NOSAVE><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc><B>root@Accelerator:~# </B>analysor -h</FONT></FONT> 
+      <BR><FONT face=Arial,Helvetica><FONT color=#cccccc>Syntaxe : ./analysor 
+      [option]</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>Options :</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>-h&nbsp; Afficher l'aide</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>-i&nbsp;&nbsp; Interface reseau 
+      de reception</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>-n&nbsp; Nombre de paquets a envoyer</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>-s&nbsp; Votre adresse 
+      IP</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>-d&nbsp; Adresse Ip de destination</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>-p&nbsp; Port 
+      source</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>-q&nbsp; Port destination</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>-t&nbsp;&nbsp; Intervalle en 
+      microsecondes entre 2 SYN</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>-j&nbsp;&nbsp; Obtention de 2 
+      colonnes 
+      ISN=f(temps)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+      }</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>-k&nbsp; Obtention d'une colonne 
+      ISN&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+      &gt; Choisir j,k ou m separemment</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>-m&nbsp; Calcul d'une moyenne 
+      d'offset entre 2 SYN consecutifs }</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>-v&nbsp; Afficher les infos sur 
+      le programme</FONT></FONT> <BR><B><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>root@Accelerator:~#</FONT></FONT></B></TD></TR></TBODY></TABLE></CENTER>
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Dans l'état actuel Analysor 
+possède 3 modes de fonctionnement symbolisés par les options -j, -k et -m. La 
+première des options à avoir été implémentée est l'option -j qui permet 
+d'obtenir 2 colonnes de nombres qui représentent d'une part le temps écoulé 
+depuis le début de l'expérience, et d'autre part la valeur de l'ISN de la cible. 
+Ce formatage permet de tracer des graphiques a l'aide de l'utilitaire Gnuplot. 
+Le schéma de fonctionnement de l'option -j est le suivant:</FONT> 
+<P><FONT face=Arial,Helvetica>1/ Analysor:&nbsp;&nbsp;&nbsp; A------&gt;B</FONT> 
+<BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+Syn</FONT> 
+<P><FONT face=Arial,Helvetica>2/ Analysor:&nbsp;&nbsp;&nbsp; A&lt;------B</FONT> 
+<BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+Syn/Ack</FONT> 
+<P><FONT face=Arial,Helvetica>3/ 
+Kernel:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; A------&gt;B</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+Rst</FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Le fonctionnement est donc 
+assez simple: on envoie un Syn, le serveur nous Ack/Syn en nous donnant une 
+valeur d'ISN puis notre Kernel émet tout seul un Rst car il n'a pas été averti 
+de l'ouverture d'une connexion et il pense donc que ce Ack/Syn n'a pas à être 
+recu. Le fait que le Kernel envoye tout seul ce Rst est assez pratique car il 
+permet de fermer automatiquement la demande de connexion engendrée pas le Syn. 
+Si ce Rst ne partait pas, la connexion se retrouverai dans un état 
+'semi-établi', ce qui entrainerai en cas de nombreuses réitération du schéma 
+précedent une forte consommation des resources du côté de l'host B. Le phénomène 
+précédent est utilisé dans un des type d'attaque DoS nommé le Syn Flood. 
+Cependant l'effet recherché ici n'est pas le DoS et de plus mieux vaut rester 
+discret durant la phase d'étude.</FONT> <BR>&nbsp; <BR>&nbsp; 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <U><FONT 
+size=+1>2.1.2. Acquisition des données.</FONT></U></FONT> <BR>&nbsp; <BR>&nbsp; 
+<CENTER>
+<TABLE cellSpacing=0 cols=1 cellPadding=0 width="95%" border=1 NOSAVE>
+  <TBODY>
+  <TR NOSAVE>
+    <TD bgColor=#666600 NOSAVE><B><FONT face=Arial,Helvetica><FONT 
+      color=#ffffff>Terminal</FONT></FONT></B></TD></TR>
+  <TR NOSAVE>
+    <TD bgColor=#000000 NOSAVE><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc><B>root@Accelerator:~# </B>analysor -i eth0 -n 1000 -s 
+      192.168.0.2 -d 192.168.0.1 -p 1500 -q 21 -t 20000 -j &gt; 
+      linux.plt</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc><B>root@Accelerator:~# </B>analysor -i eth0 -n 1000 -s 
+      192.168.0.2 -d 192.168.0.1 -p 1500 -q 1600 -t 20000 -j &gt; 
+      win98.plt</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc><B>root@Accelerator:~# </B>analysor -i eth0 -n 1000 -s 
+      192.168.0.2 -d 192.168.0.1 -p 1500 -q 22 -t 20000 -j &gt; 
+      obsd2.9.plt</FONT></FONT> <BR><B><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>root@Accelerator:~#</FONT></FONT></B></TD></TR></TBODY></TABLE></CENTER>
+<P>&nbsp;&nbsp;&nbsp; <FONT face=Arial,Helvetica>J'ai testé Analysor sur les 
+différents systèmes d'exploitation que j'avais sous la main de manière à 
+déterminer le plus vulnérable à l'Ip Spoofing. Le test consiste en l'envoie de 
+1000 paquets à intervalles réguliers de 20000 µs. A l'aide de ces 1000 ISNs 
+récoltés pour chaque système d'exploitation il est possible de tracer des 
+graphiques donnant une allure générale de l'évolution des ISNs en fonction de 
+temps.</FONT> <BR><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; On redirige la 
+sortie standart d'Analysor afin de récupérer les infos dans des fichiers.</FONT> 
+<BR>&nbsp; <BR>&nbsp; 
+<P><FONT face=Arial,Helvetica><FONT size=+1>&nbsp;&nbsp;&nbsp; <U>2.2. Analyse 
+des données.</U></FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+size=+1>&nbsp;&nbsp;&nbsp;&nbsp; <U>2.2.1. Graphiques.</U></FONT></FONT> 
+<BR>&nbsp; <BR>&nbsp; <BR>&nbsp; 
+<CENTER>
+<TABLE cellSpacing=0 cols=1 cellPadding=0 width="95%" bgColor=#000000 border=1 
+NOSAVE>
+  <TBODY>
+  <TR NOSAVE>
+    <TD bgColor=#666600 NOSAVE><B><FONT face=Arial,Helvetica><FONT 
+      color=#ffffff><FONT size=+1>Terminal</FONT></FONT></FONT></B></TD></TR>
+  <TR NOSAVE>
+    <TD NOSAVE><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc><B>truff@Accelerator:~$ </B>gnuplot</FONT></FONT> 
+      <P><FONT face=Arial,Helvetica><FONT color=#cccccc>&nbsp;G N U P L O 
+      T</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>&nbsp;Linux version 3.7</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>&nbsp;patchlevel 1</FONT></FONT> 
+      <BR><FONT face=Arial,Helvetica><FONT color=#cccccc>&nbsp;last modified Fri 
+      Oct 22 18:00:00 BST 1999</FONT></FONT> 
+      <P><FONT face=Arial,Helvetica><FONT color=#cccccc>&nbsp;Copyright(C) 1986 
+      - 1993, 1998, 1999</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>&nbsp;Thomas Williams, Colin Kelley and many 
+      others</FONT></FONT> 
+      <P><FONT face=Arial,Helvetica><FONT color=#cccccc>&nbsp;Type `help` to 
+      access the on-line reference manual</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>&nbsp;The gnuplot FAQ is 
+      available from</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>&nbsp;&lt;http://www.ucc.ie/gnuplot/gnuplot-faq.html&gt;</FONT></FONT> 
+
+      <P><FONT face=Arial,Helvetica><FONT color=#cccccc>&nbsp;Send comments and 
+      requests for help to &lt;info-gnuplot@dartmouth.edu&gt;</FONT></FONT> 
+      <BR><FONT face=Arial,Helvetica><FONT color=#cccccc>&nbsp;Send bugs, 
+      suggestions and mods to &lt;bug-gnuplot@dartmouth.edu&gt;</FONT></FONT> 
+      <BR>&nbsp; 
+      <P><FONT face=Arial,Helvetica><FONT color=#cccccc>Terminal type set to 
+      'x11'</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc><B>gnuplot&gt;</B> plot 'obsd2.9.plt' with 
+      lines</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc><B>gnuplot&gt;</B> plot 'linux.plt' with lines</FONT></FONT> 
+      <BR><FONT face=Arial,Helvetica><FONT color=#cccccc><B>gnuplot&gt;</B> plot 
+      'win98.plt' with lines</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc><B>gnuplot&gt;</B> plot 'linux.plt'</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc><B>gnuplot&gt;</B> replot 
+      'obsd2.9.plt' with lines</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc><B>gnuplot&gt;</B> replot 
+      'win98.plt' with lines</FONT></FONT> <BR><B><FONT 
+      face=Arial,Helvetica><FONT 
+    color=#cccccc>gnuplot&gt;</FONT></FONT></B></P></TD></TR></TBODY></TABLE></CENTER>
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; A l'aide de l'utilitaire 
+Gnuplot il est possible de se donner une représentation plus explicite des 
+résultats obtenus à l'aide de Analysor. On trace tout d'abord des graphiques 
+distincts pour chaque système d'exploitation de manière à se donner une idée 
+générale de l'évolution des ISNs sur ces systèmes d'exploitation. Enfin, on 
+représente toutes les conbsp;&nbsp;&nbsp;&nbsp; = 2.05e+09</FONT> 
+<P><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+Cette valeur de l'amplitude représente la moitié de la plage dans laquelle peut 
+se situer un ISN. Le générateur aléatoire d'OpenBSD 2.9 utilise donc assez bien 
+les 32 bits attribués à un ISN.</FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - Les 
+ISNs sont stoqués sur 32 bits et sont des nombres non signés, un calcul rapide 
+nous donne la valeur maximale que peut avoir un ISN: 2^32 = 42949667296. OpenBSD 
+2.9 génère donc des valeurs d'ISN qui atteignent le maximum.</FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - On 
+vois que la valeur des ISNs passe d'une valeur minimale a une valeur maximale 
+très rapidement. L'évolution générale n'étant pas monotone cette dernière 
+remarque assure avec les deux précédentes une robustesse assez acrue pour le 
+générateur aléatoire d'OpenBSD 2.9.</FONT> <BR>&nbsp; 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; <U>Commetaire:</U></FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+OpenBSD 2.9 démontre ici toutes sa puissance dans le domaine de la sécurité. Ce 
+système puise sa robustesse à l'aide de l'audit du code source, mais aussi à 
+l'aide d'une très bonne gestion de la cryptographie [4]. Les algorithmes 
+cryptographiques nécessitent des nombres aléatoires, on ne s'étonne donc pas de 
+voir que le générateur aléatoire d'OpenBSD 2.9 soit trés fiable. Ce dernier 
+utilise plusieurs sources d'entropie :</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; - délais entre les interruption de la 
+souris</FONT> <BR><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; - délais entre 
+les packets réseaux échangés,</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; - délais entre l'appuie sur les touches 
+du clavier</FONT> <BR><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; - accés au 
+périphériques de bloc comme les disque durs</FONT> <BR>&nbsp; <BR>&nbsp; 
+<BR><BR><BR><BR>
+<CENTER>
+<P><IMG height=475 src="ipspapp_fichiers/linux.jpe" width=652> <BR><I><FONT 
+face=Arial,Helvetica><FONT size=+1>Linux 2.2.16</FONT></FONT></I></CENTER>
+<P><BR><BR>
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; <U>Analyse:</U></FONT> 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -<FONT 
+face=Arial,Helvetica> Amplitude = 3.629e+09 - 3.614e+09</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+= 15e+06</FONT> 
+<P><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+Les ISNs évoluent rapidement sur une plage de 15 millions de valeurs ce qui 
+reste tout à fait acceptable. De plus cette évolution pas à pas n'est pas 
+monotone: la valeur augmente puis elle décroit.</FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - 
+L'allure générale de l'évolution de la génération d'ISN est ici monotone 
+croissante ce qui permet de renforcer (très légèrement) la robustesse du 
+générateur aléatoire de Linux.</FONT> <BR>&nbsp; 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; <U>Commetaire:</U></FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Linux possède un générateur de 
+nombre pseudo aléatoires de bonne qualité. Bien qu'il n'atteigne pas le niveau 
+de celui d'OpenBSD 2.9, il permet de rendre trés difficile, voir presque 
+impraticable les attaques de type Bliind Ip Spoofing. Cependant la team Teso a 
+publié une advisorie en 1999 qui semble prouver la possibilité d'une telle 
+attaque sur des noyeaux 2.2.x [5]. Les noyeaux 2.2.x en étaient à leurs 
+premières releases à cette époque et je pense que la version 2.2.16 ne possède 
+pas le même générateur pseudo-aléatoire. Nous reviendrons sur ce fait un peu 
+plus en étudiant une autre des fonctionnalitées d'Analysor.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Lorsque l'on regarde la source du 
+générateur aléatoire qui se situe dans <B>/usr/src/linux/drivers/char/random.c 
+</B>on peut se rendre compte compte de l'effort qui à été fait pour qu'il soit 
+robuste. Voici une petit description qui se situe dans l'entête de ce 
+fichier:</FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <I>"Les 
+évènements aléatoire qui sont puisés dans l'environnement incluent les délais 
+entre l'appuie sur les touches du clavier, les délais entre le déclenchement de 
+diverses intéruptions et d'autres évènements qui sont (a) non-déterministes et 
+(b) difficiles à observer par un observateur extérieur. Ces différentes données 
+sont mixées a l'aide d'un algorithme du style CRC de manière à obtenir un pool 
+d'entropie.</I></FONT> <BR><I><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+..............</FONT></I> <BR><I><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Quand le système 
+nécessite des octets générés aléatoirement, le générateur aléatoire les lui 
+fournit en prenant un hash SHA du contenu du pool d'entropie obtenu 
+précédemment. L'utilisation du hash SHA permet de ne pas exposer l'état interne 
+du pool d'entropie. Il est de nos jours impossible de retrouver l'antécédent 
+d'un hash SHA.</FONT></I> <BR><I><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+..............</FONT></I> <BR><I><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Même si le pool 
+d'entropie devien nul, le générateur aléatoire produira toujours des nombres; 
+toutefois, un attaquand pourrai (du moins en théorie) déduire les futurs nombres 
+qui seront générés à partir de nombres générés précédemment. Ceci nécessite un 
+casage du SHA, qui est censé être infaisable, mais il subsite une possibilité. 
+Néanmoins, ces nombres devraient être utiles dans la plupart des 
+applications."</FONT></I> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Ce 
+texte prouve bien que Linux possède un bon générateur de nombre pseudo 
+aléatoires même si on sais bien que le risque 0 n'existe jamais en sécurité 
+informatique.</FONT> <BR>&nbsp; <BR>&nbsp; <BR><BR><BR><BR>
+<CENTER>
+<P><IMG height=475 src="ipspapp_fichiers/win98.jpe" width=652> <BR><I><FONT 
+face=Arial,Helvetica><FONT size=+1>Windows 98</FONT></FONT></I></CENTER>
+<P><BR><BR>
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; <U>Analyse:</U></FONT> 
+<BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+- Amplitude = 0&nbsp; (c'est une ligne droite)</FONT> 
+<P><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+- Les ISNs évoluent linéairement (et lentement) avec le temps. De plus, les 
+valeurs d'ISNs sont peu élevées</FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; <U>Commentaire:</U></FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Le 
+générateur n'est pas aléatoire, il dépend implicitement du temps et évolue 
+lentement avec ce dernier. Ceci engendre la possibilité d'une attaque de Blind 
+Spoofing. Comme chacun sait, les sources de Windows ne sont pas libre, mais à la 
+vue de cette courbe on imagine facilement l'allure de la fonction et surtout 
+l'incompétence des développeurs qui l'ont codé.</FONT> <BR>&nbsp; <BR>&nbsp; 
+<BR><BR><BR>
+<CENTER>
+<P><IMG height=475 src="ipspapp_fichiers/all.jpe" width=652> <BR><I><FONT 
+face=Arial,Helvetica><FONT size=+1><FONT color=#ff0000>Linux 2.2.16</FONT> / 
+<FONT color=#33ff33>OpenBSD 2.9</FONT> / <FONT color=#000099>Windows 
+98</FONT></FONT></FONT></I></CENTER>
+<P><BR><BR><BR>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT face=Arial,Helvetica>Ce 
+dernier graphique permet de comparer les différents générateurs de nombres 
+pseudo-aléatoire entre eux. On vois bien qu'OpenBSD possède le plus robuste. 
+Linux bien que possédant un bon générateur aléatoire lui permettant de se mettre 
+a l'abris de la plupart des attaques est quand même bien loin d'OpenBSD. Enfin, 
+Windows 98 est ridicule avec un générateur qui ne décolle même pas et dont on a 
+du mal à différencier la courbe avec l'axe des absices.</FONT> <BR>&nbsp; 
+<BR>&nbsp; <BR>&nbsp; 
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <U><FONT 
+face=Arial,Helvetica><FONT size=+1>2.2.2. Régressions 
+linéaires.</FONT></FONT></U> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Cette 
+méthode mathématique permet de remonter a l'équation d'une droite à partir d'un 
+ensemble de coordonnées. Dans le cas de la génération d'ISNs de Windows 98 cette 
+méthode peut permettre de trouver le coefficient directeur de la droite et donc 
+de rendre ainsi complètement prévisible les valeurs des ISNs futurs.</FONT> 
+<BR><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; A 
+partir de deux liste de nombres {xi} et {yi} (i=1..n) on obtient une équation de 
+droite de la forme y = b0 + b1 * x&nbsp; avec :</FONT> <BR>&nbsp; <BR>&nbsp; 
+<P><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; n</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp; 2&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ---</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp; x&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; \&nbsp;&nbsp;&nbsp;&nbsp; 
+y&nbsp;&nbsp;&nbsp;&nbsp; -&nbsp;&nbsp; \&nbsp;&nbsp; x&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp; x&nbsp; y</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp; i&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; i&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp; i&nbsp;&nbsp; /&nbsp;&nbsp;&nbsp;&nbsp; i&nbsp; i</FONT> 
+<BR><FONT face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ---</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i=1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i=1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i=1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; i=1</FONT> 
+<P><FONT face="Courier New,Courier">b0 =&nbsp;&nbsp; 
+-------------------------------------------------</FONT> 
+<P><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp; 
+2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n&nbsp;&nbsp; \&nbsp;&nbsp;&nbsp; x&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+-&nbsp;&nbsp;&nbsp; ( \&nbsp;&nbsp;&nbsp;&nbsp; x )</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp; 
+i&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; i</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i=1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i=1</FONT> <BR>&nbsp; <BR>&nbsp; 
+<P><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ---</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n&nbsp;&nbsp;&nbsp; \&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x&nbsp;&nbsp; 
+y&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; y</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; i&nbsp;&nbsp;&nbsp; 
+i&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; i</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ---</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i=1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i=1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; i=1</FONT> 
+
+<P><FONT face=Arial,Helvetica>b1 =&nbsp;&nbsp;&nbsp;&nbsp; 
+----------------------------------------</FONT> 
+<P><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp; 
+2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n&nbsp;&nbsp; \&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+x&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -&nbsp;&nbsp;&nbsp;&nbsp; 
+(&nbsp; \&nbsp;&nbsp;&nbsp;&nbsp; x&nbsp;&nbsp; )</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; i</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i=1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i=1</FONT> <BR>&nbsp; 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; On peut 
+évaluer l'erreur qu'il existe entre les valeurs expérimentales et la droite 
+déterminée par régression à l'aide d'un nombre appelé coefficient de 
+corrélation. Ce nombre est compris entre 0 et 1 et il est égal a 1 lorsque 
+toutes les valeurs expérimentales apartiennent à la droite dont l'équation a été 
+déterminée par régression. On calcule ce nombre à l'aide de la formule 
+suivante:</FONT> 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+_______________________________________________________________ <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\</FONT> <BR><FONT face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp; ^&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; _&nbsp;&nbsp; 
+2</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp; ( y&nbsp;&nbsp; -&nbsp;&nbsp; y )</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; i&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i=1</FONT> <BR><FONT face="Courier New,Courier">r&nbsp; 
+=&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+-----------------------------------------------------</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+n</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ---&nbsp;&nbsp;&nbsp; 
+^&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; _&nbsp;&nbsp; 
+2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+^&nbsp;&nbsp; 2</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp; ( y&nbsp;&nbsp; -&nbsp;&nbsp; y 
+)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; +&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp;&nbsp; ( y&nbsp;&nbsp; -&nbsp;&nbsp; y )</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; i&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; i</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\&nbsp; 
+/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+---</FONT> <BR><FONT 
+face="Courier New,Courier">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+\/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i=1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+i=1</FONT> <BR>&nbsp; 
+<P><FONT face=Arial,Helvetica>Où:&nbsp; {yi} = valeurs expérimentales</FONT> 
+<BR><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+_</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; yi&nbsp; = 
+moyenne des valeurs expérimentales</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+^&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+^</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; yi = valeurs 
+calculée avec l'équation de la droite determinée par régression:&nbsp; yi = b0 + 
+b1 * xi</FONT> <BR>&nbsp; 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Aprés 
+cette petite parenthèse mathématique, nous allons appliquer cette technique aux 
+valeurs obtenues précédemment avec Analysor pour Windows 98. J'ai dévelopé pour 
+cela un petit script Tcl&nbsp; qui donne l'équation de la droite ainsi que son 
+coefficient de corrélation.</FONT> <BR>&nbsp; <BR>&nbsp; <BR>&nbsp; 
+<CENTER>
+<TABLE cellSpacing=0 cols=1 cellPadding=0 width="95%" border=1 NOSAVE>
+  <TBODY>
+  <TR NOSAVE>
+    <TD bgColor=#666600 NOSAVE><B><FONT face=Arial,Helvetica><FONT 
+      color=#ffffff>Terminal</FONT></FONT></B></TD></TR>
+  <TR NOSAVE>
+    <TD bgColor=#000000 NOSAVE><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc><B>truff@Accelerator:~$</B> ./reglin.tcl 
+      win98.plt&nbsp;</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>y = 88287.2812607 + 1000.19037522 * x</FONT></FONT> 
+      <BR><FONT face=Arial,Helvetica><FONT color=#cccccc>Coefficient de 
+      correlation: 0.999999992186</FONT></FONT> <BR><B><FONT 
+      face=Arial,Helvetica><FONT 
+      color=#cccccc>truff@Accelerator:~$</FONT></FONT></B></TD></TR></TBODY></TABLE></CENTER>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT face=Arial,Helvetica>On 
+obtient donc une droite de pente environs égale à 1000 ce qui signifie dans 
+notre cas (étude de la génération des ISNs en fonction du temps: ISN = f(t) ) 
+que la valeur de l'ISN augmente de 1000 à chaque seconde qui s'écoule. On peut 
+donc prédire très précisément la valeur d'ISNs futurs à partir d'un seul ISN 
+récupérer.</FONT> <BR>&nbsp; <BR>&nbsp; 
+<P><U><FONT face=Arial,Helvetica><FONT size=+1>3.0. Description de 
+l'attaque.</FONT></FONT></U> <BR><FONT face=Arial,Helvetica><FONT 
+size=+1>&nbsp;&nbsp;&nbsp; <U>3.1. Premier type d'attaque: prédiction par 
+regression linéaire.</U></FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+size=+1>&nbsp;&nbsp;&nbsp; <U>3.1.1. Tests contre Windows 98.</U></FONT></FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Aprés les remarques des 
+paragraphes précédents, une première série de tests va être réalisée contre un 
+Windows 98. Pour cela j'ai coder un petit serveur en Tcl [6] qui écoute sur un 
+port et affiche l'IP de l'host distant qui s'y connecte. Ceci permettra de 
+vérifier la réussite de l'attaque.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; D'aprés le paragraphe 2.2.2 nous avons 
+:</FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; i = b0 
++ b1 * t&nbsp;&nbsp;&nbsp; avec b0 et b1 constantes, i l'ISN et t le 
+temps</FONT> <BR><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; di = 
+b1 * dt&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; en différenciant 
+l'équation</FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; On en déduis donc que pour une 
+variation de temps donnée dt on obtient toujours une même variation de valeur 
+d'ISN. Ceci nous conduit a utiliser l'option -m d'Autoroute qui permet de 
+calculer une valeur moyenne de l'augmentation d'ISNs obtenus après l'envoie de 
+deux Syn consécutifs.</FONT> <BR><FONT face=Arial,Helvetica>Voici les 
+différentes étapes de l'attaque:</FONT> 
+<P><FONT face=Arial,Helvetica>1/ Calcul de l'augmentation de la valeur d'ISNs 
+entre deux Syns consécutifs: m</FONT> 
+<P><FONT face=Arial,Helvetica>2/ Envoie d'un Syn non spoofé de manière à 
+récupérer la valeur du premier ISN: isn1</FONT> 
+<P><FONT face=Arial,Helvetica>3/ On attend pendant un temps t (le même que celui 
+passé en paramètre a Analysor)</FONT> 
+<P><FONT face=Arial,Helvetica>4/ Envoie d'un Syn spoofé.</FONT> 
+<P><FONT face=Arial,Helvetica>5/ Calcul d'une valeur possible pour isn2</FONT> 
+<BR><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; isn2 = isn1 + m + 
+perturbations</FONT> <BR><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; les 
+perturabations sont dues à plusieurs facteurs comme par exemple la rapidité 
+d'échange sur le réseau sui n'est pas toujours parfaitement constante. De 
+manière à ne pas se soucier de ces perturbations, nous allons réaliser plusieurs 
+tentatives en prenant des valeurs comprises entre + ou - une valeur que l'on 
+précisera.</FONT> 
+<P><FONT face=Arial,Helvetica>6/ On réalise le brute force de Ack avec toutes 
+les valeurs comprises dans la plage prédite:</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; brute force sur toutes le valeurs d'isn 
+telles que isn1 + m - plage &lt;= isn &lt;= isn1 + m +plage</FONT> <BR>&nbsp; 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; J'ai codé un script Tcl 
+spoof.tcl [7] qui permet d'automatiser ce processus. La moyenne sera calculée 
+avec l'option -m de Analysor et les paquets seront envoyés avec l'utilitaire 
+nemesis [8] qui permet d'envoyer des paquets forgés en ligne de commande.</FONT> 
+<BR>&nbsp;&nbsp;&nbsp; <FONT face=Arial,Helvetica>Spoof.tcl prend 7 paramètres 
+qui sont dans l'ordre: l'ip spoofée, votre ip réelle, le port source, l'ip de 
+destination, le port de destination, l'interface réseau à utiliser et enfin la 
+plage de valeurs pour le bruteforce.</FONT> <BR>&nbsp; <BR>&nbsp; 
+<CENTER>
+<TABLE cellSpacing=0 cols=1 cellPadding=0 width="95%" border=1 NOSAVE>
+  <TBODY>
+  <TR bgColor=#666600 NOSAVE>
+    <TD NOSAVE><B><FONT face=Arial,Helvetica><FONT color=#ffffff><FONT 
+      size=+1>Terminal</FONT></FONT></FONT></B></TD></TR>
+  <TR bgColor=#000000 NOSAVE>
+    <TD NOSAVE><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc><B>truff@Accelerator:~#</B> ./spoof.tcl 192.168.0.18 
+      192.168.0.2 1500 192.168.0.1 2000 eth0 2</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>Computing the rate of the 
+      difference between 2 consecutive ISN values</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>Rate: 29</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>Guetting one ISN 
+      Value</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>ISN: 1221251</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>Sending our Sp00f3d Syn 
+      Packet</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>Ack bruteforcing between 1221279 and 1221281</FONT></FONT> 
+      <BR><FONT face=Arial,Helvetica><FONT color=#cccccc>Attack 
+      Sended</FONT></FONT> <BR><B><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>truff@Accelerator:~#</FONT></FONT></B></TD></TR></TBODY></TABLE></CENTER>
+<P>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT face=Arial,Helvetica>Et du 
+côté Windows 98 ......</FONT> <BR>&nbsp; 
+<CENTER>
+<TABLE cellSpacing=0 cols=1 cellPadding=0 width="95%" border=1 NOSAVE>
+  <TBODY>
+  <TR bgColor=#000099 NOSAVE>
+    <TD NOSAVE><B><FONT face=Arial,Helvetica><FONT color=#ffff00><FONT 
+      size=+1>MS-DOS</FONT></FONT></FONT></B></TD></TR>
+  <TR bgColor=#000000 NOSAVE>
+    <TD NOSAVE><FONT face=Arial,Helvetica><FONT color=#cccccc><B>C:\Program 
+      Files\Tcl\bin&gt;</B>tclsh84.exe 
+      c:\windows\bureau\server.tcl</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>Connection acceptée 192.168.0.18 
+      1500</FONT></FONT></TD></TR></TBODY></TABLE></CENTER><BR>&nbsp; <BR>&nbsp; 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <U><FONT 
+size=+1>3.1.2. Résultats, remarques.</FONT></U></FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Lors de l'attaque précédente, 
+nous tentons d'établir une connexion spoofée (avec une adresse source 
+192.168.0.18 qui n'existe pas sur le réseau local et un port source 1500) vers 
+le port 2000 du serveur qui tourne sur le Windows 98 qui a pour IP 192.168.0.1 . 
+L'attaque se fait via l'interface réseau eth0 et la plage de valeurs pour le 
+bruteforce est de 2. J'ai réalisé plusieurs tests en commençant avec une valeur 
+de 100 et en la diminuant jusqu'à ce que l'attaque ne réussisse plus. Cette 
+valeur de 2 démontre que spoof.tcl prédit la valeur de l'ISN + ou - 1. Bien 
+entendu le test à été réalisé sur un reseau 100 Mbit/s donc les conditions sont 
+parfaites, dans le cas d'attaques sur des réseaux plus lents il faudra augmenter 
+la valeur de la plage de manière à ce que l'attaque réussisse.</FONT> <BR>&nbsp; 
+
+<P><U><FONT face=Arial,Helvetica><FONT size=+1>3.2. Attaque plus évoluée: 
+méthode statistique d'étude des générateurs aléatoires.</FONT></FONT></U> 
+<BR><FONT face=Arial,Helvetica><FONT size=+1>&nbsp;&nbsp;&nbsp; <U>3.2.1. 
+Spacial Phase Analysis.</U></FONT></FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; L'esemble de ce paragraphe 
+s'appuie sur les recherche qu'à effectuer Michal Zalewski et qu'il présente dans 
+son texte Strange Attractors and TCP/IP Sequence Number Analysis [9].</FONT> 
+<BR><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; L'analyse de phase spaciale 
+est utilisée dans l'étude des systèmes dynamiques et notamment des systémes 
+non-linéaires.Elle permet de représenter l'évolution d'un système de n variables 
+dans un espace de dimension n. Le choix de la dimension n ne peut être prédit 
+que par tests successif et vérification de la validité des résultats obtenus. 
+Michal Zalewski semble avoir adopté une dimension de 3, nous allons donc lui 
+faire confiance dans son choix et garder cette dimension. Le lecteur intéressé 
+pourra réaliser des tests avec des dimensions supérieures à 3.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Nous allons donc utiliser cette 
+technique pour représenter en 3D l'évolution des ISN en fontion du temps. Pour 
+cela nous allons utiliser des points de l'espace qui caractérisentent 4 ISNs 
+générés conécutivement et à intervalle régulier. Ainsi le systéme est régi par 
+les équations suivantes:</FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp; x (t) = isn (t-2) - isn 
+(t-3)</FONT> <BR><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp; y (t) = isn 
+(t-1) - isn (t-2)</FONT> <BR><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp; 
+z (t) = isn (t)&nbsp;&nbsp;&nbsp;&nbsp; - isn (t-1)</FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; A partir de l'ensemble des 
+valeurs d'ISNs que nous avon récupérés dans un fichier à l'aide Analysor (option 
+-k), nous pouvons déterminer l'ensemble des coordonnées des points et ainsi les 
+représenter dans l'espace.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Si la représentation graphique présente 
+de fortes concentration de points dans des parties bien détermninées de l'espace 
+on pourra dire que le systéme présente les caractéristique d'un attracteur 
+puissant.</FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Toute notre stratégie va 
+s'appuyer sur le fait que si une séquence présente des caractéristiques 
+d'attracteur puissant, les valeurs qui seront générées dans le futur seront 
+proche des valeurs utilisées pour construire les points précédents de 
+l'attracteur.</FONT> <BR>&nbsp; 
+<P><FONT face=Arial,Helvetica><FONT size=+1>&nbsp;&nbsp;&nbsp; <U>3.2.2. 
+Dévellopement de l'utilitaire Blindy.</U></FONT></FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Ce paragraphe détaille le 
+fonctionnement interne de l'utilitaire Blindy [10].</FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Supposons que l'on récupère 3 
+ISNs consécutifs à intervalle de temps régulier, nous aurons donc isn (t-3), isn 
+(t-2) et isn (t-1). A l'aide de ces 3 valeurs nous obtenons les coordonnées x 
+(t) et y (t). Si nous pouvons déterminer z (t) alors nous aurons par la même 
+occasion la valeur isn (t) qui est celle qui nous intéresse puisqu'elle 
+correspond a l'isn qui va être généré au prochain intervalle de temps par le 
+générateur de nombre pseudo aléatoires. Nous allons donc chercher dans notre 
+liste d'ISN des points qui possèdent les mêmes coordonnée x et y que le point 
+dont nous essayons de déterminer z. Ainsi, d'aprés la constatation précédente 
+sur les attracteurs, nous pourrons dire que la valeur z de notre point est 
+proche de celle trouvées dans notre list. Bien entendu, il sera trés rare de 
+trouver des points de la liste qui ont exactement les mêmes x et y, il faudra 
+donc fixer une valeur de tolérence qui sera représentée dans Blindy pas la 
+valeur R1.</FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Une fois que l'on a parcouru 
+toute la liste et que l'on a récupérer l'ensemble des valeurs de z (donc de 
+isn(t)) acceptables, on va pouvoir les essayer une par une pack Acquiter notre 
+Syn et établir la connexion. De manière a ce que l'attaque ai plus de chances de 
+réussite on réalisera un brute force sur des plages de valeurs isn_predit - R2 
+&lt; isn &lt; isn_prédit + R2. Cette valeur R2 sera a déterminer par 
+l'utilisateur selons l'OS attaqué.</FONT> <BR>&nbsp; <BR>&nbsp; 
+<CENTER>
+<TABLE cellSpacing=0 cols=1 cellPadding=0 width="95%" border=1 NOSAVE>
+  <TBODY>
+  <TR bgColor=#666600 NOSAVE>
+    <TD NOSAVE><B><FONT face=Arial,Helvetica><FONT color=#ffffff><FONT 
+      size=+1>Terminal</FONT></FONT></FONT></B></TD></TR>
+  <TR bgColor=#000000 NOSAVE>
+    <TD NOSAVE><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc><B>root@Accelerator:/home/truff/blindy#</B> ./blindy -s 
+      192.168.0.2 -o 192.168.0.18 -d 192.168.0.1 -p 1500 -q 2002 -f Windows-98SE 
+      -i eth0 -r 2 -z 2 -t 60</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>ISN: 1693649</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>ISN: 1693672</FONT></FONT> 
+      <BR><FONT face=Arial,Helvetica><FONT color=#cccccc>ISN: 
+      1693691</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>Sending our sp00f3d syn</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>Reading input 
+      data...</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>Reconstructed: x={guess set} y=19 z=23 (r2=2)</FONT></FONT> 
+      <BR><FONT face=Arial,Helvetica><FONT color=#cccccc>Choosing candidates 
+      (100000 entries)</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>Sorting candidates...</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>Guess set (17 elements, from most 
+      probable to least):</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>Attack sended</FONT></FONT> <BR><B><FONT 
+      face=Arial,Helvetica><FONT 
+      color=#cccccc>root@Accelerator:/home/truff/blindy#</FONT></FONT></B></TD></TR></TBODY></TABLE></CENTER><BR>&nbsp; 
+<BR>&nbsp; 
+<CENTER>
+<TABLE cellSpacing=0 cols=1 cellPadding=0 width="95%" border=1 NOSAVE>
+  <TBODY>
+  <TR bgColor=#000099 NOSAVE>
+    <TD NOSAVE><B><FONT face=Arial,Helvetica><FONT color=#ffff00><FONT 
+      size=+1>MS-DOS</FONT></FONT></FONT></B></TD></TR>
+  <TR bgColor=#000000 NOSAVE>
+    <TD NOSAVE><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc><B>C:\WINDOWS\Bureau&gt;</B>tclsh84.exe 
+      server.tcl</FONT></FONT> <BR><FONT face=Arial,Helvetica><FONT 
+      color=#cccccc>Connexion acceptée 192.168.0.18 1500</FONT></FONT> <BR><FONT 
+      face=Arial,Helvetica><FONT color=#cccccc>Hello</FONT></FONT> <BR><B><FONT 
+      face=Arial,Helvetica><FONT 
+      color=#cccccc>C:\WINDOWS\Bureau&gt;</FONT></FONT></B></TD></TR></TBODY></TABLE></CENTER>
+<P><FONT face=Arial,Helvetica><FONT size=+1>&nbsp;&nbsp;&nbsp;&nbsp; </FONT>No 
+Comment .....</FONT> <BR>&nbsp; <BR>&nbsp; 
+<P><U><FONT face=Arial,Helvetica><FONT size=+1>4.0. Modification du générateur 
+de nombre pseudo aléatoires du noyeau Linux.</FONT></FONT></U> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Nous avons vu dans la partie 
+2.2.1 que le générateur du noyeau Linux est assez fiable car il s'appuyait sur 
+des évènements déclenchés aléatoirement par le matériel. Ce sont les 
+interruptions matérielles qui sont les plus utilisées pour ce genre de 
+chose.</FONT> <BR><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Lorsque l'on 
+réserve une ligne d'interruption dans le code d'un driver il faut utiliser la 
+fontion suivante:</FONT> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; <B>int request_irq(unsigned int 
+irq,</B></FONT> <BR><B><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+void (*handler)(int, void *, struct pt_regs *),</FONT></B> <BR><B><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+unsigned long flags,</FONT></B> <BR><B><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+const char *dev_name,</FONT></B> <BR><B><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+void *dev_id);</FONT></B> 
+<P>&nbsp;&nbsp;&nbsp; <FONT face=Arial,Helvetica>Le paramètre flags peut prendre 
+la valeur SA_SAMPLE_RANDOM qui indique que le matériel déclenche des 
+interruption aléatoirement et que celles-ci peuvent être ajoutées au pool 
+d'entropie qui permet de générer des nombres pseudo aléatoires. Un <B>grep -r 
+SA_SAMPLE_RANDOM *</B> dans les sources du noyeau nous montrera son utilisation 
+dans des drivers tels que les cartes réseau.</FONT> <BR>&nbsp; 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Nous avons adopté une méthode 
+différente de manière à enrichir le pool d'entropie. En effet, nous avons émis 
+l'hypothèse que les valeurs contenues dans la mémoire (stack ou proche de la 
+stack) pouvaient être considérées comme aléatoires. Bien entendu tout ce qui va 
+suivre va s'appuyer sur cette hypothèse qui n'est pas confirmée, nous somme donc 
+ouverts a toute remarque.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Nous avons ajouter une fonction au 
+fichier random.c du noyeau. Cette fonction permet de renvoyer la valeur contenue 
+a un emplacement mémoire (stack ou proche de la stack) qui a lui même été 
+déterminer aléatoirement grâce au générateur d'origine du noyeau. La valeur 
+obtenue avec cette fonction est ajoutée a la valeur qui aurai été générée par le 
+générateur d'origine du noyeau.</FONT> <BR><FONT 
+face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Le seul test de fiabilité que nous avons 
+réalisé est celui de nmap. Nous obtenons une difficulté maximale au test 
+d'attaque par ip spoofing, tout comme lorsque l'on teste un OpenBsd 2.9, de plus 
+le patch [11] est très stable et à été longuement testé sans aucun problème. Je 
+vous invite donc à l'essayer et à nous commenter votre expérience 
+personnelle.</FONT> <BR>&nbsp; <BR>&nbsp; 
+<P><U><FONT face=Arial,Helvetica><FONT size=+1>5.0 Bibliographie et 
+Codes.</FONT></FONT></U> 
+<P><FONT face=Arial,Helvetica>[1]&nbsp;&nbsp; <A 
+href="http://www.phrack.org/show.php?p=48&amp;a=14">IP-spoofing Demystified,</A> 
+by daemon9 / route / infinity.</FONT> <BR><FONT 
+face=Arial,Helvetica>[2]&nbsp;&nbsp; <A 
+href="http://projet7.tuxfamily.org/factory/releases/analysor-0.2.tar.gz">Analysor 
+</A>by truff.</FONT> <BR><FONT face=Arial,Helvetica>[3]&nbsp;&nbsp; <A 
+href="ftp://ftp.irisa.fr/pub/gnuplot/">Gunplot</A> by <FONT color=#000000>Thomas 
+Williams, by Colin Kelley and many others.</FONT></FONT> <BR><FONT 
+face=Arial,Helvetica><FONT color=#000000>[4]&nbsp; <A 
+href="http://www.openbsd.org/crypto.html">OpenBSD 
+Cryptography</A>.</FONT></FONT> <BR><FONT face=Arial,Helvetica>[5]&nbsp;&nbsp; 
+<A href="http://www.team-teso.net/advisories/teso-advisory-001.tar.gz">Linux 
+2.2.x ISN Vulnerability</A>, by Teso.</FONT> <BR><FONT 
+face=Arial,Helvetica>[6]&nbsp;&nbsp; <A 
+href="http://projet7.tuxfamily.org/factory/articles/ipsapp/server.tcl">Server.tcl</A>&nbsp; 
+by truff.</FONT> <BR><FONT face=Arial,Helvetica>[7]&nbsp;&nbsp; <A 
+href="http://projet7.tuxfamily.org/factory/articles/ipsapp/spoof.tcl">Spoof.tcl</A>&nbsp; 
+by truff.</FONT> <BR><FONT face=Arial,Helvetica>[8]&nbsp;&nbsp; <A 
+href="http://www.packetfactory.net/Projects/nemesis/">Nemesis</A>&nbsp; by 
+obecian.</FONT> <BR><FONT face=Arial,Helvetica>[9]&nbsp;&nbsp; <A 
+href="http://razor.bindview.com/publish/papers/tcpseq.html">Strange Attractors 
+and TCP/IP Sequence Number Analysis</A>&nbsp; by Michal Zalewski.</FONT> 
+<BR><FONT face=Arial,Helvetica>[10]&nbsp; <A 
+href="http://projet7.tuxfamily.org/factory/releases/blindy-0.1.tar.gz">Blindy</A>&nbsp; 
+by truff.</FONT> <BR><FONT face=Arial,Helvetica>[11]&nbsp; <A 
+href="http://projet7.tuxfamily.org/factory/articles/ipsapp/isn_patch">isnpatch</A>&nbsp; 
+by truff &amp; climax.</FONT> <BR>&nbsp; <BR>&nbsp; <BR>&nbsp; 
+<P><U><FONT face=Arial,Helvetica><FONT size=+1>6.0 
+Remerciements.</FONT></FONT></U> 
+<P>&nbsp;&nbsp;&nbsp; <FONT face=Arial,Helvetica>Tout d'abord un grand merci a 
+tous les membres de projet7 qui m'ont aider tout au long de la réalisation de ce 
+projet. Merci aussi à toutes les personnes que j'ai _légèrement_ dérangées pour 
+effectuer des tests en remote: Caps, Quoi, RLV, lawine, Crying .... et j'en 
+oublie surement. Merci aussi a Michal Zalewski pour m'avoir éclairer avec son 
+magnifique article sur les attracteurs. Et enfin, un gros bisou à la ravissante 
+et adorable blonde qui m'a tenu compagnie en /query pendant l'écriture de ce 
+texte.</FONT> <BR>&nbsp; <BR>&nbsp; 
+<P><U><FONT face=Arial,Helvetica><FONT size=+1>7.0 Copyright.</FONT></FONT></U> 
+<P><FONT face=Arial,Helvetica>&nbsp;&nbsp;&nbsp; Ce texte peut être redistribué 
+librement du moment qu'il reste dans son intégralité et que le nom des auteur du 
+texte et des codes aparait.</FONT> <BR>&nbsp; <BR>&nbsp; <BR>&nbsp; <BR>&nbsp; 
+</P></BODY></HTML>

@@ -1,0 +1,775 @@
+
+   Examination des méthodes de scan port - Analyse des Techniques d'Audit
+
+		    document écrit par dethy@synnergy.net
+		     traduit par toady@cell-security.com
+     
+   
+Mise en situation
+
+Je  vais  essayer  d'énumérer  les  différentes  façons  de  découvrir  et de 
+cartographier les réseaux internes/externes utilisant les réponses de paquets 
+basés sur des signatures et de connaître le protocole des réponses au  moment
+du scan. Plus précisément, ce document présente toutes les techniques connues
+utilisées  pour  déterminer  les  ports  ouverts/fermés  sur  un  hôte et les
+manières dont un cracker peut identifier les services réseau exécutés sur des
+serveurs arbitraires.
+
+
+1.1 Introduction
+
+Ce document veut fournir une analyse en profondeur des méthodes de scan port
+connues, avec une information exhaustive pour chaque technique utilisée dans
+la jungle d'aujourd'hui pour cartographier et identifier les  ports  ouverts
+et fermés sur des serveurs variés.
+
+Note: Ce document ne décrira ni les techniques pour récupérer la prise
+d'empreinte (fingerprint) des systèmes d'exploitation ni celles permettant
+d'identifier les versions des daemons (banner scanning).
+
+Avec une  épidémie de  scan port se déroulant  tous les jours,  il faut  être en
+mesure de  reconnaître les techniques  qu'un cracker peut  utiliser pour scanner
+les hôtes réseau en utilisant une variété de techniques pour éviter la détection
+de l'expéditeur source. Comprendre les actions pour se défendre contre ces scans 
+orientés réseau est  primordial pour identifier et reconnaître les manières dont 
+un scan peut se présenter tel qu'un traffic réseau d'apparence normale.  
+
+Le scan port est un des techniques les plus populaires utilisées  pour découvrir
+et  déterminer les  services qui  écoutent un port  spécifié. En utilisant cette
+méthode,un cracker peut ensuite créer une liste des faiblesses et vulnérabilités
+suite au résultat obtenu puis exploiter et compromettre un hôte distant.
+
+Une  des  premières étapes  dans l'intrusion/audit  d'un hôte  distant est  tout 
+d'abord d'avoir un liste des  ports ouverts, en utilisant une  ou plusieurs  des
+techniques  décrites  ci-dessous.  Une fois  ceci  établit,  le résultat  aidera
+le cracker pour identifier les services variés qui sont exécutés sur  un port en
+utilisant une correspondance avec les RFC, (/etc/services avec UNIX, la fonction
+getservbyport() en établit la liste automatiquement) permettant  de compromettre
+d'avantage l'hôte distant après cette découverte initiale.
+
+Les techniques de scan port prennent forme de trois manières différentes 
+
+        * scan ouvert
+        * scan semi-ouvert
+        * scan furtif
+
+Chacune  de  ces  techniques  permettent  une  attaque pour  localiser les  ports 
+ouverts/fermés sur  un  serveur, mais  connaître  l'utilisation  du scan  dans un
+environnement   donné  dépend  totalement  du type de  topologie  réseau, IDS[1], 
+caractéristique d'identification d'un  hôte distant. Cependant les scans  ouverts
+rallongent  les  logs,  sont  facilement  détectables et  produisent de  nombreux
+résultats positifs sur les ports ouverts/fermés.  
+  
+Autrement,  utiliser  la  technique  du scan furtif, peut  éviter certains IDS et 
+passer outre les règles  du pare-feu. Mais  le type de scan, tel que les drapeaux
+des paquets, utilisés pour identifier ces ports ouverts/fermés peuvent sans doute
+être  diminués  en  déposant les paquets  sur un réseau. Une  discution de  cette 
+technique sera expliquée dans la section "FIN scan" de ce document.
+ 
+Penchons nous plus  directement  sur  chacune  de  ces techniques ci-dessus,  ces 
+méthodes peuvent être catégorisées plus loin en techniques de scan individuelles.
+Voyons un peu le model de scan de base qui inclue le balayage avec PING.
+
+                                         ______________
+                                        |              |
+                                        | type de scan |
+                                        |______________|
+            __________________________________|___________________________________
+           /                  |                 \                  |              |
+          /                   |                  \                 |              |
+    _____|_______       ______|______        _____|_____      _____|_____     ____|_____
+   |             |     |             |      |          |     |           |   |          |
+   | scan ouvert |     | demi-ouvert |      |  furtif  |     | balayages |   |  divers  |
+   |_____________|     |_____________|      |__________|     |___________|   |__________|
+         |                    |                   |                |               |
+   ______|_______        _____|____          _____|_____       ____|_____      ____|_____
+  |              |      |          |        |           |     |          |    |          |
+  | connect. TCP |      | SYN flag |        | drap. FIN |     | echo TCP |    | erreurs  |
+  |______________|      |__________|        |___________|     |__________|    | UDP/ICMP |
+         |                    |                   |                |          |__________|
+  _______|_________    _______|_______       _____|_____       ____|_____           |
+ |                 |  |               |     |           |     |          |     _____|______
+ | ident. inversée |  | en-tête IP ID |     | drap. ACK |     | echo UDP |    |            |
+ |_________________|  | "scan muet"   |     |___________|     |__________|    | rebond FTP |
+                      |_______________|           |                |          |____________|
+                                             _____|______      ____|_____
+                                            |            |    |          |
+                                            | drap. NULL |    | TCP ACK  |
+                                            |____________|    |__________|
+                                                  |                |
+                                             _____|_____       ____|_____
+                                            |           |     |          |
+                                            | drap. ALL |     | TCP SYN  |
+                                            |  (XMAS)   |     |__________|
+                                            |___________|          |
+                                                  |             ___|_______      
+                                         _________|_________   |           |
+                                        |                   |  | ICMP echo |
+                                        | fragmentation tcp |  |___________|
+                                        |___________________|
+                                                  |
+                                           _______|_______
+                                          |               |
+                                          | drap. SYN|ACK |
+                                          |_______________|
+
+Diagramme: méthodes de scan connues
+
+La première rangée indique le type de scan qui traverse de haut en bas la  liste
+des scans individuels appartenant à cette classe.
+
+
+1.2 méthodes de scan ouvert
+
+Les  techniques  de  scan  ouvert sont  trop facilement  faciles à détecter et à 
+filtrer. Ce type  de  méthode  de  scan implique  l'ouverture  d'une  connection 
+complète  sur  l'ordinateur  distant  utilisant un accord TCP/IP en trois étapes 
+classiques [NdT : three  way  handshake].  Une  transaction  classique  requière  
+l'utilisation  des  drapeaux suivants pour créer et accepter une connection :
+
+
+                        client  -> SYN
+                        serveur -> SYN|ACK
+                        client  -> ACK           
+
+
+L'exemple  ci-dessus montre une réponse à notre requête sur le port connecté par
+le biais d'un SIN|ACK. Cette réponse signifie que le paquet sur le port était la 
+cible dans l'état d'ECOUTE (ouvert). Une fois que cet accord complet  a lieu, la
+connection  sera  terminée  par  le  client  permettant  à  une  nouvelle d'être
+créee/appellée permettant au port suivant d'être verifié, jusqu'à ce que le port
+seuil soit atteint.
+
+Inversement,  regardez  la  réponse  à  partir  d'un  port fermé qui enverra les 
+données suivantes :
+
+                        client  -> SYN
+                        serveur -> RST|ACK
+                        client  -> RST
+
+Les drapeaux RST|ACK retournés par le serveur est en train de dire  au client de
+détruire la  connection  entreprise  à partir du moment où le port  n'est pas en
+état d'ECOUTE ainsi que fermé.
+
+Cette  méthode  est crée  à travers l'appel  système connect(),  permettant à la 
+plupart des identifications instantanées  d'un port ouvert ou fermé.  Si l'appel
+de connect()  retourne  la  valeur 1 [NdT : true], le port est ouvert, sinon  le 
+port est fermé
+
+Puisque  cette technique  pose  le problème  de l'accord en trois étapes pour se
+connecter à  un hôte  arbitraire, une  connection spoofée est impossible, ce qui 
+signifie qu'un  client  ne peut  pas truquer  la véritable adresse IP, comme  un 
+connection  spoofée  essaye  d'entrainer l'envoi d'une séquence de nombres aussi
+corrects que de paramétrer les drapeaux de retour pour situer la transaction des
+données.
+
+Evidemment cette technique  est facilement repérable  pour car rebond de traffic
+parce que cela ouvre une connection complète, ainsi que tous les IDS et pare-feu
+sont  capables  de  détecter  et de  bloquer  ces scans. Cependant, parce que la 
+fonction  connect() utilise l'accord en trois étapes, le résultat de ce scan est
+à peu près aussi précis que ce que vous pouvez obtenir en essayant de déterminer
+les ports qui sont ouverts/fermés.
+
+Avantages     : rapide, précis, ne requière pas de privilèges particuliers
+Inconvénients : facilement détectable et enregistrable [NdT : logged]
+
+
+1.2.1 - scan à identité inversée
+
+Cette technique augmente la problématique de répondre pour le démon[2] ident/auth 
+habituellement sur le port 113 pour intéroger le service pour le propriétaire du
+processus en train d'être exécuté. La  principale  raison à travers ceci est  de 
+trouver les démons  exécutés en tant que root, ce qui évidement attire un pirate
+potentiel pour  trouver  un débordement  vulénérable  qui peut  être à l'origine 
+d'autres activités suspectes à travers ce port. Autrement, un  démon exécuté  en
+tant  qu'utilisateur  nobody (httpd)  peut  ne  pas  être  aussi attractif qu'un 
+utilisateur parce que les privilèges sont  limités. La plupart  des utilisateurs
+ne connaissent pas que identd peut  libérer diverses informations privées telles
+que :
+
+ * information de l'utilisateur
+ * entité
+ * objets
+ * processus
+
+Bien que le protocole  d'identification voudrait apparaître comme un méchanisme
+d'autentification,  il  n'a  pas  été  conçu ou destiné à ce but. Selon la RFC,
+"Au mieux,  il fournit  quelques informations supplémentaires en respectant les
+connections TCP". Pas besoin de dire qu'il ne doit pas être utilisé en tant que
+service  de contrôle  d'accès  ni en  tant  qu'authentification de l'hôte ou de 
+l'utilisateur.
+
+La syntaxe officielle prise de la RFC 1413 révèle l'EBNF suivant :
+
+SYNTAXE OFFICIELLE
+
+   <requête> ::= <port-paire> <fin de ligne>
+
+   <port-paire> ::= <entier> "," <entier>
+
+   <fin de ligne> ::= "015 012"  ; CR-LF Indicateur de Fin de Ligne, octal \r\n équivalents
+
+   <entier> ::= 1*5<chiffre> ; chiffres 1-5.
+
+
+En  utilisant cette grammaire appliquée aux données que nous envoyons  à un hôte 
+arbitraire  encapsulé  dans  le  port  ident/auth  qui  révélera le processus du
+propriétaire exécuté sur un port  donné, à  travers  lequel nous avons également 
+initié la connection. 
+
+Avantages    : rapide, ne requière pas de privilèges particuliers, retoune l'information
+                nécessaire au service
+Inconvénients: facilement détectable
+
+
+1.3 - méthodes de scan demin-ouvert
+
+Le terme 'demi-ouvert' quand le client termine la connection  avant  que la  fin 
+des accords en trois  étapes  soit terminé. Ainsi, cette  méthode de  scan  sera 
+souvent  indétectable  par  les  IDS se  basant sur la connection, et retournera
+des  résultats  plutot  positifs  (reconnaissant  avec succès les ports ouverts/
+fermés).
+
+1.3.1 - scan SYN
+
+L'implémentation  de  cette  méthode  de  scan  est  similaire à  la  connection 
+complète d'accord TCP en trois étapes à l'exception que, au  lieu d'envoyer  des 
+réponses ACK, nous désactivons la connection. Une demonstration de cette technique
+est nécessaire pour montrer une transaction demi-ouverte :
+
+                        client  -> SYN
+                        serveur -> SYN|ACK
+                        client  -> RST
+
+
+Cet  exemple  à  montré  que le port  cible était  ouvert, puisque le  serveur a 
+répondu par les  drapeaux SYN|ACK. L'instruction RST est  orientée noyau, ainsi,
+le client n'a pas besoin d'envoyer un autre paquet avec  cette instruction,  car 
+le code de la pile TCP/IP du kernel le fait automatiquement.
+
+Inversement, un port fermé répondra avec RST|ACK.
+
+
+                        client  -> SYN
+                        serveur -> RST|ACK
+
+
+Tel qu'affiché, cette combinaison de drapeaux indique un port non-écoutant.
+
+Bien  que  cette  technique soit  devenue  plutôt  facilement  détectable par de 
+nombreux IDS, ce  qui  implique  que quasiment  tous les programmes  de Dénis de 
+Service (DoS)  basent leurs  attaques en envoyant un excès de paquets SYN. De la
+même manière, les systèmes de  détection  d'intrusion  courants  sont sans aucun 
+doute capables  de journaliser [NdT: logs] ces scans demi-ouverts: TCP wrappers,
+SNORT, Courtney,  iplog, pour  ne nommer qu'eux,  ainsi, leur  efficacité  s'est
+dégradée dans ces denières années.
+
+Malencontreusement, la méthode SYN à été la première à être utilisée pour 
+passer outre un IDS très utilisé, du nom de SATAN.
+
+Avantages    : rapide, fiable, évite les IDS primaires, évite l'accord TCP en 
+	       trois étapes
+Inconvénients: requière le privilège root, règles empêchant beaucoup d'essais de 
+	       scan SYN
+
+
+1.3.2 - Identifiant de l'en-tête IP, aussi connu sous le nom de scan "muet"
+
+Le  scan  par  en-tête  IP  est  méthode  de  scan  plutôt  méconnue  entrainant 
+une  utilisation  particulière  dans la pile TCP/IP de  la plupart des  systèmes
+d'exploitation. A l'origine, cette technique à  été découverte par antirez,  qui
+décriva en détail les détails techniques  dans un port  sur bugtraq. Evidemment,
+la base de ce scan repose sur la réflexion de  la  méthode de scan SYN, bien que
+cela entraîne l'implication d'un troisième hôte en tant que fausse source. 
+
+Avant  d'aller  plus  loin,  il  est important de  reconnaître ce qu'est un hôte 
+appellé "muet". A l'inverse d'une  machine  bastion, un hôte silencieux  ou muet 
+est un serveur qui envoie et reçoit un traffic qui varie entre faible et rien du 
+tout, d'où le nom caractéristique dont il est dotté.  Localiser un de  ces hôtes
+requière plus d'effort et des  hôtes se  balayant, et  c'est  probablement  plus 
+ennuyeux  que ce qu'il en vaut vraiment.
+Néanmoins, il s'agit d'un scan authentique et créatif, qui  apporte  un troisème
+hôte complice dans le jeu de dissimulation des traces suspectes.
+
+Ce scénario implique qu'il y a trois hôtes:
+
+        * A -> hôte attaquant
+        * B -> hôte muet
+        * C -> hôte cible
+
+Examinons ce cycle.        
+
+ * L'hôte A envoie un serie analysant le champ identificateur du PING,  englobé
+   dans l'en-tête IP  de l'hôte B. Un hôte  muet recevra une  incrémentation de 
+   l'identifiant(ID) de la réponse de 1 à chaque séquence PING.
+
+
+   60 bytes from BBB.BBB.BBB.BBB: seq=1 ttl=64 id=+1 win=0 time=96 ms
+   60 bytes from BBB.BBB.BBB.BBB: seq=2 ttl=64 id=+1 win=0 time=88 ms
+   60 bytes from BBB.BBB.BBB.BBB: seq=3 ttl=64 id=+1 win=0 time=92 ms
+
+
+ * L'hôte A  envoie un packet SYN usurpé à l'hôte C en utilisant  l'adresse source 
+   de l'hôte B. Le port distant peut être n'importe quel port arbitraire (1-65535)
+   que l'agresseur souhaite tester si les ports sont ouverts ou fermés:
+
+   -> La réponse SYN|ACK indique un port ouvert ECOUTANT. L'hôte B reverra ensuite
+      un bit RST intégré au paquet (automatisé par le noyau).
+   -> RST|ACK indiquera un port  NON-ECOUTANT,  (une méthode de renvoi de scan SYN
+      classique), et l'hôte B  ignorera ce  paquet  et ne renverra pas de réponse. 
+
+
+Maintenant, comment l'hôte A pourrait connaître les drapeaux qui ont été envoyés à
+l'hôte B ?
+
+Eh bien, en  supposant  que le port était ouvert sur le  serveur cible, nos séries
+de PING parallèles que l'hôte A a envoyé alors que les paquets SYN usurpés qui 
+étaient en cours d'envoi garderont nos réponses.
+Analysons le champ ID de ces réponses PING, 1 signifie un ID plus grand.
+
+
+   60 bytes from BBB.BBB.BBB.BBB: seq=25 ttl=64 id=+1 win=0 time=92 ms
+   60 bytes from BBB.BBB.BBB.BBB: seq=26 ttl=64 id=+3 win=0 time=80 ms
+   60 bytes from BBB.BBB.BBB.BBB: seq=27 ttl=64 id=+2 win=0 time=83 ms
+
+
+Remarquez que les identifiants des paquets deux et trois  affichent  une  valeur
+supérieure à 1, d'où un port ouvert a été localisé. A chaque fois, si la réponse
+est supérieure à 1, cela indique un port ouvert, pendant cette période.
+
+A l'origine, l'incrément était de 1, mais parce que l'hôte A  envoie  un drapeau
+SYN spoofé  sur un  port  ouvert, l'hôte B  doit renvoyer  à l'hôte C  un paquet 
+SYN|ACK, ce qui incrémente le champ ID.
+
+Autrement, un port ayant  pour  état fermé sur l'hôte C  n'aurait  pas besoin de
+l'hôte B pour  envoyer  quelque chose,  donc  le champ ID dans  une réponse PING
+ne serait pas incrémenté du tout.
+
+
+   60 bytes from BBB.BBB.BBB.BBB: seq=30 ttl=64 id=+1 win=0 time=90 ms
+   60 bytes from BBB.BBB.BBB.BBB: seq=31 ttl=64 id=+1 win=0 time=88 ms
+   60 bytes from BBB.BBB.BBB.BBB: seq=32 ttl=64 id=+1 win=0 time=87 ms
+
+
+Vous remarquez que le champ ID est encore limité par une constante de 1.
+
+Encore une  fois, c'est  pourquoi  un hôte  "muet" est requis, ainsi le  traffic
+entrant  et  sortant  est capturé  à  une  valeur minimum  afin de  diminuer les
+fausses alarmes[3].
+
+En fait, une variété de  méthodes de scan peuvent  être utilisées entraînant  un
+hôte  muet. Ce scan  n'est  pas limité  à la technique de scan SYN. Tout méthode
+impliquant  un  hôte  B  à  répondre au  port d'un  hôte A pourrait être mise en 
+pratique (allusion: techniques de cartographie inversée).
+
+
+1.4 - le scan furtif
+
+La définition d'un scan "furtif" a varié à travers les dernières années à partir
+de ce que Chris Klaus, auteur d'un article intitulé "Stealth Scanning: Bypassing
+Firewalls/SATAN Detectors"  où il  est  décrit en détail. A l'origine, ce  terme 
+était  utilisé  pour   décrire  une  technique   qui  évitait  les  IDS  et  les 
+enregistrements (logs), maintenant connu comme un scan "demi-ouvert". Cependant,
+actuellement, le  scan furtif est considéré comme étant tout scan étant concerné
+par quelques une des points suivants:
+
+        * paramétrant des drapeaux individuels (ACK, FIN, RST, .. )
+	* faisant intervenir des drapeaux NULL
+        * faisant intervenir tous les drapeaux
+	* passant à travers les filtres, pare-feux, routeurs
+        * apparaît comme du traffic réseau fortuit
+        * taux de paquets éparpillés varié
+
+Toutes les  techniques de  scan  décritent ci-dessous  utilisent la technique de 
+cartographie inversée pour supposer de l'ouverture des ports.
+
+
+1.4.1 - le scan SYN|ACK
+
+Cette technique a été mise  de côté  par la plupart,  si ce  n'est pas tous, les 
+scaneurs  de  ports à la  mode. Ironiquement, la  théorie derière  cette méthode 
+n'est différente de la méthode SYN, nous retirons la première étape  dans  notre
+configuration TCP/IP demi-ouverte. Une réponse classique se déroulerait ainsi :
+
+                        client  -> SYN|ACK
+                        serveur -> RST
+
+
+Les  drapeaux  ci-dessus  ont  dénoté  au client  que  le  port était à  un état 
+non-écoutant. Puisque le protocole de contrôle  des transmissions (TCP) comprend
+qu'aucun SYN initial à été envoyé,  une réponse immédiate de  terminaison à  été
+envoyée  nulle part. En d'autre  termes, le  protocole pense  qu'il  y a  eu une 
+erreur dans la transaction de connection sur ce port quand un SYN|ACK à été reçu 
+sans SYN, en tant que résultat, le drapeau reset est renvoyé. 
+
+De l'autre côté, un port ECOUTANT ne répondra pas à ces drapeaux.
+
+
+                        client  -> SYN|ACK
+                        serveur -> -
+
+
+Comme il a été vu, le serveur ignore le paquet SYN|ACK envoyé à un port  ouvert.
+Pas besoin de  parler de  l'absence  de la réponse  du serveur, qui produira une
+fausse alarme. Imaginez envoyer un  paquet SYN|ACK et ne recevoir aucune  réponse
+dû  aux majestueux  filtres de paquets, pare-feux ou également  les limites  de 
+temps bloquant la transmission, ainsi le scanner voudra ensuite produire une fausse 
+alarme pour ce port. Naturellement  ce scan n'est  pas considéré comme  un scan
+TCP connect() sérieux à cause de cette raison. Ce type de supposition tombe en-
+dessous de ce qui est connu sous le nom de "cartographie inversée".
+
+Avantages    : rapide, évite les pare-feux/IDS basiques, évite l'accord TCP en 
+	       trois étapes 
+Inconvénients: moins solide (fausses alarmes)
+
+
+1.4.2 - le scan FIN
+
+La méthode  du scan FIN utilise la cartographie inverse pour découvrir les ports
+fermés. Malheureusement, cette technique dépend d'un mauvais code de réseau  BSD
+parmis lesquels la plupart des systèmes d'exploitation ont basé leur pile TCP/IP
+(les meilleurs  pour scanner). Idéalement,  un seul  drapeau FIN est  envoyé, un 
+port  fermé sera  renvoyé  avec un bit RST. Les  ports ouverts, en  revanche, ne
+renverront pas de paquet, par conséquent tout ce qui ne renvoie pas  de bit  FIN
+est soupçonné d'être un  port  ouvert à  travers cette  méthode de  cartographie 
+inverse.
+
+Regardez la  négociation  qui  se  fait pour  les ports  ouverts/fermés  affiché 
+ci-dessous.
+
+
+                        client  -> FIN
+                        serveur -> -
+
+
+Aucune réponse signalée par le serveur  est signe d'un  port ouvert. Le  système
+d'exploitation du serveur abandonne silencieusement le paquet FIN qui arrive sur
+le service s'éxecutant sur ce port. A l'opposé de ceci est le RST renvoyé par le
+serveur concernant  un port fermé qui aurait  été atteint. Ainsi, aucun  service 
+ne répond sur ce port, entraînant un FIN qui invoque un reset (RST) comm réponse
+du serveur.
+
+
+                        client -> FIN
+                        server -> RST
+
+
+On  peut  donc  soutenir  qu'il y a deux manières  de tester un  port ouvert. La
+première  est  de  recevoir  une  liste  des  ports  fermés et de soustraire ces 
+réponses à partir de la liste des ports testés à l'origine. Par exemple, si l'on
+envoie 3 paquets sur les ports 1, 2, 3 d'un hôte distant.
+
+Si la réponse retournée est un RST pour les ports 1 et 3, nous comparons ensuite
+la liste des ports originalle: 1, 2, 3 et pour la liste des ports reçus: 1, 3 et
+nous pouvons donc déduire que 2 est le port ouvert suite à la comparaison.
+
+Le second test entraîne l'utilisation  d'une limite de temps pour  la réponse du
+paquet  envoyé. Si  la limite de temps est  atteinte alors nous  assumons que le
+port est ouvert. 
+Evidemment,  cette méthode testr les fausses alarmes et doit être évitée tant
+que possible. Ces  réponses  de  paquets  peuvent  être obscurcies à  cause  des 
+pares-feu,  filtres, routeurs,  connections lentes, et  traffic lourd, ainsi  ce 
+n'est pas un test solide pour être utilisé en tant que règle minutieuse pour  le
+scan FIN furtif.
+
+
+Avantages    : évite beaucoup d'IDS, évite l'accord TCP en trois étapes
+Inconvénients: fausses alarmes
+
+
+1.4.3 - le scan ACK
+
+Cette technique à été  décrite  pour la  permière  fois  par  Uriel Maimon  dans 
+Phrack 49, article 15. Par besoin de dire que cette technique tourne autour d'un
+bug dans la couche IP de quelques systèmes d'exploitation.
+
+Dans le but de tester  un port ouvert en utilisant cette méthode, un paquet  ACK
+initial  est  envoyé à  l'hôte  cible. Il y  a  actuellement  deux  manières  de 
+classifier la paquet réponse. La première implique une évaluation du champ  TTL,
+la seconde analyse le champ WINDOW. Les deux champs doivent être obtenus avec le
+paquet de réponse qui à le bit RST mis à 1.
+
+La réponse doit être une connection remise à zéro, à l'aide d'un paquet RST  mis
+à 1. Accompagnant le drapeau RST, une analyse de  l'en-tête  IP,  pour  quelques
+systèmes d'exploitation, fournira une  TTL qui est  plus  basse  que  celle  des 
+autres paquets reçus d'un port fermé. Manifestement chaque TTL envoyé à un  port
+ouvert révèllera une TTL inférieure ou égale à 64, si les port  plus grands/plus
+petits ont une TTL plus grande.
+ 
+
+                        client  -> FIN
+                        serveur -> RST -> (TTL <= 64)
+
+
+Dans la vie courante la réponse est la suivante:
+
+ packet 1: host XXX.XXX.XXX.XXX port 20: F:RST -> ttl: 70 win: 0 => fermé
+ packet 2: host XXX.XXX.XXX.XXX port 21: F:RST -> ttl: 70 win: 0 => fermé
+ packet 3: host XXX.XXX.XXX.XXX port 22: F:RST -> ttl: 40 win: 0 => ouvert
+ packet 4: host XXX.XXX.XXX.XXX port 23: F:RST -> ttl: 70 win: 0 => fermé
+
+
+Notez que la TTL des paquets séquentiels avant et  après le  numéro 4  est  plus
+élevée que 64. Comme le paquet 3 est reçu, on peut observer  que la TTL pour  le
+port 22 est moindre que la limite de 64, indiquant un port ouvert.
+
+En utilisant la techinque avec le  champ WINDOW, chaque  paquet non-nul reçu  du
+serveur est révélateur d'un port ouvert. Ceci est vrai pour de nombreux  récents
+BSD (FreeBSD, OpenBSD) et  UNIX (AIX, DGUX)  mais à  été  patché/fixé  dans  les
+plus récentes versions. 
+
+                        client  -> FIN
+                        serveur -> RST -> WINDOW (non-nul)
+
+
+Dans la vie courante la réponse est la suivante:
+
+ packet 6: host XXX.XXX.XXX.XXX port 20: F:RST -> ttl: 64 win: 0 => fermé
+ packet 7: host XXX.XXX.XXX.XXX port 21: F:RST -> ttl: 64 win: 0 => fermé
+ packet 8: host XXX.XXX.XXX.XXX port 22: F:RST -> ttl: 64 win: 512 => ouvert
+ packet 9: host XXX.XXX.XXX.XXX port 23: F:RST -> ttl: 64 win: 0 => fermé
+ 
+
+Notez que bien que la TTL  est égale à 64, les  paquets autours  on aussi  cette 
+même valeur. Ainsi la méthode  avec la TTL  ne fonctionnera  pas avec  cet hôte, 
+cependant la méthode avec le champ WINDOW montre une valeur non-nulle  indiquant
+un port ouvert.
+
+Avantages    : difficile à loger, évite la détection des IDS
+Inconvénients: dépend du bug de code réseau BSD, incompatibilité entre les OS
+
+
+1.4.4 - Le scan NULL
+
+Bien qu'il soit dotté  d'un  nom, le  scan  NULL  désactive  TOUS  les  drapeaux 
+disponibles dans l'en-tête TCP. ACK, FIN, RST, SYN, URG, PSH deviennent tous non
+définis. Les bits réservés (RES1, RES2) n'ont  actuellement aucun effet  sur  le
+résultat de  n'importe  quel  scan, qu'ils  soient ou non  définis clairement ne 
+change rien. Quand ce paquet arrive sur le serveur, le code  réseau BSD  informe 
+le noyau de déposer l'appel entrant si le port est ouvert.
+
+
+                        client  -> NULL (no flags)
+                        serveur -> -
+
+
+Alternativement, un paquet  RST sera retourné  si un port fermé  a  été  atteint 
+(oui encore un scan qui fait une cartographie inverse).
+
+
+                        client  -> NULL (pas de drapeaux)
+                        serveur -> RST
+
+
+En raison du fait que les RFC ne spécifient pas exactement comment un hôte  doit
+répondre à ces types  de  paquets,  beaucoup  de code  réseau  pour  la  plupart
+des systèmes d'exploitation différeront dans les réponses du paquet,  cf UNIX vs
+Microsoft.
+
+Avantages    : évite les IDS, évite l'accord TCP en trois étapes
+Inconvénients: seulement sur les UNIX, fausses alarmes 
+
+
+1.4.5 - le scan XMAS
+
+Contrastement, le scan dit XMAS est l'inverse de la méthode  du scan NULL.  Tous 
+les  drapeaux  disponibles dans  l'en-tête TCP sont définis (ACK, FIN, RST, SYN, 
+URG, PSH). Le scan XMS ou "Arbre de Noël" est  nommé justement  d'après  l'effet
+décoratif du  scan avec  l'implémentation  des frapeaux. Les bits réservés n'ont 
+pas d'effet  sur le résultat du scan, donc les définir ou les désactiver n'a pas
+d'importance.  Encore une fois,  parce que  cette méthode  est basée sur le code 
+réseau de BSD, la technique ce fonctionnera que contre les hôtes UNIX.
+
+Le scan XMAS fonctionne en  initialisant tous  les flags  et en  transmettant ce 
+paquet à l'hôte distant. Le noyau déposera ce paquet si un port ouvert  est à la
+réception. Un drapeau RST retourné indiquera un port fermé, NON-ECOUTANT. Encore
+un fois, il s'agit là de scan inversé, ainsi les fausses alarmes sont tous ce 
+qu'un client doit détecter comme ports ouverts/fermés. 
+
+
+                        client  -> XMAS (tous les drapeaux)
+                        serveur -> -
+
+
+Cette signature nous dit que le port est à un état d'ECOUTE, ou que le paquet  à
+été filtré par un pare-feu/routeur. Alternativement, un port  fermé produira  la
+réponse suivante:
+
+
+                        client  -> XMAS (all flags)
+                        serveur -> RST
+
+
+Le RST aurait  été envoyé  au client parce  que le serveur est truqué en pensant 
+que le client  a une  connection sur  ce port sans négociation  avec l'accord en 
+trois étapes classique. Puisque nous sommes dans un envorionnement TCP, le noyau
+renvoie un bit de remise à zéro (RST) au client  pour terminer  la  transmission
+immédiatement.  
+
+Avantages    : évite les IDS, évite l'accord TCP en trois étapes
+Inconvénients: seulement sur les UNIX, fausses alarmes
+
+
+1.4.6 - Fragmentation TCP
+
+La fragmentation TCP n'est pas une méthode de scan  en tant que  tel,  bien  que
+cette technique emploie une méthode pour rendre discrette l'implémentation  d'un
+scan en partageant l'en-tête TCP en petits fragments. Le réassemblage IP du côté 
+serveur fait souvent suivre des résultats  non prévisibles et anormaux  (les en- 
+têtes IP contenant des données peuvent être fragmentées). Beaucoup d'hôtes  sont
+incapables d'analyser et  de réassembler  les mini paquets et ainsi peut  causer
+des  crashs,  redémarrages,  ou encore  des vidages  mémoire  des  périphériques 
+réseau. Alternativement, ces mini paquets peuvent  être potentiellement  bloqués 
+par  la fragmentation IP, mis en attente dans le kernel ou pouvant être pris par
+règle merveilleuse du pare-feu.
+
+Depuis  que  la  plupart  des  systèmes  de détection d'intrusion  utilisent des 
+méchanismes basés sur des signatures pour indiquer tant bien  que mal  les scans
+basés sur IP et/ou l'en-tête TCP, la fragmentation est souvent capable de gagner
+sur ce type de  filtrage  et  détection de paquets, et  naturellement le scan ne 
+sera pas découvert. 
+
+Un en-tête TCP qui est minimalement permis doit contenir un port de destination
+et source pour le premier paquet (8 octets, 64 bits), usuellement les  drapeaux
+initialisés dans le suivant, permet à l'hôte distant de réassembler  le  paquet
+au dessus du dernier. Le réassemblage actuel est établit à travers un IPM (Int-
+ernet Protocol Module, Module IP) qui identifie les paquets fragmentés  par  le
+équivalent aux valeurs de: 
+
+        * source 
+        * destination
+        * protocole
+        * identification
+
+Avantages    : évite les IDS, furtif
+Inconvénients: peut causer des problèmes réseau sur l'hôte distant
+
+
+1.5 Divers
+
+Cette catégorie  représente les  scans  qui  ne  peuvent  pas  être  entièrement 
+classifiés dans  les  catégories ouvert/demi-ouvert/furtif. Ces  scans ici  sont 
+différents dans leur nature mais les techniques sont  encore utilisées  dans  le
+monde sauvage d'aujourd'hui. 
+
+
+1.5.1 - le scan UDP ICMP_PORT_UNREACHABLE (port ICMP non accessible)
+
+D'une autre manière que  les méthodes de  scan ci-dessus, le  protocole UDP  est
+utilisé pour déterminer les ports ouvert/fermés sur un hôte distant au  lieu  de
+TCP.
+
+UDP est un protocole qui agit en mode non connecté qui  envoie  des  datagrammes
+qui ont la valeur de transmission  de paquet. Au même titre  que le  système  de
+cartographie inverse, envoyer un paquet UDP sur un port ouvert ne retournera pas
+de réponse du serveur. Cependant, un port fermé répondra  avec une erreur  ICMP.
+En  utilisant  un procédé  d'extrapolation, il  devient simple  d'identifier les 
+ports ouverts des ports fermés. Le type de message, ICMP_PORT_UNREACH (type 3,
+code 3), n'a pas techniquement besoin d'être envoyé quand un  port fermé  reçoit
+un paquet UDP, d'où la difficulté avec cette méthode de scan. En  plus, UDP  est 
+connu  pour  être  un  protocole  non  connecté,  les paquets  peuvent se perdre 
+pendant la transmission et doivent donc être retransmis, impliquant les  fausses  
+alarmes qui seront déclenchées dans le résultat du scan. Les noyaux Linux limite 
+le taux d'erreur  des messages ICMP, le message  destination non-atteignable est  
+défini à 80 par 4 secondes avec 1/4 de seconde de pénalité si ce taux est excédé 
+ajouté à la technicité du scan, comme Fyodor a pu en parler.
+
+La signature d'un port ouvert ne doit  pas renvoyer de réponse, aussi un  paquet
+est retransmis est envoyé pour réduire les signaux d'alarmes:
+
+
+                        client  -> paquet udp
+                        serveur -> -
+                        client  -> paquet udp
+                        serveur -> -
+
+
+Les ports fermé répondront avec une erreur ICMP.
+
+
+                        client  -> paquet udp
+                        serveur -> UDP (ICMP_PORT_UNREACH)
+
+
+Avantages    : scan les ports non-TCP, évite les IDS TCP
+Inconvénients: requière les privilèges root, paquets facilement perdus, 
+	       facilement détecté
+
+
+1.5.2 Attaque par rebond de serveur FTP
+
+Cette  méthode  ingénieuse  à  été  décrite  dans  un article  par "the hobbit".
+En utilisant la commande FTP PORT pour mettre les  clients  en mode  passif,  un 
+hôte  est capable de déterminer le statut d'un port en montrant une IP et un port
+en  tant  que  paramètres arbitraires  pour  se connecter. Si  une connection est 
+établie cela signifiera que le processus de transfert de donnée (DTP) est  actif,
+le client sait que le port est ouvert, avec les réponses 150 et 226 affichées par
+le serveur. Si le transfert ne fonctionne pas l'erreur 425 sera générée  avec  un
+message de constuction de données refusées.
+
+De récentes versions de WU-FTPD (inférieures à la 16)  étaient vulnérables à  ce  
+type d'attaque, bien sûr, la présence de ce bug à été patché dans la plupart des
+serveurs FTP. D'autres versions vulérables sont:
+
+Sun FTP server in SunOS 4.1.x/5.x,  SCO OpenServer 5.0.4, SCO UnixWare 2.1,  AIX
+3.2/4.2/4.2./4.3, Caldera 1.2, RedHat 4.X, Slackware 3.1 - 3.3.
+
+Une manière facile d'interdire ce type d'attaque  est  d'empêcher  la  troisième 
+partie  des  transferts  à travers la  modification  de la  commande PORT  et/ou
+d'interdire la spécification des ports réservés, exépté pour le port 20, le port
+standard de données par défaut.
+
+Avantages     : outrepasse les pares-feu, permet l'accès aux réseaux locaux, dur
+	        à tracer
+Inconvénients : lent, la plupart des serveurs FTP ont été patchés
+
+
+1.6 Bloquer les anomalies sur les paquets
+
+Isoler et filtrer tous les paquets utilisés dans tous les scan ci-dessus est une
+étape suivante pour sécuriser tout vos réseaux  connectés. Toute application des
+règles suivantes rapportera beaucoup de techniques de scan avec des informations
+de fausses alarmes, surlignant l'objectif très connu "Sécurité par obscurité".
+
+	* bloquer le traffic des ports non-définis (services non rattachés à eux)
+	* contrôle de la couche application
+	* refuser le traffic passant à travers les règles
+	* contrôler les connections de la couche transport (contrôle de TCP, SYN,
+	  RST, ACK)
+	* contrôler l'adresse source en correspondance avec les adresses connues
+	* filtrer le type 3 et 8 de l'ICMP
+	* contrôle réseau actif
+
+
+Beaucoup de techniques de scan audibles existent pour rassembler des informations
+sur les serves qui existent sur un hôte. Cependant, aucun de ces  techniques  ne
+pourront échaper un un proxy bien configuré de pair avec des systèmes  d'analyse
+actifs pour identifier les anormalités du traffic.
+
+
+Notes de traduction
+
+Le jargon a été traduit dans la mesure du possible dans le sens où il s'agit d'une
+traduction francaise.
+
+[1] IDS = Intrusion Detection System, système de détection d'intrusion.
+
+[2] démon = traduction de daemon, processus qui s'execute en arrière plan.
+
+[3] fausse alarme = traduction de false positive, ceci est problématique car elle 
+		    déclenche des alertes injustifiées, diminuant ainsi la valeur 
+		    et l'urgence d'alertes réelles. 
+
+Comme ma traduction n'est pas parfaite, si il y a des ambiguïtés, n'hésitez pas à
+me mailler.
+J'espère que vous avez pris du plaisir à lire ce document, au même titre que j'en
+ait pris pour le traduire.
+
+Références
+
+Art of portscanning by Fyodor     -     http://www.phrack.com
+Networking Scanning by Ofir Afkin -     http://www.sys-security.com
+FTP bounce attack by hobbit       -     http://www.insecure.org/nmap/hobbit.ftpbounce.txt 
+----------------------------------------------------------------------------------------- 
+(C)opyright 2001 by dethy@synnergy.net                             Synnergy Networks 
+

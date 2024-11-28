@@ -1,0 +1,52 @@
+BIOS/PC STARTUP INFORMATION
+
+Please see disclaimer at http://yoyo.cc.monash.edu/~davmac/
+
+When powered on Intel CPUs begin execution at the end of their address space.
+(eg absolute address 0FFFF0h for 808x, 0FFFFF0h for 286 systems, even more
+F's for 32-bit systems).  This address is executed in real mode, even if the  
+address is not normally addressable in real mode - to achieve this, the ROM   
+BIOS is mirrored at the end of memory as well as in the normal real mode 
+address.  In general this address will contain a far JMP instruction to the
+actual startup code.  Various registers at this stage still hold information
+about the CPU (eg model and 'stepping' information). This 'end of address'
+must be duplicated at absolute address 0FFFF0h so that it is addressable in
+real mode (the CPU powers up in real mode).
+
+Memory is not automatically cleared when the CPU is reset.  It is possible to
+signify using CMOS and memory locations that the CPU reset is not meant as a
+system reset, but (for example) simply as a return to real mode from
+protected mode.  Note that it is not necessary to reset the CPU to exit
+protected mode on 386+ systems.
+
+The ROM BIOS, on a system startup, executes the POST (power-on self-test)
+routine which usually checks memory, establishes devices etc.  The POST
+routine also fills in the BIOS memory area at physical address 00000400h and
+sets up the real mode interrupt handlers (those connected to IRQ lines are
+set to dummy handlers which simply acknowledge the interrupt with the PIC and
+return, those assigned to BIOS services are set to the appropriate address,
+which may vary with the BIOS manufacturer and revision).  The POST then
+checks for extensions ROMs at this point (for example the video card).
+Absolute addresses C0000h through E0000h are searched in 2KB increments for
+the signature 55h 0AAh.  If the signature is found, the next byte is a length
+indicator for the ROM (in 512 byte blocks) and the next bytes contain a FAR
+CALLable address (it should be called as an empirical address, with the
+lowest possible offset value.  For example, absolute address C0003h is called
+as C000:0003h).  The extension BIOSes perform initialization and then return.
+On entry, SS:SP must be set up as a valid stack.
+
+Lastly, the POST routine searches the disk drives (usually the first floppy,
+followed by the hard drive) for a bootable disk.  In determining whether a
+disk is bootable, the first sector of the first track (or cylinder in the
+case of hard drives) and first head is examined for the signature (byte 55h
+followed by byte 0AAh) at the end of the sector (offset 1FEh).
+
+For floppy drives, the first sector of the first track of the first head is
+loaded and executed.  For hard drives, the first sector of the first cylinder
+of the first head is loaded and executed.  The 'boot sector' as it is known
+is loaded at 0000:7C00h and executed, though the CS:IP values seem to vary;
+Both 0000:7C00 and 07C0:0000 seem valid - code to be used on multiple
+machines must either be relocatable or include a far jump instruction to fix
+the address. On entry, the stack (though of unknown location) will be valid,
+and the DL register containing the boot drive as known to BIOS - 0 for the
+first floppy, 80h for the first hard drive.

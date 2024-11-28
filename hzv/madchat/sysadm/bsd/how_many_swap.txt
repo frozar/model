@@ -1,0 +1,111 @@
+From: nbari@unixmexico.com
+Cc: freebsd-hackers@freebsd.org
+Subject: adding more ram
+                                                                                                                                               
+Hi all.
+                                                                                                                                               
+I have a server with 1GB of RAM and a swap partition of 2GB i will upgrade
+the memory server to 2GB so my questions are:
+                                                                                                                                               
+should i fix the swap partition to have now 4GB of space ?
+                                                                                                                                               
+what other changes do i have to make to my system after adding more ram ?
+
+
+
+=================================================================
+                                                                                                                   
+From: Mike Silbersack <silby@silby.com>
+Cc: freebsd-isp@freebsd.org
+Cc: freebsd-hackers@freebsd.org
+Subject: Re: adding more ram
+                                                                                                                                               
+                                                                                                                                               
+On Wed, 10 Dec 2003 nbari@unixmexico.com wrote:
+                                                                                                                                               
+[snip]
+
+Dan's advice seems good; swapping more than a gig of data would be awful.
+                                                                                                                                               
+I'm replying because I want to answer your real question. <g> The notion
+of swap = 2 x ram is an old one, and is no longer applicable.  (Some)
+older VM systems used very simplistic swapping mechanisms, which required
+entire processes to be swapped, thereby requiring large amounts of swap
+space.  FreeBSD (and other modern OSes) page out to the swap file in
+increments of 4K pages, and do so in a flexible manner.  As a result, you
+should always have *some* swap space to handle overload cases, but it's
+not necessary to keep any specific ram to swap ratio.
+                                                                                                                                               
+(Actually, the term "swapping" is still used inside the FreeBSD kernel,
+but it only applies to paging out the last 20K or so of a process's
+memory.)
+                                                                                                                                               
+Now, to contradict myself, there *is* a reason that you might wish to have
+a larger swapfile.  Taking a crashdump requires that the swap file must be
+of the size RAM + 64K or so.  Hence, your present swap file might be
+slightly too small to take a crashdump once you upgrade to 2G ram.
+Whether this is an issue for you or not depends on how often your machine
+crashes and whether you wish to debug it. :)
+                                                                                                                                               
+Mike "Silby" Silbersack
+
+============================================
+
+
+From: Bill Vermillion <bv@wjv.com>
+Cc: nbari@unixmexico.com
+Cc: freebsd-isp@freebsd.org
+Cc: freebsd-hackers@freebsd.org
+Subject: Re: adding more ram
+                                                                                                                                               
+Systems such as the Irix I used before moving the servers to FBSD
+around 1996 - reserverd swap space for applications when the
+application started up so those needed large swap space.  Often it
+was never used, but the design allocated it anyway.
+                                                                                                                                               
+==============================================
+From: David Schultz <das@FreeBSD.ORG>
+Cc: nbari@unixmexico.com
+Cc: freebsd-isp@FreeBSD.ORG
+Cc: freebsd-hackers@FreeBSD.ORG
+Subject: Re: adding more ram
+
+
+The real reason that 2 * sizeof(RAM) is often an overestimate on
+FreeBSD is that FreeBSD overcommits swap (as others have pointed
+out.)  Many (most?) other systems do not overcommit, including
+Solaris.  Some systems, such as Tru64 (and Linux???) support both.
+For these systems, 2 * sizeof(RAM) is sometimes even an underestimate.
+                                                                                                                                               
+These days overcommit is actually not very sensible.  Even though
+it tends to overestimate space requirements, disk capacity has
+outstripped RAM capacity to such an extent that the cost is
+nominal.  The advantage of being more conservative is that you
+never have to kill processes to save the kernel from deadlock.
+(Wes recently added a simple feature that improved the situation,
+but randomly killing processes is still a kludge.)
+                                                                                                                                               
+Unfortunately, getting non-overcommit right is hard.  In addition
+to checking available space every time you allocate pageable
+memory (including things like lazily copied map entries), you also
+need to be careful to reserve enough space for stacks for each
+application thread, etc.
+
+===============================================================
+From: Dan Nelson <dnelson@allantgroup.com>
+Cc: freebsd-isp@freebsd.org
+Cc: freebsd-hackers@freebsd.org
+Subject: Re: adding more ram
+
+
+Depends.  Have you ever used up that 2gb of swap?  If not, you'll
+probably never consume 4gb either :)  If this is a database server, or
+something similar where a few processes allocate large amounts of
+memory, you don't need much swap anyway, since if any of those
+processes actually has to swap, you end up thrashing the system as it
+tries to swap 500mb processes in and out of memory.  I really can't
+think of a system that would still perform well with 2 or 3GB of
+process space in swap.  At the 2gb RAM point, you usually have a system
+where any swapping == bad news.
+
+=======================================================

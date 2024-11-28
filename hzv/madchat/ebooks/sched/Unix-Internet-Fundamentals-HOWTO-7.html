@@ -1,0 +1,88 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<HTML>
+<HEAD>
+ <META NAME="GENERATOR" CONTENT="SGML-Tools 1.0.9">
+ <TITLE>The Unix and Internet Fundamentals HOWTO: Comment mon ordinateur &eacute;vite aux processus d'empi&eacute;ter les uns sur les autres ?</TITLE>
+ <LINK HREF="Unix-Internet-Fundamentals-HOWTO-8.html" REL=next>
+ <LINK HREF="Unix-Internet-Fundamentals-HOWTO-6.html" REL=previous>
+ <LINK HREF="Unix-Internet-Fundamentals-HOWTO.html#toc7" REL=contents>
+</HEAD>
+<BODY>
+<A HREF="Unix-Internet-Fundamentals-HOWTO-8.html"><IMG SRC="next.gif" ALT="Page suivante"></A>
+<A HREF="Unix-Internet-Fundamentals-HOWTO-6.html"><IMG SRC="prev.gif" ALT="Page précédente"></A>
+<A HREF="Unix-Internet-Fundamentals-HOWTO.html#toc7"><IMG SRC="toc.gif" ALT="Table des matières"></A>
+<HR>
+<H2><A NAME="s7">7. Comment mon ordinateur &eacute;vite aux processus d'empi&eacute;ter les uns sur les autres ?</A></H2>
+
+<P>L'ordonnanceur du noyau fait attention &agrave; s&eacute;parer les processus dans le
+temps. Votre syst&egrave;me d'exploitation les divise aussi dans l'espace, de
+telle mani&egrave;re que ces processus n'empi&egrave;tent pas sur la m&eacute;moire de
+travail des autres. Ces choses que votre syst&egrave;me d'exploitation r&eacute;alise
+sont appel&eacute;es <EM>gestion de la m&eacute;moire</EM>.
+<P>Chaque processus de votre 'troupeau' a besoin de son propre espace m&eacute;moire
+afin de mettre son code et de garder des variables et leur
+r&eacute;sultat. Vous pouvez imaginer cet ensemble constitu&eacute; d'un 
+<EM>segment de code</EM> accessible en lecture uniquement
+(contenant les instrucions du processus) et un <EM>segment de
+donn&eacute;es</EM> accessible en &eacute;criture (contenant toutes les
+variables du processus). Le segment de donn&eacute;es est v&eacute;ritablement propre
+&agrave; chaque processus, mais si deux processus ex&eacute;cutent le m&ecirc;me code, Unix
+s'arrange automatiquement pour qu'ils partagent le m&ecirc;me segment de code
+dans un soucis d'efficacit&eacute;.
+<P>L'efficacit&eacute; est importante car la m&eacute;moire est ch&egrave;re. Quelquefois, vous ne
+disposez pas de suffisamment de m&eacute;moire pour faire tenir tous les 
+programmes, sp&eacute;cialement si vous utilisez un gros programme comme un
+serveur X-WINDOW. Pour contourner cela, Unix utilise une strat&eacute;gie
+appel&eacute;e 
+<A NAME="vm"></A>  <EM>m&eacute;moire virtuelle</EM>. Cela
+n'essaie pas de faire tenir tout le code et les donn&eacute;es d'un processus en
+m&eacute;moire. Cependant, il garde seulement un espace de travail&nbsp;; le reste de
+l'&eacute;tat du processus est laiss&eacute; dans un endroit sp&eacute;cial sur votre disque&nbsp;:
+<EM>l'espace d'&eacute;change (swap space)</EM>.
+<P>Lorsque le processus s'ex&eacute;cute, Unix essaie d'anticiper comment l'
+espace de travail changera, et ne chargera en m&eacute;moire que les morceaux
+dont il a besoin. Faire cela efficacement est compliqu&eacute; et d&eacute;licat, je
+n'essaierai pas de le d&eacute;crire ici --&nbsp;mais cela d&eacute;pend du fait que le
+code et les r&eacute;f&eacute;rences aux donn&eacute;es peuvent arriver en blocs, avec
+chaque nouveau r&eacute;f&eacute;ren&ccedil;ant vraisemblablement un proche ou un
+ancien. Ainsi, si Unix garde le code ou les donn&eacute;es fr&eacute;quemment (ou
+r&eacute;cemment) utilis&eacute;s, vous gagnerez du temps.
+<P>Notez que dans le pass&eacute;, le "quelquefois" que nous employons deux
+paragraphes plus haut &eacute;tait "souvent" voire "toujours", --&nbsp;la taille de
+la m&eacute;moire &eacute;tait habituellement petite par rapport &agrave; la taille des
+programmes en cours d'ex&eacute;cution, de telle mani&egrave;re que les &eacute;changes
+entre le disque et la m&eacute;moire ("swapping") &eacute;taient fr&eacute;quents. La
+m&eacute;moire est beaucoup moins ch&egrave;re de nos jours et m&ecirc;me les machines bas
+de gamme en sont bien dot&eacute;es. Sur les machines mono-utilisateur avec
+64Mo de m&eacute;moire, il est possible de faire tourner X-WINDOW et un
+m&eacute;lange de programmes sans jamais swapper.
+<P>M&ecirc;me dans cette situation joyeuse, la part du syst&egrave;me d'exploitation appel&eacute;e
+le <EM>gestionnaire de m&eacute;moire</EM> a un important travail &agrave; faire. Il
+doit &ecirc;tre s&ucirc;r que les programmes ne peuvent modifier que leurs segments
+de m&eacute;moire --&nbsp;ce qui emp&ecirc;che un code erron&eacute; ou malicieux dans un
+programme de ramasser les donn&eacute;es dans un autre. Pour faire cela, il
+conserve une table des segments de donn&eacute;es et de code. La table est
+mise &agrave; jour chaque fois qu'un processus demande de la m&eacute;moire ou en
+lib&egrave;re (habituellement plus tard lorsqu'il se termine).
+<P>Cette table est utilis&eacute;e pour passer des commandes &agrave; une partie sp&eacute;cialis&eacute;e
+du mat&eacute;riel sous-jacent appel&eacute;e un <EM>UGM (MMU)</EM> ou
+<EM>unit&eacute; de gestion m&eacute;moire (memory management
+unit)</EM>. Les processeurs modernes disposent de MMUs
+int&eacute;gr&eacute;s. Le MMU a la facult&eacute; de mettre des barri&egrave;res autour de zones
+m&eacute;moire, ainsi une r&eacute;f&eacute;rence en "dehors des clous" sera refus&eacute;e et
+g&eacute;n&eacute;rera une interruption sp&eacute;ciale pour &ecirc;tre trait&eacute;e.
+<P>Si vous avez d&eacute;j&agrave; vu le message Unix qui dit "Segmentation fault", "core
+dumped" ou quelque chose de similaire, c'est exactement ce qu'il se
+passe&nbsp;; un programme en cours d'ex&eacute;cution a tent&eacute; d'acc&eacute;der &agrave; de la
+m&eacute;moire en dehors de son segment et a provoqu&eacute; une interruption
+fatale. Cela indique un bug dans le code du programme&nbsp;; le <EM>core
+dump</EM> laisse une information en vue d'un diagnostic &agrave;
+l'attention du programmeur afin qu'il puisse trouver la trace de son
+erreur.
+<P>
+<HR>
+<A HREF="Unix-Internet-Fundamentals-HOWTO-8.html"><IMG SRC="next.gif" ALT="Page suivante"></A>
+<A HREF="Unix-Internet-Fundamentals-HOWTO-6.html"><IMG SRC="prev.gif" ALT="Page précédente"></A>
+<A HREF="Unix-Internet-Fundamentals-HOWTO.html#toc7"><IMG SRC="toc.gif" ALT="Table des matières"></A>
+</BODY>
+</HTML>

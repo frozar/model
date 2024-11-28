@@ -1,0 +1,118 @@
+<?php die(); /* XSS SHIELD, REMOVE THIS LINE */ ?>
+<?
+// xGalleryx v0.5 (05.2003)
+//
+// Utilisation : script.php?gal=repertoire
+// 'repertoire' etant le repertoire où sont stockees vos photos. Celui-ci doit contenir un sous-repertoire
+// nommé 'thumbnail' et contenant des miniatures nommées comme ceci = TN-photo1.jpg pour la miniature de
+// l'image nommée photo1.jpg.
+// Il faut aussi 3 petites images utilisées pour les flèches 'precedent, 'suivant', et 'retour au sommaire'
+// qui sont affichées lors de la visualisation des photos. Ces images doivent respectivement être nommées
+// back.png, next.png, et gal.gif.
+//
+// Pour ce qui est de l'aspect de la gallerie : dans le repertoire des photos, vous devez placer un fichier,
+// nommé conf.php où sera ecrit le titre de votre gallerie, entre les balises <titre> et </titre>, aisin que
+// la feuille de style CSS, entre les balises <css> et </css>.
+// Pour plus d'infos sur les feuilles de style CSS : http://www.w3.org/Style/CSS/
+//
+// commentaires : xstephx@altern.org - www.xstephx.be.tf
+//
+// Cette source peut être redistribuée, et modifiée au bon gré des utilisateurs. Veuillez laisser 
+// mon pseudonyme (xStephx) et mon email (xstephx@altern.org). Merci.
+//
+?>
+
+<HTML>
+<HEAD>
+<TITLE>xGalleryx</TITLE>
+<?
+$repImg = $_GET['gal'];
+$fp = file("$repImg/conf.php");
+$conf = implode("", $fp);
+$test1 = eregi("<css>(.*)</css>",$conf,$css);
+$test2 = eregi("<titre>(.*)</titre>",$conf,$titre);
+echo ("<style>");
+echo $css[1];
+echo ("</style>");
+?>
+
+</HEAD>
+<body>
+
+<font class=small>
+<?
+$g = $_GET['g'];
+$repImg = $_GET['gal'];
+
+if(empty($g)) { $g = 1; }
+
+function isImg ($file){if (eregi(".jpg$",$file)){return TRUE;}} // Fonction de verification des fichiers jpeg
+
+$genererImg = "redimImg.php"; // Fichier php qui se charge de faire les reduction d'image
+$repImg = $gal;    // Repertoire des images
+$handle = opendir("$repImg"); // On ouvre le repertoire des images
+while ($file = readdir($handle))
+    {if ($file != "." && $file != ".." && isImg ($file))
+         {$listImg[] = $file;   // On place toutes les images du dossier dans le tableau $imgList
+            sort($listImg);}}   // On classe les fichiers dans l'orde alphabetique (c'est plus mieux ;D) )
+closedir($handle); // On ferme le repertoire des images
+
+// presentation de la page
+
+
+if ($g == 1) {
+$lien1 = $_SERVER['PHP_SELF'];  // Liens pour afficher votre page
+$Galerie = $_GET['Galerie'];
+if (empty($Galerie)) {$Galerie = 1;}
+$precGalerie = $Galerie-1;  // Galerie precedente
+$suivGalerie = $Galerie+1;  // Galerie suivante
+
+$nbImg = count($listImg);   // Compte le nombre d'image
+$nbLigne = 4;   // Nombre de ligne souhaité
+$nbCol = 5; // Nombre de colonne souhaité
+$nbImgParPg = $nbLigne*$nbCol;  // Calcul du nombre d'image par page
+$nbGalerie = $nbImg/$nbImgParPg;    // Calcul du nombre de galerie
+$nbGalerie = ceil("$nbGalerie");    // Calcul du nombre de galerie, arrondi superieur du calcul
+$numImg = ($Galerie*$nbImgParPg)-$nbImgParPg;   // Compteur pour le tableau $imgList
+
+echo"<table border=0 cellspacing=5 cellpadding=3 width=100% align=center>
+         <tr><td colspan=$nbCol><font size=5 face=Arial><b>$titre[1]</b> - page $Galerie<br><br></font></td></tr><br>";
+
+$comptLigne = 0; // Mise a zero du compteur de lignes
+while ($comptLigne < $nbLigne)
+         {echo "<tr>";
+        $comtpImg = 0; // Mise a zero du compteur d'images
+        while ($comtpImg < $nbCol && $numImg < $nbImg)
+                {echo "<td align=center><a href=\"$lien?gal=$gal&g=2&Galerie=$Galerie&img=$repImg/$listImg[$numImg]&num=$numImg\"><img src=\"$repImg/thumbnail/TN-$listImg[$numImg]\" border=0></a></td>";
+                 
+        //change la ligne ci-dessus pour la taille des miniatures
+
+$numImg++; // Incremantation du compteur de $imgList (each() et foreach() etait beaucoup moins pratique :D( )
+                 $comtpImg++; // Incremantation du compteur d'images
+                }
+        echo "</tr>";
+        $comptLigne++; // Incremantation du compteur de lignes
+         }
+echo "<tr><td colspan=$nbCol align=center><table width=100% border=0 cellspacing=0 cellpadding=0><tr align=center><td colspan=2>";
+for ($compt = 1; $compt <= $nbGalerie && $nbGalerie > 1; $compt++)
+     {echo"| <a href=\"$lien"."gal=$gal&g=1&Galerie=$compt\">$compt</a> ";}
+if ($nbGalerie > 1){echo" | ";}
+echo "</td></tr><tr><td width=50% align=left>";
+if ($Galerie > 1)
+    {echo "<a href=\"$lien?gal=$gal&g=1&Galerie=$precGalerie\">Precedent</a> ";} // Lien "precedent"
+echo" </td><td width=50% align=right>";
+if ($Galerie < $nbGalerie)
+    {echo "<a href=\"$lien?gal=$gal&g=1&Galerie=$suivGalerie\">Suivant</a>";} // Lien "suivant"
+echo "</td></tr></table></td></tr></table></body></html>";
+}
+if ($g == 2)
+{
+	$num2 = $num-1;
+	$num3 = $num+1;
+echo ("<br><center><b><font class=big>$titre[1]</b></font><br><br><a href=\"$lien?gal=$gal&g=1&Galerie=$Galerie\"><img src=\"gal.gif\" alt=\"retour au sommaire\"></a><br><hr><br><table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\"><center>");
+echo ("<tr><td><a href=\$lien?gal=$gal&g=2&Galerie=$Galerie&img=$repImg/$listImg[$num2]&num=$num2\" alt=\"Page précédente\"><img src=\"back.png\"></a></td><td align=left>");
+echo "<font class=\"small\">Image n°$num <br><br><br><center><img src=\"$img\">";
+echo ("</td><td><a href=\"$lien?gal=$gal&g=2&Galerie=$Galerie&img=$repImg/$listImg[$num3]&num=$num3\" alt=\"Page suivante\"><img src=\"next.png\"></a></td><tr>");
+echo ("</table><br><br><hr><br><br><small>Gallerie générée par <a href=\"http://www.xstephx.be.tf\">xGalleryx</a><br>");
+}
+?>

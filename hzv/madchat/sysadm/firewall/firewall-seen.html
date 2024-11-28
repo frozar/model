@@ -1,0 +1,2133 @@
+<html>
+<head>
+<title>FAQ: Firewalls: What am I seeing?</title>
+</head>
+<body>
+<h1>FAQ: Firewalls: What am I seeing?</h1>
+
+This document answers the question: 
+<b>I've seen &lt;something&gt; on my firewall;
+what does it mean?</b>
+Firewall administrators regularly see strange behaviour
+showing up in their logfiles.
+This document describes some of the common things seen
+on these firewalls, and what they mean.
+<p>
+Note that this document is intended both for owners of
+<b>personal firewalls</b> as well as <b>corporate firewalls</b>.
+<p>
+Also note that this document limits itself to discussing issues
+that firewall administrators are seeing right now. It doesn't
+try to discuss all possible evidence you might see in your logfiles.
+
+<!-- FORMATTING: my goal is to format the HTML tags as little
+as possible in order to make the format "universal" for
+older browsers (i.e. Lynx). At the same time, I'd like to take advantage
+of the capabilities of newer browsers to format the text. I really
+don't like this style-sheet, so please create a better one and
+e-mail it to me!
+-->
+<style><!--
+H1, H2, H3, H4, H5, H6 {
+	font-family: "Trebuchet MS", "Arial", sans-serif;
+	font-size: 10pt;
+}
+
+H1 { 
+		font-size: 13pt;
+		color: #FFFFFF; 
+		background-color: #666666;
+		background: #666666;
+}
+
+H2 { 
+		font-size: 12pt;
+		background-color: #c0c0f0;
+		background: #f0f0f0;
+}
+
+
+H3 { 
+	font-size: 10pt;
+	line-height: 50%;
+	background-color: #f0f0f0;
+}
+
+P {
+	margin-top: 0.4em;
+	xmargin-bottom: 0.5em;
+}
+
+
+CODE {
+	font-size: 8pt;
+	}
+PRE {
+	font-size: 8pt;
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+	background-color: #FFFFCC;
+	}
+
+TT {
+	font-size: 10pt;
+}
+
+.copyright {
+		font-family: Arial;
+		border-width: 2px;
+		border-style: solid;
+		padding-top: 4px;
+		padding-left: 4px;
+		padding-bottom: 4px;
+		padding-right: 4px;
+		background-color: #FFCCCC;
+		font-weight: bold;
+}
+
+.t {	
+	font-weight: bold;
+	font-family: "Trebuchet MS", "Arial", "helvetica", sans-serif;
+	color: red;
+}
+
+DT {	
+	font-weight: bold;
+	font-family: "Trebuchet MS", "Arial", "helvetica", sans-serif;
+}
+
+TH {
+	font-style: italic;
+	text-align: left;
+	font-size: smaller;
+	text-decoration: none;
+	font-family: "Trebuchet MS", "Arial", "helvetica", sans-serif;
+	background: #FFFFCC;
+	vertical-align: top
+}
+
+TD {
+	font-size: smaller;
+	vertical-align: top;
+	font-family: "Arial", "helvetica", sans-serif;
+	background-color: #f0f0ff;
+}
+
+
+
+TABLE {
+	border-style: solid
+}
+
+BODY {
+	text-align: justify;
+	font-family: Arial,Helvetica;
+	font-size: smaller;
+}
+
+.toc A {
+	color: #000066;
+	text-decoration: none;
+	text-indent: 3em;
+}
+
+.portname {
+	background: #FFFFFF
+}
+
+A.dict:visited { color: black }
+A.dict:link { color: black }
+
+A.ex:visited { color: #0000cc }
+A.ex:link { color: #0000cc }
+
+A.more:visited { color: #660000 }
+A.more:link { color: #660000 }
+
+A:visited {color: #333333}
+A:link {color: #000000}
+
+--></style>
+
+<dl>
+
+<dt><h1>0. Information about this FAQ</h1><dd>
+Version 0.3.4, March 6, 2000
+
+<blockquote CLASS=copyright>
+Copyright 1998-2000 by Robert Graham (<a href="mailto:firewall-seen@robertgraham.com">firewall-seen@robertgraham.com</a>. 
+
+All rights reserved. This document may
+only be reproduced (whole or in part) for non-commercial purposes. All reproductions
+must contain this copyright notice and must not be altered, except by permision of the
+author.
+</blockquote>
+
+	You can get this document from:<br>
+		<a href="http://www.robertgraham.com/pubs/firewall-seen.html">http://www.robertgraham.com/pubs/firewall-seen.html</a> (HTML)<br>
+
+	This is a work in progress. I have a lot more things
+	I want to add to this document, but I haven't gotten around
+	to it yet. If you have any suggestions, please e-mail me.
+	<p>
+	Special thanks to Alan J. Rosenthal (maintainer of FAQs himself)
+	for some really good input.
+
+<dt><H1>1. What does port number ZZZZ mean?</H1><dd>
+
+	Port numbers are divided into three ranges: 
+	<ul>
+	<li>The Well Known Ports are those from 0 through 1023. These are tighlty bound
+		to services, and usually traffic on this port clearly indicates the
+		protocol for that service. For example, port 80 virtually always indicates
+		HTTP traffic.
+	<li>The Registered Ports are those from 1024 through 49151.
+		These are loosely bound to services, which means that while there
+		are numerous services "bound" to these ports, these ports are likewise
+		used for many other purposes. For example, most systems start handing
+		out dynamic ports starting around 1024.
+	<li>The Dynamic and/or Private Ports are those from 49152 through 65535.
+		In theory, no service should be assigned to these ports.
+	</ul>
+	In reality, machines start assigning "dynamic" ports starting at 1024.
+	We also see strangeness, such as Sun starting their RPC parts at 
+	32768.
+	<p>
+	Where to get a more complete list of port info:
+	<dl>
+	<dt><a class=ex href="http://www.isi.edu/in-notes/iana/assignments/port-numbers">ftp://ftp.isi.edu/in-notes/iana/assignments/port-numbers</a><dd>
+		"Assigned Numbers" RFC, the official source for port assignments.
+	<dt><a class=ex href="http://advice.networkice.com/advice/Exploits/Ports/">http://advice.networkice.com/advice/Exploits/Ports/</a><dd>
+		Database of portnumbers, hyperlinked to various exploits on those port numbers.
+	<dt>/etc/services<dd>
+		On UNIX systems, the file <code>/etc/services</code> contains a list of commonly
+		used UNIX port number assignements. On Windows NT, this file is located in
+		<code>%systemroot%/system32/drivers/etc/services</code>.
+	<dt><a class=ex href="http://www.con.wesleyan.edu/~triemer/network/docservs.html">http://www.con.wesleyan.edu/~triemer/network/docservs.html</a><dd>
+		Links back to the protocol specifications frequently.
+	<dt><a class=ex href="http://www.chebucto.ns.ca/~rakerman/trojan-port-table.html">http://www.chebucto.ns.ca/~rakerman/trojan-port-table.html</a><dd>
+		Pages describing various ports.
+	<dt><a class=ex href="http://www.tlsecurity.com/trojanh.htm">http://www.tlsecurity.com/trojanh.htm</a><dd>
+		TLSecurity's list of Trojans. Rather than a collection of rumors by other people,
+		the maintainers of this list claim to verify each and every port personally.
+	<dt><a class=ex href="http://www.simovits.com/nyheter9902.html">http://www.simovits.com/nyheter9902.html</a><dd>
+		Trojan Horse probes page.
+	</dl>
+
+	<dt><H2>1.1 What are some common incoming TCP/UDP probes against my firewall?</H2><dd>
+		Here is a list of common scans we see these days:
+		<table border=0 style="border-style: none">
+		<tr valign=top><td bgcolor="#ffcccc" style="background-color: #ffcccc"><a name="port0">0</a></td><td style=portname> </td><td style=portdesc>
+			Commonly used to help determine the operating system. This works because on some systems,
+			port 0 is "invalid" and will generate a different response when you connect to it
+			vs. a normal closed port.
+			One typical scan uses a destination
+			IP address of 0.0.0.0 and sets the ACK bit, with broadcast at the Ethernet layer.
+		<tr valign=top><td bgcolor="#ffcccc" style="background-color: #ffcccc"><a name="port1">1</a></td><td style=portname>tcpmux</td><td style=portdesc>
+			Indicates someone searching for SGI Irix machines. Irix is the only major vendor that
+			has implemented tcpmux, and it is enabled by default on Irix machines. 
+			Irix machines ship with several default passwordless accounts, such as
+			lp, guest, uucp, nuucp, demos, tutor, diag, EZsetup, OutOfBox, and 4Dgifts.
+			Many administrators forget to close these accounts after installation.
+			Therefore, hackers scan the Internet looking first for tcpmux, then
+			these accounts. [<a class=ex href="http://www.cert.org/advisories/CA-95.15.SGI.lp.vul.html">CA-95.15</a>]
+			
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port7">7</a></td><td style=portname>Echo</td><td style=portdesc>
+			You will see lots of these from people looking for <b><a href="#fraggle">fraggle</a></b> amplifiers sent
+			to addresses of x.x.x.0 and x.x.x.255.
+			<p>
+			A common DoS attack is an <i>echo-loop</i>, where the 
+			attacker forges a UDP from one machine and sends it to the other, then
+			both machines bounce packets off each other as fast as they can (see 
+			also <a href="#port19">chargen</a>).
+			[<a class=ex href="http://www.cert.org/advisories/CA-96.01.UDP_service_denial.html">CA-96.01</a>]
+			<P>
+			Another common thing seen is TCP connections to this port by DoubleClick. They
+			use a product called "Resonate Global Dispatch" that connects to this
+			port on DNS servers in order to locate the closest one.
+			<P>
+			Havest/squid caches will send UDP echoes from port 3130. To quote: 
+			<i>If the cache is configured with <code>source_ping</code> on, it also bounces a 
+			HIT reply off the original host's UDP echo port.</i> It can generate <i>a lot</i>
+			of these packets.
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port11">11</a></td><td style=portname>sysstat</td><td style=portdesc>
+			This is a UNIX service that will list all the running processes on a machine
+			and who started them. This gives an intruder a huge amount of information
+			that might be used to compromise the machine, such as indicating programs
+			with known vulnerabilities or user accounts. It is similar the contents
+			that can be displayed with the UNIX "ps" command.
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port19">19</a></td><td style=portname>chargen</td><td style=portdesc>This is a service that simply
+			spits out characters. The UDP version will respond with a packet
+			containing garbage characters whenever a UDP packet is received. On a TCP
+			connection, it spits out a stream of garbage characters until the connection is
+			closed. Hackers can take advantage of IP spoofing for denial of service attacks.
+			Forging UDP packets between two chargen servers, or a chargen and <a href="#port7">echo</a>
+			can overload links as the two servers attempt to infinitely bounce the traffic back
+			and forth. Likewise, the "<a href="#fraggle">fraggle</a>" DoS attack broadcasts a packet destined to
+			this port with a forged victim address, and the victim gets overloaded with
+			all the responses.
+			[<a class=ex href="http://www.cert.org/advisories/CA-96.01.UDP_service_denial.html">CA-96.01</a>]
+			
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port21">21</a></td><td style=portname>FTP</td><td style=portdesc>The most common attack you will see are hackers/crackers looking
+			for "open anonymous" FTP servers. These are servers with directories that 
+			can be written to and read from. Hackers/crackers use these machines as way-points
+			for transfering warez (pirated programs) and pr0n (intentionally mispelled
+			word to avoid search engines classifying this document). 
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port22">22</a></td><td style=portname>ssh<br>pcAnywhere</td><td style=portdesc>
+			TCP connections to this port might indicate a search for ssh, which has a few
+			exploitable features in older versions (<a class=ex href="http://www.rootshell.com">http://www.rootshell.com</a>
+			was hacked once via this hole). In early 2000, a buffer overflow in 
+			<a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#rsaref">RSAREF</a>
+			was discovered. This bug allows versions of 
+			<tt><a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#ssh">ssh</a></tt> 
+			open to exploits.
+			<P>
+			Also note that the <tt>ssh</tt> package comes with a program called
+			<tt>make-ssh-known-hosts</tt> that will scan a <a href="#axfr">domain</a> for <tt>ssh</tt>
+			hosts.
+			<p>
+			UDP packets directed at this port along with
+			<a href="#port5632">port 5632</a> indicate a scan for PCAnywhere.
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port23">23</a></td><td style=portname>Telnet</td><td style=portdesc>
+			The intruder is looking for a remote login to UNIX.
+			Most of the time intruders scan for this port simply to find out more about
+			what operating system is being used. In addition, if the intruder finds
+			passwords using some other technique, they will try the passwords here.
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port25">25</a></td><td style=portname>SMTP</td><td style=portdesc>Spammers are looking for SMTP server that allow them
+			to "relay" spam. Since spammers keep getting their accounts shut
+			down, they use dial-ups to connect to high bandwidth e-mail
+			servers, then send a single message to the relay with
+			multiple addresses. The relay then forwards to all the victims.
+			There are also numerous holes in many SMTP servers that hackers/crackers
+			can exploit to break in.
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port53">53</a></td><td style=portname>DNS</td><td style=portdesc>
+			DNS. Hackers/crackers may be attempting to do zone transfers (TCP),
+			to spoof DNS (UDP), or even hide other traffic since port 53
+			is frequently neither filtered nor logged by firewalls. 
+			<p>
+			An important thing to note is that you will frequently see port 53
+			used as the <i>source</i> UDP port. Stateless firewalls frequently allow such
+			traffic on the assumption that it is a response to a DNS query. Hackers are
+			increasingly exploiting this to <a class=ex href="http://www.packetfactory.net/firewalk/">pierce firewalls</a>.
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port67">67</a> and <a name="port68">68</a></a></td><td style=portname>bootp<br>DHCP</td><td style=portdesc>
+			Bootp/DHCP over UDP. Firewalls hooked to DSL and cable-modem lines see a ton
+			of these sent to the broadcast address <a href="#ip255.255.255.255">255.255.255.255</a>. These are machines that
+			are asking to for an address assignement from a DHCP server. You could probably
+			hack into them by giving them such an assignment and specifying yourself as
+			the local router, then execute a wide range of "man-in-the-middle" attacks.
+			The client requests configuration on a broadcast to port 68 (bootps). The
+			server broadcasts back the response to port 67 (bootpc). The response
+			uses some type of broadcast because the client doesn't yet have an IP address
+			that can be sent to.
+		<tr valign=top><td style="background-color: #ccffcc"><a name="port69">69</a></td><td style=portname>TFTP</td><td style=portdesc>(over UDP). Many servers support this protocol in conjunction
+			with <a href="#port67">BOOTP</a> in order to download boot code
+			to the system. However, they are frequently misconfigured to provide
+			any file from the system, such as password files. They can also
+			be used to write files to the system.
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port79">79</a></td><td style=portname><a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#finger">finger</a></td><td style=portdesc>
+			Hackers are trying to:
+			<ul>
+			<li>discover user information
+			<li><a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#fingerprint">fingerprint</a> the operating system
+			<li>exploit known <a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#buffer-overflow">buffer-overflow</a> bugs
+			<li><a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#bounce">bounce</a> finger scans through your machine to other machines.
+			</ul>
+		<tr valign=top><td style="background-color: #ccffcc"><a name="port98">98</a></td><td style=portname>linuxconf</td><td style=portdesc>
+			The utility "<a class=ex href="http://www.solucorp.qc.ca/linuxconf/">linuxconf</a>" provide easy administration of Linux
+			boxen. It includes a web-enabled interface at port 98 through
+			an integrated HTTP server. 
+			It has had a number of security issues. Some versions are setuid root,
+			trust the local network, create world-accessable files in /tmp, and a buffer
+			overflow in the LANG environment variable. Also, because it contains an integrated
+			web server, it may be vulnerable to many of the typical HTTP exploits (buffer overruns,
+			directory traversal using ../.., etc.).
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port109">109</a></td><td style=portname>POP2</td><td style=portdesc>
+			POP2 is not nearly as popular as POP3 (see below), but many servers
+			support both (for backwards compatibility). Many of the holes that
+			can be exploited on POP3 can also be exploited via the POP2
+			port on the same server.
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port110">110</a></td><td style=portname>POP3</td><td style=portdesc>
+			POP3 is used by clients accessing e-mail on their servers.
+			There are numerous security holes in POP3 services. There are at least
+			20 implementations that are vulnerable to a buffer overflow in
+			the username or password exchange, meaning that hackers can
+			break in at this stage (before really logging in). There are other
+			buffer overflows that can be executed after successfully logging in.
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port111">111</a></td><td style=portname>sunrpc<br>portmap<br>rpcbind</td><td style=portdesc>Sun RPC PortMapper/RPCBIND.
+			Access to portmapper is the first step in scanning a system looking
+			for all the RPC services enabled, such as rpc.mountd, NFS, rpc.statd,
+			rpc.csmd, rpc.ttybd, amd, etc. If the intruder finds the appropriate
+			service enabled, s/he will then run an exploit against the port
+			where the service is running.
+			<p>
+			Note that by putting a logging daemon, IDS, or sniffer on the wire,
+			you can find out what programs the intruder is attempting to access
+			in order to figure out exactly what is going on.
+		<tr valign=top><td style="background-color: #ccffcc"><a name="port113">113</a></td><td style=portname>identd<br>auth</td><td style=portdesc>
+			This is a protocol that runs
+			on many machines that identifies the user of a TCP connection. In standard
+			usage this reveals a LOT of information about a machine that hackers can exploit.
+			However, it used by a lot of services by loggers, especially POP, IMAP, SMTP,
+			and IRC servers. In general, if you have any clients accessing these services
+			through a firewall, you will see incoming connection attempts on this port.
+			Note that if you block this port, clients will perceive <a href="#slow-email">slow</a>
+			connections to e-mail servers on the other side of the firewall. Many
+			firewalls support sending back a RST on the TCP connection as part
+			of the blocking procedure, which will stop these slow connections.
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port119">119</a></td><td style=portname>NNTP<br>news</td><td style=portdesc>Network News Transfer Protocol, carries USENET
+			traffic. This is the port used when you have a url like <a class=ex href="news://comp.security.firewalls">news://comp.security.firewalls</a>.
+			Attempts on this port are usually by people hunting for open USENET servers.
+			Most ISPs retrict access to their news servers to only their customers.
+			Open news servers allow posting and reading from anybody, and are used
+			to access newgroups blocked by someone's ISP, to post anonymously, or
+			to post spam.
+			<p><b>Update:</b> @Home has started scanning their subscribers
+			to see if they are running USENET servers. They are doing this in order
+			to find these servers and close them before spammers can take advantage of them.
+		<tr valign=top><td style="background-color: #ccffcc"><a name="port135">135</a></td><td style=portname>loc-serv<br>MS RPC end-point mapper</td><td style=portdesc>
+			Microsoft runs its DCE RPC end-point mapper for its DCOM services at this port.
+			<p>
+			This has much the same functionality as <a href="#port111">port 111</a> for UNIX 
+			systems. Services that use DCOM and/or RPC register their location with
+			the end-point mapper on the machine. When clients remotely connect to
+			the machine, they query the end-point mapper to find out where the service
+			is. Likewise, hackers can scan the machine on this port in order to find out
+			such things as "is Exchange Server running on this machine, and which version?".
+			<P>
+			This port is often hit in order to scan for services (for example, using
+			the "epdump" utility), but this port may also be attacked directly. Currently,
+			there are a few denial-of-service attacks that can be directed at this port. 
+		<tr valign=top><td style="background-color: #ccffcc"><a name="port137">137</a></td><td style=portname>NetBIOS<br>name service<br>nbtstat</td><td style=portdesc>
+			(UDP) <b>This is normal traffic</b> (probably).
+			This is part of the "background radiation" of the Internet.
+			In order to resolve an IP address into a name, Windows machines
+			sometimes send out 
+			<a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#netbios">NetBIOS</a> 
+			queries. Windows first tries a "in-addr.arpa" DNS query, and if that
+			fails or times out, it will try a NetBIOS query.
+			<p>
+			Examples:
+			<ul>
+			<li>
+				Microsoft's webserver has the option to log the "name" of the
+				machine accessing a website. Therefore, you will see constant inbound port 137
+				packets every time one of your users accesses those websites.
+			<li>
+				Even if name resolution is disabled on the webserver, the site administrator
+				may run the logfiles through a reporting tool like Webtrends. Most of these
+				tools have the ability to resolve IP addresses to names.
+				At this stage, you will see a flurry of port 137 packets from the
+				address the tool is run from (which may be different from the original
+				webserver).
+			<li>
+				Beyond webbrowsing, reverse IP name resolution is a fixture in many
+				Windows apps (IRC, traceroutes, ping, etc.).
+			</ul>
+			<p>
+			Windows machines use both a source port of 137 as well as a destination port
+			of 137. In contrast, if UNIX machines attempt to resolve NetBIOS names (via
+			SAMBA), they will use dynamic ports above <a href="#port1024">1024</a>.
+			The Windows variant is by far the most common.
+			<p>
+			Note that Windows only sends out the NetBIOS query when the DNS lookup times-out
+			or comes back with a negative response. Therefore, making sure your DNS
+			servers have appropriate "in-addr.arpa" entries will help reduce port 137
+			traffic.
+			<p>
+			<b>Exact signature:</b> <small>
+			If the Windows box is trying to find the name for the IP address
+			192.0.2.21, it will do the following steps:
+			<ul>
+			<li>Lookup the DNS "PTR" record for <tt>21.2.0.192.in-addr.arpa</tt>; this
+				request is sent to the local DNS server, which recursively forwards
+				the query to the appropriate DNS server as required.
+			<li>If the DNS answer comes back, it <i>won't</i> query NetBIOS. If a negative
+				response comes back, it will immediately query NetBIOS. If the DNS server
+				times-out, it will wait 14-seconds, then query NetBIOS.
+			<li>When resolving with NetBIOS, it will send out a "NodeStatus" query
+				that is sent to the 192.0.2.12:137 from x.x.x.x:137. (I.e. the query
+				is sent to the IP address being resolved to its port 137, and is sent
+				from the Windows machine port 137).
+			<li>The NetBIOS request is a "NodeStatus" query that looks up the name
+				"*". It is 50 bytes worth of data (58 including the UDP header, 78
+				including the IP header, 92 including an Ethernet header).
+			<li>Three NetBIOS queries are sent with a 1.5 second timeout.
+			</ul>
+			</small>
+		<tr valign=top><td style="background-color: #ccffcc"><a name="port139">139</a></td><td style=portname>NetBIOS<br>File and Print Sharing</td><td style=portdesc>
+			Incoming connections to this port are trying to reach
+			NetBIOS/SMB, the protocols used for Windows "File and Print Sharing"
+			as well as SAMBA. People sharing their hard disks on this port is
+			probably the most common vulnerability on the Internet.
+			<p>
+			Attempts on this port were common at the beginning of 1999, but tapered off near
+			the end. Now at the start of year 2000, attempts on this port have picked up again.
+			Several VBS (IE5 VisualBasic Scripting) worms have appeared that attempt to copy
+			themselves on this port. Therefore, it may be worms that are attempting to
+			propogate on this port.
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port143">143</a></td><td style=portname>IMAP4</td><td style=portdesc>
+			Same security idea as POP3 above, numerous IMAP servers
+			have buffer overflows that allow compromise during the login. 
+			Note that for awhile,
+			there was a Linux worm (admw0rm) that would spread by compromising port 143, so 
+			a lot of scans on this port are actually from innocent people who have already
+			been compromised. IMAP exploits became popular when RedHat enabled the
+			service by default on its distributions. In fact, this may have been
+			the first widely scanned for exploit since the Morris Worm.
+			<p>
+			This port is also used for IMAP2,
+			but that version wasn't very popular.
+			<p>
+			Several people have noted attacks from port 0 to port 143, which appears
+			to be from some attack script.
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port161">161</a></td><td style=portname>SNMP</td><td style=portdesc>
+			(UDP) A very common port that intruders probe for. SNMP allows for remote management
+			of devices. All the configuration and performance information is stored in a database
+			that can be retrieved or set via SNMP. Many managers mistakeningly leave this
+			available on the Internet. Crackers will first attempt to use the default
+			passwords "public" and "private" to access the system, they may then attempt to
+			"crack" the password by trying all combinations.
+			<p>
+			SNMP packets may be mistakenly directed at your network. Windows machines running
+			HP JetDirect remote management software uses SNMP, and misconfigured
+			machines are frequent. HP OBJECT IDENTIFIERs will be seen in the packets.
+			Newer versions of Win98 will use SNMP for name resolution; you will see
+			packets broadcast on local subnets (cable modem, DSL) looking up sysName
+			and other info.
+		<tr valign=top><td style="background-color: #ccffcc"><a name="port162">162</a></td><td style=portname>SNMP trap</td><td style=portdesc>
+			Probably a misconfiguration.
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port177">177</a></td><td style=portname>xdmcp</td><td style=portdesc>
+			Numerous hacks may allow access to an X-Window console, it needs port 6000 open as well
+			in order to really succeed.
+		<tr valign=top><td style="background-color: #ccffcc"><a name="port513">513</a></td><td style=portname>rwho</td><td style=portdesc>
+			Probably from UNIX machines on your DSL/cable-modem segment broadcasting who is logged into
+			their servers. These people are kindly giving you really interesting information
+			that you can use to hack into their systems.
+		<tr valign=top><td style="background-color: #ccffcc"><a name="port535">535</a></td><td style=portname>CORBA<br>IIOP</td><td style=portdesc>
+			(UDP) If you are on a cable-modem or DSL VLAN, then you may
+			see broadcasts to this port. CORBA is an object-oriented remote procedure call (RPC)
+			system. It is highly likely that when you see these broadcasts, you can use
+			the information to hack back into the systems generating these broadcasts.
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port600">600</a></td><td style=portname>pcserver<br>backdoor</td><td style=portdesc>
+			See <a href="#port1524">port 1524</a> for more info.
+			<p><i>Some script kiddies feel they're contributing substantially
+			to the exploit programs by making a minor change from ingreslock to pcserver
+			in constant text...</i> -- Alan J. Rosenthal.
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port635">635</a></td><td style=portname>mountd</td><td style=portdesc>
+			Linux mountd bug. This is a popular bug that people are
+			scanning for. Most scans on this port are UDP-based, but they are increasingly
+			TCP-based (mountd runs on both ports simultaneously). Note that mountd can run at
+			any port (for which you must first do a portmap lookup at port <a href="#port111">111</a>), it's just
+			that  Linux defaulted to port 635 in much the same way that NFS
+			universally runs at port <a href="#port2049">2049</a>.
+		<tr valign=top><td style="background-color: #cccccc"><a name="port1024">1024</a></td><td style=portname>-----</td><td style=portdesc>
+			Many people ask the question what this port is used for. The answer is that this
+			is the first port number in the dynamic range of ports. Many applications don't care
+			what port they use for a network connection, so they ask the operating system to assign
+			the "next freely available port". In point of fact, they as for port 0, but are assigned
+			one starting with port 1024. This means the first application on your system that 
+			requests a dynamic port will be assigned port 1024. You can test this fact by booting your 
+			computer, then in one window open a Telnet session, and in another window run "netstat -a".
+			You will see that the Telnet application has been assigned port 1024 for its end of the 
+			connection. As more applications request more and more dynamic ports, the operating
+			system will assign increasingly higher port numbers. Again, you can watch this effect
+			with 'netstat' as your browse the Internet with your web browser, as each web-page
+			requires a new connection.
+		<tr valign=top><td style="background-color: #cccccc"><a name="port1025">1025</a></td><td style=portname>-----</td><td style=portdesc>
+			See <a href="#port1024">port 1024</a>.
+		<tr valign=top><td style="background-color: #cccccc"><a name="port1026">1026</a></td><td style=portname>-----</td><td style=portdesc>
+			See <a href="#port1024">port 1024</a>.
+		<tr valign=top><td style="background-color: #cccccc"><a name="port1027">1027</a></td><td style=portname>-----</td><td style=portdesc>
+			See <a href="#port1024">port 1024</a>.
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port1080">1080</a></td><td style=portname>SOCKS</td><td style=portdesc> 
+			This protocol tunnels traffic through firewalls, allowing many people 
+			behind the firewall access to the Internet through a single IP address.
+			In theory, it should only tunnel inside traffic out towards the
+			Internet. However, it is frequently misconfigured and allows
+			hackers/crackers to tunnel their attacks inwards, or simply bounce
+			through the system to other Internet machines, masking
+			their attacks as if they were coming from you. WinGate, a popular
+			Windows personal firewall, is frequently misconfigured this
+			way. This is often seen when joining <a href="#irc-probes">IRC chatrooms</a>.
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port1114">1114</a></td><td style=portname>SQL</td><td style=portdesc>
+			This is rarely probed by itself, but is almost always
+			seen as part of the <a href="#sscan">sscan</a> script.
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port1243">1243</a></td><td style=portname>Sub-7</td><td style=portdesc><a href="#trojan-probe">Trojan Horse</a> (TCP).
+			See the section on <a href="#subseven">SubSeven</a> for more details.
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port1524">1524</a></td><td style=portname>ingreslock<br>backdoor</td><td style=portdesc> 
+			Many attack scripts install a backdoor shell at this port (especially those against Sun systems
+			via holes in sendmail and RPC services like statd, ttdbserver, and cmsd).
+			If you've just installed your firewall and are seeing connection attempts
+			on this port, then this may be the cause. Try telnetting to the attempted
+			machine in order to see if it indeed comes up with a shell. Connections to port
+			600/pcserver also have this problem. [<a class=ex href="http://www.cert.org/incident_notes/IN-99-04.html">IN-99-04</a>]
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port2049">2049</a></td><td style=portname>NFS</td><td style=portdesc> 
+			The NFS program usually runs at this port. Normally, access to <a href="port111">portmapper</a> is needed
+			to find which port this service runs on, but since most installations run NFS
+			on this port, hackers/crackers can bypass <a href="#port111">portmapper</a> and try this port directly.			
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port3128">3128</a></td><td style=portname>squid</td><td style=portdesc> 
+			This is the default port for the "squid" HTTP proxy. An attacker scanning for this
+			port is likely searching for a proxy server they can use to surf the Internet anonymously.
+			You may see scans for other proxies at the same time, such as at port 8000/8001/8080/8888.
+			Another cause of scans at this port, for a similar reason, is when users 
+			enter chatrooms. Others users (or the servers themselves)
+			will attempt to check this port to see if the user's machines supports proxying.
+			See section <a href="#5.3">5.3</a> for more info.
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port5632">5632</a></td><td style=portname><small>pcAnywhere</small></td><td style=portdesc>You may see lots of these, depending on
+			the sort of segment you are on.  When a user opens PCAnywhere,
+			it scans the local Class C range looking for potential 
+			agents. Hackers/crackers also scan looking for open machines, so
+			look at the source address to see which it is.
+			Some scans for PCAnywhere frequently also include a UDP packet to <a href="#port22">port 22</a>.
+			See <a href="#dialup-probes">dialup probes</a> for more info.
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port6776">6776</a></td><td style=portname>Sub7 artifact</td><td style=portdesc> 
+			This port is used seperately from the 
+			<a href="#subseven">SubSeven</a>
+			main port to transfer data.
+			One example where you might see this is when a master is controling a slave
+			on a dialup line, then the slave machine hangsup. 
+			Therefore, when someone else dials-in at that IP address, they
+			will see a continuous stream of connection attempts at this port.
+			<a href="#dialup-probes">more on dialups</a>
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port6970">6970</a></td><td style=portname>RealAudio</td><td style=portdesc>
+			Clients receive incoming audio streams from servers on UDP ports in the range 6970-7170.
+			This is setup by the outgoing control connection on TCP port 7070.
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port13223">13223</a></td><td style=portname>PowWow</td><td style=portdesc>The "PowWow" chat program from
+			Tribal Voice. It allows users to open up private chat connections
+			with each other on this port. The program is very agressive at trying to establish
+			the connection and will "camp" on the TCP port waiting for a response.
+			This causes a connection attempt at regular intervalls like a heartbeat. This can be seen by
+			dial-up users who inherit IP addresses from somebody who was chatting
+			with other people: it will appear as if many different people are probing
+			that port. The protocol uses the letters "OPNG" as the first four
+			bytes of its connection attempt. <a href="#dialup-probes">more</a>
+		<tr valign=top><td style="background-color: #cccccc"><a name="port17027">17027</a></td><td style=portname>Conducent</td><td style=portdesc>
+			<b>Outbound</b>: This is seen on outbound connections. It is caused
+			by users inside the corporation who have installed shareware
+			programs using the Conducent "adbot" wrapper. This wrapper
+			shows advertisments to users of the shareware. A popular sharware
+			program that uses this is <a class=ex href="http://www.pkware.com/support/tsadbotfaq.html">PKware</a>.
+			Bill Royds mentions that in his experience, you can block this
+			outbound connection with no problem, but if you block the
+			IP addresses themselves, then the adbots can overload the link
+			trying to reach the servers by continually connecting many times
+			per second.
+			<p>
+			The machines will attempt to resolve the DNS name "ads.conducent.com", which resolve to the IP addresses:
+			<br>
+<br>216.33.210.40
+<br>216.33.199.77
+<br>216.33.199.80
+<br>216.33.199.81
+<br>216.33.210.41
+<br>These addresses are hosted by Exodus.
+
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port27374">27374</a></td><td style=portname>Sub-7</td><td style=portdesc><a href="#trojan-probe">Trojan Horse</a> (TCP).
+			See the section on <a href="#subseven">SubSeven</a> for more details.
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port30100">30100</a></td><td style=portname>NetSphere</td><td style=portdesc><a href="#trojan-probe">Trojan Horse</a> (TCP).
+			This is a commonly seen scan looking for systems compromised by this trojan.
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port31337">31337</a></td><td style=portname>Back Orifice<br>"elite"</td><td style=portdesc>
+			This number means "elite"
+			in hacker/cracker spelling (3=E, 1=L, 7=T). Lots of hacker/cracker backdoors
+			run at this port, but the most important is Back Orifice.
+			At one time, this was by far the most popular scan on the Internet.
+			These days, it's popularity is waning and other remote access trojans
+			are becoming popular.
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port31789">31789</a></td><td style=portname>Hack-a-tack</td><td style=portdesc>
+			UDP traffic on this port is currently being seen due to the "Hack-a-tack" RAT (Remote Access Trojan).
+			This trojan includes a built-in scanner that scans from port 31790, so any
+			packets FROM 31789 TO 317890 indicate a possible intrusion. (Port 31789 is the
+			control connection; port 31790 is the file transfer connection).
+		<tr valign=top><td style="background-color: #ffcccc"><a name="port32770">32770~32900</a></td><td style=portname>RPC services</td><td style=portdesc>
+			Sun Solaris puts most of its RPC services in this range. In particular, 
+			older versions of Solaris (pre-2.5.1) put a <a href="#port111">portmapper</a> in this range,
+			allowing hackers access to this even when low ports are blocked by a firewall.
+			Probes in this range might either be for this portmapper, or for known
+			<a href="#rpc">RPC</a> services that can be exploited.
+		<tr valign=top><td style="background-color: #cccccc"><a name="port33434">33434-33600</a></td><td style=portname>traceroute</td><td style=portdesc>
+			If you see a series of UDP packets within this port range (and only within thisrange), then it is 
+			probably indicative of traceroute. See <a href="#traceroute">traceroute</a> for more info.
+		<tr valign=top><td style="background-color: #ffffcc"><a name="port41508">41508</a></td><td style=portname>Inoculan</td><td style=portdesc>
+			Inoculan on UDP. Older versions of Inoculan apparantely generate huge quantities of
+			UDP traffic directed at subnets in order to discover each other. More
+			info can be found at <a class=ex href="http://www.circlemud.org/~jelson/software/udpsend.html">http://www.circlemud.org/~jelson/software/udpsend.html</a>
+			and <a class=ex href="http://www.ccd.bnl.gov/nss/tips/inoculan/index.html">http://www.ccd.bnl.gov/nss/tips/inoculan/index.html</a>.
+			Thanks to Jerry Leslie, NeoNET &lt; leslie at clio dot rice dot edu&gt;
+		</table>
+
+
+	<dt><H2>1.2 What do the following source ports mean?</H2><dd>
+		<P>
+		Ports 1-5 are indicative of a script called '<a href="#sscan">sscan</a>' 
+		<p>
+		Ports 1-1024 are for reserved services, and almost never
+		appear as the source. There are some exceptions, such
+		as when connections come from NAT machines. See <a href="#1.9">section 1.9</a>
+		for some more details.
+		<p>
+		Ports closely after 1024 (i.e. 1024-5000)are the ones most commonly seen. These
+		are the "dynamic" range that are assigned to applications that don't care
+		what port they use for their connection.
+		<p>
+		Ports abouve 61000 might come from machines behind a Linux NAT server called "IP Masquerade".
+
+
+	<dt><H2>1.3 I'm seeing attempts on the same set of ports from widely varying sources all over the Internet.</H2><dd>
+		<p>
+		This is due to a "decoy" scan, such as in 'nmap'. One of them is
+		the attacker, the others are not.
+		<p>
+		Forensics and protocol analysis can be used to track down who
+		this is. For example, if you ping each of the systems, you
+		can match up the TTL fields in those responses with the connection
+		attempts. This will at least point a finger at a decoy scan.
+		(The TTLs should match; if not, then they are being spoofed).
+		[Newer versions of scanner now randomize the attackers own
+		TTL, making it harder to weed them out].
+		<p>
+		You can also attempt to go back further in your logs, looking
+		for all the decoy addresses or people from the same subnets.
+		You will often see that the attacker has actually connected
+		to you recently, while the decoyed addresses haven't.
+
+	<dt><H2>1.4 What are <a name="trojan-probe">Trojan Horse probes</a>?</H2><dd>
+		<p>
+		The first stage of a Trojan Horse attack is to get the program
+		on a user's machine. Typical techniques are:
+		<ul>
+		<li>post the program to newsgroups claiming to be some other program
+		<li>spam mailing lists with the attached program
+		<li>post program to websites
+		<li>send via instant messenger programs and chat systems (ICQ, AIM, IRC, etc.)
+		<li>forge e-mail from the ISP (like AOL) with a hoax message asking somebody to run a program
+			(such as a software update).
+		<li>copy to startup folder via "File and Print Sharing".
+		</ul>
+		<p>
+		The next stage of the attack is to scan the Internet looking for 
+		machines that might be compromised. The problem is that most of the techniques
+		outlined above don't tell the cracker/hacker where ther victim machine is.
+		Therefore, the cracker/hacker must scan the Internet looking for the machines
+		they might have compromised.
+		<p>
+		This leads the condition where owners of firewalls (including personal firewalls)
+		regularly see "probes" directed at their machines from crackers/hackers looking
+		for these machines. However, if the machine hasn't been compromised, then
+		these probes are not a problem. The probes cannot compromise the machine by
+		themselves. Adminstrators can usually ignore these "attacks".
+		<p>
+		Typical ports used by these probes are listed below. In order to tell if
+		your machine might be running one of these trojans, run the program "netstat -r"
+		on your machine. Look for the ports that might be "listening" for incoming
+		connections.
+		<table cols=2>
+		<tr><td><a name="tcp555">555</a></td><td>Phase Zero</td><td></td></tr>
+		<tr><td><a name="tcp1243">1243</a></td><td>Sub-7, <a href="#subseven">SubSeven</a></td><td></td></tr>
+		<tr><td><a name="tcp3129">3129</a></td><td>Masters Paradise</td><td></td></tr>
+		<tr><td><a name="tcp6969">6969</a></td><td>GateCrasher</td><td></td></tr>
+		<tr><td><a name="tcp21544">21544</a></td><td>GirlFriend</td><td></td></tr>
+		<tr><td><a name="tcp12345">12345</a></td><td>NetBus</td><td></td></tr>
+		<tr><td><a name="tcp23456">23456</a></td><td>EvilFtp</td><td></td></tr>
+		<tr><td><a name="tcp27374">27374</a></td><td>Sub-7, <a href="#subseven">SubSeven</a></td><td></td></tr>
+		<tr><td><a name="tcp30100">30100</a></td><td>NetSphere</td><td></td></tr>
+		<tr><td><a name="udp31789">31789</a></td><td>Hack'a'Tack</td><td></td></tr>
+		<tr><td><a name="udp31337">31337</a></td><td>BackOrifice, and many others</td><td></td></tr>
+		<tr><td><a name="tcp50505">50505</a></td><td>Sockets de Troie</td><td></td></tr>
+		</table>
+		<p>
+
+		<dt><H2>1.4.1 What is <a name="subseven">SubSeven</a> (Sub-7) ?</H2><dd>
+			Sub7 has become the most popular remote access trojan. At this time,
+			it is the easiest-to-use and most powerful trojan. The
+			reasons for this are:
+			<ul>
+			<li>It is actively maintained/updated. Most other Trojans were created once
+				then developement stopped except for a couple of bug fixes.
+			<li>The program not only includes a scanner, but also can tell
+				a slave machine to scan as well.
+			<li>The creator has a contest for cracked sites using Sub7.
+			<li>Supports "port redirection", so that any attack can be funneled
+				through a victim's machines.
+			<li>Contains extensive tricks to play with ICQ, AOL IM, MSN Messager, and
+				Yahoo messager, including password sniffing, posting messages,
+				and other features.
+			<li>Extensive UI tricks, such as flipping the screen, talking through
+				the victim's speaker, and spying on the victim's screen.
+			</ul>
+			<p>
+			In short, it not only is an excellent hacking tool, the little
+			"magic" tricks are designed to scare the &lt;bleep&gt; out of victims.
+			<P>
+			Sub7 is written by a hacker who calls himself "Mobman". His
+			site can be reached at <a href="http://subseven.slak.org/">http://subseven.slak.org/</a>.
+			<p>
+			Sub7 might use the following ports:
+			<dl>
+			<dt>1243<dd>The default connection port for older versions.
+			<dt>2772<dd>Screen capture port
+			<dt>2773<dd>Key logger port
+			<dt>6776<dd>I'm not sure what this port is for, but it
+				has been claimed that this can serve as a "backdoor" in
+				some versions. 
+			<dt>7215<dd>Port for the "matrix" chat program
+			<dt>27374<dd>Another default port appearing in v2.0
+			<dt>54283<dd>Spy port
+			</dl>
+			
+		
+	<dt><H2><a name="1.9">1.9</a> DNS packets from low numbered ports</H2><dd>
+		<b>Q: I've seen many DNS requests from many low port numbers below 1024.
+		Aren't they supposed to be reserved? Aren't they supposed to use
+		1024-65535 range? </b>
+		<br>A: These are coming from machines behind NAT firewalls.
+		A NAT doesn't necessarily have the concept of reserved port numbers.
+		<i>thanks to Ryan Russell Ryan.Russell at sybase dot com</i>
+		<p>
+
+		<b>Q: My filters reject incoming packets with source ports below 1024, so the DNS lookups are failing.</b>
+		<br>A: Don't filter that way. Lots of firewalls have similar rules, but this is somewhat
+		"misguided" since hackers/crackers can forge whatever ports they want.
+		<p>
+		<b>Q: Are these NAT firewalls doing it incorrectly?</b>
+		<br>A: Not in theory, but in practice it will result in failures. The "correct" way
+			would be more strictly control DNS traffic in any case (such as essentially
+			"proxying" DNS and forcing out through port 53).
+		<p>
+		<b>Q: I thought DNS lookup was supposed to use a random source port above 1024?</b>
+		<br>A: In practice, your average DNS client will use a non-reserved port. However,
+			a lot of implementations use a source port of 53. In any case, the NAT issue
+			is completely separate because it completely changes the entire 'socket' (IP address + port combo).
+
+
+	<dt><H2>1.10 Immediately upon <a name="dialup-probes">dialing</a> up to my ISP, my personal firewall starts alarming me about probes against port X.</H2><dd>
+		<p>
+		This is very common. The cause is that somebody hung up just before you dialed
+		in and your ISP assigned you the same IP address. You are now seeing the remnents
+		of communication with the previous person.
+		<p>
+		A typical example is <a href="#port13223">chat</a> programs. If someone simply
+		hangs up, then everyone who was chatting with that person will attempt to
+		still send traffic to them. Some programs take a long time to timeout.
+		Typical programs that show this behavior are PowWow and ICQ.
+		<p>
+		Another example is on-line, multiple games. You might see such traffic 
+		from gaming providers like MPlayer, or maybe from unknown servers (Quake
+		servers litter the Internet). These games are typically UDP based,
+		so there is no concept of a connection that can be dropped.  They also
+		are quite agressive at maintaining connections, in order to make a good 
+		user experience. Some game ports that you might see are:
+		<table cols=2>
+		<tr><td><a name="udp7777">7777</a></td><td>Unreal, Klingon Honor Guard</tr>
+		<tr><td><a name="udp7778">7778</a></td><td>Unreal Tournament</tr>
+		<tr><td><a name="udp22450">22450</a></td><td>Sin</tr>
+		<tr><td><a name="udp26000">26000</a></td><td>Quake</tr>
+		<tr><td><a name="udp26900">26900</a></td><td>Hexen 2</tr>
+		<tr><td><a name="udp26950">26950</a></td><td>HexenWorld</tr>
+		<tr><td><a name="udp27015">27015</a></td><td>Half-life, Team Fortress Classic (TFC)</tr>
+		<tr><td><a name="udp27500">27500</a></td><td>QuakeWorld</tr>
+		<tr><td><a name="udp27910">27910</a></td><td>Quake 2</tr>
+		<tr><td><a name="udp28000">28000-28008</a></td><td><a href="http://www.sierra.com/support/technical/product_documents/tribests.html">Starsiege TRIBES</a> (TRIBES.DYNAMIX.COM)</tr>
+		<tr><td><a name="udp28910">28910</a></td><td>Heretic 2</tr>
+		</table>
+		<p>
+		Another example is multimedia audio/visual. For example, RealAudio
+		uses UDP ports in the range of <b>6970-7170</b> for clients to receive
+		audio streams.
+		<p>
+		Make sure that you carefully figure out the correct side of the connection.
+		For example, an ICQ server runs on port 4000, and the client chooses a 
+		random high-numbered port. That means you will see UDP packets from
+		port 4000 going to the random port. In other words, don't go looking
+		in a port database trying to figure what that random, high-numbered 
+		port means. The significant port is the source.
+		<p>
+		The <a href="#subseven">SubSeven</a> trojan has a similar problem.
+		It uses seperate TCP connections for different services. If the slave
+		agent goes away, it will continue to create connection attempts
+		to the slave ports, especially at port <a href="#port6776">6776</a>.
+
+	<dt><H2><a name="1.11">1.11</a> <a name="irc-probes">IRC</a> servers are probing me.</H2><dd>
+		<p>
+		One of the most popular applications is "chat", like IRC. One feature
+		of chat programs is that they reveal the IP address of the people
+		you are chatting with. One problem with chatrooms is that people enter
+		the rooms "anonymously" and play around, either by disrupting conversations
+		with offtopic comments and flamebait, or by "flooding" the servers or
+		other clients in an attempt to kicked them off.
+		<p>
+		Therefore, both servers and clients are implementing measures to
+		stop "anonymous" use of chatrooms. In particular, they check people
+		entering chatrooms in order to see if they are "proxying" through
+		some other connection. The most popular of such probes is SOCKS.
+		The assumption is that if the IP address of where you are coming
+		from supports SOCKS, then it is possible that you have a completely
+		separate machine and are only going through the indicated machine
+		in order to hide your true identity. Undernet's policy on this can
+		be found at <a href="http://help.undernet.org/proxyscan">http://help.undernet.org/proxyscan</a>.
+		<p>
+		At the same time, crackers/hackers will scan people's machines in order
+		to determine if they are running some sort of server that can be
+		bounced through. Again, by checking for SOCKS, the attacker hopes to
+		find somebody that has left SOCKS open, such as a home user implementing
+		connection sharing using SOCKS, but accidentally configured it so
+		that anybody on the Internet has access to it.
+
+
+	<dt><H2><a name="1.12">1.12</a> What are "remapped" ports?</H2><dd>
+		A common technique is to remap ports to some other address. For example,
+		whereas the default port for HTTP is 80, many people remap it to another
+		port, such as 8080 (hence, this document could reside at
+		http://www.robertgraham.com:8080/pubs/firewall-seen.html
+		if I were to remap the port).
+		<P>
+		Remapping is done under the theory that making the port harder to find
+		will make it more difficult for a hacker to exploit. Instead of simply
+		exploiting a well-known service at a well-known port, the hacker
+		will have to port scan the machine.
+		<p>
+		Most port remapping is done at some variation of the original port.
+		Therefore, most HTTP ports are based upon a variation of the
+		theme "<a href="#80">80</a>": 81, 88, 8000, 8080, 8888, and so forth. POP, which is
+		originally at port <a href="#port110">110</a> can often be found
+		at port 1100.
+		<P>
+		There are other statistically significant chosen numbers,
+		like 12345, 23456, 34567, etc. Many people also choose numbers
+		that are well known for other reasons; 42, 69, 666, 31337, and
+		so on. The recent profliferation of Remote Access Trojans (RATs)
+		has resulted in hackers/crackers choosing the same defaults 
+		for their programs. For example, NetBus defaults to port
+		12345. 
+
+	<dt><H2><a name="1.13">1.13</a> I still can't figure out what somebody is trying to connect to a port, what can I do?</H2><dd>
+		Use netcat in order to setup a listening process. For port '1234', use:
+		<pre>
+netcat -L -p 1234
+		</pre>
+		A lot of protocols will send data as the first part of the connection.
+		By setting up netcat listening on the port, you might be able
+		to figure out what protocol that are using. If you are lucky,
+		the protocol in question will be HTTP, which will give you 
+		a wealth of information that you can use to track down what is
+		happening.
+		<p>
+		The "-L" option means to listen continuously. Normally, netcat would 
+		accept a single connection, dump the contents, then exit. By adding
+		this option, it will remain running for multiple connections.
+
+
+<dt><H1>2. ICMP</H1><dd>
+
+
+	See <a class=ex href="http://www.isi.edu/in-notes/iana/assignments/icmp-parameters">http://www.isi.edu/in-notes/iana/assignments/icmp-parameters</a>
+	for a list of all the Type/Code parameters.
+	<p>
+	The following is a quick table, more details are provided below.
+		<table border=0 style="border-style: none">
+		<tr valign=top><td bgcolor="#cccccc"><b>Type</b></td><td bgcolor="#cccccc"><b>Code</b></td><td style=portname><b>Name</b></td><td style=portdesc><b>Summary</b></td></tr>
+		<tr valign=top><td bgcolor="#cccccc"><a name="icmp3">0</a></td><td bgcolor="#cccccc">*</td><td style=portname>Echo Reply</td><td style=portdesc>
+			A response to a ping. 
+			<br>[<a class=more href="#2.0">more</a>]
+		<tr valign=top><td bgcolor="#cccccc" rowspan=5><a name="icmp3">3</a></td><td bgcolor="#cccccc">*</td><td style=portname>Destination Unreachable</td><td style=portdesc>
+			An indication back from a host or router that some packet did not reach its destination. 
+			<br>[<a class=more href="#2.3">more</a>]
+		<tr valign=top><td bgcolor="#cccccc"><a name="icmp3.0"> 0</a></td><td style=portname>Net Unreachable</td><td style=portdesc>
+			Route configuration problem or incorrectly specified IP address.
+			<br>[<a class=more href="#2.3.0">more</a>]
+		<tr valign=top><td bgcolor="#cccccc"><a name="icmp3.1">1</a></td><td style=portname>Host Unreachable</td><td style=portdesc>
+			It means that the router one hop before the desired host could not 
+			<a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#arp">ARP</a> the host.
+		<tr valign=top><td bgcolor="#cccccc"><a name="icmp3.3"> 3</a></td><td style=portname>Port unreachable</td><td style=portdesc>
+			The server tells the client that nobody is listening at the port the
+			client attempted to contact. 
+			<br>[<a class=more href="#2.3.3">more</a>]
+		<tr valign=top><td bgcolor="#cccccc"><a name="icmp3.4"> 4</a></td><td style=portname>Fragmentation Needed but DF set</td><td style=portdesc>
+			<b>Important:</b> If you are seeing these in your firewall reject logs, then you've
+			misconfigured your firewall. You should allow this packet to pass through,
+			otherwise your clients will see their TCP connections mysteriously hang.
+			<br>[<a class=more href="#2.3.4">more</a>]
+		<tr valign=top><td bgcolor="#cccccc"><a name="icmp4">4</a></td><td bgcolor="#cccccc">*</td><td style=portname>Source Quench</td><td style=portdesc>
+			Congestion on the Internet.
+			<br>[<a class=more href="#2.4">more</a>]
+		<tr valign=top><td bgcolor="#ffcccc"><a name="icmp5">5</a></td><td bgcolor="#cccccc">*</td><td style=portname>Redirect</td><td style=portdesc>
+			Somebody is trying to redirect your default router. This could
+			be from a hacker trying to execute a man-in-the-middle attack against you by
+			causing you to route through their own machine.
+		<tr valign=top><td bgcolor="#cccccc"><a name="icmp8">8</a></td><td bgcolor="#cccccc">*</td><td style=portname>Echo Request</td><td style=portdesc>
+			Ping. 
+			<br>[<a class=more href="#2.8">more</a>]
+		<tr valign=top><td bgcolor="#ffcccc"><a name="icmp9">9</a></td><td bgcolor="#cccccc">*</td><td style=portname>Router Advertisement</td><td style=portdesc>
+			There is exists a hack against Win9x and Solaris such that a hacker
+			can DoS you by redirecting your default router. A neighboring hacker
+			can also do a man-in-the-middle attack by directing you through his/her router.
+		<tr valign=top><td bgcolor="#cccccc" rowspan=3><a name="icmp11">11</a></td><td bgcolor="#cccccc">*</td><td style=portname>Time Exceeded In Transit</td><td style=portdesc>
+			It means that a packet never reached its target because something timed out.
+		<tr valign=top><td bgcolor="#cccccc"><a name="icmp11.0"> 0</a></td><td style=portname>TTL Exceeded</td><td style=portdesc>
+			Router dropped the packet either because of a <i>routing loop</i> or maybe because of a traceroute.
+			<br>[<a class=more href="#2.11.0">more</a>]
+		<tr valign=top><td bgcolor="#cccccc"><a name="icmp11.1">1</a></td><td style=portname>Fragment reassembly timeout</td><td style=portdesc>
+			The host dropped the packet because it didn't receive all the fragments.
+			<br>[<a class=more href="#2.11.1">more</a>]
+		<tr valign=top><td bgcolor="#cccccc"><a name="icmp12">12</a></td><td bgcolor="#cccccc">*</td><td style=portname>Parameter Problem</td><td style=portdesc>
+			Something unusual is going on, and probably indicates an attack.
+			<br>[<a class=more href="#2.12">more</a>]
+		</table>
+
+
+
+
+	<dt><h2><a name="2.0">2.0</a> Type = 0 (Echo Reply)</h2><dd>
+
+		The sender is responding to a ping from your address.
+		This could be because:
+		<dl>
+		<dt>Someone's ping that person<dd>
+			Somebody behind the firewall is sending pings to the target.
+		<dt>Automated ping<dd>
+			Lots of applications use pings for various purposes,
+			such as to see if their communication partner is alive,
+			or to measure the response time. A big cause of
+			this is VitalSign's Net.Medic, which sends pings
+			of various sizes in order to measure link speed.
+		<dt>Decoy Ping Sweep<dd>
+			Somebody is using your IP address as a decoy in a ping
+			sweep, so you are seeing the responses.
+		<dt><b>Covert-channel communications</b><dd>
+			Most network managers block incoming pings (type=8), but allow ping
+			responses (type=0). Therefore, hackers have begun using
+			ping replies as ways of bypassing firewalls. For example,
+			in the massive DDoS attacks against Internet sites,
+			commands could be imbedded in ping responses, and floods 
+			of responses were directed against the sites in order
+			to clog their Internet connections.
+		</dl>
+	
+
+	<dt><h2><a name="2.3">2.3</a> Type = 3 (Destination Unreachable)</h2><dd>
+
+		The exact code is important in the Unreachable packet.
+		<p>
+		Note that Unreachables sometimes play a part in
+		defeating SYN floods. This means that if a host
+		you are talking to is under SYN flood attack, you
+		will not be able to reach them if you block
+		incoming Unreachables.
+		<P>
+		In some cases, you will receive destination unreachable packets
+		from hosts you have never heard of. The most common cause of
+		this is a "decoy scan". An attacker is sending spoofed packets
+		a target using possibly hundreds of source addresses, including
+		one that is the real address. The hacker's theory is that the
+		victim won't wade through all the decoys in order to pin them
+		down.
+		<p>
+		The best way to solve this is to examine the actual packets
+		as described <a href="#decode-icmp">below</a>. Try to discover
+		is the pattern looks like what one would see in a decoy scan.
+		For example, look for alternating port numbers in TCP or UDP
+		headers contained within the ICMP portion of the packet.
+		
+		<dl>
+		<dt><h3><a name="2.3.0">2.3.0</a> Type = 3, Code = 3 (Destination Net Unreachable)</h3><dd>
+			<b>No route to host</b> A router tells the client that it does not know how to route
+			to anything at all in the network range that includes the host the client is talking
+			to. This indicates either the client chose the wrong IP address, or that
+			routing tables are misconfigured somewhere. Note that sometimes you
+			see the message "No route to host" on your own UNIX machine when
+			your own routing tables are messed up, which is especially common
+			when configuring point-to-point links.
+
+
+		<dt><h3><a name="2.3.3">2.3.3</a> Type = 3, Code = 3 (Destination Port Unreachable)</h3><dd>
+			<P>
+			This packet is sent by a SERVER when a CLIENT tries to
+			connect to a UDP port that isn't running. For example,
+			if you try to send an SNMP packet to port 161, but the
+			machine doesn't support the SNMP service, you will get
+			back an ICMP Desination Port Unreachable packet.
+			<p>
+			<b><a name="decode-icmp">Protocol Decode</a></b>
+			<p>
+			The first thing to debug this problem is to check the
+			port numbers within the packet. You probably need
+			to use a <a href="http://www.robertgraham.com/pubs/sniffing-faq.html">sniffing</a>
+			utility as firewalls tend not to log the information.
+			This technique relies upon the fact that ICMP messages
+			include the IP and UDP headers of the original packet.
+			Here is a hex dump of an ICMP unreachable:
+<pre STYLE="background:#dcdcdc">
+ 00 00 BA 5E BA 11 00 60 97 07 C0 FF 08 00 45 00
+ 00 38 6F DF 00 00 80 01 B4 12 0A 00 01 0B 0A 00
+ 01 C9 <FONT COLOR=GREEN STYLE="background:#FFFF00">03 03</FONT> C2 D2 00 00 00 00 45 00 00 47 07 F0
+ 00 00 80 11 1B E3 0A 00 01 C9 0A 00 01 0B <FONT COLOR=RED STYLE="background:#FFFF00">08 A7 
+ 79 19 00 33 B8 36</FONT>                              
+</pre>
+
+		Where the bytes <FONT COLOR=GREEN STYLE="background:#FFFF00">03 03</FONT> are the
+		type/code for the ICMP packet. The last 8 bytes of the packet are
+		the original UDP header, which decodes as:
+		<dl compact>
+		<dt><FONT COLOR=RED STYLE="background:#FFFF00">08A7</FONT><dd>
+			UDP Source Port = 2215 <br>
+			May be dynamically allocated, so no always important.
+		<dt><FONT COLOR=RED STYLE="background:#FFFF00">7919</FONT><dd>
+			UDP Destination Port = 31001 <br>
+			This is very important, it meant the person was originally attempting
+			to contact a service on port 31001. 
+		<dt><FONT COLOR=RED STYLE="background:#FFFF00">0033</FONT><dd>
+			UDP Length = 51 <br>
+			The length of the original UDP data might be important.
+		<dt><FONT COLOR=RED STYLE="background:#FFFF00">B836</FONT><dd>
+			UDP Checksum = 0xB836 <br>
+			The checksum may or may not be important
+		</dl>
+		<p>
+		<b>Analysis</b>
+		<p>
+		Here are some reasons why you may be seeing this:
+		<dl>
+		<dt><b>Decoy UDP Scans</b><dd>
+			Somebody may be scanning the person who sent you the ICMP packet.
+			They are forging the source as one of your IP addresses.
+			They will in reality forge lots of different source addresses
+			so that they victim can't be sure who it really is.
+			If you receive large numbers of these packets from the 
+			same source in a short time frame, then this is a likely
+			bet. Check the <i>UDP Destination Port</i> field. If it is constantly
+			changing, then this is a very likely scenario.
+		<dt><b>Stale DNS</b><dd>
+			A client may send a DNS request to your server, which
+			takes a long time to resolve. By the time your DNS server
+			responds, the client has already forgotten about you and
+			closed the UDP port assigned to receive your response.
+			Check the <i>UDP Source Port</i> field to see if it
+			equals 53. If so, then this is a likely occurance.
+			Why does this happen? The server may be resolving a recursive
+			query, but its own query packet was lost, so it had to time
+			out and try again. By the time it gets back to the client,
+			it has timed out. Many client applications (especially on
+			Windows) do their own DNS resolution, meaning that
+			they must create their own socket to do so. If they
+			passed the request onto the OS, it is likely the OS would
+			simply have left the socket open.
+		<dt><b>Multi-response DNS</b><dd>
+			Another variation is when the client receives multiple responses
+			to the same request. It receives the first response, then
+			closes the socket. Subsequent responses will be dropped.
+			There other variations on this problem. A Sun machine connected
+			with multiple NICs on the same Ethernet will assign both NICs the
+			same MAC address, causing it to receive two copies of every frame,
+			then send multiple responses. Likewise, a poorly written
+			client program (it has been claimed that some DNS resolvers
+			are multi-threaded, but not thread safe) sometimes send out
+			multiple requests, then close the socket on the first response.
+			However, there may be an attempt at <b>DNS spoofing</b>, 
+			where a hacker is attempting to corrupt the resolver's
+			cache by sending both a recursive query and a response.
+			
+		<dt><b>NetBIOS Resolution</b><dd>
+			If the receiver of the ICMP packets is a Windows machine,
+			look to see if the <i>UDP Destination Port</i> is 137.
+			In this case, the cause of this is the Windows system
+			trying to execute the 'gethostbyaddr()' function,
+			which attempts to resolve the IP address into
+			a name using both DNS and NetBIOS. The DNS request gets sent
+			to a DNS server somewhere (and not sent to the target),
+			but the NetBIOS request gets sent directly to the target.
+			If the target doesn't support NetBIOS, then it will
+			send back an ICMP unreachable.
+		<dt><b><a href="#traceroute">Traceroute</a></b><a name="#outgoing-port-unreachable"> </a><dd>
+			Most traceroute programs (with the exception of Windows tracert.exe) send
+			UDP packets to closed ports. This causes a sequence of back-to-back
+			ICMP Port Unreachable packets to be sent back to the machine doing
+			the traceroute. Thus, if you are seeing these ICMP packets on
+			your firewall, then somebody inside might be doing a traceroute.
+			You may also see TTL exceeded as well.
+		</dl>
+
+		<dt><h3><a name="2.3.4">2.3.4</a> Type = 3, Code = 4 (Fragmentation Needed and Don't Fragment was Set)</h3><dd>
+
+			These are sent by routers attempting to forward IP datagrams
+			that are marked "DF" (Don't Fragment).
+			<p>
+			<b>Why?</b> Both IP and TCP fragment data, but in different
+				ways. TCP is vastly more efficient at fragmentation than
+				IP. Therefore, stacks attempt to find the "Path MTU (Maximum
+				Transmission Unit)". This ICMP message is sent during
+				that process.
+			<p>
+				
+				Let's consider ALICE talking to BOB. Both are on
+				Ethernets (max frame size = 1500 bytes), but some
+				intervening link limits the maximum IP packet size
+				to 600 bytes. This means all IP packets sent will be
+				fragmented by the routers on that link into 3 fragments.
+				Since it is much more efficient to fragment at the TCP layer,
+				the TCP stack will attempt to discover the MTU. It does
+				this by setting the "DF" (Don't Fragment) bit in all its
+				packets. As soon as it hits a router than cannot forward
+				a packet that large, the router will send back this
+				ICMP error message. From that, the TCP stack will know
+				how to fragment correctly.
+			<p>
+				You should probably let these packets through the firewall.
+				Otherwise, the intended recipient will have a hung 
+				connection as small packets get through to set up
+				the connection, but the large packets are mysteriously
+				dropped. A common result from this are people who
+				see web pages that are only halfway returned.
+			<p>
+				Path MTU Discovery is becoming more and more integrated
+				into communication. For example, IPsec needs this
+				functionality.
+
+		</dl>
+		
+
+	<dt><h2><a name="2.4">2.4</a> Type = 4 (Source Quench)</h2><dd>
+
+		These packets are supposed to be transmitted by
+		routers/destination when traffic level exceeds a certain
+		threshold. Many systems today, however, do not generate
+		them. The reason is that we now believe that simple
+		packet loss is the best indication of congestions (since 
+		the only reason packets are dropped, in practice, is congestion).
+		<p>
+		In general, the rules for source quenches are now (RFC 1122):
+		<ul>
+		<li>Routers SHOULD NOT not generate them.
+		<li>Hosts MAY generate them.
+		<li>Hosts SHOULD honor them.
+		<li>Firewalls SHOULD discard them.
+		</ul>
+		<p>
+		However, hosts still react to Source Quenches by slowing
+		communication, so they can be used as a denial of service.
+		Firewalls should filter these out. If a DoS is suspected,
+		the source address of the packets will be meaningless,
+		because the IP addresses are spoofed.
+		<p>
+		Source quenches have been known to sent by some SMTP
+		servers.
+
+	<dt><h2><a name="2.8">2.8</a> <a name="icmp8">Type = 8</a> (Echo a.k.a <a name="ping">PING</a>)</h2><dd>
+		<p>
+		These are ping request packets. They are used all over the
+		place; it may indicate hostile intent of someone trying
+		to scan your computer, but it may be part of the normal network
+		functionality. See Type = 0 (Echo Response) above for more info.
+		<p>
+		Lots of network management "scanners" will precede a
+		scan using a special ping packet. These include ISS scanner,
+		WhatsUp monitor, and others. This will be visible
+		in the payload of the scanner. Most firewalls don't log this payload,
+		so you may need to use some sort of <a href="http://www.robertgraham.com/pubs/sniffing-faq.html">sniffer</a>
+		to capture them or some time of <a href="http://www.robertgraham.com/pubs/network-intrusion-detection.html">Intrusion Detection System</a>
+		to flag them.
+		<p>
+		Note that blocking incoming PINGs does not mean a 
+		hacker can't scan the network. There are many other
+		ways of doing this. For example, TCP ACK scanning
+		becoming popular -- they usually get through the
+		firewall, and they illicit a response from the
+		target system.
+		<p>
+		Pings sent to broadcast IP addresses like <tt>x.x.x.0</tt> or <tt>x.x.x.255</tt>
+		are probably attempts to use your network as a <a href="#smurf">smurf</a>
+		amplifier.
+
+
+		
+
+	<dt><h2><a name="2.11">2.11</a> Type = 11 (Time Exceeded In Transit)</h2><dd>
+
+		This probably doesn't indicate an attack from a hacker/cracker.
+		<p>
+		<dl>
+		<dt><h3><a name="2.11.0">2.11.0</a> Type = 11, Code = 0 (TTL Exceeded In Transit)</h3><dd>
+
+			This can be caused by a number of things. If somebody from
+			your site is doing traceroutes out to the Internet,
+			you will see lots of TTL exceeded responses from routers.
+			This is how tracroute works: forces the routers to
+			generate TTL exceeded messages in order to find them.
+			<p>
+			Another common reason firewall administrators see this
+			is due to routing loops developing in the Internet.
+			Route flapping (constant route changes) is a common
+			problem, and will often briefly result in a loop.
+			This means that while a IP packet is heading towards
+			it destination, the packet gets misrouted to a router
+			that it previously visited it. The packet then gets routed
+			in a circle infinately -- or it would be, if the
+			routers didn't decrement the TTL field each time and
+			discard the packet once that value hit zero.
+			<p>
+			Another cause of this is distance. Many machines start
+			with a default TTL of 127 (Windows) or even lower. Routers
+			will often decrement the TTL more than by one in order
+			to reflect slow lines like dialups or transcontinental
+			links. Therefore, a site might not be reachable with
+			a low initial TTL. In addition, some hackers/crackers like to
+			make their site unreachable through this method.
+			
+		<dt><h3><a name="2.11.1">2.11.1</a> Type = 11, Code = 1 (Fragment Reassembly Time Exceeded)</h3><dd>
+
+			When sending fragmented IP datagrams, the sender of this message
+			never received all the fragments. Normally, most TCP/IP traffic
+			shouldn't even be fragmented. You will only see this if
+			the traffic is both fragmented AND there congestion somewhere
+			between you and the target.
+
+		</dl>
+
+
+	<dt><h2><a name="2.12">2.12</a> Type = 12 (Parameter Problem)</h2><dd>
+
+		This probably indicates an attack. There are a number
+		of fingerprinting techniques that will generate these
+		packets.
+		<p>
+
+
+
+<dt><H1>3. IP</H1><dd>
+
+	<dt><H2>3.1 What are source routed packets?</H2><dd>
+		Source route is an option in the IP header that allows the
+		sender to override some or all of the routing decisions.
+		Normally, routers between the source and destination
+		decide how to route the packet.
+		<p>
+		There are a couple of network management uses of this
+		packet, such as testing to see if two computers can
+		talk to each other. A network manager at point A
+		may send a packet to B through point C. This tells
+		A if B & C can talk to each other.
+		<p>
+		The same technique can be used to evade firewalls,
+		subvert trust relationships, and communicate with
+		machines using "private" address (10.x.x.x, 192.168.x.x,
+		172.[16-31].x.x).
+		<p>
+		Let's say you are a hacker/cracker on the Internet and you
+		want to talk to some machines behind a firewall who
+		use 10.x.x.x as their IP addresses. Since the routers
+		on the Internet do not know where this subnet is located,
+		they will drop your packets. However, you put a
+		loose source route option in the IP packet and tell
+		all the Internet routers to first forward to the firewall.
+		Since the firewall straddles both the Internet and the
+		private network, it will know how to forward the packet
+		appropriately. Thus, you can carry on a conversation
+		with the victim by bouncing all packets through the
+		firewall.
+		<P>
+		This can be used with IP spoofing. You pretend to
+		be a router (like the firewall mentioned above) and
+		pretend that somebody else is bouncing packets 
+		through you. Thus, pick some random machine 
+		on the Internet (ALICE) as the spoofee, then
+		send packets from ALICE to your victim BOB.
+		BOB will think the packets are coming from ALICE,
+		but in reality they are coming from you. This
+		masks the real source of the attack.
+		<P>
+		This is even better if you know that BOB trusts
+		ALICE. IP addresses are often used as part of
+		authentication. Let's say the firewall has a
+		rule allowing all traffic from ALICE into
+		the network. By forging all IP packets to
+		be from ALICE (but being source routed through
+		your own machine), then you get free access to
+		the victim network.
+		<p>
+		More and more core Internet routers are disabling
+		source routed packets. They slow down routing anyway,
+		but they are a huge security risk. There is also
+		no real need for them. Managers should do the
+		same and disable source routing everywhere:
+		on firewalls, on routers, and even on end-nodes
+		so that they won't even accept incoming source
+		routed packets.
+		<p>
+		<small>See Microsoft Knowledge Base article Q217336
+		for setting the "DisableIPSourceRouting" on WinNT SP5
+		systems</small>
+   
+
+	<dt><H2>3.2 I'm seeing the IP address <a name="ip255.255.255.255">255.255.255.255</a> in my reject log</H2><dd>
+		<P>
+		This is happening a lot these days as more and more people use DSL
+		or cable-modem connections. The reason is that unlike point-to-point
+		connections (like T-1, frame relay, etc.), these new high speed technologies
+		drop you onto an ATM VLAN, which is a single broadcast domains. In fact,
+		many cable-modem users are seeing multiple megabytes of traffic per day
+		simply from such broadcasts.
+		<p>
+		You must remember that such packets MUST be local. Routers (generally) refuse
+		to forward packets with the IP address of 255.255.255.255. This address is
+		known as a "local broadcast" for this reason: it never travels past the 
+		local segment (or these days, the local "virtual" segment).
+		<P>
+		<b>What are these packets for?</b>
+		<p>
+		Check the list of ports at the top of this document. If it is not
+		listed there, then the only way to figure this out is to capture them with
+		a <a href="http://www.robertgraham.com/pubs/sniffing-faq.html">sniffer</a>
+		and view their contents.
+		<p>
+		For example, a common service that runs with a random port number is CORBA
+		IIOP packets. Many services run at <a href="#port535">port 535</a>, but
+		it is frequently reconfigured to broadcast on other ports. If you look at the hex dump
+		in the sniffer, you will see the letters "IIOP" somewhere in the contents.
+		<p>
+		In any case,
+		this is rarely
+		something to be concerned about. In fact, it advertises something
+		about the person sending the traffic that can be used to hack them. 
+		Hackers rarely attack their own neighborhoods (because it is easy to detect),
+		so it probably is accidental, not malicious.
+		<p>
+		It should be noted that with todays ATM networks, the source of the broadcast may
+		not even be in the same state as you are; they may be hundreds of miles away.
+		The word "local" means in terms of the network topology, not distance.
+
+	<dt><H2>3.3 How do I track down the owner of an IP address?</H2><dd>
+		<p>
+		Remember that IP addresses can be spoofed, so that the "owner" of an
+		IP address may be innocent. Increasingly, attacks are coming from compromised 
+		machines. The owner of the IP may actually be grateful!
+		Both of these statements come to the same conclusion: be polite and professional.
+		<P>
+		Many companies have established the e-mail address "abuse@example.com" (replace "example" with
+		the proper company). This e-mail role is for both e-mail abuse (such as spam) as well as
+		for network abuse. When you find the owner of the IP address, you should probably
+		compose a message including the evidence of the attack.
+		<p>
+		<b>Registrar Databases</b>
+		<p>
+		In the past, all the IP address owners were kept by the Internic. A database built from that 
+		information is at <a class=ex href="http://ipindex.dragonstar.net/">http://ipindex.dragonstar.net/</a>.
+		There are now 3 official registrars for North America, Asia, and Europe. Unfortunately,
+		you will have to query each individual database. However, if you start with the
+		North America registrar, it will tell you if the address belongs to one of the other three.
+		<b>Warning:</b> The returned information is fragile; so don't send flames to these
+			people because you have only about 30% chance of reaching the right people.
+		<p>
+<style><!--
+TD.whoisurl {
+	font-size: 8pt;
+}
+//-->
+</style>
+		<table>
+		<tr><td><b>America</b></td>
+			<td class=whoisurl><a class=ex href="http://www.arin.net/whois/">http://www.arin.net/whois/</a>
+			<br>ARIN (American Registry for Internet Numbers)</td>
+			<td>
+			<form method="POST" action="http://www.arin.net/cgi-bin/whois.pl">
+			  <input type="text" name="queryinput" size="20">
+			  <input type="submit" value="Search ARIN" name="B1">
+			</form>
+			</td>
+		</tr>
+		<tr><td><b>Europe</b></td>
+			<td class=whoisurl><a class=ex href="http://www.ripe.net/db/whois.html">http://www.ripe.net/db/whois.html</a>
+			<br>RIPE (Reseaux IP Europeens)</td>
+			<td>
+			<form method=POST action="http://www.ripe.net/cgi-bin/whois"> 
+				<input type=text name="Whois" size=20>
+				<input type=submit value="Search RIPE">
+			</form>
+			</td>
+		</tr>
+		<tr><td><b>Asia and Pacific</b></td>
+			<td class=whoisurl><a class=ex href="http://www.apnic.net/apnic-bin/whois.pl">http://www.apnic.net/apnic-bin/whois.pl</a>
+			<br>APNIC (Asia Pacific Network Information Centre)
+			<br>[<a href="http://www.apnic.net/db/dbsources.html">more</a>]</td>
+			<td>
+			<form method=GET ACTION="http://www.apnic.net/apnic-bin/whois.pl">
+			 <input type="text" size="20" name="search">
+		     <input type="submit" value="Search APNIC"> 
+			</form>
+			</td>
+		</tr>
+		<tr><td bgcolor=black colspan=3><hr></td>
+		</tr>
+		<tr><td><b>Japan</b></td>
+			<td class=whoisurl><a class=ex href="http://www.nic.ad.jp/cgi-bin/whois_gw">http://www.nic.ad.jp/cgi-bin/whois_gw</a>
+			<br>JPNIC</td>
+			<td>
+			<FORM METHOD="POST" ACTION="http://www.nic.ad.jp/cgi-bin/whois_gw">
+			<INPUT TYPE="text" NAME="key" SIZE="20" value="">
+			<BR>
+			<INPUT TYPE="radio" NAME="lang" VALUE="">Japanese
+			<INPUT TYPE="radio" NAME="lang" VALUE="/e" checked>English <INPUT TYPE="submit" VALUE="query">
+			</form>
+			</td>
+		</tr>
+		</table>
+
+		<p>
+		<b><a href="#traceroute">traceroute</a></b>
+		<p>
+		Running traceroute will often find at least the ISP who is hosting the IP address.
+		A reverse DNS lookup on the actual IP address is easy to spoof, but the
+		route to the machine will reveal who is hosting the possible intruder.
+		<P>
+		<b>Common IP addresses</b>
+		<p>
+		Many attacks are now coming from cable-modem subscribers in the 24.x.x.x range.
+		These are probably from machines who have been compromised by a Remote Access Trojan (RAT).
+		(While hackers/crackers frequently use dial-up lines because they don't care if their
+		account gets canceled, few users want to have their cable-modem accounts canceled).
+		<p>
+		Another important range is the "private address" ranges of 10.x.x.x, 192.168.x.x,
+		and 172.16.x.x-172.31.x.x. See <a href="#3.4">3.4</a> below.
+		<P>
+		Addresses like 127.x.x.x indicate "localhost" and should never be seen on the Internet.
+		<p>
+		The address range 192.0.2.x has been designated for "examples", like "example.com".
+		
+	<dt><H2><a name="3.4">3.4</a> I'm seeing packets from "private" addresses (10.x.x.x et al.) on the Internet side of my firewall</H2><dd>
+		<p>
+		The "private address" ranges are 10.x.x.x, 192.168.x.x,
+		and 172.16.x.x-172.31.x.x. There
+		<p>
+		I've been seeing these in three cases:
+		<dl>
+		<dt>traceroutes<dd>
+			Core routers on the Internet are increasingly being assigned IP address in this range.
+			There is really no need for a router to be reached from the Internet. The "forwarding" function
+			really is independent from "sending/receiving" packets. When a router drops a packet and
+			sends back a "ICMP TTL Exceeded" message, it will use the private address. Note that
+			some routers are multi-homed with both private and non-private addresses. Other
+			routers have only private addresses.
+		<dt>cable-modem, DSL<dd>
+			Most cable-modem and DSL connections are on virtual LANs over ATM.
+			You will often see broadcast packets from machines with private addresses.
+		<dt>hackers<dd>
+			Very rarely, you may see an address from a hackers who are spoofing addresses
+			in this range.
+		</dl>
+
+	<dt><H2><a name="3.5">3.5</a> What kind of scans should I expect to see from quasi-legitimate sources?</H2><dd>
+		You will often see scans from somewhat legitimate sources. What I mean
+		by this is that people will scan you without the intention of actually hacking
+		you. For example, search engines will index your site, but it isn't
+		an attack.
+		<dl>
+		<dt><a class=ex href="http://wwww.doubleclick.net">Doubleclick</a><dd>
+			Sends <a href="#port7">echos</a> to people in order to
+			redirect them to a nearer server for their advertising.
+		<dt><a class=ex href="http://www.cyveillance.com/response1.html">http://www.cyveillance.com/</a><dd>
+			Scans websites looking for illegal activities, such as copyrighted
+			items.
+		</dl>
+	
+
+	<dt><H2><a name="3.6">3.6</a> I'm seeing source IP address of 0.0.0.0?</H2><dd>
+		If the port is also 0, then this is probably an attempt to fingerprint
+		your system.
+
+
+	<dt><H2><a name="3.7">3.7</a> What are directed broadcasts and what do they mean?</H2><dd>
+		TODO:
+		<ul>
+		<li>Often indicate people scanning your subnet
+		<li>Hackers looking for smurf amplifiers
+		</ul>
+
+
+<dt><H1>4. Stuff doesn't work</H1><dd>
+
+	<dt><H2>4.1 Installing a firewall causes <a name="slow-email">slow connections</a> to POP and SMTP services</H2><dd>
+		<p>
+		This is because the POP and SMTP servers are trying to establish an identd/AUTH
+		connection back to the client. These reverse-connections are blocked,
+		and it takes a while before the servers timeout and continue.
+		<p>
+		The identd/AUTH service identifies the user of the TCP connection
+		(user name, process id, etc.).
+		When the e-mail server accepts the incoming TCP connection, before
+		sending the greetings, it will
+		first attempt to gather information via the identd protocol. This consists
+		of a TCP connection in the reverse direction. In other words, when I 
+		connect to my e-mail server, my e-mail server attempts to connect
+		back to me on port 113, the identd port. My e-mail connection just
+		sits there until the e-mail server resolves the identd information.
+		<p>
+		The problem
+		comes about because the firewall silently drops the SYN packet. The
+		e-mail server is expecting an immediate SYN-ACK (identd supported)
+		or RST (identd not supported), but when the firewall drops the packet
+		it keeps trying until the connection times out.
+		<p>
+		Note that the e-mail server doesn't care if I don't support identd, and
+		indeed most people don't on their clients. It just wants an immediate response one
+		way or the other. The firewall blocks that. This is why some personal
+		firewalls for Windows (like BlackICE Defender from my company) contain
+		default rules that allow identd/AUTH to pass through. Windows doesn't
+		reveal the information that UNIX does, and opening it up gives the immediate
+		response these servers are looking for.
+		<p>
+		To solve this problem:
+		<ul>
+		<li>reconfigure the e-mail server to stop querying identd info
+		<li>reconfigure the firewall to RST all those connections
+		<li>reconfigure the firewall to allow this protocol, but this
+			would be a <i><b>BAD IDEA</b></i> because identd/AUTH reveals
+			a HUGE amount of information about your UNIX machines.
+		</ul>
+		<p>
+		Note that this means you should be seeing lots of dropped incoming
+		connection attempts at <a href="#port113">port 113</a> in your
+		log files because of this.
+
+<dt><H1>5. Programs</H1><dd>
+
+<dt><H2>5.1 <a name="traceroute">traceroute</a></H2><dd>
+		<p>
+		The program "traceroute" is based upon a very intelligent hack
+		by Van Jacobson (also famous for other nifty kludges). Every IP
+		packet has a <b>time-to-live (TTL)</b> field that indicates how
+		many hops the packet can travel before being dropped. This field
+		is needed because routers sometimes get misconfigured and will forward
+		packets in a continuous: i.e. Alice fowards the packet to Bob who
+		fowards it to Charlene who mistakenly forwards it back to Alice. 
+		<p>
+		Therefore, each router decrements (subtracts 1) from the TTL field.
+		When each reaches zero, the router who currently has the packet 
+		will simply "drop" it (not forward it on). When a router drops a packet,
+		it sends a message back to the sender informing for this. This message
+		is called an ICMP "TLL Exceeded in Transit".
+		<p>
+		The nifty thing about this is that the router uses its own IP address
+		as the source address of the ICMP message. Therefore, if you send a packet
+		to a target but with a TTL of only 1, the first router will receive the packet,
+		decrement the field to 0, drop it, then send back the ICMP notification.
+		This informs you of the first router along the route (which you probably knew anyway).
+		<p>
+		The same goes for an initial TTL of 2. The first router gets it, decrements to 1, then
+		forwards to the second router along the route. This router then decrements to 0, drops the 
+		packet, and sends back and error ICMP message.
+		<p>
+		By continuing this process, you eventually end up with the list of routers between
+		yourself and the target.
+		<P>
+		<b>Versions of traceroute</b>
+		<p>
+		There are various versions of the traceroute program. In particular, the Windows
+		program "tracert.exe" uses pings as the packet it sends to the target. Therefore,
+		you might see ICMP Echoes on your firewall.
+		<p>
+		The most popular "traceroute" program for UNIX programs sends UDP datagrams to
+		port <a href=#port33434>33434</a> for the first packet sent, then increases this port
+		number by one for each successive packet. This means that you will never see port
+		33434 on your firewall, but you will start to see successive ones starting
+		at higher port numbers. Traceroute programs typically send 3 packets for each
+		hop (in case some get dropped). Therfore, if somebody is 10 hops away, the first
+		port you will see is 33434 + 3*10 = 33464.
+		<p>
+		<b>Symptoms</b>
+		<P>
+		Firewall administrators should learn the symptoms of traceroute activity.
+		<p>
+		<dl>
+		<dt>port scans in <a href="#port33434">33434-33600</a><dd>
+			A brief sequential "port scan" in this range usually indicates
+			a traceroute for a UNIX machine, as explained in this section.
+		<dt><a href="#incoming-ttl-exceeded">incoming TTL exceeded</a><dd>
+			If someone inside the network is attempting a traceroute, then
+			you'll see these incoming packets. Many admins allow these
+			through the firewall.
+		<dt>outgoing TTL exceeded<dd>
+			This indicates that somebody is tracerouting you. This doesn't
+			necessarily indicate hostile activtiy, but somebody is scanning you.
+			These should be blocked by the firewall.
+		<dt><a href="#outgoing-port-unreachable">outgoing ICMP port unreachable</a><dd>
+			When a traceroute successfully hits a target, it will generate back-to-back
+			"ICMP port unreachable" messages (probably 3 in a row). 
+		</dl>
+		<p>
+		<b>Other</b>
+		<p>
+		Some traceroutes are designed to bypass firewalls.
+		See <a class=ex href="http://www.packetfactory.net/firewalk/firewalk-final.html">http://www.packetfactory.net/firewalk/firewalk-final.html</a>
+		for more information.
+		
+
+
+<dt><H2>5.2 <a name="sscan">sscan</a></H2><dd>
+		<p>
+		The 'sscan' tool has become
+		a popular scanning tool on the Internet. It not only "port scans"
+		but attempts to discover some common vulnerabilities.
+		There are several versions of
+		sscan, and it is very configurable, so matching an exact fingerprint
+		to this program may be difficult.
+		The 'sscan' program is derived from the older 'mscan' tool.
+		<P>
+		A sscan goes through several phases:
+		<dl>
+		<dt>TCP ACK pings<dd>
+			The program will attempt to see if the host is reachable
+			by scanning for the most common services, namely
+			ports <a href="#port23">23/telnet</a>, 
+			<a href="#port25">25/smtp</a>, <a href="#port110">110/pop3</a>,
+			<a href="#port143">143/imap4</a>, <a href="#port80">80/http</a>.
+			This phase is easily detected because both the source and destination 
+			port are the same.
+		<dt>connection attempts<dd>
+			Connection attempts are made to several services in order to
+			see if they are available. This is highly configurable. Typically
+			configured probes are those above, as well as <a href="#port111">111/rpc</a>,
+			<a href="#port6000">6000/x-windows</a>, <a href="#port79">79/finger</a>,
+			<a href="#port53">53/dns</a>, <a href="#port31337">31337/elite</a>,
+			<a href="#port139">139/netbios,smb</a>, <a href="#port21">21/ftp</a>,
+			<a href="#port1114">1114/msql</a>, <a href="#port1">1/tcpmux</a>
+
+		<dt>OS fingerprint<dd>
+			sscan contains a basic OS fingerprinting technique, easily detected
+			because it uses source ports 1-5. The fingerprinting is not
+			as complete as the techniques used by Queso or nmap.
+		
+		<dt>vulnerability assessment<dd>
+			It then looks at the ports that are open and checks the banners
+			that might indicate a vulnerable version of one of the services.
+			It also scans for a range of known vulnerable CGI scripts.
+
+		<dt>script execution<dd>
+			Depending upon what it finds, it can further launch configured
+			scripts against the system.
+
+		</dl>
+
+		<P>
+		<b>Example</b>
+		<p>
+		The following is a record pulled from an intrusion detection system.
+		<p>
+		ports=1 22 23 25 53 79 110 111 143 1114 2766 6000 31337
+		<p>
+		Unfortunately, the system consolidates alerts, discards duplicates, and keeps the port numbers
+		in sort order. In a real scan, several of the ports would have duplicate connection
+		attempts, and port 1/tcpmux would be one of the last probes, not one of the first.
+		<p>
+		<b>More info</b>
+		<p>
+		[<a class=ex href="http://www.cert.org/incident_notes/IN-99-01.html">IN-99-01</a>]
+	
+<dt><H2><a name="5.3">5.3</a> Proxy scanners</H2><dd>
+
+	One of the most common scans on the Internet looks for HTTP proxy servers.
+	Normally, the hackers aren't looking to compromise systems, they simply
+	want the ability to "anonymize" their connections. For example, most
+	anonymous e-mail services (HotMail, Yahoo mail, etc.) will store 
+	the IP address in the e-mail headers, making them not so anonymous (many
+	people have been caught this way). By bouncing HTTP traffic through
+	a proxy server, the hacker can complete erase his/her tracks.
+	<P>
+	In late summer of 1999, probes for ports 80/8080/3128 were particularly
+	noticed. These came from all over the Internet and were fairly disjoint.
+	These came from a Trojan Horse called "<a name="Ring0">Ring0</a>" (<a name="RingZero">RingZero</a>). It would infect PCs,
+	then scan random IP addresses for proxy servers. The SANS Institute
+	(a security training/conference organization) coordinated an effort
+	to track down exactly what was happening from reports from many
+	of their customers. A common symptom of this Trojan is 3 probes
+	spaced within a minute from the same IP address from this Trojan.
+	More information can be found at: <a class=ex href="http://www.sans.org/newlook/resources/ringzero.htm">http://www.sans.org/newlook/resources/ringzero.htm</a>.
+	A news article by CMP can be found at: <a class=ex href="http://www.techweb.com/wire/story/TWB19991013S0018">http://www.techweb.com/wire/story/TWB19991013S0018</a>
+	<P>
+	A list of open proxies can be found at:
+	<a class=ex href="http://freebooks.hypermart.net/proxy/proxies.htm">http://freebooks.hypermart.net/proxy/proxies.htm</a>
+	<P>
+	Ports with variations of the "80" them (81, 88, 8000, 8080, 8888, etc) are most
+	commonly used for proxies. In addition, a popular free proxy server
+	called "squid" runs at port 3128.
+
+
+<dt><H2><a name="5.4">5.4</a> <a name="smurf">smurf</a>/<a name="fraggle">fraggle</a></H2><dd>
+	Smurf/fraggle programs send packets to broadcast addresses
+	with a 
+	<a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#spoof">spoofed</a>
+	source address of the victim. Everybody on that subnet then sends responses
+	back to that address, flooding it.
+	<p>
+	A <b>smurf</b> is a ping (<a href="#2.8">ICMP Echo Request</a>) whereas a <b>fraggle</b>
+	is a <a href="#port7">UDP port 7/echo</a>. These are named after the programs/scripts
+	that first implemented them.
+	<p>
+	These packets are sent to <i>broadcast</i> addresses. In IP, a <i>directed broadcast</i>
+	has all the "host" bits set to either one or zero. This means an address that looks
+	something like 192.0.2.0 or 192.0.2.255 is likely a broadcast. The key thing to remember
+	is that such addresses are only broadcasts if the router on that subnet chooses to
+	interpret it as a broadcast. If that router has this configured as a broadcast in its
+	routing tables, it will forward the single IP packet as broadcast on that (Ethernet) segment,
+	causing all systems on that (Ethernet) segment to receive the packet.
+	<p>
+	Therefore, there are two configuration problems:
+	<ul>
+	<li>Routers forwarding directed broadcasts.
+	<li>Systems responding to broadcasts.
+	</ul>
+	Both can be fixed. 
+
+
+<dt><H1>7. Other logging systems</H1><dd>
+
+	The following information helps interpret the meaning of events
+	generated by logging systems, not necessarily from a firewall.
+	They might come from the service itself, 
+	<a href="http://www.robertgraham.com/pubs/network-intrusion-detection.html">intrusion detection systems</a>,
+	or really smart firewalls.
+
+<dt><H2><a name="7.1">7.1</a> What do the following DNS errors mean?</H2><dd>
+
+	<dl>
+	<dt><b><tt>Response from unexpected source</tt></b><dd>
+		A DNS server might report this when it receives an incoming response
+		with a different IP address than the corresponding request. There
+		are several causes of this.
+		<p>
+		Remember that DNS servers will "recursively" send
+		out queries when resolving names on behalf of clients. Each outgoing
+		request is given a unique <b>transaction identifier</b>; incoming
+		responses contain the same transaction identifier.
+		<p>
+		Therefore, if a server sends request #45689 to server 192.0.2.131,
+		but gets response #45689 back from server 192.0.2.3, then it triggers
+		this alert.
+		<p>
+		The most common cause of this is due to proxying, caching, and dual-homed
+		hosts. For example, the DNS server might have two IP addresses: [192.0.2.131]
+		and [192.0.2.3]. The typical way of writing a DNS server is to not bind
+		the sockets to individual IP addresses. What this means is that the DNS
+		server does not know which IP address the request was received on, nor
+		does it tell the underlying TCP/IP stack which IP address to use when
+		sending the response. Therefore, when the DNS server sends the response,
+		the underlying stack uses one of the IP addresses at random (which can
+		be the wrong one).
+	<dt><b><tt>Various errors with 127.0.0.1</tt></b><dd>
+		Some servers are misconfigured to map this address.
+		On the other hand, it is also a hacker technique to cause
+		names within the hacker domain to resolve to addresses
+		within a company (including localhost/127.0.0.1).
+	<dt><b>Zone transfers (<a name="axfr">AXFR</a>)</b><dd>
+		A hacker is attempting to list all the DNS names within a domain.
+		This is an attempt to "map" your network. Managers should consider
+		using "split" DNS, whereby the public DNS contains only those
+		records that must be accessed publically, but use a seperate (and distinct)
+		DNS server for internal machines.
+	</dl>
+
+<dt><H2><a name="7.2">7.2</a> What do the following URL's mean in weblogs?</H2><dd>
+	A lot of these pop up in logs as "404 Not Found" errors:
+	<dl>
+	<dt><b><tt>favicon.ico</tt></b><dd>
+		In MSIE5 (Microsoft Internet Explorer v.50), when a user adds
+		a link to his/her "Favorites" (Bookmarks) or drags the link to
+		the desktop, the browser attemps to retrieve an icon for it.
+		It first searches in the same directory as the file being linked
+		to, then walks up the directory structure until it hits the root.
+		A lot of sites (example: Yahoo!) now supply icons for their sites.
+	<dt><b><tt>robots.txt</tt></b><dd>
+		Whenever a search engine (like AltaVista, Infoseek, Excite, etc.)
+		attempts to index your site, it will first get the file
+		"/robots.txt". If you don't want parts of your website indexed,
+		you can put rules here. On the other hand, hackers will sometimes
+		grab this file as well on the assumption that if you tell a 
+		search engine not to index some directories, they might be something
+		interesting to look at. Indeed, network managers do believe that
+		putting directories in "robots.txt" hides them, when in reality
+		it exposes them more.
+	<dt><b>URL's beginning with <tt>http://</tt></b><dd>
+		People occasionally see the following type of line in their webserver log:
+	<pre>
+14:03:00 192.0.2.243 GET /index.html - 200 Mozilla/4.0 - -
+14:03:03 192.0.2.243 GET http://www.example.com/  - 200 - - -
+	</pre>
+	The first is a normal line, but what is that complete URL starting with "HTTP"?
+	This is an attempt to see if the machine supports proxying. This is how
+	pretty much all HTTP proxies work -- they receive a complete URL,
+	then fetch that URL for the user.
+	<p>
+	See section <a href="#5.3">5.3</a> for more info.
+	</dl>
+
+<dt><H2><a name="7.3">7.3</a> What do the following mean in my <a name="rpc">RPC</a> portmapper logs?</H2><dd>
+	Clients lookup an RPC program in <a href="#port111">portmapper/rpcbind</a> in order
+	to find out which port number the service runs on. A hacker will either
+	<b>dump</b> all the listings (using <tt>rpcinfo -p &lt;host&gt;</tt>)
+	or lookup the mapping (using <b>getport</b>) for the particular RPC
+	he/she wants to exploits.
+	<p>
+	As always, these atttempts are usually
+	from scans against thousands/millions of machines rather than against
+	you in particular. Every few months, a new exploit script is published
+	for Linux or Solaris services, and script kiddies start scanning the
+	Internet for that service. Most of the vulnerabilities in the services
+	listed are 
+	<a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#buffer-overflow">buffer overflows</a>.
+	<p>
+	Note that on Sun Solaris machines, these services usually have port numbers 
+	in the range starting at <a href="#port32770">port 32770</a>.
+	<p>
+		<table border=0 style="border-style: none">
+		<tr valign=top><td bgcolor="#ffcccc" style="background-color: #ffcccc"><a name="rpc100005">100005</a></td><td style=portname>NFS mountd</td><td style=portdesc>
+			In late 1998, the RedHat Linux distribution contained a buffer overflow
+			bug in the <tt>mountd</tt> service running at port <a href="#port635">635</a>.
+			The popularity of RedHat and the fact that the service ran at a
+			common port number resulting in popularity among hackers.
+			Not only did hackers scour the Internet for such machines, but a
+			<a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#worm">worm</a>
+			was created to spread via this service.
+			[<a class=ex href="http://www.cert.org/advisories/CA-98.12.mountd.html">CA-98.12</a>]
+		<tr valign=top><td bgcolor="#ffcccc" style="background-color: #ffcccc"><a name="rpc100068">100068</a></td><td style=portname>rpc.cmsd</td><td style=portdesc>
+			Solaris <i>Calender Messaging Service</i>
+			<p>
+			In the middle of 1999, a buffer-overflow was found in this service. Immediately
+			after this discovering, hackers started doing extensive scans for this service,
+			resulting in thousands of hacks against web-sites using Solaris.
+			[<a class=ex href="http://www.cert.org/advisories/CA-99-08-cmsd.html">CA-99-08</a>]
+		<tr valign=top><td bgcolor="#ffcccc" style="background-color: #ffcccc"><a name="rpc100083">100083</a></td><td style=portname>ToolTalk</td><td style=portdesc>
+			ToolTalk (<tt>rpc.ttdbserverd</tt>)
+			[<a class=ex href="http://www.cert.org/advisories/CA-98.11.tooltalk.html">CA-98.11</a>]
+		<tr valign=top><td bgcolor="#ffcccc" style="background-color: #ffcccc"><a name="rpc100232">100232</a></td><td style=portname>rpc.sadmind</td><td style=portdesc>
+			Sun <i>Solstice Adminsuite</i>, installed by default on Solaris
+			systems 2.5 and above (2.4 and below installed a similar service called <i>rpc.admind</i>).
+			[<a class=ex href="http://www.cert.org/advisories/CA-99-16-sadmind.html">CA-99-16</a>]
+		<tr valign=top><td bgcolor="#ffcccc" style="background-color: #ffcccc"><a name="rpc300019">300019</a></td><td style=portname>rpc.amd</td><td style=portdesc>
+			Linux <i>Automounter</i>
+			<p>
+			In late 1999, a buffer overflow bug was found in the logging service.
+			While any code based upon the original BSD sources is vulnerable,
+			hackers are probably scanning for the Linux implementation includes
+			in many distros.
+			[<a class=ex href="http://www.cert.org/advisories/CA-99-12-amd.html">CA-99-12</a>]
+		</table>
+
+<dt><H2><a name="7.4">7.4</a> What do the following mean in my <a name="smtp">SMTP</a> (e-mail) logs?</H2><dd>
+
+
+<dt><H2><a name="7.4.1">7.4.1</a> What is this message about "relay" attempts?</H2><dd>
+	A <i>relay</i> is where somebody sends your e-mail server not destined for
+	anybody who you serve e-mail for. For example, I might connect to your e-mail
+	server and attempt to send mail to "test@example.com". Your e-mail server should
+	not accept the e-mail ("relay not allowed"). Your e-mail server should only
+	accept incoming e-mail to your users (or outgoing e-mail from your users).
+	<p>
+	The problem is that many administrators simply install servers without taking
+	these simple precautions. Spammers take advantage of this fact. They give a 
+	single e-mail to the mail server and a recipient list containing hundreds of
+	unrelated recipients. This allows them to send huge quantities of e-mail using 
+	a slow dialup connection. This is important because once the ISPs get enough
+	complaints, they will terminate the user's account, so they must continual
+	get new dialup connections. It also has the effect of partially hiding the 
+	true source of the spam.
+	<p>
+	If you get error messages about relaying, that is a good thing: you've configured
+	your server correctly. If you don't get such messages, this is a bad thing.
+	This means that you are probably not rejecting relayed messages. Has your server
+	seemed slow lately?
+	<p>
+	Not only do spammers hunt for open relays, anti-spam organizations do the same
+	in an attempt to "blacklist" open relays. Some of the good guys are:
+	<dl>
+	<dt><a href="http://www.imc.org/">IMC</a><dd>
+		The Internet Mail Consortium
+		reports that in 1999, roughly 17% of e-mail systems had open relays.
+	<dt><a href="http://maps.vix.com/tsi/">MAPS</a> RBL<dd>
+		The MAPS RBL (Realtime Blackhole List) allows you to configure your e-mail
+		server to blackball known open relays that send out bulk spam. It is used
+		by a huge percentage of e-mail servers on the Internet.
+	<dt><a href="http://www.orbs.org/">ORBS</a><dd>
+		Scans the Internet looking for open relays. ORBS uses relay tests from
+		New Zealand (e.g. manawatu.co.nz).
+	</dl>
+	<p>
+	Not only do you receive relay attempts from spammers, you also get attempts from
+	anti-spam organizations.
+	There are several organizations that regularly scan the Internet looking for
+	open relays. The most common is from "manawatu.co.nz"; don't get too upset -- they
+	
+
+<dt><H1>8. Configuring the firewall</H1><dd>
+
+	Many of the logged packets on your firewall result from incorrect
+	configuration. This section doesn't describe how to configure
+	your firewall, but instead helps describe some common configuration
+	steps you might want to take when you see rejects pop up in
+	your firewall logs.
+	
+
+<dt><H2>8.1 ICMP filters</H1><dd>
+	The "correct" configuration of ICMP filters in a firewall is 
+	hotly debated. The problem is that ICMP are the "control messages"
+	for TCP/IP. If you block some incoming ICMP, then you will break communication.
+	<p>
+	The absolute minimum ICMP traffic to allow is the packets
+	dealing with TCP path MTU discovery. Fragmenting a stream is
+	more efficient at the TCP layer rather than the IP layer, so the 
+	TCP layer will try to discover when IP packets are being inadvertently
+	fragmented. They do this by setting the 
+	"<a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#ip-flags-df">DF</a>" (Don't Fragment)
+	on all outgoing packets. When a router cannot forward the packet because
+	it is too big, rather than fragmenting it, it sends back a "fragmentation needed"
+	ICMP packet (type=3/code=4). The TCP stack then starts sending smaller IP packets,
+	segmenting the data at the TCP layer rather than allow routers to fragment at
+	the IP layer. Therefore, firewalls must be configured to allow incoming
+	ICMP type=3, code=4 packets.
+	<p>
+	Another issue is <b>Host unreachable</b> and <b>Destination Unreachable</b>
+	packets. Allowing these to come in through your firewall will allow
+	connections to timeout faster, but they can also be used as a denial of service
+	attack (by disconnecting clients from servers).
+	<p>
+	Users will constantly ask for the ability to ping and traceroute machines
+	on the Internet. Most firewall adminsitrators will eventually give into
+	these demands. Nobody really needs to ping/traceroute, but they really want
+	to. It should be remembered, however, that ICMP ping responses are often
+	used as a 
+	<a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#covert-channel">covert-cahnnel</a>.
+	(The massive DDoS attacks against Internet portals used this as a covert channel).
+	<p>
+	For more information on this, you may
+	want to consult "Protect and Survive Using IBM Firewall 3.1 for AIX",
+	IBM publication SG24-2577-02. See <a class=ex href="http://www.redbooks.ibm.com">http://www.redbooks.ibm.com</a>
+	for more info. I disagree with it, though.
+	<p>
+	Another good document is <a class=ex href="http://www.worldgate.com/~marcs/mtu/">http://www.worldgate.com/~marcs/mtu/</a>.
+	<p>
+
+
+<dt><H2>8.2 split DNS</H1><dd>
+
+	Keep a separate primary DNS server for internal use vs. external use. An external
+	DNS server should only have entries for publically available servers,
+	such as webservers, FTP servers, e-mail servers, and so forth.
+
+<dt><H1>9. Packet Zen</H1><dd>
+
+	<dt><H2><a name="9.1">9.1</a> How do I interpret the IP identification fields? (<a name="ipid-zen">IP ID Zen</a>)</H1><dd>
+
+		The IP 
+		<i><a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#ip-id">identification (ID)</a></i>
+		field is a two-byte field contained within the packet. Its sole purpose in life
+		is allow IP packets to be fragmented: all fragments should contain the same ID
+		as the original packet so that they can be pasted back together again.
+		Most systems use the concept of a <i>monotonically increasing</i> ID:
+		for each packet sent, the field is increased by one.
+		<p>
+		There is a little twist to this scenario. A little-endian machine (like Intel processors) stores
+		numbers in reverse byte-order than how numbers are represented on the wire.
+		This means that a monotonically increasing integer from a Wintel box
+		will increment the high-order byte first, whereas a Sun SPARC box will
+		increment the low-order byte first. Therefore, lets say that you are being pinged
+		steadily from both a Sun SPARC and a Wintel, you will see the following
+		sort of progession in the IP ID field:
+		<table>
+		<tr><th>SPARC</th><th>Wintel</th></tr>
+		<tr><td>0x01FD</td><td>0xFD01</td></tr>
+		<tr><td>0x01FE</td><td>0xFE01</td></tr>
+		<tr><td>0x01FF</td><td>0xFF01</td></tr>
+		<tr><td>0x0200</td><td>0x0002</td></tr>
+		<tr><td>0x0201</td><td>0x0102</td></tr>
+		</table>
+		<p>
+		The above numbers are shown in 
+		<i><a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#hex">hexadecimal</a></i>,
+		which shows the byte-order problem. However, many firewall logs (stupidly) show
+		these numbers in decimal. If a firewall system assumes the number is big-endian
+		but the incoming packets are little endian, then the progression of the
+		numbers is hidden. For example:
+		<p>
+		<table>
+		<tr><th>IP ID</th> <th>Big-endian</th><th>Little-endian</th></tr>
+		<tr><td>01 FD</td><td align=right>269</td><td align=right>64769</td></tr>
+		<tr><td>01 FE</td><td align=right>270</td><td align=right>65025</td></tr>
+		<tr><td>01 FF</td><td align=right>271</td><td align=right>65281</td></tr>
+		<tr><td>02 00</td><td align=right>272</td><td align=right>2</td></tr>
+		<tr><td>02 01</td><td align=right>273</td><td align=right>258</td></tr>
+		</table>
+		<p>
+		This entire issue is complicated by the fact that a firewall running on
+		a platform doesn't have to base its decimal calculation of the IP ID field
+		on the underlying CPU. What I mean by this is that the C code that interprets
+		the IP ID could be written in two ways;
+<pre>
+        /* ID field is a 2-byte number at offset 4 within the IP header */
+        int ipid_cpu = *(unsigned short*)(iphdr+4);
+        int ipid_be = iphdr[4] * 25 + iphdr[5];
+</pre>
+		<p>
+		The first example is CPU dependendent: x86 CPUs will pull it out as a little-endian
+		number, but SPARC CPUs will pull it out as a big-endian number. The second form
+		is <b>CPU independent</b>: it tells all CPUs to interpret the field as a big-endian
+		number.
+		<p>
+		Therefore, if you are running a Linux-based x86 firewall that interprets
+		the IP ID field as a little-endian number, then a string of packets from a Wintel
+		box will demonstrate a monotonically increasing number. However, a stream
+		from a SPARC box will show skipping numbers. Conversely, if the Linux-based firewall
+		uses the (correct) field parsing method, you'll see the reverse.
+		<p>
+		<b>Moral of the story:</b> Find out the byte order intepretation of the IP ID field
+		used within your firewall. Also send your firewall vendor flames telling them
+		to get with the program and represent the field in hex in the first place.
+		<p>
+
+	<dt><H2><a name="9.2">9.2</a> How do I interpret the TTL fields? (<a name="ttl-zen">TTL Zen</a>)</H1><dd>
+		
+		The 
+		<i><a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#ip-id">Time-to-Live (TTL)</a></i>
+		field is decremented by one every time a router forwards a packet. When it reaches
+		zero, the router discards the packet. <i>Routing loops</i> are a frequent occurance
+		on the Internet as routers get confused as to the proper direction in which
+		to forward packets. The TTL mechanism assures that packet eventually "die" when
+		and don't get routed in loops forever.
+		<P>
+		It also means that you can tell how far away a person is from the TTL field, and sometimes
+		what kind of platform they are running. Most Windows machines send packets with a starting
+		TTL of 128. This means that if your firewall log shows a TTL=112, then you can
+		make the guess that the sender is 16 hops away, and that they are using a Windows
+		machine.
+		<p>
+		Conversely, UNIX machines typically choose 64 as the starting TTL, so a packet when
+		the TTL is 51, then it probably isn't Windows, but it is probably 13 hops away.
+		<p>
+		This technique was once used to find the source of
+		<i><a class=dict href="http://www.robertgraham.com/pubs/hacking-dict.html#nmap">nmap</a></i>
+		decoy scans. The decoys where given random TTLs, but the real scans were give normal
+		TTLs. This allowed the astute observer the ability to sift through the incoming
+		decoys and find the real scan. The <i>nmap</i> program was soon fixed to randomize
+		the TTL of the real scan as well.
+		
+
+
+
+<dt><H1>A. Appendix</H1><dd>
+
+	<dl>
+	<dt><a href="http://www.cert.org/tech_tips/intruder_detection_checklist.html">http://www.cert.org/tech_tips/intruder_detection_checklist.html</a><dd>
+		CERT's <b>Intruder Detection Checklist</b>. If you believe you've been compromised,
+		this document describes how to go through your UNIX system and find 
+		signs of this intrusion.
+	<dt><a class=ex href="http://www.usdoj.gov/criminal/cybercrime/reporting.htm">http://www.usdoj.gov/criminal/cybercrime/reporting.htm</a><dd>
+		If you have evidence of a cybercrime that you believe warrants the
+		attention of the FBI, this is a good place to start. Note that you can't simply
+		hand it off to them and say "you take care of it". They are only willing
+		to take part of you are willing to spend the necessary time in gathering
+		evidence. For example, you may have to ship your compromised machine
+		to them.
+	</dl>
+	
+
+
+</dl>
+[fin]
+
+<img src="http://www.robertgraham.com/images/logo3.gif?doc=firewall-seen/0.3.4" height=1 width=1 alt="Firewall Seen FAQ">
+</body>
+</html>

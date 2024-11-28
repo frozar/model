@@ -1,0 +1,1292 @@
+          ________________________________________________________
+         *                                                        *
+         |         Prise d'empreinte de pile TCP/IP,              |
+         | où comment déterminer quel système d'exploitation fait |
+         | tourner une machine en se basant sur sa pile TCP/IP.   |
+	 |            by zal <aleph1@linuxmail.org>               |
+         *________________________________________________________*
+
+
+[I- Rappel ]
+I-1. De l'importance de connaître le système d'exploitation d'un serveur
+I-2. Recensement des bannières: une première étape dans l'acquisition de l'OS
+I-3. Limites et inconvénients de cette méthode, où pourquoi en demander plus
+
+[II- TCP/IP Stack Fingerprinting]
+II-1. Présentation, où en quoi chaque OS possède sa propre pile TCP/IP
+II-2. OS fingerprints, où comment reconnaître un système à sa pile TCP/IP
+II-3. Une excellente implémentation desdites méthodes, NMAP (-O) de Fyodor
+II-4. Sécurité informatique: parades possibles à la prise d'empreinte TCP/IP
+II-5. Prise d'empreinte de pile TCP/IP passive, concept et application
+
+[III- Mise en application: TCP/FIN method]
+III-1. Algorithmique, où comment implémenter une technique simple: TCP/FIN
+III-2. Réalisation de la fonction send_fin(), servant à l'envoi d'un TCP/FIN
+III-3. Réalisation de la fonction if_setup(), servant à écouter sur un device
+III-3. Réalisation de la fonction snif_rst(), servant à la réception du ACK
+III-4. Réalisation de la fonction main(), fonction principale
+III-5. Exemples pratiques d'utilisation de notre programme
+
+[IV- Conclusion]
+
+[Annexe: code source du programme]
+
+
+La connaissance de l'OS cible, lors d'une intrusion dans les règles de l'art,
+est souvent une condition sine qua non à la réussite de l'attaque. Acquérir
+la version et le nom de l'OS que fait tourner un serveur distant est un point
+de départ essentiel pour tout pirate digne de ce nom. Ainsi on imagine mal la
+tête de Jean-Kevin lorsqu'il essayera d'executer, à distance, un bind shell-
+-code pour Linux (x86) - via une faille dans un service vous en conviendrez -
+sur un SPARC/SunOs...
+
+Une méthode alors fréquemment utilisée est de récuperer les bannières asso-
+-ciées aux services, parfois on pourra y trouver de précieux renseignements:
+
+----------------------------------  cut  -----------------------------------
+$ nc -v unsecure 80
+unsecure [192.168.3.1] 80 (http) open
+HEAD / HTTP/1.0
+
+HTTP/1.1 200 OK
+Date: Tue, 25 Mar 2003 17:11:13 GMT
+Server: Apache/1.3.27 (Unix)
+Connection: close
+Content-Type: text/html
+
+$ nc -v unsecure 21
+unsecure [192.168.3.1] 21 (ftp) open
+220 SunOS FTP server ready.
+Ctrl-C
+
+$ telnet unsecure
+Trying 192.168.3.1...
+Connected to unsecure
+Escape character is '^]'.
+
+SunOS 5.6
+
+login:
+---------------------------------- /cut  -----------------------------------
+
+Ainsi, en seulement trois essais, nous avons pu déterminé successivement le
+type, le nom et la version de l'OS que fait tourner le serveur unsecure.
+
+Le problème au recensement des bannières est que, d'une part les services
+comme telnetd ou ftpd ne seront pas toujours en veille, et que d'autre part
+l'administrateur pourra très bien modifier le script de configuration de son
+daemon de manière à renvoyer de fausses informations, voire rien du tout (di-
+-rective ServerName).
+
+
+On pourrait alors penser à utiliser une autre technique, celle de la prise
+d'empreinte de pile TCP/IP, immortalisée par le NMAP [1] de Fyodor.
+
+Cette technique se base sur le fait que chaque système d'exploitation a sa
+propre pile TCP/IP, à comprendre par là sa propre manière d'implémenter les
+RFCs [2]. Ainsi on retrouvera certaines caractèristiques dans la pile TCP/IP
+d'un Windows 98 que l'on ne retrouvera pas chez d'autres. Le principe sera
+donc très simple, pour connaître un système d'exploitation tournant sur un
+serveur, on effectura toute une série de tests de manière à "fabriquer" une
+empreinte de la pile TCP/IP de cet OS, à partir de laquelle nous pourrons
+déduire précisément le nom et la version de l'OS en question.
+
+Mais cela impliquera bien sûr de connaître les différentes particularités des
+piles TCP/IP de chaque OS. En voici quelques unes (liste non exhaustive):
+
+* IP DF (don't fragment): certains systèmes d'exploitation initialisent le
+flag DF à 1 sur les paquets qu'ils envoient.
+
+* IP TOS (type of service): en général les piles TCP/IP de presque tout les
+OS initialisent le champ TOS à 0 sur les paquets qu'ils envoient. Cependant
+quelques implémentations (comme Linux) positionnent le TOS à 0xC0.
+
+* ICMP citation de messages d'erreur: certains systèmes d'exploitation ne
+renvoient pas la même quantité d'informations dans les messages d'erreur ICMP
+, par exemple pour un message "Port Unreachable" presque toutes les mises en
+oeuvre renvoient un entête IP + 8 octets, mais d'autres comme celles de Linux
+ou de Solaris en renvoient un peu plus.
+
+* ICMP nombre de messages "Destination unreachable" envoyés par seconde: il
+s'agit là d'envoyer une série de paquets à un port élevé (en UDP) puis de
+compter pendant une durée bien déterminée le nombre de messages "Destination
+unreachable" renvoyés. Ainsi un noyau Linux limitera l'envoi de messages de
+"Destination unrechable" à 80 par seconde (suggéré par la RFC 1812 [2]).
+
+* ICMP vérification de l'intégrité des messages d'erreur reçus: il s'agit,
+par analogie à la méthode précédente, d'envoyer une série de paquets vers un
+port UDP élevé puis de vérifier l'integrité des messages ICMP reçus. Ainsi
+AIX et BSDI renverront un champ ip->tot_len dépassant de 20 octets. Ou encore
+certains systèmes d'exploitation comme AIX ou FreeBSD renverront un checksum
+ICMP invalide ou égal à 0 (du à la modification du champ TTL [time to live]).
+
+* TCP FIN: lorsque nous envoyons un paquet TCP ayant le flag FIN positionné à
+1 sur le port ouvert d'un système distant, ce dernier devrait, théoriquement
+(.i.e d'après les RFCs [2]) ne rien répondre. Cependant quelques (mauvaises)
+implémentations de la RFC telles que les piles TCP/IP des systèmes Windows,
+IRIX, HP-UX, Cisco, BSDI et MVS ont l'habitude de répondre par un RST/ACK.
+(indifféremment de l'état du port). Cette technique de prise d'empreinte est
+plutôt facile à réaliser, or c'est pourquoi j'ai décidé de l'implémenter, à
+titre d'exemple, dans un programme en C (cf. III).
+
+* TCP flag indéfini: lorsque nous envoyons un paquet TCP SYN ayant un flag
+indéfini (64 ou 128) à 1 sur un port ouvert d'un système distant, ce dernier
+enverra un paquet TCP SYN/ACK conservant le flag indéfini si et seulement si
+il s'agit d'un noyau Linux inférieur à la 2.0.35.
+
+* TCP Windows: lorsque nous envoyons un paquet TCP FIN sur un port fermé d'un
+système distant, il renverra un TCP RST dont nous pourrons analyser la taille
+de la fenêtre. La taille de la fenêtre est constante et dépendante de l'OS,
+ainsi 0x402E correspondra à un système Windows, ou encore 0x3F25 à un AIX.
+
+* TCP Options: lorsque nous envoyons un paquet TCP vers un système distant,
+il répondra par un paquet TCP avec plusieurs options positionnées, dont
+l'ordre suffira à identifier le système en question (la valeur sera presque
+toujours la même). Ainsi les systèmes tels que Solaris retournent NNTNWME
+(<nop><nop><timestampe><nop><window scale><echoed MSS>), un Linux 2.1.122
+retournera MENNTNW (<echoed MSS><nop><nop><timestamp><nop><window scale>),
+etc..
+
+* Variations de la valeur du numéro d'acquittement: lorsque nous envoyons un
+paquet TCP ayant les flags TCP, PSH et URG à 1 vers un des ports fermés d'un
+hôte, ce dernier devrait, si l'implémentation est correcte, répondre par un
+paquet possèdant les champs RST et ACK initialisés à 1 et ayant pour numéro
+d'acquittement le meme que le numéro de séquence initial donné par le premier
+paquet. Là encore, les implémentations "rebelles" à la norme, telles que Win-
+-dows, enverrons un paquet RST/ACK avec une valeur de ACK soit aléatoire soit
+égale au numéro de séquence initial incrémenté (ISN+1) en guise de réponse.
+
+* Différences dans les algorithmes de génération d'ISN: les piles TCP/IP de
+chaque système d'exploitation possèdent leur propre algorithme de génération
+d'ISN, plus ou moins efficace. A noter que la génération d'aléas vraiment
+aléatoires (vérifiant les règles d'uniformité et d'indépendance de génération
+des bits) est impossible à l'heure actuelle. Les piles TCP/IP des noyaux *BSD
+, Linux (dans les branches 2.2.* et 2.4.*) utilisent des pseudos-aléas pour
+générer des ISN. Celles des Linux dans la branche 2.0.* et antérieure, ainsi
+que celles des autres Unix de l'époque, utilisaient un modèle de génération
+d'ISN dépendant du temps et du nombre de connections (incrémentation de 128.-
+-000 à chaque seconde et de 64.000 à chaque connection). Enfin, celles des
+systèmes Windows (on va finir par croire que je veux faire de la propagande)
+utilisent un modéle de génération d'ISN dépendant uniquement du temps. Puis
+je n'ose même pas vous parler des quelques rares implémentations (comme 3com)
+qui utilisent des ISN constants... Pour plus d'informations à propos de la
+génération d'ISN dans les piles TCP/IP des différents systèmes, le lecteur
+est invité à se reporter aux études de truff, "Ip Spoofing appliqué" [3] et
+du laboratoire système de l'Epita (LSE), "TCP/IP et la sécurité" [4].
+
+
+Laissez moi maintenant vous présenter un excellent outil implémentant toutes
+ces méthodes (où la majeure partie): NMAP [1] (option -O) de Fyodor.
+Un "nmap -O host" va effectuer toute une série de tests afin d'obtenir une
+empreinte TCP/IP de l'hôte distant. Il va ensuite comparer cette empreinte à 
+une base de données, nmap-os-fingerprints et donner le nom de l'OS associé.
+
+Par exemple l'empreinte d'une Debian Woody:
+# Debian GNU/Linux 3.0 (Linux 2.4.19-pre4 running on a DECpc AXP 150)
+Fingerprint Linux 2.4.19-pre4 on Alpha
+TSeq(Class=RI%gcd=<6%SI=<266A1F0&>62546%IPID=Z%TS=1000HZ)
+T1(DF=Y%W=16A0%ACK=S++%Flags=AS%Ops=MNNTNW)
+T2(Resp=N)
+T3(Resp=Y%DF=Y%W=16A0%ACK=S++%Flags=AS%Ops=MNNTNW)
+T4(DF=Y%W=0%ACK=O%Flags=R%Ops=)
+T5(DF=Y%W=0%ACK=S++%Flags=AR%Ops=)
+T6(DF=Y%W=0%ACK=O%Flags=R%Ops=)
+T7(DF=Y%W=0%ACK=S++%Flags=AR%Ops=)
+PU(DF=N%TOS=C0%IPLEN=164%RIPTL=148%RID=E%RIPCK=E%UCK=E%ULEN=134%DAT=E)
+
+* TSeq représente la classe auquel appartient l'algorithme de génération des
+ISN (ici "random positive increments") et des ID (ici "all zeros").
+
+* T1 correspond au résultat de l'envoi d'un paquet SYN vers un port ouvert
+avec certaines options initialisées: DF=Y signifie que le bit DF doit être
+activé sur le paquet reçu pour correspondre à l'empreinte, W=16A0 signifie
+que la taille de la fenêtre doit être égale à 16A0, ACK=S++ que le numéro
+d'acquittement reçu doit être égal à ISN+1, Flags=AS que les flags SYN/ACK
+doivent être à 1, enfin Ops=MNNTNW que les options du paquet reçu doivent
+être dans l'ordre "<MSS><nop><nop><timestamp><nop><window scale>".
+
+* T2 correspond à l'envoi d'un paquet sans options vers un port ouvert, le
+Resp=N signifie que l'on attend aucune réponse de la part de la pile TCP/IP
+de l'OS distant pour qu'il puisse correspondre à l'empreinte.
+
+* T3 correspond à l'envoi d'un paquet TCP SYN/FIN/URG/PSH vers un port ouvert
+,le Resp=Y indique que l'on attend une réponse, DF=Y que le bit DF de la ré-
+ponse doit être initialisé à 1, W=16A0 que la taille de la fenêtre doit être
+égale à 16A0, ACK=S++ que le numéro d'acquittement doit être égal à ISN+1,
+Flags=AS que les flags SYN et ACK doivent être activés, Ops=MNNTNW que les
+options du paquet reçu doivent être dans cet ordre.
+
+* T4 correspond à l'envoi d'un simple paquet ACK sans options vers un port
+ouvert, DF=1 indique le bit DF de la réponse doit être à 1, W=0 que la taille
+de la fenêtre doit être nulle, ACK=0 que le numéro d'acquittement également,
+Flags=R que le flag activé doit être RST, Ops= que le paquet de réponse ne
+doit être accompagné d'aucunes options TCP.
+
+* T5, T6 et T7 correspondent respectivement à l'envoi d'un paquet SYN, ACK et
+FIN/URG/PSH sur un port fermé.
+
+* PU correspond à l'envoi d'un paquet UDP sur un port fermé. TOS=C0 signifie
+que le TOS du paquet reçu doit être sur C0 (spécifique à Linux si vous vous
+en rappellez), IPLEN=164 que la taille du paquet reçu doit être égal à 164, 
+RID=E que la valeur RID du paquet retourné doit être la même que celle du 
+paquet envoyé, RIPCK=E que le checksum IP ne doit pas avoir été changé, UCK=E
+que le checksum UDP également, ULEN=134 que la taille de l'entête UDP doit 
+être égale à 134, DAT=E que les données doivent rester inchangées.
+
+Voilà maintenant quelques petits exemples d'application de "nmap -O":
+
+----------------------------------  cut  -----------------------------------
+$ nmap -sS -O unsecure
+
+Starting nmap V. 3.00 ( www.insecure.org/nmap/ )
+Interesting ports on unsecure (192.168.3.1):
+(The 1600 ports scanned but not shown below are in state: closed)
+Port       State       Service
+21/tcp     open        ftp
+23/tcp     open        telnet
+80/tcp     open        http
+Remote operating system guess: Linux Kernel 2.4.0 - 2.5.20
+Uptime 134.286 days (since Tue Nov 12 07:48:12 2002)
+
+Nmap run completed -- 1 IP address (1 host up) scanned in 7 seconds
+---------------------------------- /cut  -----------------------------------
+
+Dans certains cas nmap ne pourra pas déterminer précisément à quel OS nous
+avons affaire (il affichera simplement son empreinte TCP/IP), pour remédier à
+cela on aura recours à l'option --osscan_guess, cette dernière donnera les OS
+les plus probables:
+
+----------------------------------  cut  -----------------------------------
+$ nmap -sS -O unsecure
+
+Starting nmap V. 3.00 ( www.insecure.org/nmap/ )
+Interesting ports on unsecure (192.168.3.1):
+(The 1600 ports scanned but not shown below are in state: closed)
+Port       State       Service
+21/tcp     open        ftp
+23/tcp     open        telnet
+80/tcp     open        http
+No exact OS matches for host.
+TCP/IP fingerprint:
+SInfo(V=3.00%P=i586-pc-linux-gnu%D=3/26%Time=3E81B163%O=21%C=1)
+TSeq(Class=RI%gcd=1%SI=2B6DA2%IPID=Z%TS=100HZ)
+TSeq(Class=RI%gcd=1%SI=2B6D4A%IPID=Z%TS=100HZ)
+TSeq(Class=RI%gcd=1%SI=2B6D36%IPID=Z%TS=100HZ)
+T1(Resp=Y%DF=Y%W=7FFF%ACK=S++%Flags=AS%Ops=MNNTNW)
+T2(Resp=N)
+T3(Resp=N)
+T4(Resp=Y%DF=Y%W=0%ACK=O%Flags=R%Ops=)
+T5(Resp=Y%DF=Y%W=0%ACK=S++%Flags=AR%Ops=)
+T6(Resp=Y%DF=Y%W=0%ACK=O%Flags=R%Ops=)
+T7(Resp=N)
+PU(Resp=Y%DF=N%TOS=C0%IPLEN=164%RIPTL=148%RID=E%RIPCK=E%UCK=E%ULEN=134%DAT=E)
+
+Uptime 134.298 days (since Tue Nov 12 07:48:12 2002)
+
+Nmap run completed -- 1 IP address (1 host up) scanned in 20 seconds
+
+$ nmap -sS -O --osscan_guess unsecure
+
+Starting nmap V. 3.00 ( www.insecure.org/nmap/ )
+Interesting ports on unsecure (192.168.3.1):
+(The 1600 ports scanned but not shown below are in state: closed)
+Port       State       Service
+21/tcp     open        ftp
+23/tcp     open        telnet
+80/tcp     open        http
+Aggressive OS guesses: Linux Kernel 2.4.0 - 2.5.20 (97%), Linux 2.5.25 or
+Gentoo 1.2 Linux 2.4.19 rc1-rc7) (94%), Linux 2.4.19-pre4 on Alpha (91%),
+Linux Kernel 2.4.0 - 2.5.20 w/o tcp_timestamps (91%), Gentoo 1.2 linux
+(Kernel 2.4.19-gentoo-rc5) (91%), Linux 2.4.7 (X86) (91%), Linux 2.3.49
+x86 (91%), Linux 2.3.47 - 2.3.99-pre2 x86 (91%)
+No exact OS matches for host.
+(...)
+Uptime 134.300 days (since Tue Nov 12 07:48:12 2002)
+---------------------------------- /cut  -----------------------------------
+
+Le résultat sera donc un peu moins précis. Comme on vient de le voir, parfois
+un simple "nmap -O" ne donnera pas de résultats exacts, cela est dû nottament
+à la présence de firewalls bloquant les tentatives de prise d'empreinte.
+
+
+Justement plaçons nous à présent dans la peau d'un administrateur de réseaux
+soucieux d'empecher les tentatives de détection d'OS à distance. Connaissant
+les méthodes de prise d'empreinte TCP/IP utilisées par nmap on pourra assez
+facilement configurer ses règles Netfilter pour induire les pirates en erreur
+
+Une méthode courante sera de bloquer les paquets TCP ayant le flag FIN à 1, 
+ou les flags FIN, URG et PSH à 1. Par exemple en utilisant Netfilter et
+l'option --tcp-flags (associée à --protocol tcp) qui prend en argument d'une
+part les flags à examiner, d'autre part les flags devant être activés pour
+correspondre à la règle:
+
+$ iptables -A INPUT -i $DV -p tcp --tcp-flags ACK,FIN FIN -j DROP
+$ iptables -A INPUT -i $DV -p tcp --tcp-flags FIN,URG,PSH FIN,URG,PSH -j DROP
+
+On pourrait également penser à modifier dans le sysctl certaines valeurs 
+caractéristiques de la pile TCP/IP de notre système, par exemple la valeur 
+par défaut du champ TTL des paquets envoyés (soit n un entier):
+
+$ echo n > /proc/sys/net/ipv4/ip_default_ttl
+
+Il existe également sur le Net une multitude de LKMs (loadable kernel modu-
+-les: programmes écris en C permettant d'ajouter des fonctionnalités à un
+noyau, voir [10]) pouvant modifier certaines caractéristiques de la pile
+TCP/IP, afin de leurrer les scans nmap. Un des plus intéressants, répondant
+au doux nom de FingerPrintFucker [11], pourra même faire passer votre système
+pour un autre (compilable uniquement sous un kernel linux 2.2.*).
+
+Cependant n'oubliez pas qu'en sécurité, l'opacité n'est jamais valable...
+
+
+Revenons maintenant à nos pirates. En écoutant sur votre interface et en fai-
+-sant un "nmap -O" en local, vous vous apercevrez très vite du manque de dis-
+-crétion de la chose... Effectuer une prise d'empreinte de pile TCP/IP est en
+effet très voyant car consistant, comme on l'a vu tout au long de cet article
+, à envoyer une multitude de paquets de toute sorte de manière à tester les
+spécifications de cette pile (qui nous permettent de deviner de quel OS il 
+s'agit). On parle souvent de prise d'empreinte de pile "active", c'est à dire
+facilement repérable par les sondes NIDS et autres sniffers.
+
+Il existe donc une autre technique, dite "passive", qui consiste à observer
+le trafic sortant d'une machine cible, par exemple en se concentrant sur les
+valeurs des TOS, la taille des fenêtres, la génération d'ISN, la présence ou
+l'absence du bit DF ou encore le TTL, qui nous permettra (toujours en ayant
+connaissance des spécifications des piles TCP/IP des différents OS, vues au
+II-2) de déterminer sur quel système d'exploitation tourne cette machine...
+Et tout ceci sans envoyer un seul paquet ! Du moins dans le contexte d'un ré-
+-seau local, sinon il faudra impérativement se connecter sur un des services
+du serveur cible. Cette méthode, qui a nottament fait l'objet des travaux de
+Lance Spitzner [5] a été implémentée dans Siphon, du groupe Subterrain [6].
+
+
+Passons maintenant à la mise en oeuvre d'une méthode de prise d'empreinte de
+pile TCP/IP active simple, la technique du TCP/FIN dont je vous rappelle le
+concept: il s'agit d'envoyer un paquet FIN vers le port ouvert d'un système
+distant , si ce dernier répond par un paquet RST/ACK alors nous avons affaire
+à un Windows (9x), BSDI, Cisco, IRIX, HP-UX ou à un MDS; sinon nous sommes
+plutôt confrontés à Windows XP/NT, Linux, ou un système dans la lignée des 
+4.4BSD. La réalisation d'un outil capable d'effectuer ce test va être très
+simple: en gros on envoie un paquet TCP ayant le flag FIN à 1 et on attend 
+la réception d'un éventuel paquet RST/ACK en se mettant en écoute sur une
+interface en mode promiscuous.
+
+Notre programme devra se décomposer en quatre fonctions, send_fin(), qui en-
+-verra le paquet TCP FIN, ifsetup(), qui se chargera de mettre l'interface à
+écouter en mode promiscuous, snif_rst(), qui attendra l'éventuelle réponse
+RST, et enfin main(), la fonction principale du programme, qui se chargera
+d'analyser les paramètres de la ligne de commande et d'appeller les deux 
+fonctions send_fin() et snif_rst() en fonction des arguments fournis.
+
+
+Commençons par le commencement ; la lecture de ce qui va suivre implique que
+vous ayez quelques connaissances en programmation raw-socket. Pour plus d'in-
+-formations à ce sujet je ne peux que vous conseiller d'aller lire le texte
+de Nitr0gen, "Documentation about native raw socket programming" [7].
+
+
+----------------------------------  cut  -----------------------------------
+Structure d'un paquet TCP:
+
+             (16 bits)                             (16 bits)
+<----------------*-------------------¤-----------------*------------------>
+*-------------------------------------------------------------------------* -
+|                             Source IP Adress                            | |
+|-------------------------------------------------------------------------| I
+|                          Destination IP Adress                          | P
+|-------------------------------------------------------------------------| |
+| 8 bits of zero | Protocol ID (tcp) |            TCP Lenght              | -
+|-------------------------------------------------------------------------|
+|-------------------------------------------------------------------------|
+|           Source Port              |        Destination Port            | -
+|-------------------------------------------------------------------------| |
+|                              Sequence Number                            | |
+|-------------------------------------------------------------------------| |
+|                           Acknowledgment Number                         | T
+|-------------------------------------------------------------------------| C
+| Data offset | Reserved | Flag(s)   |            Window                  | P
+|-------------------------------------------------------------------------| |
+|             Checksum               |        Urgent Pointer              | |
+|-------------------------------------------------------------------------| |
+|                          Options                     |     Padding      | -
+*-------------------------------------------------------------------------*
+
+</usr/include/linux/ip.h>
+struct iphdr {
+#if defined(__LITTLE_ENDIAN_BITFIELD)
+        __u8    ihl:4,
+                version:4;
+#elif defined (__BIG_ENDIAN_BITFIELD)
+        __u8    version:4,
+                ihl:4;
+#else
+#error  "Please fix <asm/byteorder.h>"
+#endif
+        __u8    tos; // Type of service
+        __u16   tot_len; // Taille totale du paquet
+        __u16   id; // Identificateur
+        __u16   frag_off; // Fragment offset
+        __u8    ttl; // Time-to-live
+        __u8    protocol; // Protocole de couche supérieure à employer
+        __u16   check; // IP Checksum
+        __u32   saddr; // Source IP Address
+        __u32   daddr; // Destination IP Address
+        /*The options start here. */
+};
+
+#endif  /* _LINUX_IP_H */
+
+</usr/include/linux/tcp.h>
+struct tcphdr {
+        __u16   source; // Port source
+        __u16   dest;   // Port de destination
+        __u32   seq;    // Numéro de séquence (=ISN au (1) du handshake)
+        __u32   ack_seq; // Numéro d'acquittement (=0 au (1) du handshake)
+#if defined(__LITTLE_ENDIAN_BITFIELD)
+        __u16   res1:4,
+                doff:4, // Offset
+                fin:1,  // TCP Flags: - FIN => fin de connection
+                syn:1,  // - SYN => demande d'établissement de connection
+                rst:1,  // - RST => interruption brutale d'une connection
+                psh:1,  // - PSH => empilage de données
+                ack:1,  // - ACK => acquittement  (égal à seq+1)
+                urg:1,  // - URG => données urgente (urg_ptr)
+                ece:1,
+                cwr:1;
+#elif defined(__BIG_ENDIAN_BITFIELD)
+        __u16   doff:4,
+                res1:4,
+                cwr:1,
+                ece:1,
+                urg:1,
+                ack:1,
+                psh:1,
+                rst:1,
+                syn:1,
+                fin:1;
+#else
+#error  "Adjust your <asm/byteorder.h> defines"
+#endif
+        __u16   window; // taille de la fenêtre glissante
+        __u16   check;  // checksum TCP
+        __u16   urg_ptr; // interprété si URG à 1
+};
+
+
+
+
+---------------------------------- /cut  -----------------------------------
+
+
+On va en premier lieu s'intéresser à la fonction send_fin(), commençons déjà
+par déclarer nos structures de portée globale:
+
+struct iphdr *ip;   // couche 3 réseau (IP)
+struct tcphdr *tcp; // couche 4 transport (TCP)
+
+struct sockaddr_in remote; // pour la connection à l'hôte distant
+
+/* pseudo-entête IP, utilisé pour le calcul du checksum TCP */
+struct pseudohdr {
+       unsigned long   saddr;
+       unsigned long   daddr;
+       char            useless;
+       unsigned char   protocol;
+       unsigned short  length;
+   };
+
+Le calcul des checksums IP et TCP se fera à travers la fonction suivante 
+(nb: "checksum" désigne la somme de contrôle, c'est à dire l'addition de tous
+les bits, son but est de vérifier l'integrité du paquet):
+
+unsigned short in_cksum(unsigned short *addr, int len)
+  {
+  register int sum = 0;
+  u_short answer = 0;
+  register u_short *w = addr;
+  register int nleft = len;
+
+  while (nleft > 1)
+     {
+     sum += *w++;
+     nleft -= 2;
+     }
+  if (nleft == 1)
+     {
+     *(u_char *) (&answer) = *(u_char *) w;
+     sum += answer;
+     }
+  sum = (sum >> 16) + (sum & 0xffff);
+  sum += (sum >> 16);
+  answer = ~sum;
+
+  return (answer);
+  }
+
+La fonction send_fin prendra trois arguments:
+  - l'adresse IP source, on suppose qu'elle sera déjà converti au format INET
+  - l'adresse IP de destination, également convertie au format INET
+  - le port de destination, entre 1 et 65535 (il devra être ouvert)
+
+int send_fin(unsigned long s_ip, unsigned long d_ip, int dport) {
+
+On définira alors nos variables et structures de portée locale:
+
+  int fd; // le file descriptor de la socket pour la connection
+  struct pseudohdr *pseudo; // voir définition de la structure plus haut
+  unsigned char packet[2048]; // taille du paquet = 2048 octets
+  unsigned char *buffer; // données
+  size_t packet_size;
+
+La taille du paquet sera égale à la taille de l'entête TCP + celui de IP.
+
+  packet_size = sizeof(struct tcphdr) + sizeof(struct iphdr);
+
+Suivent les différentes assignations, ip pointera vers la structure iphdr du
+paquet, pseudo vers la structure pseudohdr du paquet (avec un offset égal à
+la taille de la structure iphdr moins celle de la structure pseudohdr), tcp
+vers la structure tcphdr (avec un offset égal à la taille de l'entête IP) et
+buffer pointera vers l'adresse mémoire du paquet plus la somme des tailles
+des entêtes IP et TCP:
+
+/* #define     IPHDRSIZE  sizeof(struct iphdr)
+   #define    TCPHDRSIZE  sizeof(struct tcphdr)
+   #define PSEUDOHDRSIZE  sizeof(struct pseudohdr) */
+
+  ip     = (struct iphdr *)     (packet);
+  pseudo = (struct pseudohdr *) (packet + IPHDRSIZE - PSEUDOHDRSIZE);
+  tcp    = (struct tcphdr *)    (packet + IPHDRSIZE);
+  buffer = (unsigned char *)    (packet + IPHDRSIZE + TCPHDRSIZE);
+
+On remplit maintenant tous les élements du paquet à 0:
+
+  bzero (packet, sizeof (packet));
+  
+Il nous reste plus qu'à initialiser un par un les éléments de nos structures:
+
+Structure pseudohdr (utilisée pour le calcul du checksum TCP):
+
+  pseudo->saddr     =   s_ip; // adresse IP source
+  pseudo->daddr     =   d_ip; // adresse IP de destination
+  pseudo->useless   =   0;
+  pseudo->protocol  =   6;    // correspond au protocole TCP (couche 4)
+  pseudo->length    =   htons (TCPHDRSIZE);
+
+Structure tcphdr (entête TCP):
+
+  tcp->source       =   htonl (random()); // port source choisi au hasard
+  tcp->seq          =   htonl (random()); // ISN choisi au hasard
+  tcp->ack_seq      =   htonl (0); // initialisé à 0 lors du premier paquet
+  tcp->doff         =   5; // offset TCP pour le mode 32 bits
+
+  /* flags TCP */
+  tcp->fin          =   1; // on active le flag FIN
+  tcp->syn          =   0; // et on laisse les autres flags
+  tcp->rst          =   0;
+  tcp->psh          =   0;
+  tcp->ack          =   0;
+  tcp->urg          =   0;
+
+  tcp->window       =   htons (512);
+  tcp->urg_ptr      =   0;
+  tcp->dest         =   htons (d_port); // port de destination
+  tcp->check        =   0;
+  tcp->check        =   in_cksum((u_short *)pseudo,TCPHDRSIZE+PSEUDOHDRSIZE);
+/* appel de la fonction in_cksum qui vérifiera l'integrité de l'entête TCP */
+
+Structure iphdr (pseudo-entête TCP = entête IP):
+
+  ip->saddr         =   s_ip; // adresse IP source
+  ip->daddr         =   d_ip; // adresse IP de destination
+  ip->version       =   4; // à l'heure actuelle IPv4
+  ip->ihl           =   5; // taille de l'entête IP
+  ip->ttl           =   255; // Time-to-live, initialisé à son maximum
+  ip->protocol      =   6; // encapsulation dans TCP (couche 4)
+  ip->tot_len       =   htons (packet_size); // taille du paquet)
+  ip->tos           =   0;
+  ip->id            =   htons (random()); // ID choisi au hasard
+  ip->frag_off      =   0;
+  ip->check         =   0;
+  ip->check         =   in_cksum ((u_short *)packet, IPHDRSIZE);
+/* appel de la fonction in_cksum qui vérifiera l'integrité de l'entête IP */
+
+Ensuite nous devons créer une socket en local, qui servira à l'envoi du FIN
+vers l'hôte distant. Nous utiliserons la fonction socket(), qui retourne un
+file descriptor (ou -1 en cas d'erreur).
+
+/* AF_INET: IPv4 Internet protocols
+   SOCK_RAW: mode d'adressage de la socket en RAW
+   IPPROTO_RAW: pour pouvoir écrire ses propres paquets 
+ * Note: les raw-sockets sont reservés au root       */
+
+  if( (fd = socket(AF_INET,SOCK_RAW,IPPROTO_RAW) )<0)
+     {
+     perror("SOCK_RAW");
+     return -1;
+     }
+
+On initialise alors la structure sockaddr représentant l'adresse de l'hôte 
+distant:
+
+  remote.sin_family = AF_INET; // IPv4 Internet protocols
+  remote.sin_addr.s_addr = ip->daddr; // pointe vers l'adresse IP distante
+  remote.sin_port = tcp->dest; // pointe vers le port de destination
+
+Enfin on envoie le paquet puis on ferme la socket:
+  
+  if(sendto(fd,packet,packet_size,0,(struct sockaddr *)&remote,
+  sizeof(struct sockaddr))<0)
+     {
+     perror("sendto()");
+     return(-1);
+     }
+
+  printf("FIN packet sent\n");
+
+  close(fd);
+  return 0;
+  }
+
+
+Intéressons nous maintenant à l'éventuelle réception du paquet RST/ACK. Cela
+implique de pouvoir écouter une interface réseau en mode promiscuous (mode
+dans lequel la carte réseau reçois et lit tous les paquets qu'elle reçoit,
+même ceux qui ne lui sont pas destinés). Si vous souhaitez appronfondir ou
+mettre à jour vos connaissances sur le "network monitoring" allez lire le 
+paper de CNS/Minithins [8] sur le même sujet
+
+Pour initialiser cette interface en mode promiscuous on utilisera:
+   - ou bien la libpcap (à l'origine développée pour tcpdump [9])
+   - ou bien le bpf (Berkeley Packet Filter) de BSD
+   - ou bien les librairies spécifiques à Linux - c'est ce que l'on fera
+
+On contrôlera notre interface à l'aide de ioctl(), qui nécessite de déclarer
+une structure ifreq.
+
+Voilà maintenant le code (largement commenté) permettant d'initialiser une
+interface en mode promiscuous. La fonction setup_interface accepte un argu-
+-ment qui est le nom de ladite interface réseau.
+
+int setup_interface(char *name)
+  {
+  struct sockaddr addr; /* structure d'adressage */
+  struct ifreq ifr; /* structure de manipulation de l'interface */
+  int sockfd; /* file descriptor de la socket */
+
+  /* le mode SOCK_PACKET nous donne accès à la couche liaison (2) */
+  if((sockfd=socket(AF_INET, SOCK_PACKET, htons(ETH_P_ALL)) < 0)
+     { 
+     perror("SOCK_PACKET");
+     return(-1);
+     }
+
+  memset(&addr, 0, sizeof(addr)); 
+  /* on remplit la structure d'adressage à 0 */
+
+  addr.sa_family=AF_INET; // IPv4 Interne protocols
+  strncpy(addr.sa_data, name, sizeof(addr.sa_data));
+
+  /* mise en écoute de la socket */
+  if(bind(sockfd, &addr, sizeof(addr)) < 0)
+     {
+     perror("bind");
+     close(sockfd);
+     return(-1);
+     }
+
+  memset(&ifr,0,sizeof(ifr));
+  strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+
+  /* on utilise ioctl() pour accèder aux fonctions de la socket */
+  if(ioctl(sockfd, SIOCGIFHWADDR, &ifr)<0)
+     {
+     perror("SIOCGIFHWADDR");
+     close(sockfd);
+     return(-1);
+     }
+
+  memset(&ifr,0,sizeof(ifr));
+  strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+  if (ioctl(sockfd, SIOCGIFFLAGS, &ifr) <0)
+     {
+     perror("SIOCGIFFLAGS");
+     close(sockfd);
+     return(-1);
+     }
+
+  ifr.ifr_flags |= IFF_PROMISC; // passage en mode promiscuous
+  if(ioctl(sockfd, SIOCSIFFLAGS, &ifr) < 0) 
+     {
+     perror("SIOCGIFFLAGS");
+     close(sockfd);
+     return(-1);
+     }
+  return sockfd;
+      /* on retourne le file descriptor de la socket, "prêt à l'emploi" */
+  }
+
+Donc un simple appel à cette fonction suffira à obtenir une socket toute 
+belle toute neuve :) qu'il ne nous restera plus qu'à lire pour surveiller le
+trafic entrant.
+
+Pour la réception des paquets, on utilisera une structure nommée recvpacket,
+prête à reçevoir des paquets TCP:
+
+struct recvpacket
+  { struct iphdr  sip; // couche 3: IP
+    struct tcphdr stcp; // couche 4: TCP
+  } buffer;
+
+Donc nos paquets seront lus dans la socket et reçus, par le biais de la
+fonction read(), dans la structure recvpacket.
+Avant toute chose il faudra déclarer deux structures, iphdr et tcphdr, et
+les faire pointer vers les membres respectifs de la structure recvpacket:
+
+  struct iphdr *sip;
+  struct tcphdr *stcp;
+
+  sip  = (struct iphdr *)(((unsigned long)&buffer.sip));
+  stcp = (struct tcphdr *)(((unsigned long)&buffer.stcp));
+  
+Encore une chose avant de commencer la réception proprement dite: pour pou-
+-voir afficher les adresses IP source et de destination des trames "sniffées"
+on devra faire pointer sip->saddr vers un unsigned long, de même pour sip->
+daddr:
+  
+  unsigned long *so, *dst;
+  
+  (...)
+
+  so   = (unsigned char *)&(sip->saddr);
+  dst  = (unsigned char *)&(sip->daddr);
+
+Ainsi so[0] correspondra au premier octet de l'adresse IP source, so[1] au
+deuxième, et ainsi de suite...
+
+La réception maintenant:
+  
+  int o; // nombre d'octets lus
+  int i=0; // numéro du paquet reçu
+  
+  (...)
+
+  printf("Sniffing on %s\n", device);
+
+  o = read(sock, (struct recvpacket *)&buffer, sizeof(struct recvpacket));
+  printf("%d. %u.%u.%u.%u_%d > %u.%u.%u.%u_%d (fin=%d)\n",i,
+  so[0],so[1],so[2],so[3],ntohs(stcp->source),dst[0],dst[1],dst[2],dst[3],
+  ntohs(stcp->dest),stcp->fin);
+ // On lit d'abord une première fois pour afficher l'envoi du paquet FIN
+
+  while(1)
+     {
+     i++;
+     o = read(sock, (struct recvpacket *)&buffer, sizeof(struct recvpacket));
+     printf("%d. %u.%u.%u.%u_%d > %u.%u.%u.%u_%d (rst=%d)\n",i,
+     so[0],so[1],so[2],so[3],ntohs(stcp->source),dst[0],dst[1],
+     dst[2],dst[3],ntohs(stcp->dest),stcp->rst);
+     // Puis on lit en boucle de manière à obtenir et afficher ou non le RST
+     }
+
+Le format sous lequel seront affichées les trames reçues est celui-ci:
+       n. a.b.c.d_s e.f.g.h_p (rst=r)
+
+Où : - n correspond au numéro du paquet reçu
+     - a.b.c.d à l'adresse IP source
+     - s au port source
+     - e.f.g.h à l'adresse IP de destination
+     - p au port de destination
+     - r à la valeur de RST (1: activé | 0: désactivé)
+     
+
+Bien, au tour de la fonction principale du programme, dont le rôle sera d'a-
+-nalyser les paramètres fournis à la ligne de commande et d'appeller les 
+fonctions que nous venons de coder:
+
+#define DEFAULT_PORT 80
+#define DEFAULT_DEVICE ppp0
+
+(...) 
+
+int main(int argc, char *argv[])
+  {
+  int port,fa;
+  char *device;
+  unsigned long dest, source;
+
+  if(argc < 3)
+     {
+     usage(argv[0]); // affichage du menu d'aide
+     return(-1);
+     }
+
+  if(argc >= 3)
+     {
+     source=resolve(argv[1]); // conversion au
+     dest=resolve(argv[2]);   // format réseau
+     port=DEFAULT_PORT;
+     device=DEFAULT_DEVICE;
+     if(argc >= 4)
+        {
+        port=atoi(argv[3]); // conversion string/integer
+        if(argc >= 5)
+           {
+           device=argv[4];
+           }
+        }
+     }
+
+  if (getuid() != 0) // les raw-sockets sont reservés au root seulement
+     {
+     fprintf(stderr, "error, non-root users can't play with raw sockets\n");
+     return(-1);
+     }
+
+  /* initialisation de l'interface en mode promiscuous */
+  fa = setup_interface(device);
+
+  /* envoi du paquet TCP FIN vers l'hôte distant */
+  send_fin(source,dest,port);
+
+  /* lecture du socket retourné par setup_interface et affichage (ou non)
+  d'une réponse RST/ACK */
+  snif_rst(fa,device);
+
+  return 0;
+  }
+
+
+Enfin voilà les dernières fonctions, usage et resolve:
+
+static void usage(const char *prg)
+  {
+  fprintf(stdout, "\nusage: %s source_address 
+  remote_address [port] (80) [device] (ppp0)\n",prg);
+  fprintf(stdout, "This command sends a TCP/FIN
+  packet to the port of a remote host and sniff\n");
+  fprintf(stdout, "the answer. If we have sent 
+  the packet to an open port, the remote host will\n");
+  fprintf(stdout, "send a RST/ACK packet if it 
+  is a Windows, BSDI, Cisco, IRIX, HP-UX or a MDS \n");
+  fprintf(stdout, "operating system, else it
+  should be a Linux, Solaris, NT/XP or *BSD system.\n\n");
+  }
+
+unsigned long resolve(char *sname)
+  {
+  struct hostent * hip;
+  hip = gethostbyname(sname); // conversion au format réseau
+  if (!hip){
+    fprintf(stderr, "unknown host: %s\n",sname);
+    exit(1);
+    }
+  return *(unsigned long *)hip -> h_addr;
+  }
+  
+
+Nous n'avons plus qu'à compiler:
+
+$ cc whatos.c -o whatos
+$ ./whatos
+
+usage: whatos source_address remote_address [port] (80) [device] (ppp0)
+This command sends a TCP/FIN packet to the port of a remote host and sniff
+the answer. If we have sent the packet to an open port, the remote host will
+send a RST/ACK packet if it is a Windows, BSDI, Cisco, IRIX, HP-UX or a MDS
+operating system, else it should be a Linux, Solaris, NT/XP or *BSD system.
+
+Voici maintenant un bref exemple d'utilisation de notre programme, supposons
+que j'aimerais connaître sur quel OS tourne jeuxvideo.com ...
+
+----------------------------------  cut  -----------------------------------
+$ nc -v -z -w2 jeuxvideo.com 80      // http est il en veille ?
+DNS fwd/rev mismatch: jeuxvideo.com != www.jeuvideo.com
+jeuxvideo.com [217.174.201.102] 80 (http) open   // le port 80 est ouvert
+
+$ id   // on s'assure qu'on est bien root :)
+uid=0(root) gid=0(root) groups=0(root),1(bin),2(daemon),3(sys)
+
+$ ./whatos 81.49.62.32 jeuxvideo.com 80
+FIN packet sent
+Sniffing on ppp0
+1. 81.49.62.32_27531 > 217.174.201.102_80 (fin=1)
+2. 217.174.201.102_80 > 81.49.62.32_27531 (rst=1)
+
+On remarque que le flag RST de la réponse est positionné à 1.
+=> L'OS peut être Windows, BSDI, Cisco, IRIX, HP-UX ou MDS.
+
+$ telnet jeuxvideo.com 80
+Trying 217.174.201.102...
+Connected to jeuxvideo.com.
+Escape character is '^]'.
+HEAD / HTTP/1.0
+
+HTTP/1.1 200 OK
+Date: Wed, 26 Mar 2003 21:40:45 GMT
+Server: Apache/1.3.27 (Unix) PHP/4.3.1
+Connection: close
+Content-Type: text/html
+
+Connection closed by foreign host.
+
+Nous avons affaie à un système de type Unix.
+=> L'OS peut être BSDI, Cisco, IRIX, HP-UX ou MDS.
+
+Comme www.jeuxvideo.com est un serveur web, il y a de fortes chances pour que
+l'OS qu'il fasse tourner soit IRIX ou HP-UX.
+
+Cela est d'ailleurs vérifiable en utilisant nmap:
+
+$ nmap -sS -O www.jeuxvideo.com --osscan_guess
+
+Starting nmap V. 3.00 ( www.insecure.org/nmap/ )
+Interesting ports on www.jeuvideo.com (217.174.201.102):
+(The 1600 ports scanned but not shown below are in state: filtered)
+Port       State       Service
+80/tcp     open        http
+Remote operating system guess: HP-UX B11.00 U 9000/839
+
+Nmap run completed -- 1 IP address (1 host up) scanned in 183 seconds
+
+---------------------------------- /cut  -----------------------------------
+
+
+Conclusion:
+Ainsi s'achève ce texte, si vous avez des commentaires/questions/corrections
+à y apporter n'hésitez pas à m'en faire part.
+
+
+       Zal (aleph1@linuxmail.org)
+       irc.jeuxvideo.com (#geeks)
+
+
+
+
+Références:
+[0] Remote OS detection via TCP/IP Stack FingerPrinting, Fyodor
+    (http://www.phrack.org/show.php?p=54&a=9)
+[1] Nmap - Network exploration tool and security scanner, Fyodor
+    (http://www.insecure.org/nmap)
+[2] Requests For Comment (http://www.faqs.org/rfcs/rfc-index.html)
+[3] IP Spoofing appliqué, truff 
+    (http://projet7.tuxfamily.org/factory/articles/ipsapp/ipspapp.html)
+[4] TCP/IP et la sécurité, LSE
+    (http://ouah.sysdoor.net/snumbers.htm)
+[5] Know your ennemy: Passive fingerprinting, Lance Spitzner
+    (http://project.honeynet.org/papers/finger/)
+[6] The Siphon Project: The Passive Network Mapping Tool, Subterrain
+    (http://siphon.datanerds.net/)
+[7] Documentation about native raw socket programming, Nitr0gen
+    (http://packetstorm.widexs.nl/programming-tutorials/raw_socket.txt)
+[8] Programmer un sniffer de deux facons && utilité, CNS/Minithins
+    (http://www.minithins.net/papers/sniff.txt)
+[9] Tcpdump/libpcap public repository (http://www.tcpdump.org)
+[10] (nearly) Complete Linux Loadable Kernel Modules Guide 
+     by pragmatic / THC (http://www.blacksun.box.sk/lkm.html)
+[11] FingerPrinterFucker (http://www.pkcrew.org/tools/fpffix.tar.gz)
+
+
+----------------------------------  cut  -----------------------------------
+
+/* whatos.c -  basical os fingerprinting tool  */
+/*    coded by zal < aleph1@linuxmail.org >    */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <netdb.h>
+#include <linux/if.h>
+#include <arpa/inet.h>
+#include <linux/socket.h>
+#include <linux/ip.h>
+#include <linux/tcp.h>
+#include <linux/if_ether.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#define DEFAULT_PORT    80
+#define DEFAULT_DEVICE  "ppp0"
+
+#define IPHDRSIZE       sizeof(struct iphdr)
+#define TCPHDRSIZE      sizeof(struct tcphdr)
+#define PSEUDOHDRSIZE   sizeof(struct pseudohdr)
+
+
+struct iphdr *ip;
+struct tcphdr *tcp;
+
+struct sockaddr_in remote;
+
+struct pseudohdr {
+       unsigned long   saddr;
+       unsigned long   daddr;
+       char            useless;
+       unsigned char   protocol;
+       unsigned short  length;
+   };
+
+
+static void usage(const char *prg)
+  {
+  fprintf(stdout, "\nusage: %s source_address remote_address", argv[0]);
+  fprintf(stdout, " [port] (80)");
+  fprintf(stdout," [device] (ppp0)\n",prg);
+  fprintf(stdout, "This command sends a TCP/FIN packet to the port of a");
+  fprintf(stdout, " remote host and sniff\n");
+  fprintf(stdout, "the answer. If we have sent the packet to an open port,");
+  fprintf(stdout, " the remote host will\n");
+  fprintf(stdout, "send a RST/ACK packet if it is a Windows, BSDI, Cisco");
+  fprintf(stdout, " IRIX, HP-UX or a MDS\n");
+  fprintf(stdout, "operating system, else it should be a Linux, Solaris");
+  fprintf(stdout, " or *BSD system.\n\n");
+  }
+
+
+unsigned long resolve(char *sname)
+  {
+  struct hostent * hip;
+  hip = gethostbyname(sname);
+  if (!hip){
+    fprintf(stderr, "unknown host: %s\n",sname);
+    exit(1);
+    }
+  return *(unsigned long *)hip -> h_addr;
+  }
+
+
+unsigned short in_cksum(unsigned short *addr, int len)
+  {
+  register int sum = 0;
+  u_short answer = 0;
+  register u_short *w = addr;
+  register int nleft = len;
+
+  while (nleft > 1)
+     {
+     sum += *w++;
+     nleft -= 2;
+     }
+  if (nleft == 1)
+     {
+     *(u_char *) (&answer) = *(u_char *) w;
+     sum += answer;
+     }
+  sum = (sum >> 16) + (sum & 0xffff);
+  sum += (sum >> 16);
+  answer = ~sum;
+
+  return (answer);
+  }
+
+
+int setup_interface(char *name)
+  {
+  struct sockaddr addr;
+  struct ifreq ifr;
+  int sockfd;
+
+  sockfd=socket(AF_INET, SOCK_PACKET, htons(ETH_P_ALL));
+  if (sockfd < 0)
+  return -1;
+
+  memset(&addr, 0, sizeof(addr));
+  addr.sa_family=AF_INET;
+
+  strncpy(addr.sa_data, name, sizeof(addr.sa_data));
+  if(bind(sockfd, &addr, sizeof(addr)) !=0 ){
+    close(sockfd);
+    return -1;
+  }
+  memset(&ifr,0,sizeof(ifr));
+  strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+  if(ioctl(sockfd, SIOCGIFHWADDR, &ifr)<0)
+    {
+    close(sockfd);
+    return -1;
+    }
+
+  memset(&ifr,0,sizeof(ifr));
+
+  strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+  if (ioctl(sockfd, SIOCGIFFLAGS, &ifr) <0)
+    {
+    close(sockfd);
+    return -1;
+    }
+
+  ifr.ifr_flags |= IFF_PROMISC;
+  if(ioctl(sockfd, SIOCSIFFLAGS, &ifr) < 0)
+    {
+    close(sockfd);
+    return -1;
+    }
+
+  return sockfd;
+  }
+
+
+int snif_rst(int sock, char *device)
+  {
+  int o,i=1;
+  unsigned char *so, *dst;
+
+  struct recvpacket
+  { struct iphdr  sip;
+    struct tcphdr stcp;
+  } buffer;
+
+  struct iphdr *sip;
+  struct tcphdr *stcp;
+
+  sip  = (struct iphdr *)(((unsigned long)&buffer.sip));
+  stcp = (struct tcphdr *)(((unsigned long)&buffer.stcp));
+
+  so   = (unsigned char *)&(sip->saddr);
+  dst  = (unsigned char *)&(sip->daddr);
+
+  printf("Sniffing on %s\n",device);
+
+  o = read(sock, (struct recvpacket *)&buffer, sizeof(struct recvpacket));
+  printf("%d. %u.%u.%u.%u_%d > %u.%u.%u.%u_%d (fin=%d)\n",i,
+  so[0],so[1],so[2],so[3],ntohs(stcp->source),dst[0],dst[1],
+  dst[2],dst[3],ntohs(stcp->dest),stcp->fin);
+
+  while(1)
+     {
+     i++;
+     o=read(sock,(struct recvpacket *)&buffer,sizeof(struct recvpacket));
+     printf("%d. %u.%u.%u.%u_%d > %u.%u.%u.%u_%d (rst=%d)\n",i,
+     so[0],so[1],so[2],so[3],ntohs(stcp->source),dst[0],dst[1],
+     dst[2],dst[3],ntohs(stcp->dest),stcp->rst);
+     }
+
+  return(0);
+  }
+
+
+int send_fin(unsigned long s_ip, unsigned long d_ip, int d_port)
+  {
+  int fd;
+  struct pseudohdr *pseudo;
+  unsigned char packet[2048];
+  unsigned char *buffer;
+  size_t packet_size;
+
+  packet_size = TCPHDRSIZE + IPHDRSIZE;
+
+  ip     = (struct iphdr *)     (packet);
+  pseudo = (struct pseudohdr *) (packet + IPHDRSIZE - PSEUDOHDRSIZE);
+  tcp    = (struct tcphdr *)    (packet + IPHDRSIZE);
+  buffer = (unsigned char *)    (packet + IPHDRSIZE + TCPHDRSIZE);
+
+  bzero (packet, sizeof (packet));
+
+  pseudo->saddr     =   s_ip;
+  pseudo->daddr     =   d_ip;
+  pseudo->useless   =   0;
+  pseudo->protocol  =   6;
+  pseudo->length    =   htons (TCPHDRSIZE);
+
+  tcp->source       =   htons (random());
+  tcp->seq          =   htonl (random());
+  tcp->ack_seq      =   htonl (0);
+  tcp->doff         =   5;
+  tcp->fin          =   1;
+  tcp->syn          =   0;
+  tcp->rst          =   0;
+  tcp->psh          =   0;
+  tcp->ack          =   0;
+  tcp->urg          =   0;
+  tcp->window       =   htons (512);
+  tcp->urg_ptr      =   0;
+  tcp->dest         =   htons (d_port);
+  tcp->check        =   0;
+  tcp->check        =   in_cksum((u_short *)pseudo,TCPHDRSIZE+PSEUDOHDRSIZE);
+
+  ip->saddr         =   s_ip;
+  ip->daddr         =   d_ip;
+  ip->version       =   4;
+  ip->ihl           =   5;
+  ip->ttl           =   255;
+  ip->protocol      =   6;
+  ip->tot_len       =   htons (packet_size);
+  ip->tos           =   0;
+  ip->id            =   htons (random()); // 242
+  ip->frag_off      =   0;
+  ip->check         =   0;
+  ip->check         =   in_cksum ((u_short *)packet, IPHDRSIZE);
+
+  if( (fd = socket(AF_INET,SOCK_RAW,IPPROTO_RAW) )<0)
+     {
+     perror("SOCK_RAW");
+     return -1;
+     }
+
+  remote.sin_family = AF_INET;
+  remote.sin_addr.s_addr = ip->daddr;
+  remote.sin_port = tcp->dest;
+
+
+  if(sendto(fd,packet, packet_size, 0,(struct sockaddr *)&remote,
+  sizeof (struct sockaddr)) == -1)
+     {
+     perror("sendto()");
+     return(-1);
+     }
+
+  printf("FIN packet sent\n");
+
+  close(fd);
+  return 0;
+  }
+
+
+int main(int argc, char *argv[])
+  {
+  int port,fa;
+  char *device, *src, *dst;
+  unsigned long dest, source;
+
+  if(argc < 3)
+     {
+     usage(argv[0]);
+     return(-1);
+     }
+
+  if(argc >= 3)
+     {
+     source=resolve(argv[1]);
+     dest=resolve(argv[2]);
+     port=DEFAULT_PORT;
+     device=DEFAULT_DEVICE;
+     if(argc >= 4)
+        {
+        port=atoi(argv[3]);
+        if(argc >= 5)
+	   {
+           device=argv[4];
+	   }
+        }
+     }
+
+  if (getuid() != 0)
+     {
+     fprintf(stderr, "error, non-root users can't play with raw sockets\n");
+     return(-1);
+     }
+
+  fa = setup_interface(device);
+  send_fin(source,dest,port);
+  snif_rst(fa,device);
+  return 0;
+  }
+
+---------------------------------- /cut  -----------------------------------
+
+
+
+[-EOF]

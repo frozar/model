@@ -1,0 +1,628 @@
+<!DOCTYPE html PUBLIC "-//w3c//dtd html 4.0 transitional//en"><html><head>
+   <meta content="text/html; charset=iso-8859-1" http-equiv="Content-Type">
+   <meta content="Mozilla/4.72 [en] (X11; U; Linux 2.2.16-9uvs i686) [Netscape]" name="GENERATOR"></head>
+
+<body>
+If you can't understand it choose other language...
+<br>[<a href="http://linux.ru.net/%7Einger/RSBAC-DOC.html">English</a>] 
+[<a href="http://linux.ru.net/%7Einger/RSBAC-DOC-ru.html">Russian</a>] 
+[<a href="http://linux.ru.net/%7Einger/RSBAC-DOC-french.html">French</a>]
+[<a href="http://linux.ru.net/%7Einger/RSBAC-DOC-cz.html">Czech</a>]
+[<a href="http://linux.ru.net/%7Einger/RSBAC-DOC-ja.html">Japanese</a>]
+[Translate and add your&nbsp; language]
+<br><font face="Arial,Helvetica"><font size="+4">RSBAC pour les débutants.</font></font>
+<br>&nbsp;
+<p><b><font size="+4">Introduction.</font></b>
+</p><p>Avant de transformer votre ordinateur en forteresse, pensez à
+ce que vous voulez vraiment. Sachez que chaque système de sécurité
+est restreignant, et tout spécialement : un système de sécurité
+très sur est bien entendu très restreignant. Vous êtes
+prévenus! Sachez aussi que des vérifications additionnelles
+d'autorisation rendent plus lent votre noyau, et des méthodes comme
+le safe_delete (deletion sure) rendent votre système en général
+plus lent lors des deletions.
+</p><p>La distribution des permissions pour la bonne administration d'un système
+est une chose difficile. Unix tradionnellement définit un super
+utilisateur (root) pour s'occuper de tout les aspects du système.
+Bien entendu c'est là qu'est le maillon le plus faible de la chaîne
+de sécurité. Maintenant avec RSBAC, vous pouvez avoir séparément
+un administrateur et un officier de sécurité. L'un et l'autre
+n'ont pas les même fonctions, et donc doivent travailler en coopération
+pour administrer le système. L'administrateur système peut
+toujours faire son travail sur le système, changer quelques fichiers
+de configuration, ajouter ou enlever un utilisateur, limiter les ressources
+systèmes par utilisateur. L'officier de sécurité quant
+à lui peut limiter l'accès à tous les autres utilisateurs
+(et même l'administrateur système) aux données, en
+incluant les données système. Par exemple, l'administrateur
+peut ajouter ou enlever des utilisateurs, mais ne peut pas modifier manuellement
+le fichier /etc/passwd et le fichier /etc/shadow si il n'y est pas autorisé
+par l'officier de sécurité.
+</p><p>ATTENTION !! Soyez particulièrement prudent dans vos changements,
+vous pourriez par erreur vous interdire tout accès à votre
+propre système, à tel point que même un redémarrage
+en mode single n'y changerai rien. Dans ce cas là, la seule chose
+qui peut vous sauver serait un noyau de maintenance, nous verrons ensuite
+comment en créer un, ou alors de redémarrer avec un noyau
+Linux traditionnel.
+</p><p>Donc si vous n'avez pas peur du changement ni peur du risque, allez-y
+! Sinon, restez fidèle au système de sécurité
+classique d'Unix...
+</p><p><b><font size="+4">Création du noyau.</font></b>
+</p><p>Rapatriez la dernière version de RSBAC (<a href="http://www.rsbac.org/">http://www.rsbac.org/</a>).
+Vous avez besoin de 2 archives: rsbac-current-version.tar.gz et rsbac-admin-current-versions.tar.gz.&nbsp;
+Prenez soin de bien prendre la même version pour les 2 archives,
+sans cela, ça ne fonctionnerai pas. La première archive contient
+le patch du noyau avec le code principal de RSBAC, quant à la seconde
+elle contient les utilitaires d'administration correspondants.
+</p><p>Ensuite, créez un nouvel utilisateur, "secoff" avec l'UID 400.
+Plus tard, pendant le premier redémarrage système, ce compte
+va automatiquement devenir Officier de Sécurité.
+</p><p>Desarchivez le noyau dans /usr/src/linux, desarchivez rsbac-current-version.tar.gz
+dans le même répertoire et appliquez le patch de RSBAC au
+noyau :
+<br>patch -p1 &lt; patch-kernel-version.
+<br>Ce patch redirige la plupart des appels systèmes traditionnels
+(open(), fork() etc...) vers leur correspondant en RSBAC.
+<br>RSBAC va alors vérifier si l'appel est autorisé ou non.
+Et ensuite le véritable appel système effectué ou
+non. Vous pouvez rapatrier le patch correspondant à votre noyau
+sur <a href="http://www.rsbac.org/">http://www.rsbac.org/</a> dans le répertoire
+Patch.
+</p><p>Ensuite 'make menuconfig' et voyez apparaître le choix "Rule Set
+Based Access Control (RSBAC)" (Contrôle d'Accès, Base sur
+des Règles). Bienvenu à RSBAC !
+</p><p>Configurez votre noyau comme à l'habitude et ensuite entrez dans
+le menu dédié à RSBAC. Sélectionnez le modules
+suivants :
+</p><ul>
+<li>
+<b>RSBAC proc support </b>- vous verrez apparaître dans /proc un
+répertoire rsbac-info. Vous aurez besoin de ce répertoire
+pour utiliser correctement les outils d'administration de RSBAC. Après
+avoir fait votre configuration RSBAC, vous pourrez enlever ce module, ce
+qui permettra de cacher le fait que vous utilisez RSBAC.</li>
+
+<li>
+<b>RSBAC maintenance kernel </b>- Vous aller créer 2 noyau. Un que
+l'on appelle un noyau de maintenance (avec l'option 'maintenance kernel'
+sélectionnée) et l'autre qui sera le noyau RSBAC normal (avec
+l'option 'maintenance kernel' déselectionnée). Le noyau de
+maintenance vous permettra de réparer votre système. Ce noyau
+supporte les extensions RSBAC tout comme l'autre, à la seule chose
+près qu'il ne vérifie pas les permissions d'accès.</li>
+
+<li>
+<b>support secure_delete </b>- ça n'est pas vraiment une deletion
+sure, c'est seulement un remplissage du fichier par des 0 avant de l'effacer.
+Cela empêche qui que ce soit de lire un fichier normalement effacé,
+même en attaquant le système de fichier à très
+bas niveau à la main.</li>
+</ul>
+RSBAC a une structure modulaire, il contient des modules d'authentification,
+et chacun d'entre eux vérifient des permissions à eux, basées
+sur différents modèles de sécurité. La décision
+finale n'est prise qu'après consultation de tous les modules. Tous
+les modules fonctionnent d'une manière autonome, sauf le module
+AUTH qui est utilisé par tous les modules. Dans cet article nous
+verrons seulement 4 des modules de RSBAC. Ils sont:
+<ul>
+<li>
+<b>AUTH</b> - un module d'authentification assez général.
+Typiquement, un programme ne peut changer d'UID sans que l'on ne l'y autorise.</li>
+
+<li>
+<b>RC </b>(Role Compatibility, Compatibilité de Rôle) - Un
+modèle de sécurité très sérieux. Il
+est à la fois très utile et très intéressant.
+En utilisant le module RC vous pouvez résoudre la plus grande partie
+de vos problèmes de sécurité.</li>
+
+<li>
+<b>MAC </b>(Mandatory Access Control, Contrôle d'Accès Obligatoire)
+- modèle de sécurité obligatoire base sur le modèle
+de sécurité bien connu de Bella-LaPadulla. C'est très
+utile pour la théorie de la sécurité, mais très
+difficile a réaliser dans le monde réel.</li>
+
+<li>
+<b>ACL </b>(Access Control Lists, Liste de Contrôle d'Accès)
+- Vous pouvez définir les permissions de chaque utilisateur sur
+le système. Extrêmement puissant.</li>
+
+<br>&nbsp;
+<p>&nbsp;
+<br>&nbsp;
+</p><p>Vous devriez sélectionner ces modules et déselectionner
+tous les autres. Soyez certain que pour tous les modules sélectionnes,
+vous avez sélectionné aussi "NOM-DU-MODULE protection&nbsp;
+for AUTH" et surtout pas "NOM-DU-MODULE protection by role", sans quoi
+votre système serait inutilisable.</p></ul>
+Après que ces changement ont été effectués,
+compilez vos noyau normal et noyau de maintenance. Faites en sorte que
+les 2 noyaux soient accessibles après redémarrage. Mettez
+bien les deux à disposition dans votre /etc/lilo.conf. Ainsi, en
+cas de problème vous pourrez redémarrez avec l'ancien noyau
+et réparer.
+<p>Maintenant il ne reste plus qu'à compiler et à installer
+les utilitaires d'administration. Desarchivez&nbsp; rsbac-admin-*-*.tar.gz
+dans n'importe quel répertoire. Ensuite compilez et installez les
+utilitaires ('make all install'). Vous aurez probablement à changer
+le paramètre KERNELDIR pour refléter le répertoire
+dans lequel à été installé votre arbre source
+du noyau). Quand vous installez les utilitaires, un répertoire /rsbac
+est crée. C'est la base de données d'accès. RSBAC
+s'en servira pour noter toutes vos règles. Quand vous perdez tout
+accès au système, vous pouvez simplement effacer tous les
+fichiers de ce répertoire mis à part le fichier useraci (vous
+devez faire ça en utilisant un noyau Linux standard).
+</p><p>Donc maintenant vous avez le noyau et les utilitaires. On peut continuer.
+Après le premier redémarrage système, des services
+ne marcherons pas, et tout le monde va vous engueuler. Ne vous en faites
+pas, tout va bien. Puisque l'on limite l'accès au ressources système,
+c'est normal que quelques services ne fonctionnent plus. Nous allons changer
+quelques permissions et tout ira bien. Tout d'abord, nous devons nous connecter
+en tant qu'Officier de Sécurité. Le premier moyen est de
+redémarrer la machine en passant un paramètre au noyau 'rsbac_auth_enable_login'
+(ajoutez ce paramètre uniquement la première fois!).
+</p><p>La seconde manière est de redémarrer en utilisant un noyau
+de maintenance, de se loguer dans le système en tant que root et
+de taper la commande:
+<br>attr_set_fd FILE auth_may_setuid /bin/login
+<br>(cette commande autorise le programme /bin/login à changer de
+UID pour refléter l'UID de l'utilisateur qui se connecte, sans ça,
+/usr/bin/login ne laisserai se loguer personne d'autre que root).
+</p><p>Après cela, vous pouvez&nbsp; redémarrez votre système,
+login en tant qu'Officier de Sécurité, et courrez à
+la bibliothèque lire la théorie des différents modèles
+de sécurité.
+</p><h1>
+<b>AUTH module</b></h1>
+Ce module autorise ou non un changement de UID. Pour chaque fichier, le
+module AUTH inspectera deux paramètres :
+<ul>
+<li>
+<b>auth_may_setuid </b>- (peux changer d'UID) le processus fonctionnera
+comme il avait l'habitude de fonctionner avec un noyau traditionnel. C'est
+à dire qu'il peut changer d'UID sans restriction. /bin/login doit
+avoir cette permission, sans quoi personne d'autre que root ne peut se
+loguer.</li>
+</ul>
+
+<ul>
+<li>
+<b>auth_capabilities </b>- (capabilités) une liste d'UID que le
+processus peut prendre. Par exemple, quand il y à 23, 25, 45 dans
+la liste, alors le processus peut changer son UID pour devenir 23, 25,
+ou 45, mais pas 66 ni rien d'autre.</li>
+</ul>
+<i><u>EXERCICE:</u></i> Maintenant nous pouvons corriger quelques erreurs
+qui arrivent lors du processus de démarrage. D'abord, regardez dans
+les traces du système (/var/log/messages) pour trouver les message
+d'erreur en question. Je vous rappelle que secoff (notre Officier de Sécurité)
+n'est qu'un utilisateur comme les autres et donc ne peut pas lire le fichier
+/var/log/messages. Vous devez donc inspecter les messages d'erreur en utilisant
+le compte de l'administrateur. Si vous pouvez trouver des message d'erreur
+qui ressemblent à celui qu'il y a en dessous, alors nous pouvons
+les corriger maintenant, sinon vous le ferez plus tard.
+<p><i>Feb 25 12:58:13 stas kernel: rsbac_adf_request(): request CHANGE_OWNER,
+caller_pid
+77, caller_prog_name portmap, caller_uid 0, target-type PROCESS, tid 77,
+attr owner, value 1, result NOT_GRANTED by AUTH</i>
+</p><p>Ce message nous explique que le processus 'portmap' avec le UID 0 a
+essayé de changer son UID pour devenir 1 et que le module AUTH a
+rejetté la requête. Et bien nous pouvons dire à RSBAC
+que portmap a le droit de faire ça en ajoutant par exemple l'UID
+1 à sa liste de capabilités.
+</p><p>Loguez vous en secoff (notre Officier de Sécurité) et
+lancez le menu d'administration principal"rsbac_menu". Allez dans "File/Dir
+Attributes menu", êtes vous prêt pour la grosse liste de permissions
+que vous allez voir ? C'est le résultat du fait que RSBAC est modulaire.
+Chaque module (chaque modèle de sécurité) à
+ses propre définitions de permissions à différents
+niveaux.
+</p><p>Au travail ! Sélectionnez le fichier portmap en utilisant le
+menu "File/Dir List : Choose from listing of last dir". Ensuite sélectionnez
+"auth_capabilities" et ensuite ajoutez l'UID 1. Maintenant le programme
+portmap va être capable de changer son UID pour devenir 1, mais pas
+6 ni autre chose ! Maintenant portmap ne se plaindra plus de ce problème
+au prochain démarrage.
+</p><p>Utilisez cette méthode pour corriger tous les autres erreurs
+similaires. Comme le montre mon expérience, après ce petit
+travail, le système fonctionnera comme avant.
+</p><h1>
+<b>MAC Module</b></h1>
+
+<p><br>Le module AUTH est très puissant, mais pourtant très
+simple. Les autres modules ne sont pas aussi simple à comprendre.
+Par exemple, le module MAC réalise le modèle de sécurité
+offert par Bella et LaPadulla pour le système d'exploitation Multics.
+Mais tout d'abord essayons de nous familiariser avec la théorie.
+</p><p>Soit 2 ensembles: un ensemble d'objets O et un ensemble de sujets S.
+<br>Les objets sont fichiers, répertoires, mémoires partagées,
+pipes, queues de messages et autres ressources système. Les sujets
+sont des utilisateurs et les processus qu'ils lancent.
+</p><p>Les sujets essayent d'accéder aux objets. Le système de
+sécurité vérifie que les permissions du sujet et ensuite
+lui autorise ou rejette son action. Il est clair que le système
+à besoin de critères pour faire sa décision. Dans
+MAC (Contrôle d'Accès Obligatoire) les critères sont
+les Mandatory Label.
+<br>Un Mandatory Label consiste en un niveau de sécurité
+L (nombre positif) et un ensemble de catégories M (vecteur de 64
+bits).
+</p><p>La catégorie M1 domine sur la catégorie M2 (par définition)
+si pour chaque 1 dans le second vecteur correspond un 1 dans le premier
+vecteur.
+<br>Exemple avec un vecteur de 3 bits:
+</p><p>M1 {1,0,1} domine sur M2 {1,0,0}
+<br>M3 {0,0,0} domine sur M4 {0,0,0}
+</p><p>Le Label {Li,Mi} domine sur le label {Lj,Mj} (par définition)
+si&nbsp; Li&gt;Lj et Mi domine sur Mj.
+</p><p>Avec ces définitions, nous avons aussi besoin de règles
+spéciales.
+</p><p>Tout d'abord nous avons besoin d'utiliser une matrice d'accès
+D ou Dij contient les permissions du sujet Si d'accéder à
+l'objet Oj (lecture, écriture, exécution, et peut être
+d'autres...) Nous n'avons pas cette matrice dans RSBAC et donc nous utilisons
+à la place les règles standards d'Unix.
+<br>Il y à aussi les règles additionnelles suivantes (reprise
+de la documentation générale de RSBAC) :
+</p><p>1. ss-property: Si domine Oj, si x = r ou x =w (x contient l'accès
+en lecture)
+<br>2. *-property: Si&nbsp; est dit 'trusted' (de confiance) ou
+<br>&nbsp;&nbsp;&nbsp; 1. Oj domine le niveau courant de de Si, si mode=a
+<br>&nbsp;&nbsp;&nbsp; 2.&nbsp; le niveau de Si est égal au niveau
+courant de Si, si mode = w
+<br>&nbsp;&nbsp;&nbsp; 3.&nbsp; le niveau courant de Si domine le niveau
+de Oj, si mode = r
+<br>3. ds-property: x est dans la cellule Mi,j de la matrice M des accès
+autorises.
+</p><p>Comme vous pouvez le voir, il s'agit d'un modèle difficile. Dans
+la vie réelle, la plupart des programmes ne marcheront pas correctement.
+Je recommande donc que vous n'utilisiez ce modèle que si vous le
+comprenez suffisamment.
+</p><p><u>EXERCICE</u>: Utilisons les attributs 'file' et 'user' de MAC. Loguez
+vous avec le compte "test". Créez le fichier ~/mactest, lancez le
+menu principal d'administration de RSBAC, et allez dans "File/Dir Attributes
+menu". Choisissez le fichier mactest que vous venez de créer. Changez
+les attributs suivants :
+</p><ul>
+<li>
+<b>MAC security level</b> - (Niveau de Sécurité MAC) Mettez
+2.</li>
+
+<li>
+<b>MAC categories</b> - (Categories MAC) Ne touchez pas à celui-là.</li>
+
+<li>
+<b>MAC trusted for user</b> - (MAC de confiance pour l'utilisateur) cas
+special: le fichier peut faire confiance à l'utilisateur, malgré
+sont niveau de sécurité.</li>
+</ul>
+Maintenant essayez d'ouvrir le fichier (par exemple en utilisant 'cat').
+Le système de sécurité rejette l'accès, bien
+que vous ayez des droits d'accès suffisants pour un Unix traditionnel.
+Nous avons besoin d'un niveau de sécurité plus élevé
+pour accéder au fichier.
+<p>Lancez rsbac_menu et allez dans le menu "User Attributes: Go to user
+attribute menu". Comme vous le voyiez l'utilisateur a beaucoup de droits.
+Choisissez "test". Nous avons besoin de sélectionner deux de ses
+droits :
+</p><ul>
+<li>
+<b>Security Level -</b> (niveau de sécurité)&nbsp; L'utilisateur
+peut lire un document si son propre niveau de sécurité n'est
+pas plus petit que le niveau du document. Mettez 2.</li>
+
+<li>
+<b>MAC Categories -</b> (catégorie MAC) Un ensemble des catégorie
+de l'utilisateur.</li>
+</ul>
+Maintenant l'utilisateur peut travailler avec le fichier mactest.
+<h1>
+<b>ACL module</b></h1>
+Est ce que vous en savez assez pour aujourd'hui ? Non? Alors continuons
+avec le module ACL. Chaque fichier a un vecteur de permissions (wrxwrxwrx).
+En utilisant ce vecteur, nous pouvons modifier les permissions d'accès
+pour le possesseur du fichier, pour le groupe, ou pour les "autres". Mais
+l'on ne peut pas changer les permissions pour chaque utilisateur. Par exemple,
+pour l'utilisateur user1 (wr-), pour user2 (w-x) et pour le groupe group1
+(--x). Donc nous avons besoin d'une liste de permissions (Liste de Contrôle
+d'accès). Et c'est pour cette raison que nous avons inclus le module
+ACL. Il élargit les permissions standard d'Unix.
+<p><u>EXERCICE</u>: Créer le répertoire&nbsp; /tmp/acltest,
+lancer rsbac_menu et allez dans la section "ACL Menu: Go to ACL menu..."
+Mais ou sont les permissions ? Pas de précipitations ... appuyiez
+sur "Change mask" et ....
+</p><ul>
+<li>
+&nbsp;ADD_TO_KERNEL - pour les modules du noyau (drivers).</li>
+
+<li>
+&nbsp;ALTER - Change les information de contrôle des IPC.</li>
+
+<li>
+&nbsp;APPEND_OPEN</li>
+
+<li>
+&nbsp;CHANGE_GROUP</li>
+
+<li>
+&nbsp;CHANGE_OWNER</li>
+
+<li>
+&nbsp;CHDIR</li>
+
+<li>
+&nbsp;CLONE- appel système clone() ou fork() pour créer respectivement
+une thread&nbsp; et un processus.</li>
+
+<li>
+&nbsp;CLOSE</li>
+
+<li>
+&nbsp;CREATE</li>
+
+<li>
+&nbsp;DELETE</li>
+
+<li>
+&nbsp;EXECUTE</li>
+
+<li>
+&nbsp;GET_PERMISSIONS_DATA-pour lire les permissions UNIX.</li>
+
+<li>
+&nbsp;GET_STATUS_DATA- l'appel système stat().</li>
+
+<li>
+&nbsp;LINK_HARD</li>
+
+<li>
+&nbsp;MODIFY_ACCESS_DATA- Modification de l'attribut 'access time' d'un
+fichier.</li>
+
+<li>
+&nbsp;MODIFY_ATTRIBUTE- Modification d'un attribut de RSBAC.</li>
+
+<li>
+&nbsp;MODIFY_PERMISSIONS_DATA- Modification d'une permission de fichier
+UNIX.</li>
+
+<li>
+&nbsp;MODIFY_SYSTEM_DATA- Changement de données systèmes
+(ports, etc...)</li>
+
+<li>
+&nbsp;MOUNT</li>
+
+<li>
+&nbsp;READ</li>
+
+<li>
+&nbsp;READ_ATTRIBUTE- lecture d'un attribut de RSBAC.</li>
+
+<li>
+&nbsp;READ_OPEN</li>
+
+<li>
+&nbsp;READ_WRITE_OPEN</li>
+
+<li>
+&nbsp;REMOVE_FROM_KERNEL- déchargement d'un module du noyau</li>
+
+<li>
+&nbsp;RENAME</li>
+
+<li>
+&nbsp;SEARCH</li>
+
+<li>
+&nbsp;SEND_SIGNAL- envoie d'un signal à un autre processus</li>
+
+<li>
+&nbsp;SHUTDOWN</li>
+
+<li>
+&nbsp;SWITCH_LOG- modification du niveau de log de RSBAC.</li>
+
+<li>
+&nbsp;SWITCH_MODULE- changement de modules de RSBAC.</li>
+
+<li>
+&nbsp;TERMINATE- terminaison du processus</li>
+
+<li>
+&nbsp;TRACE- l'appel système ptrace() pour tracer le processus.</li>
+
+<li>
+&nbsp;TRUNCATE</li>
+
+<li>
+&nbsp;UMOUNT</li>
+
+<li>
+&nbsp;WRITE</li>
+
+<li>
+&nbsp;WRITE_OPEN</li>
+</ul>
+Voila ... c'est tout. Vous pouvez sélectionner/dessélectionner
+chacun de ces attributs, mais nous n'allons en tester qu'un pour le moment.
+<p>Dessélectionnez pour le répertoire /tmp/acltest la permissions
+CHDIR. Maintenant rien ni personne ne peut aller dans ce répertoire.
+Nous avons changé le masque général, mais nous pouvons
+ajouter des entrées ACL pour certains utilisateurs, ainsi que quelques
+groupes de rôle (voyez le chapitre "RC module").
+</p><p>Choisissez le menu"<i>Add ACL Entry:Add group, role or user entry</i>",
+et ajouter un utilisateur. Choisissez l'utilisateur de la liste (par exemple
+l'utilisateur tttt). Vous pouvez changer le masque pour cet utilisateur
+maintenant. Sélectionnez son masque, et sélectionnez toutes
+les permissions dans le vecteur. Essayez le résultat,
+</p><p>L'utilisateur tttt et seulement l'utilisateur tttt peut changer de répertoire
+vers /tmp/acltest (l'Officier de Sécurité peut changer de
+répertoire aussi vers ce répertoire, mais vous pouvez le
+bloquer avec une permission UNIX ordinaire!).
+</p><p>Vous pouvez aussi ajouter des entrées dans les groupe d'utilisateurs
+(ACL group) et dans les RC-role. Mais vous devez lire la description d'un
+RC avant cela.
+</p><h1>
+<b>RC Module</b></h1>
+
+<p><br>Est ce que vous aimez le théâtre ? ... oui ? Alors
+ça devrait être simple pour vous l'idée de rôle.
+Sinon, lisez le texte suivant.
+</p><p>Tout d'abord les mots clés sont 'cible' et 'requêtes'.
+</p><p>Un sujet fait une requête pour accéder à une cible.
+Les requêtes ont le même permissions ACL (CHDIR, APPEND_OPEN,...).
+Les cibles sont : FILE, DIR, DEV, IPC (sémaphores, queues de messages,
+pipes,...), SCD (System Control Data, Données de Contrôle
+du Système, par exemple les ports, les logs du noyau ...), USER,
+PROCESS, NONE (cible vide), FD (File Descriptor, descripteur de fichier
+FILE et DIR en même temps).
+</p><p>Chaque cible à un type. Vous pouvez utiliser un type par défaut
+(System FD, Security FD,...) ou en créer un nouveau.
+</p><p>Rôle est une classe de sujets. Un rôle définit cette
+classe de permissions d'accès à des cibles définies
+ainsi qu'à d'autres rôles.
+</p><p>Les rôles ont les paramètres généraux suivants
+:
+</p><ul>
+<li>
+<b>Name</b> -Le nom du rôle.</li>
+
+<li>
+<b>Role Comp</b>- Liste des rôles vers lequel ce rôle peut
+changer sans avoir à changer de possesseur.</li>
+
+<li>
+<b>Admin Roles</b> - Liste des rôles que ce rôle peut administrer
+(changer les paramètres etc...)</li>
+
+<li>
+<b>Assign Roles</b> - Liste des rôles que ce rôle peut assigner
+à des utilisateurs et à des processus (en utilisant les outils
+d'administration)</li>
+
+<li>
+<b>Type comp FD</b>- permissions ACL de ce rôle pour tous les types
+de cible FD.</li>
+
+<li>
+<b>Type comp DEV</b>- pareil, permissions pour le cibles DEV.</li>
+
+<li>
+<b>Type comp Process</b>- pareil, permissions pour les cibles Process.</li>
+
+<li>
+<b>Type comp IPC</b>- pareil, permissions pour les cibles IPC.</li>
+
+<li>
+<b>Type comp SCD</b>- pareil, permissions pour les cibles SCD.</li>
+
+<li>
+<b>Admin Type</b>- pas en usage pour le moment, utilisez 4 paramètres
+à la place de celui-là. Le type peut être Général
+User (utilisateur général), System Admin (administrateur
+système) ou Role Admin (administrateur de rôle).</li>
+
+<li>
+<b>Default FD Create Type -&nbsp;</b> type de cible ou hérite de
+...</li>
+
+<li>
+<b>Default Process Create Type</b></li>
+
+<li>
+<b>Default Process Chown Type</b></li>
+
+<li>
+<b>Default Process Execute Type</b></li>
+
+<li>
+<b>Default IPC Create Type</b></li>
+</ul>
+Est-ce difficile ??? Oui c'est difficile, mais c'est très puissant
+aussi. Vous pouvez faire des configurations flexibles et atteindre des
+résultats fantastiques.
+<p>Par exemple, l'administrateur peut ajouter/enlever des utilisateurs,
+mais ne peut pas éditer manuellement les fichier /etc/passwd et
+/etc/shadow, après ces changements. Cela peut être très
+intéressant pour un site web. Un hacker qui réussit à
+rentrer sur votre système ne peut pas enlever ni modifier les pages
+web, même en ayant un accès root. Seulement Apache peut travailler
+avec ces pages.
+</p><p><u>EXERCICE</u>: D'abord, créez un nouveau type de cible "Passwd
+FD". Faites cela en utilisant le menu "RC types". Ensuite, faites un nouveau
+rôle "Admin Passwd". Ensuite, allez dans "RC Roles", choisissez "System
+Administrator" (en utilisant le menu "<i>Rolelist: Choose role from list</i>")
+et copiez le dans le nouveau rôle (en utilisant le menu "<i>Copy
+Role (New Role)")</i>. Renommez le nouveau rôle "Admin Passwd". Changez
+les permissions ACL de ce rôle pour la cible "Passwd FD" et mettez
+toutes les permissions, les autres rôles n'ont aucune permission
+pour cette cible par défaut). Ajoutez au rôle System Admin
+la permission de lire la cible (en lecture seule, et pas lecture/écriture!).
+</p><p>Maintenant, le modèle est prêt!. Appliquez le à
+vos objets. Mais <u>faites attention</u> ! Vous pouvez perdre l'accès
+à votre propre système. Une bonne idée généralement
+est de faire les modifications en utilisant une console virtuelle, et de
+les essayer à partir d'une autre console virtuelle.
+</p><p>Lancez rsbac_menu. Aller dans le menu 'file attribute' et trouver le
+paramètre:
+</p><ul>
+<li>
+<b>RC Type FD</b> - type de cette cible dans le modèle RC.</li>
+</ul>
+choisissez le fichier /etc/passwd et mettez la valeur 'Passwd FD'. Maintenant
+root (notre System Admin) a un accès en lecture seule à ce
+fichier. Ne vous déloguez pas maintenant !
+<p>Choisissez le fichier /bin/login et mettez lui l'attribut suivant:
+</p><ul>
+<li>
+<b>RC Force Role</b>- Le rôle appliqué au processus. C'est
+la même chose que le SUID bit d'un UNIX. Dans le sens que le programme
+bien qu'étant lancé par root (rôle System Admin par
+défaut) le processus aura un autre rôle.</li>
+</ul>
+Mettez cette valeur à "Admin Passwd". Maintenant /bin/login a plein
+droits d'accès à /etc/passwd. Vous pouvez aussi donner tous
+les droits aux programmes userdel et useradd. Donc les programmes ont les
+permissions, mais pas root lui même, root peut seulement lire les
+fichiers!! Le système est protégé par RSBAC...
+<h1>
+<b>Conclusion.</b></h1>
+Nous avons étudie seulement 3 des modules de décision de
+RSBAC. Vous pouvez voir les autres modules vous même, ou <a href="mailto:inger@linux.ru.net">m'envoyer
+des questions</a> soit directement, soit par l'intermédiaire de
+la <a href="mailto:rsbac@rsbac.org">liste de discussion de RSBAC</a>. Je
+vais écrire des nouveaux articles au sujet de ce formidable système
+de sécurité. En conclusion, voici quelques exercices pour
+vous :
+<ul>
+<li>
+&nbsp;Vous pouvez créer vos propres modules de décision et
+les insérer dans le noyau. (Vous devez sélectionner l'option
+"REG Module" de RSBAC pendant l'étape de configuration du noyau)</li>
+
+<li>
+Vous pouvez changer de modules à la volée. (pour cela, vous
+devez sélectionner le support "Switch modules" pendant la configuration
+du noyau.</li>
+
+<li>
+Vous pouvez déplacer le répertoire /rsbac (appelle RSBAC
+ACI: Access Control Information, Information de Contrôle d'accès)
+vers un autre endroit. Faites les changements nécessaires dans le
+fichier&nbsp; /usr/src/linux/include/rsbac/aci_data_structures.h avant
+de recompiler votre noyau.</li>
+</ul>
+Donc vous pouvez développer, améliorer, et s'amuser avec
+RSBAC et nous dire vos résultats !
+<p>Que le spectacle continue ...
+</p><p><i><a href="mailto:inger@linux.ru.net">Stanislav Ievlev &lt;inger@linux.ru.net&gt;</a></i>
+<br>&nbsp;
+</p><p>Translation from English to French by:
+<br><a href="mailto:fabrice@celestix.com">Fabrice Marie &lt;fabrice@celestix.com&gt;</a>
+<br>&nbsp;
+</p></body></html>

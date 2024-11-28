@@ -1,0 +1,107 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD><TITLE>Id scanning</TITLE>
+<META content=fr http-equiv=Content-Language>
+<META content="text/html; charset=windows-1252" http-equiv=Content-Type>
+<META content="Namo WebEditor v4.0(Trial)" name=GENERATOR>
+<META content=FrontPage.Editor.Document name=ProgId>
+<STYLE type=text/css>A:hover {
+	COLOR: #3399ff; TEXT-DECORATION: none
+}
+</STYLE>
+</HEAD>
+<BODY aLink=#000000 link=#000000 vLink=#000000>
+      <TABLE border=0 cellPadding=0 cellSpacing=0 height=215 width="100%">
+        <TBODY>
+        <TR>
+          <TD height=215 vAlign=top width="18%">
+            <P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+            color=#000000 face=Verdana size=5><B><FONT face=Verdana 
+            size=5>Technique de l' IP id scanning</FONT><FONT face=Verdana 
+            size=2><BR></FONT></B><FONT face=Verdana 
+            size=2>&nbsp;Par patrice salnot - 
+            uid@42sec.net<BR><BR><BR>Cette m&eacute;thode permet d'identifier les 
+            services ouverts sur une cible sans laisser de traces ou tout au 
+            moins sans laisser appara&icirc;tre son adresse IP.<BR><BR>Pour 
+            appr&eacute;hender cette m&eacute;thodologie il est n&eacute;cessaire de comprendre 
+            comment r&eacute;agis une cible lorsqu'on audit ses services.<BR>Il est 
+            &eacute;galement n&eacute;cessaire de comprendre &agrave; quoi correspond un num&eacute;ro d'ID 
+            dans une trame IP et comment il &eacute;volue dans certaines 
+            impl&eacute;mentations.<BR>Nous allons donc segmenter l'analyse de cette 
+            m&eacute;thode en trois parties :<BR><BR>* Comportement de la pile IP 
+            standard face &agrave; une requ&ecirc;te.<BR>* &Eacute;volution du champ ID.<BR>* 
+            Description de la m&eacute;thode.<BR><BR><BR>Analyse du comportement de la 
+            pile IP face &agrave; une requ&ecirc;te&nbsp;<BR><BR><BR><BR>A 
+            --------SYN--------DPRT 23----SPRT 2048-------&gt; B Phase 
+            1<BR><BR>A &lt;-------RST------SPRT 2048---DPRT 23---------- B Phase 
+            2<BR><BR><BR>Sch&eacute;ma D.<BR><BR><BR><BR>A -----SYN-------DPRT 23-SPRT 
+            2048-------------&gt; B Phase 1<BR><BR>A &lt;-------SYN/ACK---DPRT 
+            23-SPRT 2048----------- B Phase 2<BR><BR><BR>Sch&eacute;ma 
+            E.<BR><BR><BR>Prenons en consid&eacute;ration le contexte du sch&eacute;ma 
+            D.<BR>La machine A fait une requ&ecirc;te sur le port vingt trois de la 
+            machine B.<BR>Si le port est ferm&eacute; la machine B va renvoyer un 
+            paquet &agrave; destination de la machine A avec un flag RST.<BR>Par contre 
+            si le port vingt trois est ouvert la machine B renverra un paquet 
+            contenant le FLAG SYN/ACK &agrave; destination de la machine A (cf. sch&eacute;ma 
+            E.) .<BR><BR><BR>&Eacute;volution du champ ID<BR><BR>0 1 2 3&nbsp;<BR>0 1 2 
+            3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 
+            1&nbsp;<BR>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<BR>|Ver= 
+            4 |IHL= 5 |Type of Service| Total Length = 276 
+            |<BR>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<BR>| 
+            Identification = 111 |Flg=1| Fragment Offset = 0 
+            |<BR>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<BR>| 
+            Time = 119 | Protocol = 6 | Header Checksum 
+            |<BR>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<BR>| 
+            source address 
+            |<BR>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<BR>| 
+            destination address 
+            |<BR>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<BR>| 
+            data 
+            |<BR>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<BR>| 
+            data |<BR>\ \<BR>\ \<BR>| data 
+            |<BR>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<BR>| 
+            data 
+            |<BR>+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<BR>Schema 
+            F<BR>Pr&eacute;sentation d'une en-t&ecirc;te IP.<BR><BR>Le champ identification 
+            de la trame IP permet de caract&eacute;riser de mani&egrave;re unique chaque 
+            paquet &eacute;mis.<BR>La RFC 791 sp&eacute;cifie que le num&eacute;ro doit &ecirc;tre 
+            d&eacute;termin&eacute; par la couche sup&eacute;rieure (&agrave; savoir TCP UDP ou 
+            ICMP).<BR>Dans les impl&eacute;mentations d&eacute;riv&eacute;es de Berkeley (notamment 
+            4.2BSD) ce champ est incr&eacute;ment&eacute; d'une unit&eacute; &agrave; chaque trame 
+            &eacute;mise.<BR><BR><BR>Description de la m&eacute;thode<BR><BR><BR><BR>A 
+            --------SYN--------DPRT 23----SPRT 2048-------&gt; B Phase 
+            1<BR><BR>A &lt;-------SYN/ACK--SPRT 2048---DPRT 23---------- B Phase 
+            2<BR><BR>A --------ACK--------DPRT 23----SPRT 2048-------&gt; B 
+            Phase 3<BR><BR>Sch&eacute;ma G.<BR><BR><BR>En nous pla&ccedil;ant dans le contexte 
+            d&eacute;finis au sch&eacute;ma D, nous voyons que l'envoi d'une trame TCP 
+            contenant un flag SYN &agrave; destination du port vingt trois de la 
+            machine B va provoquer l'envoi d'une trame contenant un FLAG RST de 
+            la machine B vers la machine A.<BR>La machine A en recevant cette 
+            trame contenant un FLAG RST ne va g&eacute;n&eacute;rer aucun paquet.<BR>Par 
+            contre si le port vingt trois est ouvert sur la machine B, celle ci 
+            va y faire face en g&eacute;n&eacute;rant une trame contenant un FLAG 
+            SYN/ACK.<BR>La machine A en recevant cette trame va renvoyer un 
+            paquet contenant un FLAG ACK pour conclure la phase de 
+            synchronisation(Cf. sch&eacute;ma G).<BR>En g&eacute;n&eacute;rant cette trame la machine 
+            A va incr&eacute;menter d'une unit&eacute; son champ ID dans le cas d'une 
+            impl&eacute;mentation de la pile IP d&eacute;riv&eacute;e de Berkeley.<BR><BR>Supposons 
+            maintenant l'existence d'une machine T qui g&eacute;n&egrave;re des paquets en 
+            usurpant l'adresse IP de A.<BR>L'envoi d'une trame TCP contenant un 
+            FLAG SYN venant de la machine T usurpant l'adresse IP de A sur le 
+            port vingt trois de la machine B va provoquer l'envoi d'une trame 
+            contenant un FLAG SYN/ACK &agrave; destination de la machine A si le port 
+            est ouvert.<BR>La machine A en recevant ce paquet va y r&eacute;pondre en 
+            envoyant un paquet RST &agrave; destination de la machine B.<BR>L'envoi de 
+            ce paquet va incr&eacute;menter d'une unit&eacute; la valeur du champ ID de la 
+            machine A.<BR><BR>Dans la m&ecirc;me situation si le port vingt trois de 
+            la machine B est ferm&eacute; elle va envoyer une trame contenant un FLAG 
+            RST &agrave; destination de la machine A pour r&eacute;silier la connexion.<BR>La 
+            machine A en recevant ce paquet contenant une demande de r&eacute;siliation 
+            de connexion ne va pas y r&eacute;pondre et par cons&eacute;quent la valeur 
+            contenue dans le champ ID ne sera pas incr&eacute;ment&eacute;.<BR><BR>La machine 
+            T en observant l'&eacute;volution des valeurs du champ ID de la machine A 
+            peut donc d&eacute;terminer quels ports de la machine B sont 
+            ouverts.&nbsp;<BR><BR>Aucune trace de l'adresse IP de la machine T 
+            ne sera g&eacute;n&eacute;r&eacute;e sur la machine 
+        B.<BR><B><BR></B></FONT></FONT></P></TD></TR></TBODY></TABLE>
+<p>&nbsp;</p>
+</BODY></HTML>

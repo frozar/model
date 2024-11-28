@@ -1,0 +1,290 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML> 
+<HEAD>
+  <TITLE>[GROAR traduction] How to Write a Bootsector </TITLE> 
+  <META NAME="description" content="Code X software: Programming to a Higher Power, DJGPP and X11 Programming (binaries and source code), Linux and DOS (32-bit pmode), POV-Ray.  Check out Code X for some cool games and X-Windows programs.">
+  <META NAME="keywords" content="code x Code X codex CodeX games graphics djgpp DJGPP source code X11 x11 X-Windows x-windows programming linux Linux Jeff Weeks jeff weeks">
+  <META NAME="GENERATOR" CONTENT = "I made this!">
+  <META NAME="andrew_fursman" CONTENT="complete and utter looser">
+  <META NAME="microsoft" CONTENT="lies and monopolies">
+</HEAD>
+
+<body bgcolor=#ffffff text=#000000 link=#204080 alink=#204080 vlink=#204080>
+
+<U>
+<FONT SIZE=+3>E</FONT>CRIRE 
+<FONT SIZE=+3>U</FONT>N
+<FONT SIZE=+3>S</FONT>ECTEUR 
+<FONT SIZE=+3>D</FONT>E
+<FONT SIZE=+3>B</FONT>OOT
+</U>
+<BR><FONT SIZE=-1>(c)1997 Jeff Weeks and Code X software</FONT><BR>
+
+<BR><font size=2 face=tahoma>
+      <HR align=center width=500 color=#d6d6d6 SIZE=7>
+
+Traduit par groar, <a href="http://abyssal.homelinux.org">abyssal.homelinux.org</a>.<br>
+Le texte original peut-être trouvé à l' adresse : http://abyssal.homelinux.org/@@%20OSdev/vo/bootwrit.html
+Si vous avez des suggestions à me faire pour cette traduction mailez moi : root@abyssal.homelinux.org
+gRooOooOoooOOOAr
+
+      <HR align=center width=500 color=#d6d6d6 SIZE=7>
+</font>
+<BR><br><br>
+Ecrire votre propre secteur de boot est probablement plus facile que vous ne 
+le pensez. Tout ce que vous avez besoin de savoir est comment boote un processeur
+Intel. Les deux derniers octets d un secteur de boot sont 0xAA55 (à l offset 510), 
+et il est situé sur le tout premier secteur du disque. Donc, le BIOS contrôle 
+simplement le périphérique 0 (A:) pour trouver ce code. S' il n' est pas trouvé 
+il va alors regardé le deuxième périphérique pouvant être booté ( souvent le premier
+disque dur). Si un secteur de boot valide est trouvé, il est chargé en mémoire à l'
+emplacement mémoire 0:07C0h.<BR>
+<BR>
+Donc, tout ce que vous avez à faire est écrire un secteur de boot, l' assembler
+en tant qye fichier binaire (il n' y a pas de format ou de header dans un secteur
+de boot), et l' écrire sur le premier secteur de votre disque (disquette ou disque dur) 
+La meilleure solution pour faire cela est d' utiliser nasm ("The netwide assembler" 
+peut produire des fichiers binaires plats) ou assembler dans un .EXE DOS et enlever 
+les 512 premiers octets.  Vous pouvez écrire le secteur de boot sur le secteur 1 du disque 
+en utilisant l' INT 13h AH=02h du BIOS.<BR>
+<BR>
+Simple non ?  Bien, au cas où vous ne comprendriez toujours pas, voici un petit
+ssecteur de boot provenant de PolyOS qui passe simplement en mode protégé, 
+après avoir vérifié ke vous avez un ordinateur 386 ou +.  Actuellement, il charge dans 
+le superblock PolyFS et vérifie si il est valide,mais c' est tout.  Bientôt 
+il chargera le kernel et jumpera dessus.  Ce secteur de boot a été écrit avec Nasm.
+<BR>
+
+<PRE>
+; ------------------------------------------------------------------------
+; Code du boot loader de PolyOS     (c)1997 Jeff Weeks of Code X Software
+; ------------------------------------------------------------------------
+; This little bit of assembly is the boot loader for my operating system.
+; ------------------------------------------------------------------------
+
+[BITS 16]       ; the bios starts out in 16-bit real mode
+[ORG 0]
+
+; ------------------------------------------------------------------------
+; SECTEUR UN: LE CHARGEUR DE BOOT
+; ------------------------------------------------------------------------
+; Ce secteur détecte votre processeur.  Si un 386 est trouvé, il charge le
+; kernel depuis le disque et l'exécute(du moins il le fera dans l' avenir:)
+; ------------------------------------------------------------------------
+
+jmp start       ; skip over our data and functions
+
+; -------------------------------------
+; Données utilisées pendant le chargement
+; ------------------------------------------------------------------------
+        bootdrv         db 0
+        bootmsg         db 'Démarrage de PolyOS (c)1997 Cipher of Code X',13,10,0
+        loadmsg         db 'Chargement du kernel',13,10,0
+        jumpmsg         db 'Jumping to kernel',13,10,0
+        rebootmsg       db 'Pressez une touche pour redémarrer',13,10,0
+
+        ; utilisées dans la détection du processeur
+        processormsg    db 'Vérification du processeur 386+ : ',0
+        need386         db 'Désolé... un 386+ est requis!',13,10,0
+        found386        db 'Excellent!',13,10,0
+
+        ; utilisées lors du passage en mode protégé
+        a20msg          db 'Setting A20 address line',13,10,0
+        pmodemsg        db 'Setting CR0 -> Entering PMode',13,10,0
+
+        ; Voici les emplacements de mon IDT et mon GDT.  Rappelez-vous, Intel sont 
+	  ; des processeurs "little endian", donc, ceux-ci sont en ordre inversé. 
+        ; Notez en outre que le l' idt et le le gdt acceptent une adresse de 32 bits et la 
+        ; limite de 16 bits, donc, ceux-ci sont des variables 48-bit.
+        pIDT            dw 7FFh         ; limit of 256 IDT slots
+                        dd 0000h        ; commence à 0000
+
+        pGDT            dw 17FFh        ; limit of 768 GDT slots
+                        dd 0800h        ; commence à 0800h (après IDT)
+
+; ------------------------------------------
+; Fonctions utilisées pendant le chargement du boot
+; ------------------------------------------------------------------------
+        detect_cpu:
+                mov si, processormsg    ; Dis à l' utilisateur ce que l' on est en train de faire
+                call message
+
+                ; teste si un 8088/8086 est present (flag bits 12-15 will be set)
+                pushf                   ; sauvegarde les valeurs originales des flags
+                
+                xor ah,ah               ; ah = 0
+                push ax                 ; copie ax dans les flags
+                popf                    ; with bits 12-15 clear
+                
+                pushf                   ; Read flags back into ax
+                pop ax       
+                and ah,0f0h             ; vérifie que les bits 12-15 sont définis
+                cmp ah,0f0h
+                je no386                ; aucun 386 détecté (8088/8086 présent)
+
+                ; teste pour un 286 (les bits 12-15 sont effacés)
+                mov ah,0f0h             ; définie les bits 12-15
+                push ax                 ; copy ax onto the flags
+                popf
+                
+                pushf                   ; copy the flags into ax
+                pop ax
+                and ah,0f0h             ; check if bits 12-15 are clear
+                jz no386                ; aucun 386 détecté (un 80286 présent)
+                popf                    ; pop the original flags back
+                
+                mov si, found386
+                call message
+                
+                ret                     ; aucun 8088/8086 ou 286, donc c' est un 386
+         no386:
+                mov si,need386          ; dis à l' utilisateur le problème
+                call message
+                jmp reboot              ; et reboot quand on presse une touche
+                     
+;       ------------------------------------------------------------------
+        message:                        ; Affiche ds:si à l' écran.
+                lodsb                   ; charge les bytes contenus dans ds:si dans al
+                or al,al                ; teste si le caractère est 0 (fin)
+                jz done
+                mov ah,0eh              ; affiche le caractère
+                mov bx,0007             ; attribute
+                int 0x10                ; appelle le BIOS
+                jmp message
+        done:
+                ret
+;       ------------------------------------------------------------------
+        getkey:
+                mov ah, 0               ; attend une touche pressée
+                int 016h
+                ret
+
+;       ------------------------------------------------------------------        
+        reboot:
+                mov si, rebootmsg       ; être poli, et dire qu' on reboote :)
+                call message
+                call getkey             ; et ensuite attendre qu' on presse une touche :)
+
+                db 0EAh                 ; machine language to jump to FFFF:0000 (reboot)
+                dw 0000h
+                dw 0FFFFh
+                ; aucun ret recquis; on reboote! (Hey, j'ai juste sauvé un byte :)
+
+; -------------------------------------------
+; The actual code of our boot loading process
+; ------------------------------------------------------------------------
+start:
+        mov ax,0x7c0    ; BIOS puts us at 0:07C0h, so set DS accordinly
+        mov ds,ax       ; Therefore, we don't have to add 07C0h to all our data
+
+        mov [bootdrv], dl ; on sauve rapidement de quel périphérique on boote
+
+        cli             ; clear interrupts while we setup a stack
+        mov ax,0x9000   ; cela semble être la place idéale pour la pile
+        mov ss,ax
+        mov sp,0xffff   ; let's use the whole segment.  Pourquoi pas?  On peut :)
+        sti             ; put our interrupts back on
+        
+        ; Interestingly enough, apparently the processor will disable 
+        ; interupts itself when you directly access the stack segment!
+        ; Atleast it does in protected mode, je ne suis pas sûr pour le mode réel.
+        
+        mov si,bootmsg  ; affiche le message de démarrage
+        call message
+
+        call detect_cpu ; vérifie qu' on ait bien un 386
+
+.386    ; use 386 instructions from now on (I don't want to manually include
+        ; operand-size(66h) or address-size(67h) prefixes... it's annoying :)
+
+        mov si,loadmsg  ; informe l' utilisateur que le kernel va être chargé
+        call message
+        call getkey
+
+read_me:
+        ; d abord réinitialise le contrôleur de disque
+        xor ax, ax
+        int 0x13
+        jc reboot       ; reboot quand il y a une erreur
+
+        ; then load in the PolyFS superblock
+        mov ax,0x09000          ; superblock goes to 9000:0000 (above stack)
+        mov es,ax
+        xor bx,bx
+
+        ; J aurai pu condenser un peu ces high/low movs 8-bit en un seul mov de 16-bit
+        ; mais, pour être simple, je le laisserai comme cela, à moins que ce ne soit nécessaire.
+        mov ax,0x0202           ; charge un bloc (deux secteurs)
+        mov ch,0                ; cylindre = 0
+        mov cl,3                ; secteur = 2 (commence au secteur 1 , pas 0)
+        mov dh,0                ; head = 0 = side one
+        mov dl,[bootdrv]        ; disk = d' où on boote
+        int 0x13                ; lisez le
+        jc read_me              ; si il y a une erreur alors on essaye encore.
+                                ; Il n' y pas souvent d' erreur mais cela exige 
+                                ; quelques essais.  Bien sur, cela peut faire une 
+                                ; boucle infinie... mais seulement sur un mauvais disque...
+        
+        ; Regarde si on a un super block valide (BTW: ES still equals 0x9000)
+        mov di, 0               ; offset of PolyFS magic signature
+        mov si, polymagic       ; offset of PolyFS magic to check for (in ds)
+        cmpsw                   ; compare ES:[DI] avec DS:[SI]
+        jnz reboot              ; reboot si il y a une erreur (autrement, nous avons PolyFS)
+
+	; Dans l' idéal il serait bien de chargé le kernel ici
+
+        mov si, a20msg          ; informe l utilisateur que nous sommes en train de définir la ligne A20 
+        call message
+
+        ; set A20 line
+        cli                     ; plus d' interruptions :)
+        xor cx, cx
+clear_buf:
+        in al, 64h              ; get input from keyboard status port
+        test al, 02h            ; test the buffer full flag
+        loopnz clear_buf        ; fais une boucle jusqu' à ce que le buffer soit vide
+        mov al, 0D1h            ; clavier: écrire sur le port de sortie
+        out 64h, al             ; output command to keyboard
+clear_buf2:
+        in al, 64h              ; attend que le buffer soit vide encore
+        test al, 02h
+        loopnz clear_buf2
+        mov al, 0dfh            ; clavier: définit A20
+        out 60h, al             ; l' envoie au contrôleur de clavier
+        mov cx, 14h
+wait_kbc:                       ; Ceci est une approximation. un délai de 25uS pour attendre
+        out 0edh, ax            ; que le controleur de clavier exécute notre  
+        loop wait_kbc           ; commande.
+
+        ; the A20 line is on now.  Let's load in our ITD and GDT tables...
+        ; Ideally, there will actually be data in their locations (by loading 
+        ; the kernel)
+        lidt [pIDT]
+        lgdt [pGDT]
+
+        ; maintenant nous entrons en pmode...
+        mov si, pmodemsg
+        call message
+        call getkey
+
+        mov eax, cr0            ; load the control register in
+        or  al, 1               ; set bit 1: pmode bit
+        mov cr0, eax            ; copy it back to the control register
+        jmp $+2                 ; and clear the prefetch queue
+        nop
+        nop
+
+        ; saut juqu' au kernel que nous avons chargé...
+        ; Pour le moment, nous rebooterons simplement (cela ne marche pas vraiment 
+        ; en mode protégé, mais il reboot :)
+        db 0xEA
+        dw 0x0000
+        dw 0xFFFF
+
+        ; Le secteur de boot est supposé devoir avoir 0xAA55 à la fin du secteur 
+        ; (le word à 510 bytes) pour être chargé par le BIOS...
+        times 510-($-$$) db 0
+        dw 0xAA55
+</PRE>
+</body>
+</HTML>

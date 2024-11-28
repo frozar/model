@@ -1,0 +1,115 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<HTML>
+<Head>
+    <title>realprogrammers: Hack: SSH: Upload Code Tunnel Out -- by hackers, for hackers</Title>
+	<META Name="keywords" content="real programmers,independent,thinkers,open source,art,style,techniques,discussion,learning,guru,advanced,expert,programming,code,fun,humour,humor">
+	<META Content="description" content="realprogrammers.com will become a resource for the exchange of ideas, techniques and opinions about the art of programming for Real Programmers (or otherwise :). Currently under construction, please email for more information/participation.">
+<!-- Script Language="JavaScript" Src="index.js">Script> -->
+	<link rel="stylesheet" href="/index.css" type="text/css">
+</Head>
+
+<Body BGColor="#fffff5" Link=Green VLink=Green text="#000000">
+<div style="float:right"><a href="http://realprogrammers.com/">Real Programmers</a>/ <a href="/hack/">Hack</a>/ <a href="/hack/SSH/">SSH</a>/ Upload Code Tunnel Out</div>
+<!--
+<A Href="http://paulm.com/projects/"><img Src='login.gif' Width="490" Height="80" HSpace=0 Border="0" Alt="Find out more about http://realprogrammers.com..."></A>
+-->
+
+<h2>realprogrammers.com</h2>
+
+<h1>Upload code to a remote machine &amp; tunnel back out</h1>
+
+<div>
+
+<pre><font color="0000ff"><strong>#!/bin/sh</strong></font>
+
+<font color="#444444"># This tool runs a program remotely on a server that will need to make a
+# network connection back out. It does this under two heavy
+# restrictions:
+# 1. the target machine is prevented from doing so by for example an</font>
+<font color="#444444">#    external firewall.</font>
+<font color="#444444"># 2. The required program to execute on the target machine doesn't
+#    exist. The only route into the machine is through ssh, and we</font>
+<font color="#444444">#    assume it can execute a shell with basic unix tool once it's there.
+</font>
+<font color="#444444"># The first is quite a common situation and the second is a typical</font>
+<font color="#444444"># situation that is in effect with a heavily change controlled
+# environment where &quot;foreign&quot; programs aren't allowed to be installed,</font>
+<font color="#444444"># or where the change management is hindering Getting Real Work</font>
+<font color="#444444"># Done(TM). So in effect this is designed to take advantage of what is
+# essentially a flaw in the original security model and use it in a way
+# that wasn't intended.
+</font>
+<font color="#444444"># How it works is essentially this: the program is sent down an SSH</font>
+<font color="#444444"># connection, written to a temporary file and then executed. As part of</font>
+<font color="#444444"># the SSH connection, a listener process is created on the target</font>
+<font color="#444444"># machine at a particular port the program is expecting to communicate
+# over which is tunneled through the SSH session to another host:port
+</font>
+<font color="#444444"># target_host: an ssh address of the machine to run the program remotely on.
+# target_port: where ssh will create a listener process on the target host.
+target_host=paulm@paulm.com
+target_port=8080</font>
+
+<font color="#444444"># remote_host: the full name of the machine to be connected to from the</font>
+<font color="#444444"># target machine. It doesn't necessarily have to the machine executing
+# the ssh session, simply that the machine executing the ssh session can</font>
+<font color="#444444"># connect to it.
+</font>
+<font color="#2040a0">remote_host</font>=`hostname -f`
+<font color="#2040a0">remote_port</font>=80
+
+<font color="#444444"># program: the code to run on the target machine.</font>
+<font color="#444444"># Normally program would point to a real program compiled for the target
+# host's architecture.</font>
+<font color="#2040a0">program</font>=/tmp/`basename <font color="#2040a0">$0</font>`.get
+<font color="#2040a0">program_name</font>=`basename <font color="#2040a0">$program</font>`
+
+<font color="#444444"># target_bin is the directory the program will reside on the target machine.
+# /tmp is world-writeable so we have a guaranteed dropzone.
+target_bin=/tmp/bin
+</font>
+<font color="#444444"># This cat is just to create a test program; it requires lynx to test</font>
+<font color="#444444"># the outgoing connection and leave evidence of success.
+cat &gt; $program &lt;&lt;PROGRAM</font>
+<font color="0000ff"><strong>#!/bin/sh</strong></font>
+
+lynx -source http://localhost:<font color="#2040a0">$target_port</font>/ &gt; /tmp/localhost.html
+PROGRAM
+
+<font color="#444444"># . Make a target bin directory; copy the program there; set
+#   executable flag.</font>
+<font color="#444444"># . Set up target port forwarding so that a port on the target machine is</font>
+<font color="#444444">#   forwarded over the ssh connection to a port on another (possibly local) 
+#   machine. So, from the target machine's point of view,
+#     localhost:target_port -&gt; remote_host:remote_port</font>
+<font color="#444444"># . Run the program that's been left in the target bin directory.</font>
+
+<font color="#444444"># It so happens this is all possible with a single ssh invocation.
+</font>
+ssh -R <font color="#2040a0">$target_port</font>:<font color="#2040a0">$remote_host</font>:<font color="#2040a0">$remote_port</font> <font color="#2040a0">$target_host</font> <font color="#008000">&quot;\
+  mkdir <font color="#2040a0">$target_bin</font> 2&gt;/dev/null;\
+  cd <font color="#2040a0">$target_bin</font>               ;\
+  cat &gt; <font color="#2040a0">$program_name</font>          ;\
+  chmod +x <font color="#2040a0">$program_name</font>       ;\
+  <font color="#2040a0">$target_bin</font>/<font color="#2040a0">$program_name</font>&quot;</font> &lt; <font color="#2040a0">$program</font> &amp;
+</pre>
+
+</div>
+
+
+<hr noshade>
+
+<p>&nbsp;</p>
+
+<div>
+
+<small>All content and code Copyright &copy; 2002 <a href="http://realprogrammers.com/">realprogrammers.com</a> &amp; <a
+href="http://paulm.com/">Paul Makepeace</a> except where specified.
+Comments &amp; feedback welcome!
+</small>
+
+</div>
+
+</Body>
+</HTML>

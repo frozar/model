@@ -1,0 +1,433 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML
+><HEAD
+><TITLE
+>Syntaxe des .qmail*</TITLE
+><META
+NAME="CREATOR"
+CONTENT="Modular DocBook HTML Stylesheet version 1.07"><META
+NAME="form"
+CONTENT="html"><META
+NAME="Description"
+CONTENT="Introduction to qmail in french"><META
+NAME="Keywords"
+CONTENT="qmail mta"><META
+NAME="Robot"
+CONTENT="index,follow"><META
+NAME="Author"
+CONTENT="Djalil Chafai"></HEAD
+><BODY
+BGCOLOR="#FFFFFF"
+TEXT="#000000"
+><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TH
+COLSPAN="3"
+ALIGN="center"
+>Introduction à qmail</TH
+></TR
+><TR
+><TD
+WIDTH="10%"
+ALIGN="left"
+VALIGN="bottom"
+><A
+HREF="c0402.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="80%"
+ALIGN="center"
+VALIGN="bottom"
+>Chapitre 4. Configuration : la base</TD
+><TD
+WIDTH="10%"
+ALIGN="right"
+VALIGN="bottom"
+><A
+HREF="c0404.html"
+>Suivant</A
+></TD
+></TR
+></TABLE
+><HR
+ALIGN="LEFT"
+WIDTH="515"><H1
+><A
+NAME="R,C(4,CHAPTER)(3,SECT1)"
+>Syntaxe des .qmail*</A
+></H1
+><P
+>Plongeons-nous à présent dans le contenu de ces fameux fichiers
+<TT
+CLASS="FILENAME"
+>.qmail*</TT
+>.
+Ces fichiers contiennent les instructions que doit suivre le MDA
+<I
+CLASS="APPLICATION"
+>qmail-local</I
+> pour livrer le courriel.
+Çelà peut rappeler vaguement le mécanisme des fichiers
+<TT
+CLASS="FILENAME"
+>.forward</TT
+> du monde de <I
+CLASS="APPLICATION"
+>sendmail</I
+>.
+Voici un exemple :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+># mon .qmail à moi
+# Un pipe 
+|qbiff
+# Un forward
+&#38;moi@ailleurs.laba
+# Livraison dans une BAL maildir
+./maildir/
+# Livraison dans une BAL mbox
+./mbox</PRE
+></TD
+></TR
+></TABLE
+>
+
+On le voit, chaque ligne contient une et une seule instruction de livraison.
+Les lignes sont toutes analysées à chaque courriel livré par 
+<I
+CLASS="APPLICATION"
+>qmail-local</I
+>.
+Elles peuvent contenir des commentaires préfixés par une dièse.
+Dans cet exemple, chaque courriel sera tubé dans
+<I
+CLASS="APPLICATION"
+>qbiff</I
+>,
+redirigé (forwarded) vers
+<TT
+CLASS="LITERAL"
+>moi@ailleurs.laba</TT
+> et livré dans les boites aux lettres
+<TT
+CLASS="FILENAME"
+>~/maildir/</TT
+> et <TT
+CLASS="FILENAME"
+>~/mailbox</TT
+>.</P
+><P
+>&#13;<P
+></P
+><UL
+><LI
+><P
+><I
+CLASS="APPLICATION"
+>qbiff</I
+> est un petit programme de notification
+d'arrivée de courriel livré avec <I
+CLASS="PRODUCTNAME"
+>qmail</I
+>.
+Il annonce l'arrivée d'un courriel par un bip et un petit message sur le
+terminal;</P
+></LI
+><LI
+><P
+>La directive de redirection (forwarding) se fait par une perluette.
+En fait on peut se passer de la perluette lorsque l'adresse courriel
+commence par une lettre ou un chiffre;</P
+></LI
+><LI
+><P
+>Les nom de boites aux lettres commencent toujours par un point
+suivit immédiatement d'une barre de répertoire
+(<TT
+CLASS="FILENAME"
+>./</TT
+>).
+Il se terminent toujours par une barre de répertoire
+pour les boites au format maildir et jamais pour les boites au format
+mbox. Les boites au format maildir doivent être créées avant d'être
+utilisées au moyen de l'utilitaire
+<I
+CLASS="APPLICATION"
+>maildirmake</I
+> qui fait partie de la
+distribution <I
+CLASS="PRODUCTNAME"
+>qmail</I
+>;</P
+></LI
+></UL
+></P
+><P
+><I
+CLASS="APPLICATION"
+>qmail-local</I
+> exécute les livraisons vers tubes de
+la forme
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>|commande</PRE
+></TD
+></TR
+></TABLE
+>
+
+en écrivant le courriel dans l'entrée standard d'un
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>sh -c commande</PRE
+></TD
+></TR
+></TABLE
+>
+
+exécuté dans le répertoire personnel du destinataire.
+L'entête du courriel ne contient alors pas les champs
+<TT
+CLASS="LITERAL"
+>Return-Path</TT
+> et
+<TT
+CLASS="LITERAL"
+>Delivered-To</TT
+>
+mais <I
+CLASS="APPLICATION"
+>qmail-local</I
+> passe beaucoup d'informations
+par variables d'environnement, par exemple <TT
+CLASS="LITERAL"
+>SENDER</TT
+> et
+<TT
+CLASS="LITERAL"
+>RECIPIENT</TT
+> (voir la page de manuel 
+<TT
+CLASS="LITERAL"
+>qmail-command</TT
+>).
+Pour les commandes qui ne ne prennent pas en
+compte ces variables, comme
+<I
+CLASS="PRODUCTNAME"
+>procmail</I
+> ou
+<I
+CLASS="PRODUCTNAME"
+>formail</I
+> par exemple, il suffit
+d'utiliser le binaire <I
+CLASS="APPLICATION"
+>preline</I
+> livré avec
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+> qui insère 
+les champs <TT
+CLASS="LITERAL"
+>Return-Path</TT
+> et <TT
+CLASS="LITERAL"
+>Delivered-To</TT
+>
+dans le message avant de l'écrire dans l'entrée standard de la commande.
+Par exemple :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>|preline formail -A "Status: RO" | procmail</PRE
+></TD
+></TR
+></TABLE
+>&#13;</P
+><P
+>Je vous conseille fortement de faire un
+«<B
+CLASS="COMMAND"
+>man dot-qmail</B
+>»
+pour en savoir plus sur la syntaxe et les subtilités du format des
+fichiers <TT
+CLASS="FILENAME"
+>.qmail</TT
+>.</P
+><P
+>D'autres binaires peuvent vous être très utiles dans vos
+<TT
+CLASS="FILENAME"
+>.qmail*</TT
+>.
+Jetez un coup d'oeil par exemple à la page de manuel de
+<I
+CLASS="APPLICATION"
+>condredirect</I
+>
+et à celle de <I
+CLASS="APPLICATION"
+>forward</I
+>.</P
+><P
+>Pour effectuer une modification sûre de vos fichiers
+<TT
+CLASS="FILENAME"
+>.qmail*</TT
+>,
+Dan Bernstein recommande de positionner le bit «sticky» sur son
+répertoire personnel par un
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>chmod +t $HOME</PRE
+></TD
+></TR
+></TABLE
+>
+
+pendant la durée de la modification.
+En effet, <I
+CLASS="APPLICATION"
+>qmail-local</I
+> refusera de livrer dans un
+répertoire dont le bit sticky est positionné. Une fois la modification
+effectuée, il vous suffit de désactiver le bit sticky  de votre
+répertoire par un
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>chmod -t $HOME</PRE
+></TD
+></TR
+></TABLE
+>
+
+Le plus simple est de se faire un alias pour son shell favori.
+Par exemple, pour <I
+CLASS="APPLICATION"
+>bash</I
+>, je rajoute la ligne :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>alias edqm='chmod +t ~; &#38;&#38; vi $1 &#38;&#38; chmod -t ~;'</PRE
+></TD
+></TR
+></TABLE
+>
+
+à mon <TT
+CLASS="FILENAME"
+>~/.bash_profile</TT
+>.</P
+><HR
+ALIGN="LEFT"
+WIDTH="515"><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+><A
+HREF="c0402.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+><A
+HREF="book01.html"
+>Page principale</A
+></TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+><A
+HREF="c0404.html"
+>Suivant</A
+></TD
+></TR
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+>Livraison par qmail-local et utilisateur alias</TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+><A
+HREF="c04.html"
+>Niveau précédent</A
+></TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+>Gestion de la file d'attente (à compléter)</TD
+></TR
+></TABLE
+></BODY
+></HTML
+>

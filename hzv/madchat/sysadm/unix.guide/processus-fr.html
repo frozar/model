@@ -1,0 +1,182 @@
+  <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN"
+           "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+
+<head>
+<title>Unix Processes | Translation by eberkut</title>
+</head>
+
+<body>
+
+<b><font face="Verdana" size="2">Processus Unix</font></b>
+<p><font face="Verdana" size="2">Norman Matloff<br>
+Department of Computer Science<br>
+University of California at Davis<br>
+8 November 1999</font>
+<p><font face="Verdana" size="2">Translation by <a href="mailto:eberkut@nexen.net">eberkut</a>
+- <a href="http://www.chez.com/keep">http://www.chez.com/keep</a></font></p>
+<p><b><font face="Verdana" size="2">Sommaire</font></b></p>
+<p><font size="2"><a href="#tth_sEc1"><font face="Verdana">1 Processus Unix</font></a><font face="Verdana"><br>
+<a href="#tth_sEc2">2 Déterminer des informations concernant les processus en
+cours</a><br>
+<a href="#tth_sEc3">3 Processus d'Avant-plan/Arrière-plan</a><br>
+<a href="#tth_sEc4">4 Terminer un processus</a><br>
+</font><align="left">
+</font></p>
+<p><b><a name="tth_sEc1"><font face="Verdana" size="2">1</font></a><font face="Verdana" size="2">&nbsp;&nbsp;Processus
+Unix</font></b></p>
+<p><font face="Verdana" size="2">Un processus est une instance d'un programme en
+fonction. Si, par exemple, 3 personnes font tourner le même programme
+simultanément, il y a 3 processus, pas juste 1. En fait, Nous pourrions avoir
+plus d'un processus en fonction avec seulement une personne exécutant le
+programme, parce que (vous le verrez plus tard) le programme peut couper en 2,
+engendrant 2 processus à partir d'un.</font>
+<p><font face="Verdana" size="2">Gardez à l'esprit que toute commande Unix, par
+exemple cc et ls sont des programmes et ainsi contribues aux processus du
+système lorsqu'ils fonctionnent. Si 10 utilisateurs font fonctionner ls
+maintenant, il y aura 10 processus. A n'importe quel moment, un système Unix
+typique aura beaucoup de processus actifs, dont certains présents depuis la
+première mise sous tension de la machine.</font>
+<p><font face="Verdana" size="2">A chaque fois que vous entrez une commande,
+Unix démarre un nouveau processus, et suspend le processus actuel (C-shell)
+jusqu'à ce que le nouveau processus se termine (excepté dans le cas des
+processus de fond, expliqué plus tard).</font>
+<p><font face="Verdana" size="2">Unix identifie chaque processus par un Process
+Identification Number (PID) qui est assigné au lancement du processus. Quand
+nous voulons exécuter une opération sur un processus, nous nous réferons
+habituellement à lui par son PID.</font>
+<p><font face="Verdana" size="2">Unix est un système à temps partagé, ce qui
+signifie que les processus s'exécutent par cycle. Chaque cycle est appelé un
+timeslice ; sur beaucoup de systèmes il vaut beaucoup moins d'une seconde. La
+raison de l'utilisation de cette approche exécution par cycle est
+l'équitablement : Nous ne voulons attendre le temps d'une tâche de 5 heures
+pour une tâche de 2 secondes, ce qui se produirait si une tâche avait l'unité
+arithmétique de traitement pour lui seul jusqu'à ce qu'il soit terminé.<a href="#tthFtNtAAB">*</a></font>
+<p><b><a name="tth_sEc2"><font face="Verdana" size="2">2</font></a><font face="Verdana" size="2">&nbsp;Déterminer
+des informations sur les processus en cours</font></b></p>
+<p><font face="Verdana" size="2">La commande &quot;ps -x&quot; The `ps -x' liste
+toutes les tâches en cours. Un exemple est :</font>
+<pre><font face="Courier New" size="2">  PID TT STAT  TIME COMMAND
+ 6799 co IW    0:01 -csh[rich] (csh)
+ 6823 co IW    0:00 /bin/sh /usr/bin/X11/startx
+ 6829 co IW    0:00 xinit /usr/lib/X11/xinit/xinitrc --
+ 6830 co S     0:12 X :0
+ 6836 co I     0:01 twm
+ 6837 co I     0:01 xclock -geometry 50x50-1+1
+ 6841 p0 I     0:01 -sh[rich on xterm] (csh)
+ 6840 p1 I     0:01 -sh[rich on xterm] (csh)
+ 6842 p2 S     0:01 -sh[rich on login] (csh)
+ 6847 p2 R     0:00 ps -x</font></pre>
+<p><font face="Verdana" size="2">La signification des noms de ces colonnes est
+la suivante :</font>
+<pre><font face="Courier New" size="2">PID         process identification number
+TT          terminal de contrôle du processus
+STAT        état de la tâche
+TIME        quantité de temps CPU que le processus a utilisé jusqu'ici
+COMMAND     nom de la commande dont est issu le processus </font></pre>
+<p><font face="Verdana" size="2">L'information TT donne le nom du terminal, que
+vous pouvez voir en tapant la commande who. Par exemple, nous lisons p2 dasn la
+colonne TT au-dessus, E.g. we see p2 in the TT column above, ce qui est
+énuméré comme ttyp2 par la commande who.</font>
+<p><font face="Verdana" size="2">L'état de la tâche est donné par une
+séquence de 4 lettres, par exemple, &quot;RWNA&quot;. La première de ces 4
+lettre est généralement une des suivantes :</font>
+<p><font face="Verdana" size="2">R processus en cours<br>
+T processus stoppé<br>
+S processus endormi pour moins de 20 secondes<br>
+I processus en veille (endormi plus de 20 secondes)</font></p>
+<p><font face="Verdana" size="2">Un processus en état R est utilisable, c-a-d&nbsp;
+qu'il peut être utilisé pour effectuer ou attendre son cycle.</font>
+<p><font face="Verdana" size="2">Nous pouvons mettre un processus en état T,
+c-a-d stopper le processus, en entrant ctrl-z. Supposons, par exemple, que
+j'utilise FTP pour prendre des fichiers ou des archives d'un site, et je note un
+fichier appelé README. Je peux utiliser la commande FTP &quot;get&quot; pour
+prendre le fichier README, puis entrer ctrl-z. Cela va stopper (suspendre) le
+processus FTP, et me renvoyer au C-shell. A ce moment je peux lire le fichier
+README, utilisezt &quot;more&quot;, puis ractivé le processus ftp en tapant
+&quot;fg&quot; dans le shell.</font>
+<p><font face="Verdana" size="2">Un exemple typique d'un processus en état S/I
+est l'attendre d'une entrée d'un utilisateur. Si j'utilise l'éditeur Emacs,
+par exemple, le processus ira a l'état S quand il attendra que je tape quelque
+chose ; si je prends plus de 20 secondes à décider quoi taper, le processus
+ira en état I.</font></p>
+<p><b><a name="tth_sEc3"><font face="Verdana" size="2">3</font></a><font face="Verdana" size="2">&nbsp;&nbsp;Processus
+d'Avant-plan/Arrière-plan</font></b></p>
+<p><font face="Verdana" size="2">Supposons que nous voulons exécuter une
+command mais nous ne voulons pas attendre qu'il s'accomplisse, c-a-d nous
+voulons pouvoir entrer d'autres commandes dans le même temps. Nous pouvons le
+faire en spécifiant que la commande doit être exécuté en arrière-plan.</font>
+<p><font face="Verdana" size="2">Il y a 2 manières de le faire. La première
+est de spécifier que ce soit un processus d'arrière-plan lorsque nous
+l'appelons, ce que nous pouvons faire en ajoutant un &quot;&amp;&quot; à la fin
+de la commande. Par exemple, supposons que nous avons un très gros programme,
+que nous allons mettre beaucoup de temps à la compiler. Nous pouvons entrer la
+commande</font>
+<pre><font face="Courier New" size="2">cc bigprog.c &amp;</font></pre>
+<p><font face="Verdana" size="2">Ce qui exécutera la compilation en me laissant
+entrer d'autres commandes pour l'exécution pendant que la compilation se
+poursuit. Le C-shell me permettra de savoir quel est le PID pour ce processus en
+arrière-plan (donc plus tard, je peux le surveiller en utilisant &quot;ps&quot;,
+o le tuer), mais me donnera également ma requête régulière, m'invitant à
+entrer d'autres nouvelles commandes pendant que l'autre fonctionne.<a href="#tthFtNtAAC">*</a></font>
+<p><font face="Verdana" size="2">Mais qu'en est-il des messages d'erreur du
+compilateur ? Nous espérons n'en avoir aucun :-) mais si nous devons en avoir,
+nous ne voulons qu'ils intercède avec les sorties des autres commandes lancées
+pendant que la compilation est exécutée. Pour éviter ceci, nous redirigeons
+les messages d'erreur :</font>
+<pre><font face="Courier New" size="2">cc bigprog.c &gt;&amp; errorlist &amp;</font></pre>
+<p><font size="2"><font face="Verdana">Tous les messages d'erreur seront
+désormais envoyé au fichier &quot;errorlist&quot;, que nous pourrons voir plus
+tard.</font><a href="#tthFtNtAAD"><font face="Verdana">*</font></a></font>
+<p><font face="Verdana" size="2">Un autre bon exemple est quand nous ouvrons une
+fenêtre durant une session X. Nous souhaiterions ouvrir la fenêtre depuis une
+fenêtre existante, mais nous voulons toujours avoir la possibilité d(utiliser
+la fenêtre originale. Nous exécutons la commande</font>
+<pre><font face="Courier New" size="2">xterm &amp;</font></pre>
+<p><font face="Verdana" size="2">Ceci ouvrira une nouvelle fenêtre, and nous
+laissera continuer d'utiliser la fenêtre en cours.</font>
+<p><font face="Verdana" size="2">L'autre méthode pour mettre une tâche en
+arrière-plan est de l'arrêter, en utilisant ctrl-z comme décrit
+précédemment, puis utiliser une autre commande, &quot;bg&quot;, pour mettre le
+processus en arrière-plan.</font>
+<p><font face="Verdana" size="2">Par exemple, supposons que nous lançons notre
+longue compilation,</font>
+<pre><font face="Courier New" size="2">cc bigprog.c</font></pre>
+<p><font face="Verdana" size="2">Mais nous avons oublié de mettre le
+&quot;&amp;&quot;. Nous pouvons taper ctrl-z pour suspendre/stopper la tâche,
+puis taper &quot;bg&quot; pour reprendre la tâche en arrière-plan, nous
+autorisant à soumettre d'autres commandes pendant que la compilation reprend sa
+place. Unix nous dira quand la tâche de fond sera finie, avec un rapport comme</font>
+<pre><font face="Courier New" size="2">[1]    Done                 cc bigprog.c</font></pre>
+<p><font face="Verdana" size="2">Par ailleurs, si vous vous déconnecté, pas de
+problèmes, les processus en arrière-plan que vous avez lancez <u>ne</u> sera <u>pas</u>
+tuer ; ils poursuivront leur travail.</font>
+<p><b><a name="tth_sEc4"><font face="Verdana" size="2">4</font></a><font face="Verdana" size="2">&nbsp;&nbsp;Terminer
+un processus</font></b></p>
+<p><font face="Verdana" size="2">Nous pouvons terminer un processus en utilisant
+la commande &quot;kill&quot;. Nous devons simplement trouver son PID (utilisez
+&quot;ps&quot;), puis taper</font>
+<pre><font face="Courier New" size="2">kill -9 pid</font></pre>
+<p><font face="Verdana" size="2">Si le processus est en avant-plan,
+réfléchissez, la façon la plus facile de le tuer et de simplement taper
+ctrl-C</font>
+<p><b><font face="Verdana" size="2">Notes :</font></b></p>
+<p><font face="Verdana" size="2">* Le mécanisme basique pour configurer les
+cycles est le suivant. La machine aura une pièce de hardware qui enverra des
+impulsions électriques au CPU à des intervalles réguliers et périodiques.
+Ces impulsions forcent le CPU a arrêter le programme en cours, et a passer à
+un autre programme, qui sera le programme du système d'exploitation (Operating
+SYstem, OS). L'OS peut alors déterminer si le timeslice du programme en cours
+est terminé, and si c'est le cas, donner le cycle à un autre programme. Notez
+ici l'interaction hardware (impulsions électriques et la réaction du CPU à
+eux)/Software (l'OS).</font>
+<p><font face="Verdana" size="2">* Gardez à l'esprit qu'il n'y a pas de repas
+gratuit ici. Plus il y aura de processus sur la machine, plus il faudra de
+cycles pour chaque processus, donc le temps réponse global baissera.</font>
+<p><font face="Verdana" size="2">* Cependant, une solution bien meilleure
+consiste à utiliser Emacs, puisque les messages d'erreur seront automatiquement
+placés dans une mémoire tampon spéciale.</font></p>
+
+</body>
+
+</html>

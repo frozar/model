@@ -1,0 +1,1267 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 28. SMTP: Simple Mail Transfer Protocol</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="28_0"><H1><I>SMTP: Simple Mail Transfer Protocol</I></H1></a>
+<a name="28_1"><H3>28.1 Introduction</H3></a>
+<P>
+Electronic mail (e-mail) is undoubtedly one of the
+most popular applications. [Caceres et al. 1991] shows that about
+one-half of all TCP connections are for the <I>Simple Mail Transfer
+Protocol,</I> SMTP. (On a byte count basis, FTP connections carry
+more data.) [Paxson 1993] found that the average mail message
+contains around 1500 bytes of data, but some messages contain
+megabytes of data, because electronic mail is sometimes used to
+send files. Figure 28.1 shows an outline of e-mail exchange using
+TCP/IP.
+<P>
+<CENTER><a name="fig_28_1"><img src="f_28_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_28_1.gif"></a><br>
+<B>Figure 28.1</B> Outline
+of Internet electronic mail.</CENTER>
+<P>
+Users deal with a <I>user agent,</I> of which there
+are a multitude to choose from. Popular user agents for Unix include
+MH, Berkeley Mail, Elm, and Mush.
+<P>
+The exchange of mail using TCP is performed by a
+<I>message transfer agent</I> (MTA). The most common MTA for Unix
+systems is Sendmail. Users normally don't deal with the MTA. It
+is the responsibility of the system administrator to set up the
+local MTA. Users often have a choice, however, for their user
+agent.
+<P>
+This chapter examines the exchange of electronic
+mail between the two MTAs using TCP. We do not look at the operation
+or design of user agents.
+<P>
+RFC 821 [Postel 1982] specifies the SMTP protocol.
+This is how two MTAs communicate with each other across a single
+TCP connection. RFC 822 [Crocker 1982] specifies the format of
+the electronic mail message that is transmitted using RFC 821
+between the two MTAs.
+<a name="28_2"><H3>28.2 SMTP Protocol</H3></a>
+<P>
+The communication between the two MTAs uses NVT ASCII.
+Commands are sent by the client to the server, and the server
+responds with numeric reply codes and optional human-readable
+strings. This is similar to what we saw with FTP in the <a href="ftp_file.htm#27_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ftp_file.htm#27_0">previous
+chapter</a>.
+<P>
+There are a small number of commands that the client
+can send to the server: less than a dozen. (By comparison, FTP
+has more than 40 commands.) Rather than describing each one, we'll
+start with a simple example to show what happens when we send
+mail.
+<H4>Simple Example</H4>
+<P>
+We'll send a simple one-line message and watch the
+SMTP connection. We invoke our user agent with the <TT>-v</TT>
+flag, which is passed to the mail transport agent (Sendmail in
+this case). This MTA displays what is sent and received across
+the SMTP connection when this flag is specified. Lines beginning
+with &gt;&gt;&gt; are commands sent by the SMTP client, and lines
+beginning with a 3-digit reply code are from the SMTP server.
+Here is the interactive session:
+<P>
+<TABLE >
+<TR><TD WIDTH=320><TT>sun % <B>mail -v rstevens@noao.edu</B></TT>
+</TD><TD WIDTH=427><I>invoke our user agent</I>
+</TD></TR>
+<TR><TD WIDTH=320><TT>To: rstevens@noao.edu</TT>
+</TD><TD WIDTH=427><I>this is output by user agent</I>
+</TD></TR>
+<TR><TD WIDTH=320><TT>Subject : <B>testing</B></TT>
+</TD><TD WIDTH=427><I>we're then prompted for a subject</I>
+</TD></TR>
+<TR><TD WIDTH=320></TD><TD WIDTH=427><I>user agent adds one blank line between headers and body</I>
+</TD></TR>
+<TR><TD WIDTH=320><TT><B>1, 2, 3.</B></TT>
+</TD><TD WIDTH=427><I>this is what we type as the body of the message </I>
+</TD></TR>
+<TR><TD WIDTH=320><TT><B>.</B></TT>
+</TD><TD WIDTH=427><I>we type a period on a line by itself to say we're done</I>
+</TD></TR>
+<TR><TD WIDTH=320><TT>Sending letter ... rstevens@noao.edu...</TT>
+</TD><TD WIDTH=427><I>verbose output from user agent</I>
+</TD></TR>
+<TR><TD WIDTH=320></TD><TD WIDTH=387><I>following is output by MTA (Sendmail)</I>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>Connecting to mailhost via ether...</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>Trying 140.252.1.54... connected.</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>220 noao.edu Sendmail 4.1/SAG-Noao.G89 ready at Mon, 19 Jul 93 12:47:34 MST</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>&gt;&gt;&gt; HELO sun.tuc.noao.edu.</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>250 noao.edu Hello sun.tuc.noao.edu., pleased to meet you</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>&gt;&gt;&gt; MAIL From: &lt;rstevens@sun.tuc.noao.edu&gt;</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>250 &lt;rstevens@sun.tuc.noao.edu&gt;... Sender ok</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>&gt;&gt;&gt; RCPT To:&lt;rstevens@noao.edu&gt;</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>250 &lt;rstevens@noao.edu&gt;... Recipient ok</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>&gt;&gt;&gt; DATA</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>354 Enter mail, end with &quot;.&quot; on a line by itself</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>&gt;&gt;&gt; .</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>250 Mail accepted</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>&gt;&gt;&gt; QUIT</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>221 noao.edu delivering mail</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>rstevens@noao.edu... Sent</TT>
+</TD></TR>
+<TR><TD WIDTH=320><TT>sent.</TT></TD><TD WIDTH=427><I>this is output by user agent</I>
+</TD></TR>
+</TABLE>
+<P>
+Only five SMTP commands are used to send the mail:
+HELO, MAIL, RCPT, DATA, and QUIT.
+<P>
+We type <TT>mail</TT> to invoke
+our user agent. We're then prompted for a subject, and after typing
+that, we type the body of the message. Typing a period on a line
+by itself completes the message and the user agent passes the
+mail to the MTA for delivery.
+<P>
+The client does the active open to TCP port 25. When
+this returns, the client waits for a greeting message (reply code
+220) from the server. This server's response must start with the
+fully qualified domain name of the server's host: <TT>noao.edu</TT>
+in this example. (Normally the text that follows the numeric reply
+code is optional. Here the domain name is required. The text beginning
+with <TT>Sendmail</TT> is optional.)
+<P>
+Next the client identifies itself with the HELO command.
+The argument must be the fully qualified domain name of the client
+host: <TT>sun.tuc.noao.edu</TT>.
+<P>
+The MAIL command identifies the originator of the
+message. The next command, RCPT, identifies the recipient. More
+than one RCPT command can be issued if there are multiple recipients.
+<P>
+The contents of the mail message are sent by the
+client using the DATA command. The end of the message is specified
+by the client sending a line containing just a period. The final
+command, QUIT, terminates the mail exchange.
+<P>
+Figure 28.2 is a time line of the SMTP connection
+between the sender SMTP (the client) and the receiver SMTP (the
+server). We have removed the connection establishment and termination,
+and the window size advertisements.
+<P>
+The amount of data we typed to our user agent was
+a one-line message (&quot;1, 2, 3.&quot;), yet 393 bytes of data
+are sent in segment 12. The following 12 lines comprise the 393
+bytes that are sent by the client:
+<P>
+<TT>Received: by sun.tuc.noao.edu. (4.1/SMI-4.1)
+<BR>
+id AA00502; Mon, 19 Jul 93 12:47:32 MST<BR>
+Message-Id: &lt;9307191947.AAO0502@sun.tuc.noao.edu.&gt;<BR>
+From: rstevens@sun.tuc.noao.edu (Richard Stevens)<BR>
+Date: Mon, 19 Jul 1993 12:47:31 -0700<BR>
+Reply-To: rstevens@noao.edu<BR>
+X-Phone: +1 602 676 1676<BR>
+X-Mailer: Mail User's Shell (7.2.5 10/14/92)<BR>
+To: rstevens@noao.edu<BR>
+Subject: testing</TT>
+<P>
+<TT>1, 2, 3.</TT>
+<P>
+<CENTER><a name="fig_28_2"><img src="f_28_2.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_28_2.gif"></a><br>
+<B>Figure 28.2</B> Basic
+SMTP mail delivery.</CENTER>
+<P>
+The first three lines, <TT>Received:</TT>
+and <TT>Message-Id:</TT>, are added by the
+MTA, and the next nine are generated by the user agent.
+<H4>SMTP Commands</H4>
+<P>
+The minimal SMTP implementation supports eight commands.
+We saw five of them in the previous example: HELO, MAIL, RCPT,
+DATA, and QUIT.
+<P>
+The RSET command aborts the current mail transaction
+and causes both ends to reset. Any stored information about sender,
+recipients, or mail data is discarded.
+<P>
+The VRFY command lets the client ask the sender to
+verify a recipient address, without sending mail to the recipient.
+It's often used by a system administrator, by hand, for debugging
+mail delivery problems. We'll show an example of this in the <a href="#28_3">next
+section</a>.
+<P>
+The NOOP command does nothing besides force the server
+to respond with an OK reply code (200).
+<P>
+There are additional, optional commands. EXPN expands
+a mailing list, and is often used by the system administrator,
+similar to VRFY. Indeed, most versions of Sendmail handle the
+two identically.
+<P>
+<FONT SIZE=-1>Version 8 of Sendmail in 4.4BSD no longer handles
+the two identically. VRFY does not expand aliases and doesn't
+follow <TT>.forward</TT> files.</FONT>
+<P>
+The TURN command lets the client and server switch
+roles, to send mail in the reverse direction, without having to
+take down the TCP connection and create a new one. (Sendmail does
+not support this command.) There are three other commands (SEND,
+SOML, and SAML), which are rarely implemented, that replace the
+MAIL command. These three allow combinations of the mail being
+delivered directly to the user's terminal (if logged in), or sent
+to the recipient's mailbox.
+<H4>Envelopes, Headers, and Body</H4>
+<P>
+Electronic mail is composed of three pieces.
+<P>
+<OL>
+<LI>The <I>envelope</I> is used by the MTAs for delivery.
+In our example the envelope was specified by the two SMTP commands:
+<P>
+<tt>MAIL From: &lt;rstevens@sun.tuc.noao.edu&gt;<BR>
+RCPT To:&lt;rstevens@noao.edu&gt;</tt>
+<P>
+RFC 821 specifies the contents and interpretation
+of the envelope, and the protocol used to exchange mail across
+a TCP connection.
+<P>
+<LI><I>Headers</I> are used by the user agents. We
+saw nine header fields in our example: <TT>Received</TT>,
+<TT>Message-Id</TT>, <TT>From</TT>,
+<TT>Date</TT>, <TT>Reply-To</TT>,
+<TT>X-Phone</TT>, <TT>X-Mailer</TT>,
+<TT>To</TT>, and <TT>Subject</TT>.
+Each header field contains a name, followed by a colon, followed
+by the field value. RFC 822 specifies the format and interpretation
+of the header fields. (Headers beginning with an X- are user-defined
+fields. The others are defined by RFC 822.) Long header fields,
+such as Received in the example, are folded onto multiple lines,
+with the additional lines starting with white space.
+<P>
+<LI>The <I>body is</I> the content of the message
+from the sending user to the receiving user. RFC 822 specifies
+the body as lines of NVT ASCII text. When transferred using the
+DATA command, the headers are sent first, followed by a blank
+line, followed by the body. Each line transferred using the DATA
+command must be less than 1000 bytes.
+</OL>
+<P>
+The user agent takes what we specify as the body,
+adds some headers, and passes the result to the MTA. The MTA adds
+a few headers, adds the envelope, and sends the result to another
+MTA.
+<P>
+The term <I>content</I> is often used to describe
+the combination of headers and the body. The content is sent by
+the client with the DATA command.
+<H4>Relay Agents</H4>
+<P>
+The first line of informational output by our local
+MTA in our example is &quot;Connecting to mailhost via ether.&quot;
+This is because the author's system has been configured to send
+all nonlocal outgoing mail to a relay machine for delivery.
+<P>
+This is done for two reasons. First, it simplifies
+the configuration of all MTAs other than the relay system's MTA.
+(Configuring an MTA is not simple, as anyone who has ever worked
+with Sendmail can attest to.) Second, it allows one system at
+an organization to act as the mail hub, possibly hiding all the
+individual systems.
+<P>
+In this example the relay system has a hostname of
+mailhost in the local domain (<TT>.tuc.noao.edu</TT>)
+and all the individual systems are configured to send their mail
+to this host. We can execute the host command to see how this
+name is defined to the DNS:
+<P>
+<TABLE >
+<TR><TD WIDTH=245><TT>sun % <B>host mailhost</B></TT>
+</TD><TD WIDTH=71></TD><TD WIDTH=142></TD><TD WIDTH=142></TD>
+</TR>
+<TR><TD WIDTH=245><TT>mailhost.tuc.noao.edu</TT></TD><TD WIDTH=71><TT>CNAME</TT>
+</TD><TD WIDTH=142><TT>noao.edu</TT></TD><TD WIDTH=142><I>canonical name</I>
+</TD></TR>
+<TR><TD WIDTH=245><TT>noao.edu</TT></TD><TD WIDTH=71><TT>A</TT>
+</TD><TD WIDTH=142><TT>140.252.1.54</TT></TD><TD WIDTH=142><I>its real IP address</I>
+</TD></TR>
+</TABLE>
+<P>
+If the host used as the relay changes in the future,
+only its DNS name need change-the mail configuration of all the
+individual systems does not change.
+<P>
+Most organizations are using relay systems today.
+Figure 28.3 is a revised picture of Internet mail (<a href="#fig_28_2">Figure 28.2</a>),
+taking into account that both the sending host and the final receiving
+host probably use a relay host.
+<P>
+<CENTER><a name="fig_28_3"><img src="f_28_3.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_28_3.gif"></a><br>
+<B>Figure 28.3</B> Internet
+electronic mail, with a relay system at both ends.</CENTER>
+<P>
+In this scenario there are four MTAs between the
+sender and receiver. The local MTA on the sender's host just delivers
+the mail to its relay MTA. (This relay MTA could have a hostname
+of <TT>mailhost</TT> in the organization's
+domain.) This communication uses SMTP across the organization's
+local internet. The relay MTA in the sender's organization then
+sends the mail to the receiving organization's relay MTA across
+the Internet. This other relay MTA then delivers the mail to the
+receiver's host, by communication with the local MTA on the receiver's
+host. All the MTAs in this example use SMTP, although the possibility
+exists for other protocols to be used.
+<H4>NVT ASCII</H4>
+<P>
+One feature of SMTP is that it uses NVT ASCII for
+everything: the envelope, the headers, and the body. As we said
+in <a href="telnet.htm#26_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/telnet.htm#26_4">Section 26.4</a>, this is a 7-bit character code, transmitted as
+8-bit bytes, with the high-order bit set to 0.
+<P>
+In <a href="#28_4">Section 28.4</a> we discuss some newer features of
+Internet mail, extended SMTP and multimedia mail (MIME), that
+allow the sending and receiving of data such as audio and video.
+We'll see that MIME works with NVT ASCII for the envelope, headers,
+and body, with changes required only in the user agents.
+<H4>Retry Intervals</H4>
+<P>
+When a user agent passes a new mail message to its
+MTA, delivery is normally attempted immediately. If the delivery
+fails, the MTA must queue the message and try again later.
+<P>
+The Host Requirements RFC recommends an initial timeout
+of at least 30 minutes. The sender should not give up for at least
+4-5 days. Furthermore, since delivery failures are often transient
+(the recipient has crashed or there is a temporary loss of network
+connectivity), it makes sense to try two connection attempts during
+the first hour that the message is in the queue.
+<a name="28_3"><H3>28.3 SMTP Examples</H3></a>
+<P>
+We showed normal mail delivery in the <a href="#28_2">previous section</a>,
+so here we'll show how MX records are used for mail delivery,
+and illustrate the VRFY and EXPN commands.
+<H4>MX Records: Hosts Not Directly Connected to the Internet</H4>
+<P>
+In <a href="dns_the.htm#14_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dns_the.htm#14_6">Section 14.6</a> we mentioned that one type of resource
+record in the DNS is the mail exchange record, called MX records.
+In the following example we'll show how MX records are used to
+send mail to hosts that are not directly connected to the Internet.
+RFC 974 [Partridge 1986] describes the handling of MX records
+by MTAs.
+<P>
+The host <TT>mlfarm.com</TT>
+is not directly connected to the Internet, but has an MX record
+that points to a mail forwarder that is on the Internet:
+<P>
+<TABLE >
+<TR><TD COLSPAN=5 WIDTH=727><TT>sun % host -a-v-t mx mlfarm.com</TT>
+</TD></TR>
+<TR><TD COLSPAN=5 WIDTH=727><TT>The following answer is not authoritative:</TT>
+</TD></TR>
+<TR><TD WIDTH=173><TT>mlfarm.com</TT></TD><TD WIDTH=114><TT>86388</TT>
+</TD><TD WIDTH=114><TT>IN</TT></TD><TD WIDTH=114><TT>MX</TT></TD>
+<TD WIDTH=211><TT>10 mercury.hsi.com</TT></TD></TR>
+<TR><TD WIDTH=173><TT>mlfarm.com</TT></TD><TD WIDTH=114><TT>86388</TT>
+</TD><TD WIDTH=114><TT>IN</TT></TD><TD WIDTH=114><TT>MX</TT></TD>
+<TD WIDTH=211><TT>15 hsi86.hsi.com</TT></TD></TR>
+<TR><TD COLSPAN=5 WIDTH=727><TT>Additional information:</TT></TD>
+</TR>
+<TR><TD WIDTH=173><TT>mercury.hsi.com</TT></TD><TD WIDTH=114><TT>86388</TT>
+</TD><TD WIDTH=114><TT>IN</TT></TD><TD WIDTH=114><TT>A</TT></TD>
+<TD WIDTH=211><TT>143.122.1.91</TT></TD></TR>
+<TR><TD WIDTH=173><TT>hsi86.hsi.com</TT></TD><TD WIDTH=114><TT>172762</TT>
+</TD><TD WIDTH=114><TT>IN</TT></TD><TD WIDTH=114><TT>A</TT></TD>
+<TD WIDTH=211><TT>143.122.1.6</TT></TD></TR>
+</TABLE>
+<P>
+There are two MX records, each with a different preference.
+We expect the MTA to start with the lower of the two preference
+values.
+<P>
+The following script shows mail being sent to this
+host:
+<P>
+<TABLE >
+<TR><TD WIDTH=364><TT>sun % <B>mail -v ron@mlf arm.com</B></TT>
+</TD><TD WIDTH=363><I>-v flag to see what the MTA does</i>
+</TD></TR>
+<TR><TD WIDTH=364><TT>To: ron@mlf arm.com</TT>
+</TD><TD WIDTH=363></TD></TR>
+<TR><TD WIDTH=364><TT>Subject: <B>MX test message</B></TT>
+</TD><TD WIDTH=363></TD></TR>
+<TR><TD WIDTH=364></TD><TD WIDTH=363><I>the body of the message is typed here (not shown) period on a line by itself to terminate message</I>
+</TD></TR>
+<TR><TD WIDTH=364><TT>Sending letter ... ron@mlfarm.com...</TT>
+</TD><TD WIDTH=363></TD></TR>
+<TR><TD WIDTH=364><TT>Connecting to mlfarm.com via tcp</TT>
+</TD><TD WIDTH=363></TD></TR>
+<TR><TD WIDTH=364><TT>... mail exchanger is mercury.hsi.com</TT>
+</TD><TD WIDTH=363><I>the MX records are found</I>
+</TD></TR>
+<TR><TD WIDTH=364><TT>Trying 143.122.1.91... connected.</TT>
+</TD><TD WIDTH=363><I>First tries the one with lower preference</I>
+</TD></TR>
+<TR><TD WIDTH=364><TT>220 mercury.hsi.com ...</TT>
+</TD><TD WIDTH=363><I>remainder is normal SMTP mail transfer</I>
+</TD></TR>
+</TABLE>
+<P>
+We can see in this output that the MTA discovered
+that the destination host had an MX record and used the MX record
+with the lowest preference value.
+<P>
+Before running this example from the host sun, it
+was configured not to use its normal relay host, so we could see
+the mail exchange with the destination host. It was also configured
+to use the name server on the host <TT>noao.edu</TT>
+(which is across its dialup SLIP link), so we could capture both
+the mail transfer and the DNS traffic using tcpdump on the SLIP
+link. Figure 28.4 shows the starting portion of the <TT>tcpdump</TT>
+output.
+<P>
+<CENTER>
+<a name="fig_28_4"><TABLE ></a>
+<TR><TD WIDTH=20><TT>1</TT></TD><TD WIDTH=174><TT>0.0</TT>
+</TD><TD WIDTH=525><TT>sun.1624 &gt; noao.edu.53: 2+ MX? mlfarm.com. (28)</TT>
+</TD></TR>
+<TR><TD WIDTH=20><TT>2</TT></TD><TD WIDTH=174><TT>0.445572 (0.4456)</TT>
+</TD><TD WIDTH=525><TT>noao.edu.53 &gt; sun.1624: 2* 2/0/2 MX mercury.hsi.com. 10 (113)</TT>
+</TD></TR>
+<TR><TD WIDTH=20><TT>3</TT></TD><TD WIDTH=174><TT>0.505739 (0.0602)</TT>
+</TD><TD WIDTH=525><TT>sun.1143 &gt; mercury.hsi.com.25: S 1617536000:1617536000(0) win 4096</TT>
+</TD></TR>
+<TR><TD WIDTH=20><TT>4</TT></TD><TD WIDTH=174><TT>0.985428 (0.4797)</TT>
+</TD><TD WIDTH=525><TT>mercury.hsi.com.25 &gt; sun.1143: S 1832064000:1832064000(0) ack 1617536001 win 16384</TT>
+</TD></TR>
+<TR><TD WIDTH=20><TT>5</TT></TD><TD WIDTH=174><TT>0.986003 (0.0006)</TT>
+</TD><TD WIDTH=525><TT>sun.1143 &gt; mercury.hsi.com.25: . ack 1 win 4096</TT>
+</TD></TR>
+<TR><TD WIDTH=20><TT>6</TT></TD><TD WIDTH=174><TT>1.735360 (0.7494)</TT>
+</TD><TD WIDTH=525><TT>mercury.hsi.com.25 &gt; sun.1143: P 1:90(89) ack 1 win 16384</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 28.4</B> Sending
+mail to a host that uses MX records.</CENTER>
+<P>
+In line 1 the MTA queries its name server for an
+MX record for <TT>mlfarm.com</TT>. The plus
+sign following the 2 means the recursion-desired flag is set.
+The response in line 2 has the authoritative bit set (the asterisk
+following the 2) and contains 2 answer RRs (the two MX host names),
+0 authority RRs, and 2 additional RRs (the IP addresses of the
+two hosts).
+<P>
+In lines 3-5 a TCP connection is established with
+the SMTP server on the host <TT>mercury.hsi.com</TT>.
+The server's initial 220 response is shown in line 6.
+<P>
+Somehow the host <TT>mercury.hsi.com</TT>
+must deliver this mail message to the destination, <TT>mlfarm.com</TT>.
+The UUCP protocols are a popular way for a system not connected
+to the Internet to exchange mail with its MX site.
+<P>
+In this example the MTA asks for an MX record, gets
+a positive result, and sends the mail. Unfortunately the interaction
+between an MTA and the DNS can differ between implementations.
+RFC 974 specifies that an MTA should ask for MX records first,
+and if none are found, attempt delivery to the destination host
+(i.e., ask the DNS for an A record for the host, for its IP address).
+MTAs must also deal with CNAME records in the DNS (canonical names).
+<P>
+As an example, if we send mail to <TT>rstevens@mailhost.tuc.noao.edu</TT>
+from a BSD/386 host, the following steps are executed by the MTA
+(Sendmail).
+<P>
+<OL>
+<LI>Sendmail asks the DNS for CNAME records for <TT>mailhost.tuc.noao.edu</TT>.
+We see that a CNAME record exists:
+<P>
+<TT>sun % <B>host -t cname mailhost.tuc.noao.edu
+<BR>
+</B>mailhost.tuc.noao.edu CNAME noao.edu</TT>
+<P>
+<LI>A DNS query is issued for CNAME records for <TT>noao.edu</TT>
+and the response says none exist.
+<P>
+<LI>Sendmail then asks the DNS for MX records for
+<TT>noao.edu</TT> and gets one MX record:
+<P>
+<TT>sun % <B>host -t mx noao.edu
+<BR>
+</B>noao.edu MX noao.edu</TT>
+<P>
+<LI>Sendmail queries the DNS for an A record (IP address)
+for <TT>noao.edu</TT> and gets back the value
+140.252.1.54. (This A record was probably returned by the name
+server for <TT>noao.edu</TT> as an additional
+RR with the MX reply in step 3.)
+<P>
+<LI>An SMTP connection is initiated to 140.252.1.54
+and the mail is sent.
+</OL>
+<P>
+A CNAME query is not tried for the data returned
+in the MX record (<TT>noao.edu</TT>). The
+data in the MX record cannot be an alias-it must be the name of
+a host that has an A record.
+<P>
+<FONT SIZE=-1>The version of Sendmail distributed with SunOS 4.1.3
+that uses the DNS only queries for MX records, and gives up if
+an MX record isn't found.</FONT>
+<H4>MX Records: Hosts That Are Down</H4>
+<P>
+Another use of MX records is to provide an alternative
+mail receiver when the destination host is down. If we look at
+the DNS entry for our host sun we see that it has two MX records:
+<P>
+<TABLE >
+<TR><TD COLSPAN=5 WIDTH=727><TT>sun % <B>host -a-v-t mx sun.tuc.noao.edu</B></TT>
+</TD></TR>
+<TR><TD WIDTH=144><TT>sun.tuc.noao.edu</TT></TD><TD WIDTH=107><TT>86400</TT>
+</TD><TD WIDTH=107><TT>IN</TT></TD><TD WIDTH=107><TT>MX</TT></TD>
+<TD WIDTH=263><TT>0 sun.tuc.noao.edu</TT></TD></TR>
+<TR><TD WIDTH=144><TT>sun.tuc.noao.edu</TT></TD><TD WIDTH=107><TT>86400</TT>
+</TD><TD WIDTH=107><TT>IN</TT></TD><TD WIDTH=107><TT>MX</TT></TD>
+<TD WIDTH=263><TT>10 noao.edu</TT></TD></TR>
+<TR><TD COLSPAN=5 WIDTH=727><TT>Additional information:</TT></TD>
+</TR>
+<TR><TD WIDTH=144><TT>sun.tuc.noao.edu</TT></TD><TD WIDTH=107><TT>86400</TT>
+</TD><TD WIDTH=107><TT>IN</TT></TD><TD WIDTH=107><TT>A</TT></TD>
+<TD WIDTH=263><TT>140.252.1.29</TT></TD></TR>
+<TR><TD WIDTH=144><TT>sun.tuc.noao.edu</TT></TD><TD WIDTH=107><TT>86400</TT>
+</TD><TD WIDTH=107><TT>IN</TT></TD><TD WIDTH=107><TT>A</TT></TD>
+<TD WIDTH=263><TT>140.252.13.33</TT></TD></TR>
+<TR><TD WIDTH=144><TT>noao.edu</TT></TD><TD WIDTH=107><TT>86400</TT>
+</TD><TD WIDTH=107><TT>IN</TT></TD><TD WIDTH=107><TT>A</TT></TD>
+<TD WIDTH=263><TT>140.252.1.54</TT></TD></TR>
+</TABLE>
+<P>
+The MX record with the lowest preference indicates
+that direct delivery to the host itself should be tried first,
+and the next preference is to deliver the mail to the host <TT>noao.edu</TT>.
+<P>
+In the following script we send mail to ourself at
+the host <TT>sun.tuc.noao.edu</TT>, from the
+host <TT>vangogh.cs.berkeley.edu</TT>, after
+turning off the destination's SMTP server. When a connection request
+arrives for port 25, TCP should respond with an RST, since no
+process has a passive open pending for that port.
+<P>
+<TABLE >
+<TR><TD COLSPAN=2 WIDTH=727><TT>vangogh % <B>mail -v rstevens@sun.tuc.noao.edu</B></TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT><B>A test to a host that's down.</B></TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>EOT</TT></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>rstevens@sun.tuc.noao.edu... Connecting to sun.tuc.noao.edu. (smtp)...</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>rstevens@sun.tuc.noao.edu... Connecting to noao.edu. (smtp)...</TT>
+</TD></TR>
+<TR><TD WIDTH=364><TT>220 noao.edu</TT></TD><TD WIDTH=363><I>remainder is normal SMTP mail transfer</I>
+</TD></TR>
+</TABLE>
+<P>
+We see that the MTA tries to contact <TT>sun.tuc.noao.edu</TT>
+and then gives up and contacts <TT>noao.edu</TT>
+instead.
+<P>
+Figure 28.5 is the <TT>tcpdump</TT>
+output that shows that TCP responds to the incoming SYNs with
+an RST.
+<P>
+<CENTER>
+<a name="fig_28_5"><TABLE ></a>
+<TR><TD WIDTH=33>1</TD><TD WIDTH=173><TT>0.0</TT>
+</TD><TD WIDTH=521><TT>vangogh.3873 &gt; 140.252.1.29.25: S 2358303745:2358303745(0) ...</TT>
+</TD></TR>
+<TR><TD WIDTH=33>2</TD><TD WIDTH=173><TT>0.000621 (0.0006)</TT>
+</TD><TD WIDTH=521><TT>140.252.1.29.25 &gt; vangogh.3873: R 0:0(0) ack 2358303746 win 0</TT>
+</TD></TR>
+<TR><TD WIDTH=33>3</TD><TD WIDTH=173><TT>0.300203 (0.2996)</TT>
+</TD><TD WIDTH=521><TT>vangogh.3874 &gt; 140.252.13.33.25: S 2358367745:2358367745(0) ...</TT>
+</TD></TR>
+<TR><TD WIDTH=33>4</TD><TD WIDTH=173><TT>0.300620 (0.0004)</TT>
+</TD><TD WIDTH=521><TT>140.252.13.33.25 &gt; vangogh.3874; R 0:0(0) ack 2358367746 win 0</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 28.5</B> Attempt
+to connect to an SMTP server that is not running.</CENTER>
+<P>
+In line 1 <TT>vangogh</TT> sends
+a SYN to port 25 at the primary IP address for <TT>sun</TT>:
+140.252.1.29. This is rejected in line 2. The SMTP client on <TT>vangogh</TT>
+then tries the next IP address for <TT>sun</TT>:
+140.252.13.33 (line 3), and it also causes an RST to be returned
+(line 4).
+<P>
+The SMTP client doesn't try to differentiate between
+the different error returns from its active open on line 1, which
+is why it tries the other IP address on line 3. If the error had
+been something like &quot;host unreachable&quot; for the first
+attempt, it's possible that the second attempt could work.
+<P>
+If the reason the SMTP client's active open fails
+is because the server host is down, we would see the client retransmit
+the SYN to IP address 140.252.1.29 for a total of 75 seconds (similar
+to <a href="tcp_conn.htm#fig_18_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#fig_18_6">Figure 18.6</a>), followed by the client sending another three
+SYNs to IP address 140.252.13.33 for another 75 seconds. After
+150 seconds the client would move on to the next MX record with
+the higher preference.
+<H4>VRFY and EXPN Commands</H4>
+<P>
+The VRFY command verifies that a recipient address
+is OK, without actually sending mail. EXPN is intended to expand
+a mailing list, without sending mail to the list. Many SMTP implementations
+(such as Sendmail) consider the two the same, but we mentioned
+that newer versions of Sendmail do differentiate between the two.
+<P>
+As a simple test we can connect to a newer version
+of Sendmail and see the difference. (We have removed the extraneous
+Telnet client output.)
+<P>
+<TT>sun % <B>telnet vangogh.cs.berkeley.edu
+25<BR>
+</B>220-vangogh.CS. Berkeley. EDU Sendmail 8.1C/6.32 ready
+at Tue, 3 Aug 1993 14: 59:12 -0700<BR>
+220 ESMTP spoken here</TT>
+<P>
+<TT><B>helo bsdi.fcuc.noao.edu
+<BR>
+</B>250 vangogh.CS.Berkeley.EDU Hello sun.tuc.noao.edu
+[140.252.1.29], pleased to meet you</TT>
+<P>
+<TT><B>vrfy nosuchname<BR>
+</B>550 nosuchname... User unknown</TT>
+<P>
+<TT><B>vrfy rstevens<BR>
+</B>250 Richard Stevens &lt;rstevens@vangogh.CS.Berkeley.EDU&gt;</TT>
+<P>
+<TT><B>expn rstevens<BR>
+</B>250 Richard Stevens &lt;rstevens@noao.edu&gt;</TT>
+<P>
+First notice that we purposely typed the wrong hostname
+on the HELO command: <TT>bsdi</TT> instead
+of <TT>sun</TT>. Most SMTP servers take the
+IP address of the client and perform a DNS pointer query (<a href="dns_the.htm#14_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dns_the.htm#14_5">Section 14.5</a>)
+and compare the hostnames. This allows the server to log
+the client connection based on the IP address, not the name that
+a user might have mistyped. Some servers respond with humorous
+messages, such as &quot;You are a charlatan,&quot; or &quot;why
+do you call yourself...&quot;. We see in this example that this
+server just prints our real domain name from the pointer query
+along with our IP address.
+<P>
+We then type a VRFY command for an invalid name,
+and the server responds with a 550 error. Next we type a valid
+name, and the server responds with the usemame on the local host.
+Next we try the EXPN command and get a different response. The
+EXPN command determines that the mail for this user is being forwarded,
+and prints the forwarding address.
+<P>
+Many sites disable the VRFY and EXPN commands, sometimes
+for privacy, and sometimes in the belief that it's a security
+hole. For example, we can try these commands with the SMTP server
+at the White House:
+<P>
+<TT>sun % <B>telnet whitehouse.gov
+25<BR>
+</B>220 whitehouse.gov SMTP/smap Ready.</TT>
+<P>
+<TT><B>helo aun.tuc.noao.edu<BR>
+</B>250 (sun.tuc.noao.edu) pleased to meet you.</TT>
+<P>
+<TT><B>vrfy Clinton<BR>
+</B>500 Command unrecognized</TT>
+<P>
+<TT><B>expn Clinton<BR>
+</B>500 Command unrecognized</TT>
+<a name="28_4"><H3>28.4 SMTP Futures</H3></a>
+<P>
+Changes are taking place with Internet mail. Recall
+the three pieces that comprise Internet mail: the envelope, headers,
+and body. New SMTP commands are being added that affect the envelope,
+non-ASCII characters can be used in the headers, and structure
+is being added to the body (MIME). In this section we consider
+the extensions to each of these three pieces in order.
+<H4>Envelope Changes: Extended SMTP</H4>
+<P>
+RFC 1425 [Klensin et al. 1993a] defines the framework
+for adding extensions to SMTP. The result is called <I>extended
+SMTP</I> (ESMTP). As with other new features that we've described
+in the text, these changes are being added in a backward compatible
+manner, so that existing implementations aren't affected.
+<P>
+A client that wishes to use the new features initiates
+the session with the server by issuing a EHLO command, instead
+of HELO. A compatible server responds with a 250 reply code. This
+reply is normally multiline, with each line containing a keyword
+and an optional argument. These keywords specify the SMTP extensions
+supported by the server. New extensions will be described in an
+RFC and will be registered with the IANA. (In a multiline reply
+all lines except the last have a hyphen after the numeric reply
+code. The last line has a space after the numeric reply code.)
+<P>
+We'll show the initial connection to four SMTP servers,
+three of which support extended SMTP. We connect to them using
+Telnet, but have removed the extraneous Telnet client output.
+<P>
+<TT>sun % <B>telnet vangogh.cs.berkeley.edu
+25<BR>
+</B>220-vangogh.CS.Berkeley.EDU Sendmail 8.1C/6.32 ready
+at Mon, 2 Aug 1993 15: 47:48 -0700<BR>
+220 ESMTP spoken here</TT>
+<P>
+<TT><B>ehlo sun.tuc.noao.edu<BR>
+</B>250-vangogh.CS.Berkeley.EDU Hello sun.tuc.noao.edu
+[140.252.1.29], pleased to meet you<BR>
+250-EXPN<BR>
+250-SIZE<BR>
+250 HELP</TT>
+<P>
+This server gives a multiline 220 reply for its greeting
+message. The extended commands listed in the 250 reply to the
+EHLO command are EXPN, SIZE, and HELP The first and last are from
+the original RFC 821 specification, but they are optional commands.
+ESMTP servers state which of the optional RFC 821 commands they
+support, in addition to newer commands.
+<P>
+The SIZE keyword that this server supports is defined
+in RFC 1427 [Klensin, Freed, and Moore 1993]. It lets the client
+specify the size of the message in bytes on the MAIL FROM command
+line. This lets the server verify that it will accept a message
+of that size, before the client starts to send it. This command
+was added since the size of Internet mail messages is growing,
+with the support for message content other than ASCII lines (i.e.,
+images, audio, etc.).
+<P>
+The next host also supports ESMTP. Notice that the
+250 reply specifying that the SIZE keyword is supported contains
+an optional argument. This indicates that this server will accept
+a message size up to 461 Mbytes.
+<P>
+<TT>sun % <B>telnet ymir.claremont.edu
+25<BR>
+</B>220 ymir.claremont.edu -- Server SMTP (PMDF V4.2-13
+#4220)</TT>
+<P>
+<TT><B>ehlo sun.tuc.noao.edu<BR>
+</B>250-ymir.claremont.edu<BR>
+250-8BITMIME<BR>
+250-EXPN<BR>
+250-HELP<BR>
+250-XADR<BR>
+250 SIZE 461544960</TT>
+<P>
+The keyword 8BITMIME is from RFC 1426 [Klensin et
+al. 1993b]. This allows the client to add the keyword BODY to
+the MAIL FROM command, specifying whether the body contains NVT
+ASCII characters (the default) or 8-bit data. Unless the client
+receives the 8BITMIME keyword from the server in response to a
+EHLO command, the client is forbidden from sending any characters
+other than NVT ASCII. (When we talk about MIME in this section,
+we'll see that an 8-bit SMTP transport is <I>not</I> required
+by MIME.)
+<P>
+This server also advertises the XADR keyword. Any
+keyword that begins with an X refers to a local SMTP extension.
+<P>
+The next server also supports ESMTP, advertising
+the HELP and SIZE keywords that we've already seen. It also supports
+three local extensions that begin with an X.
+<P>
+<TT>sun % <B>telnet dbc.mtview.ca.us
+25<BR>
+</B>220 dbc.mtview.ca.us Sendmail 5.65/3.1.090690, it's
+Mon, 2 Aug 93 15:48:50 -0700</TT>
+<P>
+<TT><B>ehlo sun. tuc.noao.edu
+<BR>
+</B>250-Hello sun.tuc.noao.edu, pleased to meet you<BR>
+250-HELP<BR>
+250-SIZE<BR>
+250-XONE<BR>
+250-XVRB<BR>
+250 XQUE</TT>
+<P>
+Finally we see what happens when the client tries
+to use ESMTP by issuing the EHLO command to a server that doesn't
+support it.
+<P>
+<TT>sun % <B>telnet relay1.uu.net
+25<BR>
+</B>220 relay1.UU.NET Sendmail 5.61/UUNET-internet-primary
+ready at Mon, 2 Aug 93 18:50:27 -0400</TT>
+<P>
+<TT><B>ehlo sun.tuc.noao.edu<BR>
+</B>500 Command unrecognized</TT>
+<P>
+<TT><B>rset<BR>
+</B>250 Reset state</TT>
+<P>
+Instead of receiving a 250 reply to the EHLO command,
+the client receives a 500 reply. The client should then issue
+the RSET command, followed by a HELO command.
+<H4>Header Changes: Non-ASCII Characters</H4>
+<P>
+RFC 1522 [Moore 1993] specifies a way to send non-ASCII
+characters in RFC 822 message headers. The main use of this is
+to allow additional characters in the sender and receiver names,
+and in the subject. The header fields can contain encoded words.
+They have the following format:
+<P>
+<TT>=?</TT> <I>charset</I> <TT>?</TT>
+<I>encoding</I> <TT>?</TT> <I>encoded-text</I>
+<TT>?=</TT>
+<P>
+<I>charset</I> is the character
+set specification. Valid values are the two strings <TT>us-ascii</TT>
+and <TT>iso-8859-X</TT>, where X is a single
+digit, as in <TT>iso-8859-1</TT>.
+<P>
+<I>encoding</I> is a single character
+to specify the encoding method. Two values are supported.
+<P>
+<OL>
+<LI>Q encoding means <I>quoted-printable,</I> and
+is intended for Latin character sets. Most characters are sent
+as NVT ASCII (with the high-order bit set to 0, of course). Any
+character to be sent whose eighth bit is set is sent instead as
+three characters: first the character =, followed by two hexadecimal
+digits. For example, the character *e* (whose binary 8-bit value
+is <TT>0xe9</TT>) is sent as the three characters
+<TT>=E9</TT>. Spaces are always sent as either
+an underscore or the three characters =20. This encoding is intended
+for text that is mostly ASCII, with a few special characters.
+<P>
+<LI>B means base-64 encoding. Three consecutive bytes
+of text (24 bits) are encoded as four 6-bit values. The 64 NVT
+ASCII characters used to represent each of the possible 6-bit
+values are shown in Figure 28.6.
+<P>
+<CENTER>
+<a name="fig_28_6"><TABLE BORDER=1></a>
+<TR><TD WIDTH=60><CENTER>6-bit value</CENTER></TD><TD WIDTH=60><CENTER>ASCII char
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>6-bit value
+</CENTER></TD><TD WIDTH=60><CENTER>ASCII char</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>6-bit value</CENTER></TD><TD WIDTH=60><CENTER>ASCII char
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>6-bit value
+</CENTER></TD><TD WIDTH=60><CENTER>ASCII char</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>0</CENTER></TD><TD WIDTH=60><CENTER>A
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>10</CENTER></TD>
+<TD WIDTH=60><CENTER>Q</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>20
+</CENTER></TD><TD WIDTH=60><CENTER>g</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>30</CENTER></TD><TD WIDTH=60><CENTER>w
+</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>1</CENTER></TD><TD WIDTH=60><CENTER>B
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>11</CENTER></TD>
+<TD WIDTH=60><CENTER>R</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>21
+</CENTER></TD><TD WIDTH=60><CENTER>h</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>31</CENTER></TD><TD WIDTH=60><CENTER>x
+</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>2</CENTER></TD><TD WIDTH=60><CENTER>C
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>12</CENTER></TD>
+<TD WIDTH=60><CENTER>S</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>22
+</CENTER></TD><TD WIDTH=60><CENTER>i</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>32</CENTER></TD><TD WIDTH=60><CENTER>y
+</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>3</CENTER></TD><TD WIDTH=60><CENTER>D
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>13</CENTER></TD>
+<TD WIDTH=60><CENTER>T</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>23
+</CENTER></TD><TD WIDTH=60><CENTER>j</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>33</CENTER></TD><TD WIDTH=60><CENTER>z
+</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>4</CENTER></TD><TD WIDTH=60><CENTER>E
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>14</CENTER></TD>
+<TD WIDTH=60><CENTER>U</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>24
+</CENTER></TD><TD WIDTH=60><CENTER>k</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>34</CENTER></TD><TD WIDTH=60><CENTER>0
+</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>5</CENTER></TD><TD WIDTH=60><CENTER>F
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>15</CENTER></TD>
+<TD WIDTH=60><CENTER>V</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>25
+</CENTER></TD><TD WIDTH=60><CENTER>l</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>35</CENTER></TD><TD WIDTH=60><CENTER>1
+</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>6</CENTER></TD><TD WIDTH=60><CENTER>G
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>16</CENTER></TD>
+<TD WIDTH=60><CENTER>W</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>26
+</CENTER></TD><TD WIDTH=60><CENTER>m</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>36</CENTER></TD><TD WIDTH=60><CENTER>2
+</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>7</CENTER></TD><TD WIDTH=60><CENTER>H
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>17</CENTER></TD>
+<TD WIDTH=60><CENTER>X</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>27
+</CENTER></TD><TD WIDTH=60><CENTER>n</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>37</CENTER></TD><TD WIDTH=60><CENTER>3
+</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>8</CENTER></TD><TD WIDTH=60><CENTER>I
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>18</CENTER></TD>
+<TD WIDTH=60><CENTER>Y</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>28
+</CENTER></TD><TD WIDTH=60><CENTER>o</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>38</CENTER></TD><TD WIDTH=60><CENTER>4
+</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>9</CENTER></TD><TD WIDTH=60><CENTER>J
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>19</CENTER></TD>
+<TD WIDTH=60><CENTER>Z</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>29
+</CENTER></TD><TD WIDTH=60><CENTER>p</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>39</CENTER></TD><TD WIDTH=60><CENTER>5
+</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>a</CENTER></TD><TD WIDTH=60><CENTER>K
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>1a</CENTER></TD>
+<TD WIDTH=60><CENTER>a</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>2a
+</CENTER></TD><TD WIDTH=60><CENTER>q</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>3a</CENTER></TD><TD WIDTH=60><CENTER>6
+</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>b</CENTER></TD><TD WIDTH=60><CENTER>L
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>1b</CENTER></TD>
+<TD WIDTH=60><CENTER>b</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>2b
+</CENTER></TD><TD WIDTH=60><CENTER>r</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>3b</CENTER></TD><TD WIDTH=60><CENTER>7
+</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>c</CENTER></TD><TD WIDTH=60><CENTER>M
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>1c</CENTER></TD>
+<TD WIDTH=60><CENTER>c</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>2c
+</CENTER></TD><TD WIDTH=60><CENTER>s</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>3c</CENTER></TD><TD WIDTH=60><CENTER>8
+</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>d</CENTER></TD><TD WIDTH=60><CENTER>N
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>1d</CENTER></TD>
+<TD WIDTH=60><CENTER>d</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>2d
+</CENTER></TD><TD WIDTH=60><CENTER>t</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>3d</CENTER></TD><TD WIDTH=60><CENTER>9
+</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>e</CENTER></TD><TD WIDTH=60><CENTER>O
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>1e</CENTER></TD>
+<TD WIDTH=60><CENTER>e</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>2e
+</CENTER></TD><TD WIDTH=60><CENTER>u</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>3e</CENTER></TD><TD WIDTH=60><CENTER>+
+</CENTER></TD></TR>
+<TR><TD WIDTH=60><CENTER>f</CENTER></TD><TD WIDTH=60><CENTER>P
+</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>1f</CENTER></TD>
+<TD WIDTH=60><CENTER>f</CENTER></TD><TD WIDTH=10></TD><TD WIDTH=60><CENTER>2f
+</CENTER></TD><TD WIDTH=60><CENTER>v</CENTER></TD><TD WIDTH=10></TD>
+<TD WIDTH=60><CENTER>3f</CENTER></TD><TD WIDTH=60><CENTER>/
+</CENTER></TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 28.6</B> Encoding
+of 6-bit values (base-64 encoding).</CENTER>
+<P>
+When the number of characters to encode is not a
+multiple of three, equal signs are used as the pad characters.
+</OL>
+<P>
+The following example of these two encodings is from
+RFC 1522:
+<P>
+<TT>From: =?US-ASCII?Q?Keith_Moore?= &lt;moore@cs.utk.edu&gt;
+<BR>
+To: =?ISO-8859-l?Q?Kelcl_J=F8rn_Simonsen?=
+&lt;keld@dkuug.dk&gt;<BR>
+CC: =?ISO-8859-l?Q?Andr=E9_?= Pirard &lt;PIRARD@vml.ulg.ac.be&gt;
+<BR>
+Subject: =?ISO-8859-1?B?SWYgeW911GNhbiByZWFklHRoaXMgeW8=?= =?ISO-8859-2?B?dSBIbinRlcnNOYW5klHRoZSBIeGFtcGxlLg==?=</TT>
+<P>
+A user agent capable of handling these headers would
+output:
+<P>
+<TT>From: Keith Moore &lt;moore@cs.utk.edu&gt;<BR>
+To: Keld J0rn Simonsen &lt;keld@dkuug.dk&gt;
+<BR>
+CC: Andre Pirard &lt;PIRARD@vml.ulg.ac.be&gt;<BR>
+Subject: If you can read this you understand the example.</TT>
+<P>
+To see how base-64 encoding works, look at the first
+four encoded characters in the subject line: SWYg. Write out the
+6-bit values for these four characters from <a href="#fig_28_6">Figure 28.6</a>
+(S=<TT>0xl2</TT>,W=<TT>0xl6</TT>,Y=<TT>0xl8</TT>,and
+g=<TT>0x20</TT>) in binary:
+<P>
+<TT>010010 010110 011000 100000</TT>
+<P>
+Then regroup these 24 bits into three 8-bit bytes:
+<P>
+<TABLE >
+<TR><TD WIDTH=104><CENTER><TT>01001001</TT></CENTER></CENTER></TD><TD WIDTH=106><CENTER><TT>01100110</TT></CENTER>
+</CENTER></TD><TD WIDTH=106><CENTER><TT>00100000</TT></CENTER></CENTER></TD></TR>
+<TR><TD WIDTH=104><CENTER><TT>=0x49</TT></CENTER></CENTER></TD><TD WIDTH=106><CENTER><TT>=0x66</TT></CENTER>
+</CENTER></TD><TD WIDTH=106><CENTER><TT>=0x20</TT></CENTER></CENTER></TD></TR>
+</TABLE>
+<P>
+which are the ASCII representations for I, f, and
+a space.
+<H4>Body Changes: Multipurpose Internet Mail Extensions (MIME)
+</H4>
+<P>
+We've said that RFC 822 specifies the body as lines
+of NVT ASCII text, with no structure. RFC 1521 [Borenstein and
+Freed 1993] defines extensions that allow structure in the body.
+This is called MIME, for <I>Multipurpose Internet Mail Extensions.</I>
+<P>
+MIME does <I>not</I> require any of the extensions
+that we've described previously in this section (extended SMTP
+or non-ASCII headers). MIME just adds some new headers (in accordance
+with RFC 822) that tell the recipient the structure of the body
+The body can still be transmitted using NVT ASCII, regardless
+of the mail contents. While some of the extensions we've just
+described might be nice to have along with MIME-the extended SMTP
+SIZE command, since MIME messages can become large, and non-ASCII
+headers-these extensions are not required by MIME. All that's
+required to exchange MIME messages with another party is for both
+ends to have a user agent that understands MIME. No changes are
+required in any of the MTAs. MIME defines the five new header
+fields:
+<P>
+<TT>Mime-Version:<BR>
+Content-Type:<BR>
+Content-Transfer-Encoding:<BR>
+Content-ID:<BR>
+Content-Description:</TT>
+<P>
+As an example, the following two header lines can
+appear in an Internet mail message:
+<P>
+<TT>Mime-Version: 1.0<BR>
+Content-Type: TEXT/PLAIN; charset=US-ASCII</TT>
+<P>
+The current MIME version is 1.0 and the content type
+is plain ASCII text, the default for Internet mail. The word <TT>PLAIN</TT>
+is considered a subtype of the content type (<TT>TEXT</TT>),
+and the string <TT>charset=US-ASCII</TT> is
+a parameter.
+<P>
+Text is just one of MIME'S seven defined content
+types. Figure 28.7 summarizes the 16 different content types and
+subtypes defined in RFC 1521. Numerous parameters can be specified
+for certain content types and subtypes.
+<P>
+The content type and the transfer encoding used for
+the body are independent. The former is specified by the <TT>Content-Type</TT>
+header field, and the latter by the <TT>Content-Transfer-Encoding</TT>
+header field. There are five different encoding formats defined
+in RFC 1521.
+<OL>
+<LI><TT>7bit</TT>, which is NVT ASCII, the default.
+<LI><TT>quoted-printable</TT>, which we saw an example
+of earlier with non-ASCII headers. It is useful when only a small
+fraction of the characters have their eighth bit set.
+<LI><TT>base64</TT>, which we showed in Figure 28.6.
+<LI><TT>8bit</TT> containing lines of characters,
+some of which are non-ASCII and have their eighth bit set.
+<LI><TT>binary</TT> encoding, which is 8-bit data
+that need not contain lines.
+</OL>
+<P>
+<CENTER>
+<a name="fig_28_7"><TABLE BORDER=1></a>
+<TR><TD WIDTH=115><CENTER>Content-Type</CENTER>
+</CENTER></TD><TD WIDTH=135><CENTER>Subtype</CENTER>
+</CENTER></TD><TD WIDTH=555><CENTER>Description</CENTER>
+</CENTER></TD></TR>
+<TR><TD WIDTH=115><TT>text</TT></CENTER></TD><TD WIDTH=135><TT>plain 
+<BR>
+richtext<BR>
+enriched</TT>
+</CENTER></TD><TD WIDTH=555>Unformatted text.<BR>
+Text with simple formatting, such as bold, italic, underline, and so on.<BR>
+A clarification, simplification, and refinement of richtext.
+</CENTER></TD></TR>
+<TR><TD WIDTH=115><TT>multipart</TT></CENTER></TD><TD WIDTH=135><TT>mixed<BR>
+parallel<BR>
+digest<BR>
+alternative</TT>
+</CENTER></TD><TD WIDTH=555>Multiple body parts to be processed sequentially.<BR>
+Multiple body parts that can be processed in parallel.<BR>
+An electronic mail digest.<BR>
+Multiple body parts are present, all with identical semantic content.
+</CENTER></TD></TR>
+<TR><TD WIDTH=115><TT>message</TT></CENTER></TD><TD WIDTH=135><TT>rfc822<BR>
+partial<BR>
+external-body</TT>
+</CENTER></TD><TD WIDTH=555>Content is another RFC 822 mail message.<BR>
+Content is a fragment of a mail message.<BR>
+Content is a pointer to the actual message.
+</CENTER></TD></TR>
+<TR><TD WIDTH=115><TT>application</TT></CENTER></TD><TD WIDTH=135><TT>octet-stream<BR>
+postscript</TT>
+</CENTER></TD><TD WIDTH=555>Arbitrary binary data.<BR>
+A PostScript program.
+</CENTER></TD></TR>
+<TR><TD WIDTH=115><TT>image</TT></CENTER></TD><TD WIDTH=135><TT>jpeg<BR>
+gif</TT>
+</CENTER></TD><TD WIDTH=555>ISO 10918 format.<BR>
+CompuServe's Graphic Interchange Format.
+</CENTER></TD></TR>
+<TR><TD WIDTH=115><TT>audio</TT></CENTER></TD><TD WIDTH=135><TT>basic</TT>
+</CENTER></TD><TD WIDTH=555>Encoded using 8-bit ISDN //-law format.
+</CENTER></TD></TR>
+<TR><TD WIDTH=115><TT>video</TT></CENTER></TD><TD WIDTH=135><TT>mpeg</TT>
+</CENTER></TD><TD WIDTH=555>ISO 11172 format.</CENTER></TD>
+</TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 28.7</B> MIME
+content types and subtypes.</CENTER>
+<P>
+Only the first three of these are valid for an RFC
+821 MTA, since these three generate a body containing only NVT
+ASCII characters. Using extended SMTP with 8BITMIME support allows
+<TT>8bit</TT> encoding to be used.
+<P>
+Although the content type and encoding are independent,
+RFC 1521 recommends <TT>quoted-printable</TT>
+for <TT>text</TT> with non-ASCII data, and
+<TT>base64</TT> for <TT>image</TT>,
+<TT>audio</TT>, <TT>video</TT>,
+and <TT>octet-stream application</TT> data.
+This allows maximum interoperability with RFC 821 conformant MTAs.
+Also, the <TT>multipart</TT> and <TT>message</TT>
+content types must be encoded as <TT>7bit</TT>.
+<P>
+As an example of a <TT>multipart</TT>
+content type. Figure 28.8 shows a mail message from the RFC distribution
+list. The subtype is <TT>mixed</TT>, meaning
+each of the parts should be processed sequentially, and the boundary
+between the parts is the string <TT>NextPart</TT>,
+preceded by two hyphens at the start of a line.
+<P>
+Each boundary can be followed with a line specifying
+the header fields for the next part. Everything in the message
+before the first boundary is ignored, as is everything following
+the final boundary.
+<P>
+Since a blank line follows the first boundary, and
+not header fields, the content type of the data between the first
+and second boundaries is assumed to be <TT>text/plain</TT>
+with a character set of <TT>us-ascii</TT>.
+This is a textual description of the new RFC.
+<P>
+The second boundary, however, is followed by header
+fields. It specifies another <TT>multipart</TT>
+message, with a boundary of <TT>OtherAccess</TT>.
+The subtype is <TT>alternative</TT>, and two
+different alternatives are present. The first <TT>OtherAccess</TT>
+alternative is to fetch the RFC using electronic mail, and the
+second is to fetch it using anonymous FTP. A MIME user agent would
+list the two alternatives, allow us to choose one, and then automatically
+fetch a copy of the RFC using either mail or anonymous FTP.
+<P>
+<CENTER>
+<a name="fig_28_8"><TABLE ></a>
+<TR><TD COLSPAN=2 WIDTH=727><TT>To: rfc-dist@nic.ddn.mil <BR>
+Subject: RFC1479 on IDPR Protocol<BR>
+Mime-Version: 1.0<BR>
+Content-Type: Multipart/Mixed; Boundary=&quot;NextPart&quot;<BR>
+Date: Fri, 23 Jul 93 12:17:43 PDT<BR>
+From: &quot;Joyce K. Reynolds&quot; &lt;jkrey@isi.edu&gt;</TT>
+</CENTER></TD></TR>
+<TR><TD WIDTH=364><TT>--NextPart</TT></CENTER></TD>
+<TD WIDTH=363><I>the first boundary</I></CENTER></TD>
+</TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>A new Request for Comments is now available in online RFC libraries.</TT>
+</CENTER></TD></TR>
+<TR><TD WIDTH=364><TT>...</TT></CENTER></TD><TD WIDTH=363><I>(details here on the new RFC)</I>
+</CENTER></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>Below is the data which will enable a MIME compliant Mail Reader implementation to automatically retrieve the ASCII version of the RFCs.</TT>
+</CENTER></TD></TR>
+<TR><TD WIDTH=364><TT>--NextPart</TT></CENTER></TD>
+<TD WIDTH=363><I>the second boundary</I></CENTER></TD>
+</TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>Content-Type: Multipart/Alternative; Boundary=&quot;OtherAccess&quot;</TT>
+</CENTER></TD></TR>
+<TR><TD WIDTH=364></CENTER></TD><TD WIDTH=363><I>a nested multipart message with a new boundary</I>
+</CENTER></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>--OtherAccess</TT>
+</CENTER></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>Content-Type: Message/External-body; 
+<BR>
+access-type=&quot;mail-server&quot;;<BR>
+server=&quot;mail-server@nisc-sri.com&quot;</TT>
+</CENTER></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>Content-Type; text/plain</TT>
+</CENTER></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>SEND rfcl479.txt</TT>
+</CENTER></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>--OtherAccess</TT>
+</CENTER></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>Content-Type: Message/External-body; 
+<BR>
+name=&quot;rfcl479.txt&quot;;<BR>
+site=&quot;ds.internic.net&quot;,<BR>
+access-type=&quot;anon-ftp&quot;;<BR>
+directory=&quot;rfc&quot;</TT>
+</CENTER></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>Content-Type: text/plain</TT>
+</CENTER></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=727><TT>--OtherAccess--</TT>
+</CENTER></TD></TR>
+<TR><TD WIDTH=364><TT>--NextPart--</TT></CENTER></TD>
+<TD WIDTH=363><I>the final boundary</I></CENTER></TD>
+</TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 28.8</B> Example
+of a MIME multipart message.</CENTER>
+<P>
+This section has been a brief overview of MIME. For
+additional details and examples of MIME, see RFC 1521 and [Rose
+1993].
+<a name="28_5"><H3>28.5 Summary</H3></a>
+<P>
+Electronic mail involves a user agent at both ends
+(the sender and receiver) and two or more message transfer agents.
+We can divide a mail message into three parts: the envelope, the
+headers, and the body. We've seen how all three parts are exchanged
+using SMTP, the Internet standard. All three are exchanged as
+NVT ASCII characters.
+<P>
+We've also looked at newer extensions for all three
+parts: extended SMTP for the envelope, non-ASCII headers, and
+the addition of structure to the body using MIME. The structure
+and encoding used by MIME allow arbitrary binary data to be exchanged,
+using existing 7-bit SMTP MTAs.
+<H4>Exercises</H4>
+<P>
+<B>28.1</B> Read RFC 822 to find
+out what a <I>domain literal is.</I> Try sending mail to yourself
+using one.
+<P>
+<B>28.2</B> Excluding the connection
+establishment and termination, what is the minimum number of network
+round trips to send a small mail message?
+<P>
+<B>28.3</B> TCP is a full-duplex
+protocol, yet SMTP uses TCP in a half-duplex fashion. The client
+sends a command then stops and waits for the reply. Why doesn't
+the client send multiple commands at once, for example, a single
+write that contains the HELO, MAIL, RCPT, DATA, and QUIT commands
+(assuming the body isn't too large)?
+<P>
+<B>28.4</B> How can this half-duplex
+operation of SMTP fool the slow start mechanism when the network
+is running near capacity?
+<P>
+<B>28.5</B> When multiple MX
+records exist with the same preference value, should they always
+be returned by a name server in the same order?
+</BODY>
+</HTML>

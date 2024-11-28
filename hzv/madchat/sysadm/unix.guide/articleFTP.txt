@@ -1,0 +1,140 @@
+SAVOIR PROFITER DU FTP
+
+Vous me direz le FTP c'est bien gentil, mais on connaît...
+En êtes vous si sûrs ?
+
+bases et commandes méconnues
+
+Comme tout le monde le sait (enfin j'espère), le FTP est un protocole,
+ et la meilleure manière de l'utiliser restera en mode console. Mais
+ rassurez-vous, pas la peine d'oublier votre belle petite interface graphique
+ vous pourrez toujours utiliser les commandes personnalisées et autres raw commandes.
+Bon revenons en à nos moutons. Avant d'aller plus avant faisons un bref rappel
+ des commandes qu'il serrait bon de connaître (un petit HELP vous permettra de 
+connaître les commandes implémentées sur le server où vous venez de vous connecter)
+
+- LIST 
+Ben oui la base avant de faire quoi que ce soit, il pourrait être bon de savoir ce 
+que contiens ce foutu FTP. Les arguments utiles de cette commande sont -a pour lister
+ les fichiers cachés et -R pour lister de manière récursive (Dans FlashFXP un petit tour
+ dans : Directory->view raw directory... après avoir effectué un list -aR vous révèlera
+ toute la puissance de cette commande)
+
+- MDTM
+Vous pourrez grâce à cette commande modifier la date de création d'un fichier, sous la forme : 
+
+MDTM yyyymmddhhmmss[+-xxx] <path/file>
+
+- RNFR & RNTO
+Voila les deux petits bijoux qui vont nous permettre un peu plus tard de déverrouiller les
+ paths. Les commandes s'utilisent à la suite 
+
+RNFR <file> va designer le fichier à renommer
+ 
+et ensuite
+ 
+RNTO <newname> va lui attribuer son nouveau nom.
+
+Sachez aussi que RNFR et RNTO peuvent vous permettre de déplacer des fichiers.
+
+- RMD & DELE
+Les deux commandes de suppression. Fichiers avec DELE et répertoires avec RMD.
+
+- MKD
+Pour créer un répertoire MKD <name>.
+
+- SITE
+Elle a plusieurs arguments utiles mais il y en a un particulièrement méconnu mais très utile
+ SITE SET TRANSFERPROGRESS ON 
+(marche sur les server Serv-U et quelques autres). Ca sert à quoi me direz vous... et bien... 
+si vous vous êtes déjà dit que vous aimeriez bien savoir où vous en êtes lors d'un 
+transfert FXP vous venez de trouver une réponse.
+
+Dissimuler son path des regards indiscrets
+
+Venons en maintenant à la pratique. Il est évident que si le server est le vôtre dissimuler 
+vos fichiers serra très facile. Sur un FTP anonyme c déjà une autre paire de manches. 
+D'abord si le server le permet cachons nos fichiers. Sur certains servers il vous suffira d'ajouter
+ un  '.' au début du nom de votre fichier, ou bien d'utiliser certains noms spécifiques.
+Il  peut être judicieux aussi de choisir des noms bien particuliers. Tout le monde n'ira pas
+ chercher dans le répertoire '_RECYCLE ' en particulier l'Admin du server vu que ce nom 
+désigne la poubelle de Windows (réfléchissez sur quel server vous êtes, on a déjà vu des 
+petits malins essayer cette combine sur des server Unix sic!). Etudiez bien la structure du système
+ afin de trouver les répertoires les plus judicieux ainsi que les noms qui attireront le moins l'œil d'un
+ visiteur qui en voudrait à vos fichiers.
+
+Verrouiller et crocheter les paths
+
+Passons maintenant a la vitesse supérieure. Cacher c'est bien beau, mais empêcher l'accès 
+c'est encore bien mieux.
+Le but est de créer un répertoire inaccessible directement :
+Nous allons créer deux répertoires qui apparaîtront sous le même nom, mais qui serrons 
+pourtant différents, grâce au  / / à la fin du nom, afin de flouer le server en plaçant des 
+sous-répertoires dedans qui eux resterons accessibles à condition de connaître le path 
+complet. Puis nous retirerons les répertoires simples, pour empêcher le client d'envoyer le
+ nom correct du répertoire. Ce que fait le listing suivant (faites attention à bien retenir le
+ nombre d'espaces que vous insérerez) :
+
+MKD rep1 /
+MKD rep1 / /
+MKD rep1 /rep2 /
+MKD rep1 /rep2 / /
+MKD rep1 /rep2 /rep3/
+RMD rep1
+RMD rep1 /rep2/
+
+Puis pour accéder au répertoire tapons:
+
+CWD rep1 /rep2 /rep3/
+
+L'utilisation sur certains server des noms COM1, COM2,COM3..LPT1, LPT2, PRN vous
+aiderons à bloquer vos path car ces noms sont réservés à l'accès aux périphériques 
+via le FTP.
+
+Passons au déverrouillage 
+
+En fait c'est assez simple si vous avez compris la partie précédente le répertoire apparaît 
+sous le nom rep1 alors que son véritable nom est rep1 / / il vous suffit donc en théorie de
+ le renommer. Mais c'est là où est le hic, votre client va envoyer lors de la commande de 
+renommage le nom rep1. l'astuce consiste à passer en raw commands et d'utiliser la 
+commande :
+
+RNFR rep1 / /
+ 
+Si tout ce passe bien vous obtenez 
+
+RNFR rep1 / /
+350 File or directory exists, ready for destination name.
+Ensuite donnons à ce répertoire un nouveau nom avec RNTO
+RNTO Unlocked
+250 rename successful.
+
+Votre répertoire s'appelle à présent Unlocked
+
+Par contre si ce n'est pas vous qui avez créé le fichier il vous faudra deviner tout seul
+ combien il y a d'espaces entre les deux '/'
+
+Protéger vos path
+
+Un caractère tout bête va vous permettre d'empêcher beaucoup de monde de faire n'importe quoi
+ avec vos path : ';'
+Ce caractère est tout simplement la commande de fin d'instruction en mode console donc si vou
+s appelez votre répertoire 'jeboisunwhisky;coca / /'
+
+La méthode pour le débloquer va consister à taper 
+
+RNFR jeboisunwhisky; coca / /
+
+Mais voilà ce que vas donner cette commande :
+
+RNFR jeboisunwhisky
+550 jeboisunwhisky: No such file or directory
+coca / /
+500 COCA not understood.
+
+Et voila maintenant à vos claviers. Et à vos neurones car je viens à peine de jeter les bases concernant le verrouillage 
+déverrouillage. Sachez cependant que l'on peut très facilement automatiser les diverses tâches décrites ci-dessus et 
+que l'astuce du ';' peut-être contournée.
+
+
+Blue_Bear

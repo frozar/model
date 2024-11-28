@@ -1,0 +1,405 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML
+><HEAD
+><TITLE
+>Configuration : pour aller plus loin</TITLE
+><META
+NAME="CREATOR"
+CONTENT="Modular DocBook HTML Stylesheet version 1.07"><META
+NAME="form"
+CONTENT="html"><META
+NAME="Description"
+CONTENT="Introduction to qmail in french"><META
+NAME="Keywords"
+CONTENT="qmail mta"><META
+NAME="Robot"
+CONTENT="index,follow"><META
+NAME="Author"
+CONTENT="Djalil Chafai"></HEAD
+><BODY
+BGCOLOR="#FFFFFF"
+TEXT="#000000"
+><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TH
+COLSPAN="3"
+ALIGN="center"
+>Introduction à qmail</TH
+></TR
+><TR
+><TD
+WIDTH="10%"
+ALIGN="left"
+VALIGN="bottom"
+><A
+HREF="c0405.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="80%"
+ALIGN="center"
+VALIGN="bottom"
+></TD
+><TD
+WIDTH="10%"
+ALIGN="right"
+VALIGN="bottom"
+><A
+HREF="c0502.html"
+>Suivant</A
+></TD
+></TR
+></TABLE
+><HR
+ALIGN="LEFT"
+WIDTH="515"><H1
+><A
+NAME="R,C(5,CHAPTER)"
+>Chapitre 5. Configuration : pour aller plus loin</A
+></H1
+><DL
+><DT
+><B
+>Table des matières</B
+></DT
+><DT
+><A
+HREF="c05.html#ALIAS"
+>Le fichier d'alias /var/qmail/users/assign</A
+></DT
+><DT
+><A
+HREF="c0502.html"
+>Contrôle de relayage</A
+></DT
+><DT
+><A
+HREF="c0503.html"
+>PPP et serialmail</A
+></DT
+><DT
+><A
+HREF="c0504.html"
+>Fetchmail</A
+></DT
+><DT
+><A
+HREF="c0505.html"
+>Réécriture d'adresse d'expéditeur</A
+></DT
+><DT
+><A
+HREF="c0506.html"
+>UUCP</A
+></DT
+><DT
+><A
+HREF="c0507.html"
+>Listes de diffusion par ezmlm (à faire)</A
+></DT
+><DT
+><A
+HREF="c0508.html"
+>Statistiques par qmailanalog</A
+></DT
+></DL
+><H1
+><A
+NAME="ALIAS"
+>Le fichier d'alias /var/qmail/users/assign</A
+></H1
+><P
+>Le système <I
+CLASS="PRODUCTNAME"
+>qmail</I
+> peut posséder une liste d'alias 
+compilée au format CDB stockée dans le fichier
+<TT
+CLASS="FILENAME"
+>/var/qmail/users/cdb</TT
+>
+et dont la version ASCII est stockée dans le fichier 
+<TT
+CLASS="FILENAME"
+>/var/qmail/users/assign</TT
+>.
+La commande <B
+CLASS="COMMAND"
+>qmail-newu</B
+>
+permet de transformer la version ASCII en version compilée CDB.
+Cette dernière est lue par <I
+CLASS="APPLICATION"
+>qmail-lspawn</I
+> avant 
+l'appel à <I
+CLASS="APPLICATION"
+>qmail-local</I
+>.</P
+><P
+>La version ASCII ressemble à un fichier <TT
+CLASS="FILENAME"
+>passwd</TT
+>. 
+Voir la page de manuel <I
+CLASS="PRODUCTNAME"
+>qmail-users</I
+>
+pour une description de son format.
+La commande <B
+CLASS="COMMAND"
+>qmail-pw2u</B
+> permet d'ailleurs de
+fabriquer la base de données <TT
+CLASS="FILENAME"
+>/var/qmail/users/assign</TT
+> à
+partir de votre fichier <TT
+CLASS="FILENAME"
+>/etc/passwd</TT
+> :
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>root$ qmail-pw2u &#60; /etc/passwd &#62; /var/qmail/users/assign
+root$ qmail-newu</PRE
+></TD
+></TR
+></TABLE
+></P
+><P
+>Le fichier d'alias compilé est lu par <I
+CLASS="APPLICATION"
+>qmail-lspawn</I
+>.
+Ce dernier s'en sert pour déterminer 
+l'utilisateur qui recevra la livraison d'un courriel par 
+<I
+CLASS="APPLICATION"
+>qmail-local</I
+> en mode utilisateur. 
+<I
+CLASS="APPLICATION"
+>qmail-local</I
+> se charge 
+de la lecture et de l'interprétation des fichiers <TT
+CLASS="FILENAME"
+>.qmail*</TT
+>.
+Il faut bien comprendre que la liste d'alias est lue par
+<I
+CLASS="APPLICATION"
+>qmail-lspawn</I
+> alors que les
+<TT
+CLASS="FILENAME"
+>.qmail*</TT
+> sont 
+lus par <I
+CLASS="APPLICATION"
+>qmail-local</I
+>. 
+Les deux mécanismes ne sont pas mutuellement
+exclusifs mais successifs.
+L'un opère en UID 0 et l'autre en mode utilisateur.</P
+><P
+>Considérons par exemple un courriel à destination locale
+sortant de la file d'attente.
+Il est transmis à <I
+CLASS="APPLICATION"
+>qmail-lspawn</I
+> 
+par son père le daemon <I
+CLASS="APPLICATION"
+>qmail-send</I
+>.
+<I
+CLASS="APPLICATION"
+>qmail-lspawn</I
+>, qui opère en UID 0,
+détermine en lisant le fichier d'alias compilé
+le login <TT
+CLASS="LITERAL"
+>login</TT
+>, l'UID 
+<TT
+CLASS="LITERAL"
+>uid</TT
+>, le GID <TT
+CLASS="LITERAL"
+>gid</TT
+> et le fichier 
+<TT
+CLASS="FILENAME"
+>~login/.qmail*</TT
+> en vertu
+desquels il faut faire la livraison par
+<I
+CLASS="APPLICATION"
+>qmail-send</I
+>.
+<I
+CLASS="APPLICATION"
+>qmail-send</I
+> est donc 
+executé en UID <TT
+CLASS="LITERAL"
+>uid</TT
+>
+et effectue la livraison conformément au fichier 
+<TT
+CLASS="FILENAME"
+>~login/.qmail*</TT
+> et aux
+règles expliquées dans <A
+HREF="c0402.html"
+>la section <I
+>Livraison par qmail-local et utilisateur alias</I
+> du Chapitre 4</A
+>.
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+> qmail-send 
+   \_ qmail-lspawn UID 0
+        \_ qmail-local UID uid</PRE
+></TD
+></TR
+></TABLE
+></P
+><P
+>Voici un exemple de fichier <TT
+CLASS="FILENAME"
+>/var/qmail/users/assign</TT
+> :
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>=root:alias:70:65534:/var/qmail/alias:-:postmaster:
+=abuse:alias:70:65534:/var/qmail/alias:-:postmaster:
+=operator:alias:70:65534:/var/qmail/alias:-:postmaster:
+=uucp:alias:70:65534:/var/qmail/alias:-:postmaster:
+=anonymous:alias:70:65534:/var/qmail/alias:-:postmaster:
+=hostmaster:alias:70:65534:/var/qmail/alias:-:postmaster:
+=mailer-daemon:alias:70:65534:/var/qmail/alias:-:postmaster:
+=manager:alias:70:65534:/var/qmail/alias:-:postmaster:
+=warnings:alias:70:65534:/var/qmail/alias:-:postmaster:
+=webmaster:alias:70:65534:/var/qmail/alias:-:postmaster:
+=ftpmaster:alias:70:65534:/var/qmail/alias:-:postmaster:
+=FaxMaster:alias:70:65534:/var/qmail/alias:-:postmaster:
++djalil:djay:1000:1000:/home/djay:::
+.          </PRE
+></TD
+></TR
+></TABLE
+>
+
+Chaque ligne correspond à une directive de livraison.
+Voir la page de manuel <TT
+CLASS="LITERAL"
+>qmail-users</TT
+>
+pour une description des 
+champs. Les alias habituels sont tous redirigés vers
+<TT
+CLASS="LITERAL"
+>alias-postmaster</TT
+>,
+à charge du <TT
+CLASS="FILENAME"
+>.qmail-postmaster</TT
+> de router les messages
+vers un autre utilisateur.
+Le fichier doit toujours se terminer par une ligne ne contenant qu'un point.
+La dernière ligne demande à <I
+CLASS="APPLICATION"
+>qmail-lspawn</I
+> de livrer
+tout courriel à destination d'une adresse commençant par
+<TT
+CLASS="LITERAL"
+>djalil</TT
+> vers <TT
+CLASS="LITERAL"
+>djay</TT
+>.</P
+><P
+>La commande <B
+CLASS="COMMAND"
+>qmail-getpw</B
+> permet d'obtenir la ligne
+du fichier d'alias correspondant à l'adresse courriel qu'on lui passe en
+argument.</P
+><HR
+ALIGN="LEFT"
+WIDTH="515"><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+><A
+HREF="c0405.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+><A
+HREF="book01.html"
+>Page principale</A
+></TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+><A
+HREF="c0502.html"
+>Suivant</A
+></TD
+></TR
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+>Listes de diffusion par qlist (à faire)</TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+>&nbsp;</TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+>Contrôle de relayage</TD
+></TR
+></TABLE
+></BODY
+></HTML
+>

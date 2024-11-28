@@ -1,0 +1,270 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>IP Spoofing | By TruFF</title>
+</head>
+
+<body text="#FFFFFF" bgcolor="#000000" link="#00FFFF">
+
+<center><font size="2" face="Verdana"><font color="#00FFFF">****************************</font><br>
+<font color="#00FFFF">*
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp; IP Spoofing&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *</font><br>
+<font color="#00FFFF">****************************</font><br>
+<font color="#00FFFF">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+By TruFF&nbsp; (10/2000)</font></font></center>
+<p><font size="2" face="Verdana"><br>
+<br>
+&nbsp;&nbsp;&nbsp; L'ip Spoofing est une technique largement utilisée dans de
+nombreux types d'attaques. Du fait de la possibilité de forger des paquets
+bruts à l'aide de la programmation RAW SOCKET il est possible d'envoyer des
+paquets avec une fausse adresse IP de source. Cependant il ne faut pas penser
+que la tache soit aussi simple que ça, en effet IP ne fonctionne pas tout
+seul&nbsp; et il est toujours (ou presque) utilisé avec un protocole de niveau
+superieur. L'Ip Spoof a fait ses preuves&nbsp; aussi bien en ICMP, UDP ou TCP
+cependant la difficulte de sa mise en place varie beaucoup selon le protocle
+utilisé:</font>
+<p><font size="2" face="Verdana">&nbsp;&nbsp;&nbsp; -&nbsp;&nbsp;&nbsp; Le
+protocole ICMP envoie des messages et n'attend aucune réponse en retour, il est
+donc très facile d'envoyer des messages icmp spoofés.</font>
+<p><font size="2" face="Verdana">&nbsp;&nbsp;&nbsp; -&nbsp;&nbsp;&nbsp; Le
+protocole UDP sert quand a lui a la communication entre taches clientes et
+serveur, ce protocole fonctionne en mode non-connecté (il ne necessite pas la
+connection à 3 voies du TCP) il est donc assez facile d'envoyer des paquets
+avec une fausse IP sans que le serveur ne se rende compte&nbsp; de rien.
+Cependant il nous sera impossible de recevoir une eventuelle réponse du serveur
+du fait qu'il renvoie tout vers la fausse IP.</font>
+<p><font size="2" face="Verdana">&nbsp;&nbsp;&nbsp; -&nbsp;&nbsp;&nbsp; L'IP
+Spoofing en&nbsp; utilisant TCP est la plus difficile à mettre en oeuvre
+surtout lorsqu'elle est utilisée en dehors d'un réseau local. Cependant avec
+un peu d'entrainement et&nbsp; beaucoup de nuits sans sommeil il est possible
+d'utiliser ce procédé.</font>
+<p><font size="2" face="Verdana">&nbsp;&nbsp;&nbsp; Nous allons analyser les
+différentes possibilités que nous offre l'IP Spoofing suivant le protocole
+utilisé en s'appuyant sur les articles qui ont fait la renommée de cette
+technique ainsi qu'un sur un exemple de code personnel. Vous trouverez tous les
+codes a la fin de l'article.<br>
+&nbsp;<br>
+&nbsp;</font>
+<p><u><font color="#FFFF00" size="2" face="Verdana">1. ICMP Spoofing.</font></u>
+<p><font color="#FFFFFF" size="2" face="Verdana">&nbsp;&nbsp;&nbsp; L'ICMP Spoof
+est très certainement le plus&nbsp; répendu car c'est le plus facile à mettre
+en oeuvre. Il est très utilisé dans les attaques de type DoS. En effet, les
+DoS consistent à déconnecter (ou molester)&nbsp; donc il est&nbsp;
+préférable de les lancer avec une fausse IP de source de manière à ne pas se
+faire repérer. Mais il y a d'autre utilisation plus intelligentes de l'ICMP
+Spoof.</font>
+<p><font color="#FFFFFF" size="2" face="Verdana">&nbsp;&nbsp;&nbsp; Un exemple
+d'une telle attaque est l'envoie&nbsp; massif de packets ICMP type 3
+(Destination Unreachable) vers un host donné. Si par&nbsp; exemple on sait que
+ce host est connecté a un serveur et qu'on a l'IP du serveur et bien il suffit
+d'envoyer une multitude de packets ICMP type 3 avec une adresse&nbsp; de source
+correspondant à l'IP du serveur auquel est connecte l'host en question.
+Celui-ci va penser que les paquets proviennent effectivement du serveur et qu'il
+ne peut pas l'atteindre et donc il va déconnecté spontanément. C'est le
+prinicipe du programme Click qui a fait des ravages sur l'Irc pendant un bon
+moment.</font>
+<p><font color="#FFFFFF" size="2" face="Verdana">&nbsp;&nbsp;&nbsp; Une&nbsp;
+autre utilisation possible est très bien représentée par le très célèbre
+Smurf. Smurf peut s'utiliser en ICMP ou en UDP, je ne traite ici que la partie
+ICMP bien évidemment. En gros il suffit d'envoyer un packet ICMP type 8 (Echo
+request) vers un serveur Broadcast pour que celui-ci forward le packet à toutes
+les machines&nbsp; de son sous-réseau. A la réception de ce paquet les
+machines vont répondre par un ICMP type 0 (Echo Reply) à la machine qui avait
+envoyé le request. De ce fait si l'on envoie un packet ICMP type 8 avec une
+fausse IP de source à un broadcast,&nbsp; tous les Reply vont etre envoyer
+vers&nbsp; cette fausse IP. Donc si l'on envoie beaucoups de paquets a beaucoups
+de broadcast et bien la box dont on a mis l'IP en adresse source risque fort d'etre
+deconnectee.</font>
+<p><font color="#FFFFFF" size="2" face="Verdana">&nbsp;&nbsp;&nbsp; Enfin le
+dernier type d'attaque et certainement le meilleur est l'utilisation du ICMP
+type 5 (Redirect). Ce message est généralement envoyé par un routeur a un
+host pour lui préciser qu'il devrait l'utiliser car la route est plus rapide.
+Il suffit donc en théorie d'envoyer un paquet ICMP type 5 à un host avec une
+IP de source correspond à notre IP et ainsi l'host va dévier sa&nbsp; route
+pour passer par notre box en pensant que c'est un routeur. A ce moment la tout
+le&nbsp; jeu consiste a émuler le fonctionnement d'un routeur c'est a dire
+router les paquets vers leur destination et bien sur au passage on sniffe. On
+peut donc soit receuillir des informations importantes, soit récupérer des
+numéros de séquences afin de lancer une attaque de type TCP Hijack procédé
+qui s'apparente au TCP spoofing et qui consiste en fait à prendre la place de
+l'host sur la connexion qu'il a avec un serveur. Si cette connexion est un
+telnet et bien on gagne un shell.</font>
+<p><font size="2" face="Verdana"><font color="#FFFFFF">&nbsp;&nbsp;&nbsp;
+D'autres utilisation de l'ICMP Spoofing sont à étudier notamment avec les ICMP
+type 9 (Router Advertisement) et ICMP type 10 (Router Solicitation). Il reste
+donc pas mal de recherche a&nbsp; faire dans ce domaine. Pour ce faire, il
+existe de nombreux utilitaires permettant d'envoyer des paquets de tous types;
+l'un des plus utilisés est Nemesis que vous trouverez sur tous&nbsp; les&nbsp;
+sites de sécurité informatique.</font><br>
+&nbsp;</font>
+<p><u><font color="#FFFF00" size="2" face="Verdana">2. UDP Spoofing.</font></u>
+<p><font color="#FFFFFF" size="2" face="Verdana">&nbsp;&nbsp;&nbsp; Si l'on
+envoie un paquet à un serveur qui fonctionne avec le protocole UDP, celui-ci
+traite le paquet directement. Il n'y a aucunement besoin de satisfaire le
+processus de connection offert par TCP. De ce fait il est tres simple d'envoyer
+des paquets UDP spoofés. Un service qui fonctionne sous UDP est le service Talk
+qui permet a un utilisateur de discuter avec un autre utilisateur. Si l'on Spoof
+son IP en prenant celle d'un autre utilisateur on pourra se faire passer pour
+celui-ci sur le service Talk. Et c'est ainsi qu'on peut obtenir des informations
+inportantes en utilisant le Social Enginnering.</font>
+<p><font size="2" face="Verdana"><font color="#FFFFFF">&nbsp;&nbsp;&nbsp; Cette
+technique est aussi utilisée dans des codes de DoS comme Boink ou l'on envoie
+des packet UDP spoofés.</font><br>
+&nbsp;<br>
+&nbsp;</font>
+<p><u><font color="#FFFF00" size="2" face="Verdana">3. TCP Spoofing.</font></u>
+<p><font color="#FFFFFF" size="2" face="Verdana">&nbsp;&nbsp;&nbsp; Sans doute
+la meilleure mais aussi la plus difficile a mettre en place, le TCP Spoofing
+permet de cacher son IP sur la plupart des services (Telnet, Ftp, Smtp,......)
+utilisés sur les réseaux TCP/IP notamment l'Internet.</font>
+<p><font color="#FFFFFF" size="2" face="Verdana">&nbsp;&nbsp;&nbsp; Le problème
+avec le TCP Spoofing provient du fait que ce protocole fonctionne en mode&nbsp;
+connecté. De ce fait il faut étabir une connection en trois temps que vous
+connaissez déja je suppose (reportez vous au RFC 793 sinon). En effet lorsque
+l'on envoie notre Syn avec une fausse&nbsp; IP, le serveur renvoie le Ack/Syn
+vers la fausse IP. Tout le problème consiste donc a connaitre la valeur de l'ISN
+(Initial Sequence number) envoyé par le serveur et ici deux cas se présentent:</font>
+<p><font color="#FFFFFF" size="2" face="Verdana">&nbsp;&nbsp;&nbsp;
+-&nbsp;&nbsp;&nbsp; vous êtes sur un LAN (réseau local) et vous essayez de
+vous faire passer aux yeux du serveur pour une autre machine. Dans ce cas la
+manipulation&nbsp; est assez simple. Vous envoyez&nbsp; votre Syn avec la fausse
+IP (qui est celle d'une autre box sur le LAN) le serveur&nbsp; envoie le Ack/Syn
+vers cette&nbsp; fausse IP mais la vous avez lancé un sniffer qui va
+récupérer le Ack/Syn au passage et donc vous avez la valeur de l'ISN du
+serveur. Il ne vous reste plus qu'a renvoyer le Ack correspondant (toujours avec
+la fausse IP) et la connection est établie. Le programme FyreSpoof que j'ai
+développer automatise ce processus. Cependant encore une fois ce n'est pas
+aussi simple car la machine dont vous essayez de spoofer l'ip va aussi recevoir
+le Ack/Syn du serveur mais puisqu'elle n'a pas envoyé de Syn elle va
+automatiquement envoyé un Rst au serveur ce qui aura pour but de fermer la
+connexion. Pour que ce phénomène ne se produise pas il y 2 possibilités: soit
+l'on déconnecte la machine du réseau physiquement, soit on utilise une attaque
+de type DoS (Syn Flood par exemple) de manière à bouffer&nbsp; toute la bande
+passante de la machine dont on veut prendre l'IP et ainsi l'empecher d'envoyer
+le Rst ou meme l'empecher de recevoir le Syn/Ack. Cette méthode est très utile
+quand on l'utilise sur des services de type rlogin par exemple.</font>
+<p><font color="#FFFFFF" size="2" face="Verdana">&nbsp;&nbsp;&nbsp;
+-&nbsp;&nbsp;&nbsp; vous&nbsp; êtes sur Internet et vous souhaitez&nbsp; avoir
+une IP quelconque pour&nbsp; vous connecter a un serveur qui utilise TCP. Et
+bien la les choses se compliquent pour récupérer le Ack/Syn&nbsp; du serveur.
+Si vous avez accés au réseau local du serveur (routeur compromis) la technique
+est identique à celle utilisée sur un LAN, vous sniffez le Ack/Syn au niveau
+du&nbsp; routeur. Si par contre vous n'avez&nbsp; accès à rien et bien la
+seule solution est de prédire l'ISN que va envoyer le serveur de manière à
+acquitter le serveur. Les ISN sont gérés 'aléatoirement' mais comme
+rien&nbsp; n'est vraiment aléatoire en&nbsp; informatique il est possible&nbsp;
+de prédire l'ISN qui va être envoyé à partir de valeurs d'ISN envoyés
+précédamment. Selon l'article 'Ip Spoofing Demystified' de Daemon9 parru dans
+Phrack 48, les ISN dépendraient a la fois du temps et du nombre de connexion
+acceptées. A chaque seconde l'ISN est incrémenté de 128000 et à chaque
+connexion acceptée il est incrémenté de 64000. Donc si l'on réalise une
+connexion avec sa propre IP on récupère l'ISN puis on établie juste dérriere
+une connexion on peut prédire l'SN. Si les 2 connexions sont assez proches dans
+le temps on peut supposer qu'aucune connexion n'a été établie, de plus nous
+avons sauvegarder le temps écoulé entre nos 2 connexions et nous avons
+calculer celui du Average Round Trip ( ce qui correspond au temps moyen que met
+un paquet pour arriver au serveur) on peut précisément prédire l'ISN.
+Cependant le Phrack 48 commence à se faire vieux et aucune machine n'utilise
+plus ce mode de génération&nbsp; des ISN. La belle époque est donc terminée.
+De manière à étudier l'évolution des ISN en fonction du temps notamment, il
+faudra récupérer plusieurs ISN et essayer d'établir des corrélations avec le
+temps et le nombre de connections à l'aide de régressions ( linéaires,
+exponentielles....) et aussi vérifier l'algorithme de génération des ISN dans
+la pile TCP/IP de l'OS en question. Bref c'est loin d'être facile surtout sur
+des systèmes de type *nix qui nous renvoient souvent des Difficulty=999999
+lorsque l'on scan avec Nmap. Ce nombre correspond à la difficulté de la
+prédiction de séquence. Mais, vous avez certainement remarqué que les OS
+Microsoft renvoyaient de valeur comprises en 1 et 50&nbsp; pour la plupart du
+temps ( avec une petite remarque précisant que la génération des numéros de
+séquence dépend implicitement du temps). Il est donc assez facile de prédire
+l'ISN sur de tel systèmes. De plus bien que la prédiction soit difficile sous
+*nix et bien il y a&nbsp; quelques jours un exploit à été publié et il
+présente la manière de procéder pour prédire un ISN sur un système FreeBSD
+à partir des 4 ISN précédent, donc rien n'est impossible.</font>
+<p><font size="2" face="Verdana"><font color="#FFFFFF">&nbsp;&nbsp;&nbsp; Le TCP
+Spoofing à été le plus largement utilisé avec le service Rlogin. Ce
+service&nbsp; permet de se connecter à un serveur comme avec un telnet mais à
+la différence près que l'authentification se fait par l'IP et non par la
+combinaison login/pass. Si l'on spoofe l'IP de quelqu'un autorisé à se
+connecter au serveur en rlogin et bien on pourra se connecter sans aucun
+problème et obtenir un shell.</font><br>
+&nbsp;<br>
+&nbsp;</font>
+<p><u><font color="#FFFF00" size="2" face="Verdana">4. Protection.</font></u>
+<p><font size="2" face="Verdana"><font color="#FFFFFF">&nbsp;&nbsp;&nbsp; Apres
+avoir lu les dangers que peuvent apporter de telles attaques vous vous dites
+surement que vous etes succeptible d'en subir une un jour ou l'autre. Les plus
+courantes sont celles de type ICMP Spoof dans les DoS, pour remédier a cela le
+plus simple c'est de configurer son firewall pour qu'il refuse tous les paquets
+ICMP car leur importance n'est aucunement capitale pour le fonctionne de TCP/iP.
+Un exemple est l'utilisation d'IpChains: </font><font color="#33FF33">ipchains
+-A input -s 0.0.0.0/0.0.0.0 -p icmp -j DENY </font><font color="#FFFFFF">qui
+aura pour but de refuser tous les paquets ICMP. Vous pouvez utiliser l'option </font><font color="#33FF33">--icmp-type</font><font color="#FFFFFF">
+pour préciser&nbsp; le type des ICMP a refuser si vous ne voulez pas tous les
+refuser.</font><br>
+<font color="#FFFFFF">&nbsp;&nbsp;&nbsp; Pour l'UDP Spoofing la règle à
+respecter est d'utiliser le moins possible ces&nbsp; services à moins qu'il ne
+représentent aucun danger potentiel. Le service Talk est à éviter bien
+évidamment.</font><br>
+<font color="#FFFFFF">&nbsp;&nbsp;&nbsp; Enfin pour le TCP, les&nbsp; services
+tels que rlogin sont a supprimer et même le telnet. On leur préférera
+l'utilisation de SSH qui est un genre de telnet crypté et qui est aussi
+dangereux car&nbsp; des</font><br>
+&nbsp;<br>
+&nbsp;</font>
+<p><font size="2" face="Verdana"><u><font color="#FFFF00">5. Code et
+références.</font></u><br>
+<font color="#FFFFFF">&nbsp;&nbsp;&nbsp; </font><u><font color="#FFFF00">5.1.
+Code.</font></u></font>
+<p><font size="2" face="Verdana">&nbsp;&nbsp;&nbsp; <a href="fyrespoof.tar.gz">FyreSpoof</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+By TruFF&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LAN Tcp
+Spoofer<br>
+&nbsp;&nbsp;&nbsp; <a href="fyresniff.tar.gz">FyreSniff</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+By ]FS[&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Sniffer<br>
+&nbsp;&nbsp;&nbsp; <a href="fyraw.tar.gz">FyRaw</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+By ]FS[ &amp; TruFF&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Librairie C pour la
+programmation Raw_Socket<br>
+&nbsp;&nbsp;&nbsp; <a href="snifflib.tar.gz">SniffLib</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+By ]FS[ &amp; TruFF&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Librairie C pour la
+capture de paquets</font>
+<p><font size="2" face="Verdana"><font color="#FFFFFF">&nbsp;&nbsp; </font><u><font color="#FFFF00">5.2.
+Documentation.</font></u></font>
+<p><font size="2" face="Verdana">&nbsp;&nbsp;&nbsp; <a href="http://phrack.infonexus.com/search.phtml?view&amp;article=p48-14">Ip
+Spoofing Demystified</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; By Daemon9<br>
+&nbsp;&nbsp;&nbsp; <a href="http://www.freelsd.net/ADM/ADMID.txt">Dns Id Hacking</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+By Adm crew<br>
+&nbsp;&nbsp;&nbsp; <a href="http://infosec.bsdfr.org/documentation/hijack.html">Ip
+Hijacking</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+By Patrice SALNOT<br>
+&nbsp;</font>
+<p><font size="2" face="Verdana"><font color="#FFFFFF">&nbsp;&nbsp;&nbsp; </font><u><font color="#FFFF00">5.3.
+RFC's.</font></u></font>
+<p><font size="2" face="Verdana">&nbsp;&nbsp;&nbsp; <a href="http://www.eisti.fr/doc/norm/rfc791/791tm.htm">RFC
+791 IP Protocol</a><br>
+&nbsp;&nbsp;&nbsp; <a href="http://www.eisti.fr/doc/norm/rfc793/793tm.htm">RFC
+793 TCP Protocol</a><br>
+&nbsp;&nbsp;&nbsp; <a href="http://www.eisti.fr/doc/norm/rfc768/768.htm">RFC 768
+UDP Protocol</a><br>
+&nbsp;&nbsp;&nbsp; <a href="http://www.eisti.fr/doc/norm/rfc792/792.htm">RFC 792
+ICMP Protocol</a><br>
+&nbsp;&nbsp;&nbsp; <a href="http://www.eisti.fr/doc/norm/rfc1034/1034tm.htm">RFC
+1034 DNS Protocol</a><br>
+&nbsp;&nbsp;&nbsp; <a href="ftp://ftp.isi.edu/in-notes/rfc1948.txt">RFC 1948
+Defending Against Sequence Number Attacks</a><br>
+&nbsp;&nbsp;&nbsp; <a href="ftp://ftp.isi.edu/in-notes/rfc1750.txt">RFC 1750
+Randomness Recommendations for Security</a><br>
+&nbsp;<br>
+&nbsp;</font><center>
+<p><font size="2" face="Verdana">- EOF -</font></center>
+
+</body>
+<noscript>
+<noscript>
+
+</html>

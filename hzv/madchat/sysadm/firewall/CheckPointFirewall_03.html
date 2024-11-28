@@ -1,0 +1,240 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!-- saved from url=(0040)http://www.isecurelabs.com/faq/F1_p3.htm -->
+<!-- saved from url=(0047)http://www.nightbirdfr.com/docs/checkpoint3.htm --><HTML><HEAD><TITLE>Check Point Firewall-1 pour Linux, Troisième partie</TITLE>
+<META content="text/html; charset=windows-1252" http-equiv=Content-Type>
+<META content="MSHTML 5.00.2920.0" name=GENERATOR></HEAD>
+<BODY aLink=#0000a8 bgColor=#ffffff link=#000088 text=#000000 vLink=#7777dd>
+<TABLE border=0 cellSpacing=0 width="100%">
+  <TBODY>
+  <TR>
+    <TD>
+      <H1>Check Point Firewall-1 for Linux, Part Three <BR></H1>Par David "Del" 
+      Elson<BR>Traduit par <A href="http://nightbirdfr.com/">Nightbird</A> 
+      (http://www.nightbirdfr.com/) <BR>
+      <HR>
+    </TD></TR>
+  <TR>
+    <TD>
+      <P>C'est le troisième et dernier article d'une série consacrée à 
+      l'exploration de checkpoint Firewall-1 pour Linux. Dans le premier article 
+      nous avons discuté des tâches simples et du systeme d'installation et de 
+      l'apres-installation. Le deuxième article a exploré les concepts 
+      Firewall-1 tels que des objets de réseau, des règles de pare-feu, des 
+      règles de translation d'adresses, NAT, aussi bien que des dispositifs et 
+      des limitations de Firewall-1. Dans cet acompte, nous irons au-dela des 
+      aspects de Firewall-1 tels que la disposition des fichiers et des 
+      répertoires, les rulesets, les migrations des installations Firewall-1 
+      existantes de passer à Linux, et les configurations de sauvegarde et de 
+      secours.</P>
+      <P><B>Dans Firewall-1 </B></P>
+      <P><B>Modele de fichiers et de repertoires</B></P>
+      <P>Firewall-1 sous Linux est installe dans un repertoire de /opt. Ce 
+      repertoire est lie symboliquement a /etc/fw, et tous les repertoires, 
+      commandes et fichiers sont accessible via /etc/fw. Dans /etc/fw, il y a 
+      les composants suivants: 
+      <UL>
+        <LI>le repertoire bin, qui contient les binaires de Firewall-1 
+        (programmes executables); 
+        <LI>le repertoire conf, qui contient les fichiers de configuration, 
+        rulesets, etc.; 
+        <LI>le repertoire log qui contient les logs de Firewall-1 log; </LI></UL>
+      <P>... plus quelques autres. </P>
+      <P><B>Le repertoire Conf</B></P>
+      <P>Le répertoire conf contient les pièces les plus utiles a l'utilisateur, 
+      et est où un hacker de Firewall-1 pourrait passer la majeure partie de son 
+      temps. À l'intérieur du répertoire conf il y a un certain nombre de 
+      fichiers, incluant: 
+      <UL>
+        <LI>fichiers *.W, qui sont les versions editables des rulesets; 
+        <LI>fichiers *.pf, qui sont les versions compilees des rulesets; 
+        <LI>objects.C, qui contient les objets reseaux, ...; et, 
+        <LI>rulebases.fws, qui contient les rulesets dans un format editable par 
+        le Policy Editor; et, 
+        <LI>gui-clients, qui liste les adresses des stations de 
+      management.</LI></UL>
+      <P></P>
+      <P><B>Formats des fichiers</B></P>
+      <P>La plupart des fichiers dans le répertoire conf sont texte Ascii, et 
+      plutôt que d'utiliser le programme de gestionnaire de politique GUI, il 
+      est possible de se connecter a l'interface directement de Firewall-1 par 
+      ligne de commande. Les rulesets de base Firewall-1 sont enregistrés dans 
+      les fichiers *.W, qui sont dans une mise en forme de texte facilement 
+      lisible. Ces fichier correspondent aux règles rulesets définits dans le 
+      gestionnaire de politique, avec chaque politique enregistree dans un 
+      fichier séparé, et chaque ligne dans un politique enregistre dans un 
+      positionnement ligne dans le * W fichier. </P>
+      <P>Le format des *.W n'est pas complexe, et si vous êtes un administrateur 
+      de pare-feu alors un peu d'expérimentation vous expliquera le langage 
+      utilisé dans les fichiers. Il est possible de copier les fichiers *.W, 
+      éditer une copie, et de retourner à la vieille copie si votre éditeur 
+      s'égarent ou posent des problèmes.</P>
+      <P><B>Objets reseaux</B></P>
+      <P>Les objets reseaux sont stockes dans le fichier objects.C. Ce fichier 
+      est encore un fihcier ASCII texte et peut etre editer avec un editeur de 
+      texte tel que vi. Les objets reseaux pour toutes les rulesets sont stockes 
+      dans le meme fichier objects.C, donc soyez prudent en l'editant.</P>
+      <P><B>Rulesets (fichiers .W et .pf) </B></P>
+      <P>Generer un ruleset de firewall depuis l'un des fichiers *.W peut etre 
+      fait depuis la ligne de commande. La commande est: </P><PRE>fw gen myrules.W &gt; myrules.pf</PRE>
+      <P>Ceci genere une inspection des fichiers *.pf depuis le langage des *.W 
+      utiliser par le Policy Manager. Noter qu'il est possible d'editer les 
+      fichiers *.pf directement, comme ils sont en ASCII aussi. Les fichiers 
+      *.pf sont dans un langage appele INSPECT, qui est descrit dans le chapitre 
+      3 du guide de reference de Firewall-1.</P>
+      <P><B>Generation des rulesets</B></P>
+      <P>Des que vous avez genere un fichier INSPECT depuis le fichier *.W, il 
+      est possible de charger ceci dans un firewall en service avec la commande 
+      suivante:</P><PRE>fw load myrules.pf</PRE>
+      <P>Noter que charger un fichier INSPECT lis le script inspect ET le 
+      fichier objects.C, donc si vous editez les deux fichiers a la main et que 
+      vous ne les gardez pas synchroniser, vous risquez de rencontrer des 
+      problemes. </P>
+      <P><B>Migration d'une installation existante de Firewall-1 a Linux</B></P>
+      <P>Si vous avec une installation existant de Firewall-1, par exemple sous 
+      Windows NT, il est possible de la mettre a jour vers la derniere version 
+      en utilisant le programme d'installation standard de firewall-1. Cela mets 
+      a jours les versions precedentes des rulesets vers les nouvelles verions, 
+      ajoutent les objets reseaux necessaires a objects.C et installe le nouveau 
+      logiciel. Si vous avez une installation existante sous NT et que vous 
+      voulez migrer vers une installation Linux, il y a plusieurs etapes a 
+      suivre:</P>
+      <P><B>Pre-Planning et Preparation </B></P>
+      <P>D'abord, améliorant une machine Windows NT à Linux va impliquer une 
+      certaine (probablement) période considérable de temps de coupure. 
+      Supposant que vous avez un pare-feu courant, et qu'il est dans un 
+      environnement de production, vous pouvez souhaiter considérer construire 
+      une deuxième machine pour passer votre pare-feu de NT sur, plutôt que de 
+      réinstaller le pare-feu de production. Un autre avantage de ceci est qu'il 
+      vous donne une chance de retourner en arrière si les choses tournent mal. 
+      Il signifie également qu'une fois que vous avez terminé vous pouvez 
+      probablement avoir une machine disponible pour la reprise de redondance ou 
+      de désastre. </P>
+      <P>Le nouveau système de pare-feu devrait être de capacité et d'exécution 
+      suffisante pour couvrir la croissance de votre organisation pendant, 
+      peut-être, 2 - 3 ans. </P>
+      <P><B>Fichiers ASCII</B></P>
+      <P>D'abord, un avertissement: Les fichiers ASCII sur Windows NT et les 
+      fichiers ASCII sur Linux ne sont pas exactement les mêmes. Sur Windows NT, 
+      chaque ligne d'un fichier ASCII est terminée par un ordre CR/LF, qui est 2 
+      octets. Un fichier ASCII sur Linux est terminé par un octet simple de LF. 
+      Firewall-1 sur Linux utilise des fichiers ASCII dans le format de Linux, 
+      alors que Firewall-1 sur le NT utilise des fichiers ASCII dans le format 
+      de NT. Ils ne pourront pas etre utiliser directement. Il y a beaucoup 
+      d'utilitaires autour de ca capable de convertir un fichier des textes de 
+      format de NT (ou DOS) en fichier de format de Linux (ou UNIX). Celui que 
+      je préfère utiliser est le vieux vi fidèle (maintenant vim, avec le 
+      parametre -b):</P><PRE>vi -b some-dos-file</PRE>
+      <P>Lors du chargement du fichier DOS, vous verez a la fin de chaque ligne 
+      un "^M". La commande pour enlever ca est:</P><PRE>:%s/&lt;ctrl-V&gt;&lt;ctrl-M&gt;//g</PRE>
+      <P>ou &lt;ctrl-V&gt;&lt;ctrl-M&gt; veut dire "garde appuyer sur Ctrl, 
+      appuie sur V, puis sur M". Vous verrez un "^M" apparaitre sous vi quand 
+      vous faites ca. </P>
+      <P>Tous les fichiers (objects.C, *.W, ou rulebases.fws) copies de NT vers 
+      Linux doivent passer sous ce systeme.</P>
+      <P><B>Migration des objets reseaux</B></P>
+      <P>Copier les objets reseaux depuis NT vers Linux.</P>
+      <P>Rappelez vous du format Unix, cite plus haut !</P>
+      <P><B>Migration des rulesets </B></P>
+      <P>Comme cité précédemment, les rulesets Firewall-1 sont enregistrés dans 
+      un groupe de fichiers texte, qui sont * W sur le NT. Vous devez copier 
+      tous ces fichiers de votre pare-feu NT à votre pare-feu Linux et les 
+      mettre dans le répertoire de conf. </P>
+      <P>Il y a un autre fichier que vous devrez copier: rulebases.fws. Ce 
+      fichier contient une conglomération de tous les positionnements de règle, 
+      dans un format employé par l'éditeur de politique. Sans le fichier 
+      rulebases.fws, vous pouvez compiler manuellement les rulesets et les 
+      charger mais ne pourriez pas les voir dans la GUI </P>
+      <P><B>Migrating un v4.0 installation </B></P>
+      <P>If vous avez une existante installation de Firewall-1 sur NT qui est 
+      Firewall-1 version 4,0, et vous voulez passer cela a Linux, alors vous 
+      avez deux tâches. Le premier: passer de NT à Linux, la seconde: devoir 
+      améliorer Firewall-1 à la version 4,1 (car la version 4,0 ne fonctionne 
+      pas sur Linux). </P>
+      <P>Ce procédé de transfert est très semblable, avec quelques crochets. 
+      Premièrement, il y a quelques objets supplémentaires dans le fichier de la 
+      version 4,1 objects.C que vous devez capturer pendant que vous passez à 
+      Linux. Ceux-ci seront dans le fichier de défaut objects.C quand vous 
+      installez Firewall-1 sur Linux, ainsi il est important de ne pas détruire 
+      ce fichier quand vous copiez votre fichier d'objects.C de NT </P>
+      <P>Au lieu de copier le fichier directement depuis NT, copiez-le vers un 
+      nouveau fichier appele objects.C.old. Maintenant vous devez avoir deux 
+      fichiers, objects.C.old, celui de NT et objects.C celui de Linux.</P>
+      <P>Apres avoir convertit objects.C.old au format UNIX, vous pouvez 
+      regrouper ces deux fichiers en un seul avec la commande suivante: </P><PRE>fw confmerge objects.C.old objects.C &gt; objects.C.new</PRE>
+      <P>Vous avez maintenant un nouveau fichier objects.C.new contenant tous 
+      les objets necessaires.Renomez le vers objects.C avec: </P><PRE>mv objects.C.new objects.C
+</PRE>
+      <P>En plus, vous voulez copier chacun des fichiers rulebases.fws et *.W 
+      depuis la version 4.0 vers la nouvelle version 4.1. Ceux-ci peuvent etre 
+      copier directement. Je suggere de charger chaque regle dans le 
+      Gestionnaire de politique et de sauvegarder apres ca, cela les mettra a 
+      jour vers la nouvelle version 4.1 si necessaire. </P>
+      <P><B>Migration depuis la version 3 ou inferieure.</B></P>
+      <P>Je vous suggere de ne pas passer de 3.0 a 4.1 et de changer de 
+      plateforme en meme temps. Je vous recommende la procedure suivante:</P>
+      <UL>
+        <LI>MAJ de votre installation Firewall-1 version 3.0 sur NT a la version 
+        4.1 sur NT, utilisant le media version 4.1; et, 
+        <LI>migrer depuis Firewall-1 version 4.1 sur NT vers Linux, utilisant la 
+        procedure precedente. </LI></UL>
+      <P>Noter que Check Point indique qu'il n'est pas possible de mettre a jour 
+      a partir d'une version infereieure a 3.0 vers la version 4.1 du firewall. 
+      Vous devez faire une MAJ vers 3.0, puis de 3.0 a 4.1. Si vous passez a 
+      Linux, vous aurez surement 3 etapes. Prevoyer beaucoup de downtime en 
+      faisant ca! </P>
+      <P><B>Migration d'installations Multi-Systemes</B></P>
+      <P>Notez que passer un système NT à Linux n'est pas sensiblement plus 
+      compliquer si vous avez une multi-installation de systèmes qu'une 
+      installation simple de système. La première étape est de passer le 
+      firewall principal (aka le serveur de gestion, ou machine exécutant le 
+      module fwm). Tout en faisant ainsi, vous devriez vous abstenir d'appliquer 
+      tous les changements de ruleset aux modules esclave de l'application. Les 
+      modules d'application peuvent alors être passe un par un. Tandis que vous 
+      passez un module d'application, il n'y a aucun besoin de passer aucun de 
+      ces rulesets (rulebases.fws, objects.C, ou * des fichiers de W), car 
+      ceux-ci peuvent être propagés au module d'application une fois qu'il a été 
+      installé. Essentiellement, vous devriez installer un module d'application 
+      "empty", et utilisez le module de gestion pour propager une règle vers 
+      lui, juste comme quand vous avez installé la première fois le module. </P>
+      <P><B>Backup/restoration de configuration </B></P>
+      <P>Des administrateurs Firewall-1 sur NT ont installé des configurations 
+      de secours de Firewall-1, en utilisant un logiciel comme StoneBeat. Ce 
+      n'est pas vraiment possible avec la version Linux de Firewall-1, bien 
+      qu'il y ait quelques morceaux de logiciel qui émergent pour exécuter le 
+      failover et la haute disponibilité sur Linux. Je n'ai testé aucun de ces 
+      derniers avec Firewall-1. </P>
+      <P>Une alternative à avoir un secours automatique est d'avoir une machine 
+      disponible, configurée (matériel et logiciel) pareillement à votre 
+      firewall primaire. Ceci peut être laissé off-line pour le fonctionnement, 
+      ou même être commuté hors fonction et verrouillé dans un coffre-fort. 
+      Périodiquement, il payerait de sauvegarder le répertoire de conf de votre 
+      système Firewall-1 primaire et pour le restaurer sur votre machine de 
+      secours, ou même juste la restauration des fichiers objects.C et 
+      rulebases.fws, car la majeure partie du reste de la configuration peut 
+      être régénérée. </P>
+      <P><B>Resumé</B></P>
+      <P>Sans entrer dans les bons ou négatifs points du logiciel commercial (je 
+      tends à utiliser un mélange de commercial et de logiciel libre moi-même), 
+      on peut dire que Firewall-1 est rapide, fiable, et populaire et il fait le 
+      travail de créer un firewall avec un GUI facile a contrôler sous Linux. 
+      Les clients Firewall-1 existants avec un intérêt dans Linux seront heureux 
+      de noter que Firewall-1 s'exécute plus que convenablement sur Linux. 
+      L'exécution de Firewall-1 sur Linux semble excéder sensiblement celui de 
+      Firewall-1 sur NT, même de l'évidence anecdotique gagnée de la petite 
+      poignée d'installations que j'ai exécutées. Les clients Firewall-1 avec NT 
+      qui sont préoccupés par les performances peuvent etre bien conseiller pour 
+      passer de Windows NT à Linux. </P><BR></TD></TR>
+  <TR>
+    <TD align=top class=rightcolumn><A 
+      href="http://nightbirdfr.com/docs/checkpoint1.htm">Check Point Firewall-1 
+      pour Linux, Partie Une</A><BR><SPAN class=author>David "Del" Elson, 
+      SecurityFocus.com<BR><BR><A class=link 
+      href="http://nightbirdfr.com/docs/checkpoint2.html">Check Point Firewall-1 
+      pour Linux, Partie deux</A><BR><SPAN class=author>David "Del" Elson, 
+      SecurityFocus.com<BR><BR><A class=link 
+      href="http://www.checkpoint.com/products/firewall-1/" 
+      target=nonlocal>Check Point Firewall-1</A><BR><SPAN class=author>Check 
+      Point<BR><BR>
+      <DIV></DIV></SPAN></SPAN></SPAN></TD></TR></TBODY></TABLE><BR>Traduit par <A 
+href="http://nightbirdfr.com/">Nightbird</A> (http://www.nightbirdfr.com/) 
+</BODY></HTML>

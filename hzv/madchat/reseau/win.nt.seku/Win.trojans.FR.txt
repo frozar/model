@@ -1,0 +1,1496 @@
+Windows et les Chevaux de Troie 
+Par Dancho Danchev                            
+dancho.danchev@frame4.com
+http://www.frame4.com/
+
+Traduit par Alexis Roussel
+alexis@roussel.com
+http://alexis.roussel.com/
+
+Version 1.0
+===============================================================================
+ _____                         _  _   
+|  ___| __ __ _ _ __ ___   ___| || |  
+| |_ | '__/ _` | '_ ` _ \ / _ \ || |_ 
+|  _|| | | (_| | | | | | |  __/__   _|
+|_|  |_|  \__,_|_| |_| |_|\___|  |_|
+
+Cet article est publié par Frame4 Security Systems. Tous les droits sont
+réservés. Vous pouvez distribuer librement cet article, tant que son contenu
+reste inchangé et ainsi que cet en-tête. Je vous encourage aussi à le proposer
+en téléchargement sur votre site web, FTP, lettre de diffusion ou autre. Si
+toutefois vous voulez le modifier, obtenez d'abord l'accord de son auteur.
+
+ATTENTION - CET ARTICLE N'EST PROPOSE QUE PAR SOUCI D'INFORMATION. Dans les
+limites des textes juridiques applicables, Frame4 Security Systems ne pourra
+être tenu pour responsable d'aucun dommage, comprenant de manière non
+exhaustive la perte de profits, l'interruption d'activités professionnelles,
+la perte de données professionnelles ou toute perte financière, résultant de
+l'utilisation des logiciels cités ou des procédures décrites dans cet article,
+et cela même si Frame4 Security Systems a été informé de la survenance possible
+d'un tel dommage. Cet article ne donne aucune garantie quant à son contenu,
+mais vous aide à améliorer sensiblement la sécurité de Windows.
+
+Cet article demeure la propriété de Frame4 Security Systems.
+Tous droits réservés.
+Copyright (c) 1999-2002 Frame4 Security Systems -- http://www.frame4.com/
+-------------------------------------------------------------------------------
+
+Notes de l'Auteur:
+
+Cet article est une version mise à jour de celle que j'ai écrite il y a un
+maintenant certain temps. Depuis, je l'ai vu sur tous les sites dédiés à la
+sécurité et au hacking que j'ai pu visiter. J'apprécie que vous l'ayez tous
+sélectionné dans vos archives en recommandant sa lecture. Depuis, de nouvelles
+sections sont apparues et des mises à jour ont été effectuées. Vous pouvez y
+lire des aspects nouveaux et intéressants sur le sujet. Cet article répond aux
+questions fréquemment posées sur les chevaux de Troie comme " comment les
+attaquants s'y prennent-ils " ou " comment se protéger des chevaux de Troie ".
+
+Si vous avez d'autres questions, idées, suggestions ou commentaires, n'hésitez
+pas à me le faire savoir. Si vous pensez que j'ai oublié certains aspects ou
+bien simplement si vous maîtrisez bien le sujet, contactez-moi. Vous pourrez
+ainsi contribuer à la prochaine mise à jour. Bien sûr, vous ferez, ainsi que
+vos idées, l'objet de la plus grande attention.
+
+Notes du Traducteur:
+
+Cet article a été traduit de l'anglais. La grande majorité des liens proposés
+n'est donc disponible en anglais uniquement. N'hésitez pas à contacter le
+traducteur (alexis@roussel.com) pour tout commentaire, question ou critique
+sur cette version de l'article.
+-------------------------------------------------------------------------------
+
+Table des Matières
+-----------------
+01.De Quoi Parle Cet Article              
+02.Qu'est-ce Qu'un Cheval De Troie                 
+03.Comment Fonctionnent Les Chevaux De Troie                           
+04.Typologie Des Fonctions Des Chevaux De Troie                
+   -Accès à Distance
+   -Emission De Mot De Passe
+   -"Keylogging"
+   -Destruction
+   -Attaque Par Dénis De Service (DOS)
+   -Proxy/Wingate
+   -FTP
+   -Détection Et Fermeture D'Application
+05.L'Avenir Des Chevaux De Troie Sous Windows
+06.Comment Je Peux Etre Contaminé
+   -Par ICQ
+   -Par IRC
+   -Par Fichiers Joints
+   -Par Accès Physique
+   -Par Les Vulnérabilités Des Navigateurs & Logiciels De Courrier Electronique
+   -Par Netbios(Partage De Fichier)
+07.Faux Programmes
+08.Sites Sensibles Et Gratuiciels   
+09.Comment Détectent-ils Ma Présence Sur l'Internet
+10.Que Recherche Un Attaquant
+11.Espionnage Avec Un Cheval De Troie
+12.Ports Utilisés Par Les Chevaux De Troie
+13.Comment Savoir Si Je Suis Contaminé
+14.Logiciels Anti-Virus
+15.Logiciels Anti-Troyen
+16.Après Le Nettoyage
+17.Scanneurs En-Ligne 
+18.Conseils
+19.Liens
+20.Conclusion
+-------------------------------------------------------------------------------
+
+
+1.De quoi parle cet article?
+  --------------------------
+
+" Windows et les Chevaux de Troie" est un article sur les chevaux de Troie dans
+l'environnement de Windows, comment ils fonctionnent, leur typologie et bien
+sûr les mesures à prendre pour minimiser le risque d'infection.
+
+Des liens vers des logiciels spécifiques de détection ont été inclus ainsi que
+d'autres sujets jamais abordés auparavant. Cet article ne vise pas seulement
+l'utilisateur " moyen " qui veut savoir comment se protéger ou veut connaître
+la manière d'utiliser les chevaux de Troie, leurs fonctions, comment s'en
+protéger et leur avenir. Il peut aussi être intéressant pour un utilisateur
+avancé souhaitant aborder le sujet d'un différent point de vue.
+
+Les chevaux de Troie ne sont qu'un aspect limité de la sécurité sous Windows.
+Mais vous comprendrez rapidement, au cours de la lecture de cet article, à quel
+ point ils peuvent être dangereux et destructeurs.
+
+
+2.Qu'est-ce qu'un cheval de Troyes?
+  ---------------------------------
+
+Un cheval de Troie est:
+
+- Un programme non-autorisé contenu dans un autre programme. Ce programme
+  non-autorisé remplit des fonctions probablement non-désirées, inconnues de
+  l'utilisateur.
+
+- Un programme qui a été modifié par l'ajout non-autorisé de code. Ce code 
+  emplit des fonctions probablement non-désirées, inconnues de l'utilisateur.
+
+- Tout programme qui paraît remplir une fonction recherchée et nécessaire mais
+  qui remplit aussi, en raison de la présence inconnue et non-autorisée de
+  code, des fonctions non-désirées, inconnues de l'utilisateur.
+
+Le cheval de Troie tire son nom de la mythologie grecque. Pendant la guerre de
+Troie, les Grecs offrirent un cheval de bois géant aux Troyens. Ceux-ci
+acceptèrent le présent et le firent entrer dans la ville. La nuit, des soldats
+grecs sortirent du cheval dans lequel ils s'étaient caché et attaquèrent la
+ville.
+
+
+3.Comment fonctionnent les chevaux de Troie?
+  ------------------------------------------
+  
+Les chevaux de Troie sont composés d'un Client et d'un Serveur. Lorsque la
+victime déclenche (inconsciemment) le serveur sur son ordinateur, l'attaquant
+peut utiliser le client pour se connecter et utiliser le cheval de Troie. Le
+protocole TCP/IP est généralement utilisé pour établir la communication mais
+certaines fonctions du cheval de Troie peuvent aussi utiliser le protocole UDP.
+Lorsque le serveur est déclenché sur l'ordinateur de la victime, il essaye
+d'abord de se cacher dans l'ordinateur, puis il se met à écouter un ou
+plusieurs ports en attente d'une connexion de l'attaquant. Enfin, il modifie
+la base de registre ou utilise toute autre méthode permettant son exécution
+automatique.
+
+Il est indispensable pour l'attaquant de connaître l'adresse IP de l'ordinateur
+de la victime. Certains chevaux de Troie possèdent des fonctions permettant
+l'envoi par courrier électronique de l'adresse IP ou par l'envoi de messages
+ICQ ou IRC. Cela est utile lorsque la victime a une adresse IP dynamique, c'est
+à dire qu'elle est différente à chaque nouvelle connexion à l'Internet (cela
+est généralement le cas pour des connexions par le réseau téléphonique). La
+connexion ADSL permet d'obtenir une adresse IP fixe qui est toujours connue de
+l'attaquant et lui facilite d'autant la tâche.
+
+La plupart des chevaux de Troie utilisent des méthodes d'exécution automatique
+qui leur permettent de se déclencher à chaque redémarrage de l'ordinateur et de
+donner chaque fois l'accès à l'attaquant. De nouvelles méthodes d'exécution
+automatique et autres astuces apparaissent régulièrement. Celles-ci vont de
+l'intégration du cheval de Troie dans certains fichiers exécutables fréquemment
+utilisés comme par exemple explorer.exe, jusqu'à la modification de fichiers
+systèmes ou de la base de registre de Windows. Les fichiers systèmes se
+trouvent dans le répertoire de Windows et voici quelques brèves explications de
+leur utilisation par les attaquants:
+
+- Répertoire Démarrage
+  Le Répertoire Démarrage se trouve dans
+  C:\Windows\Menu Démarrer\Programmes\Démarrage et comme son nom l'indique tout
+  ce qui s'y trouve est exécuté automatiquement.
+- Win.ini
+  Fichier système de Windows qui peut utiliser la commande load=Troyen.exe et
+  run=Troyen.exe pour exécuter le cheval de Troie.
+- System.ini
+  En utilisant l'expression Shell=Explorer.exe troyen.exe le cheval de Troie
+  est systématiquement exécuté après que Explorer.exe se soit lui-même exécuté.
+- Wininit.ini
+  Les programmes d'installation l'utilisent généralement; une fois exécuté, le
+  fichier se supprime automatiquement, ce qui est très pratique pour les
+  chevaux de Troie.
+- Winstart.bat
+  Agit comme un fichier .bat normal, lorsque la commande @troyen.exe est
+  ajoutée, elle permet de cacher l'exécution à l'utilisateur.
+- Autoexec.bat
+  Il s'agit d'un fichier DOS de démarrage. Pour permettre l'exécution
+  automatique d'un fichier, il suffit de rajouter une ligne de commande comme
+  celle-ci -> c:\Troyen.exe
+- Config.sys
+  Peut aussi être utilisé comme méthode d'exécution automatique pour des
+  chevaux de Troie.
+- Lancement d'Explorer
+  Il s'agit d'une méthode d'exécution automatique pour Windows 95, 98, ME. Si
+  c:\explorer.exe existe, alors il sera lancé à la place de
+  C:\Windows\Explorer.exe qui est le chemin habituel pour le fichier explorer.
+
+La base de registre est souvent utilisée comme méthode d'exécution automatique.
+Voici quelques exemples connus:
+
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run]
+"Info"="c:\répertoire\Troyen.exe" 
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunOnce] 
+"Info"="c:\répertoire\Troyen.exe"
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunServices]
+"Info"="c:\répertoire\Troyen.exe"
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunServicesOnce]
+"Info"="c:\répertoire\Troyen.exe" 
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run]
+"Info"="c:\répertoire\Troyen.exe" 
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\RunOnce]
+"Info"="c:\répertoire\Troyen.exe"
+
+- Commande d'exécution de la base de registre 
+
+  [HKEY_CLASSES_ROOT\exefile\shell\open\command]
+  [HKEY_LOCAL_MACHINE\SOFTWARE\Classes\exefile\shell\open\command]
+
+  Une clé ayant pour valeur ""%1 %*" se trouve à cet endroit. Si la référence à
+  un fichier exécutable est placée à coté, celui-ci sera exécuté chaque fois
+  qu'un fichier exécutable est lancé. Pour utiliser cette méthode:
+  "troyen.exe "%1 %*"; cela relancerait le cheval de Troie.
+
+- La Méthode de Détection de Réseau par ICQ
+
+  [HKEY_CURRENT_USER\Software\Mirabilis\ICQ\Agent\Apps\]
+
+  Cette clé comprend tous les fichiers qui sont exécutés lorsque ICQ détecte
+  la présence d'une connexion à l'Internet. Comme vous pouvez l'imaginer, cette
+  fonction d'ICQ est extrêmement pratique et trop souvent sollicitée par les
+  attaquants.
+
+- Composant ActiveX
+
+  [HKEY_LOCAL_MACHINE\Software\Microsoft\Active Setup\Installed Components\KeyName]
+  StubPath=C:\répertoire\Troyen.exe
+
+L'utilisation des fichiers systèmes et de la base de registre de Windows
+constituent les méthodes les plus courantes d'exécution automatique.
+
+
+4.Typologie des fonctions des chevaux de Troie
+  --------------------------------------------
+
+La variété des chevaux de Troie est telle qu'il est difficile de tous les citer
+et de les décrire. La plupart sont une combinaison des fonctions décrites
+ci-dessous ou de fonctions qui ne sont pas connues et ne le seront probablement
+jamais.
+
+Accès à Distance
+
+Il s'agit de la fonction la plus répandue dans les chevaux de Troie, car elle
+donne à l'attaquant le contrôle de l'ordinateur de la victime en lui permettant
+de faire certaines opérations que même la victime, pourtant assise devant son
+ordinateur, ne peut faire. Cette fonction parait la plupart du temps en
+combinaison avec les autres fonctions décrites ci-dessous. Le principe de ce
+type de cheval de Troie est de donner à l'attaquant un accès TOTAL à
+l'ordinateur distant et lui permettre d'accéder aux fichiers, aux
+communications privées, à des données de connexion, etc.
+
+Emission De Mot De Passe
+
+Le but de cette fonction est de copier tous les mots de passe cachés pour les
+envoyer ensuite par courrier électronique et cela sans que la victime ne s'en
+aperçoive. Les mots de passe, ICQ, IRC, FTP, HTTP ainsi que ceux de tout autre
+programme nécessitant de l'utilisateur la saisie d'un identifiant et d'un mot
+de passe, sont envoyés à l'adresse électronique de l'attaquant, disposant la
+plupart du temps d'un compte de courrier électronique chez un fournisseur de
+service gratuit. Ces chevaux de Troie ne nécessitent pas d'être redémarré avec
+l'ordinateur, leur principe étant de récolter le maximum d'information sur
+l'ordinateur de la victime. Ces informations recherchées dépendent des
+besoins de l'attaquant.
+
+"Keylogging"
+
+Cette fonction est très simple. Il s'agit d'enregistrer chaque touche du
+clavier enfoncée par la victime dans un fichier log. L'attaquant peut ensuite
+parcourir le fichier log à la recherche de mots de passe ou de toute autre
+information. Cette fonction est souvent couplée avec une fonction
+d'enregistrement des touches enfoncées en-ligne et hors-ligne. Bien sûr, on
+peut aussi y rajouter une fonction d'envoi quotidien du fichier log par
+courrier électronique. 
+
+Destruction
+
+Le seul objectif de cette fonction est la destruction de fichiers. Elle est
+extrêmement simple à utiliser. Elle permet d'effacer automatiquement tous
+les fichiers les plus importants du système (par exemple: les fichiers aux
+extensions .dll, .ini or .exe ou encore d'autres). Cette fonction peut être
+déclenchée par l'attaquant, mais peut aussi être contenue dans une bombe
+logique se déclenchant automatiquement un jour précis, à une heure précise.
+
+Attaque Par Dénis De Service (DoS ou Denial of Service)
+
+Cette fonction est devenue très populaire. Elle permet à l'attaquant
+d'initier une attaque par dénis de service distribué (DDoS ou Distributed
+Denial of Service) s'il s'assure d'obtenir un nombre suffisant de victimes.
+Si vous parvenez à contaminer 200 utilisateurs de lignes ADSL et que vous
+déclenchez une attaque simultanée sur une victime non-contaminée, cela
+engendrera un trafic de données bien plus important que celui supporté par
+la bande passante de la victime, bloquant toute communication vers l'Internet
+et à terme déconnectant l'ordinateur cible. WinTrinoo est utilitaire d'attaque
+par dénis de service distribué (DDoS) qui à fait parler de lui récemment. Des
+sites majeurs ont pu être bloqués comme nous l'avons vu dans l'actualité de ces
+derniers mois.
+
+Une variation de cette fonction d'attaque pas dénis de service (DoS) est le
+bombard (mail bomb). Le but est de contaminer le plus grand nombre possible
+d'ordinateurs pour ensuite déclencher une attaque contre une ou plusieurs
+adresses de courrier électronique avec des messages aux sujets et contenus
+aléatoires, rendant inefficace toute technique de filtrage. 
+
+Proxy/Wingate
+
+Cette fonction très intéressante permet de transformer l'ordinateur de la
+victime en serveur proxy ou Wingate alors accessible par toute personne
+connectée au réseau ou uniquement par l'attaquant. Cela permet une
+utilisation anonyme de services tels que Telnet, ICQ, IRC, d'enregistrer
+des noms de domaines avec des numéros de cartes de crédit volés ou bien
+encore pour toute autre activité illégale. Cela rend l'attaquant
+complètement anonyme, lui permettant de tout exécuter depuis VOTRE
+ordinateur. Si ses activités sont découvertes, un traçage permettra de
+remonter à votre ordinateur et non au sien.
+ 
+FTP (File Transfert Protocol)
+
+La plus simple, et maintenant dépassée des fonctions, ouvre le port 21,
+celui réservé au protocole de transfert de fichiers (FTP), rendant
+l'ordinateur accessible par toute personne connectée au réseau. Des
+nouvelles versions peuvent être protégées par un mot de passe permettant
+uniquement à celui qui a contaminé l'ordinateur de s'y connecter.
+
+Détection Et Fermeture D'Application
+
+Cette fonctionnalité, qui peut être implémentée soit dans un cheval de
+Troie soit dans un programme indépendant, est capable de fermer certains
+logiciels pare-feu (firewall) ou anti-virus, comme ZoneAlarmn, Norton
+Anti-Virus ou d'autres encore, sensés protéger votre ordinateur. A ce
+moment-là, l'attaquant peut avoir un accès complet à votre ordinateur et
+l'utiliser pour des activités illégales, pour attaquer d'autres cibles, et
+pour, à terme, disparaître. Bien que vous pourrez constater que ces
+logiciels ne fonctionnent plus correctement, cela vous prendra un certain
+temps pour supprimer le cheval de Troie, installer de nouveaux logiciels de
+sécurité, les configurer et se reconnecter en ayant un certain sens de la
+sécurité.
+
+Jetez un coup d'œil à la liste faite par SnakeByte (Bon travail!):
+
+http://www.snake-basket.de/e/AV.txt
+
+Vous comprendrez alors à quel point il est facile de fermer ces logiciels de
+sécurité. Il s'agit d'une liste de logiciels anti-virus, leurs noms sous
+Windows, les fichiers qui leurs sont associés et encore d'autres informations
+permettant à un attaquant de fermer ces logiciels. Je n'ai rencontré que peu
+de ces logiciels anti-troyen qui permettent à l'utilisateur de définir un autre
+chemin d'installation que celui proposé par défaut, de définir le nom du
+logiciel dans l'environnement Windows ou de modifier tout autre élément
+rendant l'attaque, visant à fermer ces logiciels, plus difficile à mener. 
+
+
+5. L'avenir des chevaux de Troie sous Windows
+  -------------------------------------------
+
+Les utilisateurs de Windows seront toujours une cible privilégiée pour les
+attaquants car la plupart d'entre eux ne rendent pas compte de l'importance de
+la sécurité sous cet environnement. Ils se sentent en sécurité avec un simple
+logiciel pare-feu sans qu'ils comprennent réellement comment ce logiciel
+fonctionne et sans qu'ils sachent le configurer correctement. Les chevaux de
+Troie sous Windows représenteront dans le futur un vrai problème de sécurité.
+Je suis sûr que les attaquants sont conscients de cela. Ils continueront
+d'ajouter de nouvelles fonctions aux chevaux de Troie. Généralement, ces
+chevaux de Troie seront utilisés à des fins privées. Des fonctions
+configurables d'attaque automatisée seront utilisées pour résoudre la
+plupart des problèmes rencontrés par les attaquants comme le scannage de ports
+de manière anonyme ou encore l'attaque par dénis de service distribué (DDoS). 
+
+Un document sur le sujet peut se trouver ici:
+
+http://staff.washington.edu/dittrich/misc/ddos/
+
+On peut imaginer un réseau, créé par un attaquant ou un groupe d'attaquants,
+s'inspirant des concours actuellement organisés, dans le but de décrypter des
+mots de passe, mais cela dans son propre intérêt. Quelqu'un a-t-il déjà pensé
+à une fonction de spamming (envoi massif de courrier électronique
+non-sollicité)? Implémentée dans un cheval de Troie, elle agirait de la même
+manière que les logiciels de spamming déjà existants, circulant sur l'Internet
+à la recherche d'adresses de courrier électronique. Il s'agit ici de quelques
+petits exemples, mais , croyez-moi, il existe des fonctions bien plus avancées,
+implémentées dans des chevaux de Troie, qui ne seront probablement jamais
+révélées. 
+
+Lors de la dixième session de la conférence Defcon, l'entreprise de sécurité
+SensePost démontra qu'il était possible avec un cheval de Troie, Setiri,
+d'outrepasser tous les pare-feu et les systèmes de détection d'intrusion
+(Intrusion Detection System ou IDS), permettant d'accéder à un ordinateur
+fonctionnant dans un environnement sécurisé. Plus d'information est disponible
+sur ce lien:
+
+http://www.computercops.biz/modules.php?name=News&file=article&sid=1321
+
+
+6. Comment je peux être contaminé?
+  ------------------------------
+
+Nombre de personnes ne peuvent concevoir les différents moyens de contamination
+car pour elles, dans leur esprit, l'unique voie de contamination est celle du
+téléchargement et de l'exécution d'un fichier serveur.exe, ce qu'elles ne
+feront jamais. Comme vous le verrez ici, il existe une multitude de moyens
+permettant à un attaquant de contaminer votre ordinateur et de l'utiliser pour
+des activités illégales. Je vous demande de prendre cela au sérieux. Lisez la
+suite attentivement et rappelez-vous que la prévention est bien meilleure que
+tout remède !
+
+6.1 ICQ
+6.2 IRC
+6.3 Fichiers Joints
+6.4 Accès Physique
+6.5 Les Vulnérabilités Des Navigateurs Et Logiciels De Courrier Electronique
+6.6 Netbios(Partage De Fichier)
+
+6.1 Par ICQ
+
+Certaines personnes ne comprennent pas qu'elles peuvent être contaminées en
+discutant par ICQ ou tout autre logiciel de messagerie instantanée. Cela
+devient risqué lorsqu'elles acceptent de recevoir des fichiers de n'importe
+qui, venant de n'importe où.
+
+Croyez-le ou non, il y a encore des personnes sur le réseau qui utilisent
+d'anciennes versions d'ICQ leur permettant de visualiser le numéro IP de la
+personne avec laquelle elles communiquent. Ces anciennes versions possèdent
+cette fonctionnalité très pratique pour toute personne sachant utiliser
+Winnuke ou tout autre utilitaire d'attaque DoS. Mais honnêtement, est-ce
+vraiment dur de cliquer sur un bouton avec la souris ? Ces personnes sont
+souvent elles-mêmes des victimes potentielles de personnes plus au fait des
+chevaux de Troie et prenant l'avantages des vulnérabilités de leurs anciennes
+versions d'ICQ.
+
+Passons en revue les différentes manières d'être contaminé par ICQ:
+
+- Vous ne pouvez jamais être absolument sûr de qui si trouve de l'autre coté
+  à un moment donné. Il se peut que quelqu'un ait piraté le numéro unique
+  d'identification d'ICQ (Unique Identification Number ou UIN) d'un de vos amis
+  et veuille distribuer des chevaux de Troie à ses contacts. Vous ferez à coup
+  sûr confiance à votre bon ami Bob lorsqu'il vous proposera quelque chose
+  d'intéressant. Mais s'agit-il vraiment Bob ?
+
+- Les vieilles versions d'ICQ comprenaient des failles dans la fonction serveur
+  qui crée un site sur votre propre ordinateur présentant vos informations
+  contenues dans la base de données d'ICQ. Ces failles permettent à l'attaquant
+  d'accéder à n'importe quel fichier sur votre ordinateur. Si vous avez lu
+  attentivement les sections précédentes et que vous connaissez les méthodes
+  d'exécution automatique, vous comprendrez certainement ce qu'il peut se
+  passer si quelqu'un accède à votre fichier win.ini ou tout autre fichier
+  système. Il pourra installer un cheval de Troie en quelques minutes.
+
+- Le fichier Troyen.exe, envoyé par ICQ, est d'abord renommé en
+  Troyen...(150 espaces).txt.exe. L'icône est modifié pour être la même que
+  celle d'un fichier .txt ordinaire. Le cheval de Troie ressemble alors à un
+  fichier .txt ordinaire. Cette faille a été certainement corrigée dans les
+  versions les plus récentes.
+
+Quel que soit le logiciel de messagerie instantanée que vous utilisez, vous
+vous exposer toujours à une attaque profitant d'une faille dont vous n'avez
+jamais entendu parler. Vous n'avez peut-être aussi jamais pris le soin
+d'installer une version plus récente du logiciel. Lorsque vous recevez un
+fichier, quelque soit son origine, quelque soit son expéditeur, prenez l'aspect
+de la sécurité très au sérieux. Votre naïveté est votre point faible le plus
+vulnérable.
+
+6.2 Par IRC (Internet Relay Chat)
+
+Les IRC sont peuplés d'internautes qui peuvent y passent leur temps. Les IRC
+constituent un autre lieu de contamination. La confiance est primordiale
+quoique vous fassiez. Refusez tous les fichiers, quelque soit l'expéditeur,
+prétendant vous offrir des images pornographiques gratuites, des connexions
+à l'Internet gratuites, un logiciel de piratage de comptes Hotmail. Les
+débutants sont souvent une cible privilégiée et soyez certains que nombre
+d'internautes restent des débutants en matière de sécurité. Les internautes
+sont souvent contaminés sur des canaux spécialisés en échange de matériel
+pornographique ou, évidemment, sur des canaux d'échange de programmes piratés.
+Ils ne sont pas conscient du risque qu'ils prennent, leur esprit étant occupé
+à la recherche de pornographie ou programmes gratuits.
+
+Voici un scénario montrant comment vous pouvez être contaminé en utilisant
+un IRC:
+
+- Vous êtes en train de discuter avec quelqu'un, une " fille " probablement,
+  et vous passez un bon moment. Bien sûr vous avez envie de voir la personne
+  avec qui vous discutez. Vous lui demandez si elle n'a pas une photo qu'elle
+  peut vous envoyer, ou bien cette " fille " vous propose d'elle-même de vous
+  envoyer une de ses photos. Je suis sûr que, à ce moment, vous mourrez d'envie
+  de la voir. Elle vous annonce qu'elle vient de créer son propre économiseur
+  d'écran en utilisant un logiciel connu et elle vous propose de vous
+  l'envoyer, non sans vous avouer que certaines de ces photos sont un peu
+  osées. Vous discutez depuis une semaine et voilà que vous recevez un fichier
+  écrandeveille.exe que vous exécutez. Vous découvrez de très belles photos
+  d'elle et sur certaines elle est toute nue , elle ne vous avait pas menti.
+  Rien de mal ou suspect ne s'est passé. Mais repensez un instant à ce qui
+  s'est vraiment passé! Vous avez téléchargé et exécuté un fichier.
+
+- Le fichier Troyen.exe peut aussi être renommé en Troyen.scr avec une
+  extension habituellement réservée aux économiseurs d'écran. L'exécution de ce
+  fichier se déroulera sans problème. Soyez attentifs aux fichiers ayant cette
+  extension.  
+
+- Le fichier Troyen.exe est renommé en Troyen...(150 espaces).txt.exe. En
+  recevant ce fichier par IRC, il apparaîtra, lorsqu'il sera transmis dans le
+  cadre d'une discussion par connexion directe (Direct Chat Connection ou DCC),
+  comme un fichier .txt ordinaire. Vous ne ferez pas attention en l'exécutant
+  et vous serez à nouveau contaminé. Dans tous ces exemples, l'icône du fichier
+  est modifiée pour être identique à celle d'un fichier .txt ordinaire trompant
+  encore plus aisément les victimes.
+
+La plupart des utilisateurs ne remarquent pas que le fichier est un exécutable
+apparaissant dans leur explorateur comme un fichier .txt. Ainsi, avant de lire
+un fichier, même s'il s'agit apparemment d'un fichier texte, vérifiez son
+extension.
+
+6.3 Par fichiers joints
+
+Je suis toujours surpris par le nombre de personnes qui sont contaminées par un
+fichier joint envoyé par courrier électronique. La plupart des utilisateurs
+sont profanes sur l'Internet et assez naïfs. Lorsqu'ils reçoivent un courrier
+électronique contenant un fichier joint leur promettant un accès gratuit à
+l'Internet ou des images pornographiques gratuites, ils l'ouvriront sans se
+rendre compte réellement des risques qu'ils encourent.
+
+Lisez l'exemple suivant:
+
+Alex, votre ami, est un programmeur expérimenté en Visual Basic. Vous savez
+qu'il est en train de travailler sur son dernier programme. Vous attendez
+impatiemment un courrier électronique de sa part avec le programme fini en
+fichier joint. Mais voilà que vous êtes aussi la cible d'une attaque.
+L'attaquant connaît l'adresse de votre ami. Il crée lui-même un petit programme
+ou récupère un gratuiciel (freeware). Il vous envoie alors un courrier
+électronique utilisant un serveur relais pour vous tromper et faire croire que
+le courrier provient bien d'Alex. L'adresse d'Alex étant alex@exemple.com, le
+champ DE (FROM) du courrier électronique de l'attaquant sera changé en
+alex@exemple.com. Evidemment, le fichier joint sera infecté d'un cheval de
+Troie. Lorsque vous consulterez vos courriers, vous verrez qu'Alex a enfin
+fini son programme et vous l'a envoyé. Vous téléchargerez et exécuterez le
+fichier sans penser une seule seconde qu'un cheval de Troie peut s'y cacher.
+De toutes façons , Alex est votre ami, il ne vous ferait jamais ça. Vous serez
+contaminé. 
+
+L'information c'est le pouvoir! L'attaquant savait que vous attendiez un 
+fichier. Il a trouvé l'adresse d'Alex et vous a contaminé. Cela est arrivé 
+parce que vous avez été naïf, parce que vous avez vu l'adresse alex@exemple.com
+dans le champ DE (FROM) du courrier et parce que vous n'avez pas vu dans
+l'en-tête du courrier que celui-ci a été relayé par un serveur .jp (Japon)
+utilisé aussi par des spammers depuis plusieurs mois.
+
+Nombre d'internautes ont été contaminés par la fameuse "Mise à Jour de
+Microsoft Internet Explorer" envoyée par courrier électronique par l'équipe
+inexistante des mises à jour de Microsoft. Je comprends que l'on peut apprécier
+que Microsoft prenne soin de ses clients, surtout quand il s'agit de soi. Ces
+"mises à jour" étaient des chevaux de Troie. Jamais, Microsoft ne vous enverra
+des mises à jour ou des logiciels par courrier électronique. Comme nous l'avons
+vu dans l'exemple précédent, il est très aisé de tromper sur la provenance d'un
+courrier électronique. Que le champ DE (FROM) contienne
+misesajour@microsoft.com ne garanti en rien que ce courrier a bien été envoyé
+par Microsoft. Si jamais vous recevez des courriers ayant comme sujet "Mise à
+Jour de Microsoft Internet Explorer" ou tout autre sujet de ce type,
+supprimez-les sans même les lire. Certains logiciels de courrier électronique
+comme Outlook Express et d'autres possèdent des failles qui permettent
+l'exécution automatique des fichiers joints sans que vous fassiez quoique ce
+soit. Il s'agit d'un problème extrêmement grave qui nécessite que vous
+utilisiez toujours la dernière version mise à jour de vos logiciels.
+
+6.4 Par Accès Physique
+
+L'accès physique est un point essentiel de la sécurité de votre ordinateur.
+Imaginez ce que peut faire un attaquant lorsqu'il a un accès physique à votre
+ordinateur, ou pire, si vous êtes en permanence connecté à l'Internet, et que
+vous quittez la pièce pendant quelques minutes, juste le temps d'être
+contaminé. Dans cette section, je décrirai quelques techniques utilisées par
+les attaquants lorsqu'ils ont un accès physique. Il y des gens très malins qui
+ne cessent d'imaginer de nouvelles méthodes pour obtenir l'accès physique à un
+ordinateur. Voilà quelques astuces intéressantes:
+
+- Votre "ami" veut contaminer votre ordinateur auquel il a un accès physique.
+  Disons que vous êtes chez vous en train de naviguer sur le réseau ou de
+  discuter en-ligne. Votre "ami" vous demande alors de lui servir un verre
+  sachant que vous serez obliger de quitter la pièce pendant au moins 1 minutes
+  ou 2. Pendant que vous lui cherchez son verre, il peut utiliser une disquette
+  et contaminer votre ordinateur alors sans défense. Lorsque vous revenez, tout
+  paraît normal. Votre "ami" est toujours en train de naviguer sur le réseau.
+
+- L'exemple suivant est celui de deux personnes voulant se venger de vous pour
+  une quelconque raison et qui ont décidé d'agir ensemble. Encore une fois,
+  vous êtes chez vous avec un de vos "amis" en train de naviguer, discuter
+  en-ligne. Le téléphone sonne. Au bout de la ligne, un autre de vos "amis"
+  veut vous parler de quelque chose d'important. Il ou elle (un fille aurait
+  plus de succès) veut s'assurer que vous êtes seul ou au moins à un endroit où
+  l'on ne pourra pas vous entendre, surtout votre "ami" présent. Dans ce cas,
+  la victime est à nouveau éloignée de son ordinateur, laissant l'attaquant
+  libre de faire ce qu'il veut. 
+
+- On peut citer d'autres astuces proches de la précédente. Quelqu'un peut
+  sonner à votre porte d'entrée, d'autres conversations téléphoniques peuvent
+  vous éloigner de votre ordinateur. Il existe tellement de manières
+  différentes. Pensez-y juste un moment et vous verrez à quel point il est
+  facile de vous piéger et cela, juste parce que vous n'êtes pas suffisamment
+  conscient de votre sécurité lorsqu'il s'agit de vos données informatiques
+  sensibles.
+
+- La notification d'insertion automatique du CD-Rom est un des moyens de
+  contamination lorsque l'on a un accès physique à votre ordinateur. Vous avez
+  certainement constaté que, lorsque vous introduisez un CD-Rom dans votre
+  lecteur de CD-Rom, celui-ci lance automatiquement son interface
+  d'installation. Voici un exemple d'un fichier Autorun.inf qui est présent
+  sur ce type de CD-Rom:
+
+  [autorun]
+  open=setup.exe
+  icon=setup.exe
+
+  On peut alors facilement imaginer qu'un cheval de Troie s'exécute en même
+  temps que l'installation du CD-Rom. Ne connaissant certainement pas cette
+  fonction de votre lecteur de CD-Rom, vous serez contaminé et vous vous
+  demanderez comment cela a été possible. Oui, je sais que cette fonction est
+  bien pratique, mais nous parlons ici de sécurité. C'est pourquoi il est
+  conseillé de désactiver cette fonction en suivant la procédure suivante:
+  
+  Le bouton Démarrer->Paramètres->
+        Panneau de configuration->Système->Gestionnaire de périphériques->
+                                            CD-ROM->Propriétés->Paramètres
+                                 
+  Il vous suffit de décocher la case correspondant à la notification
+  d'insertion automatique. Vous n'aurez plus aucun problèmes liés à cette
+  fonction.
+
+Je connais bien d'autres astuces pour accéder physiquement à un ordinateur
+dans le but de l'infecter mais celles-ci sont les plus fréquentes. Faites-y
+attention et imaginez-en vous-même. 
+
+Lorsque la victime est connecté à l'Internet:
+
+Encore une fois, je vous présenterai les astuces les plus fréquentes. Pendant
+que l'attaquant a un accès physique à votre ordinateur, il peut télécharger le
+cheval de Troie autant de techniques qu'il existe de protocoles Internet.
+
+- Un IRCbot (Robot IRC), connu de l'attaquant seul, est en ligne sur un IRC
+  ayant pour unique fonction de télécharger, en établissant une discussion par
+  connexion directe (Direct Chat Connection ou DCC), un cheval de Troie à
+  l'attaquant dés que celui-ci sollicite le robot avec une commande
+  particulière. La victime sera alors sûrement éloignée de son ordinateur.
+- L'attaquant peut télécharger certaines nouvelles versions de logiciels
+  infecté par un cheval de Troie, visitant des adresses Internet connues par
+  lui seul.
+- L'attaquant peut aussi prétendre qu'il veut consulter sa boite de courrier
+  électronique en-ligne comme Yahoo! ou Hotmail. En fait, il a auparavant
+  sauvegardé un cheval de Troie dans sa boite et il ne lui suffit plus que de
+  le télécharger et de l'exécuter pour contaminer l'ordinateur. Sa boite de
+  courrier électronique est utilisée dans ce cas comme un espace de stockage
+  de données.  
+
+Comme vous l'imaginez, il existe bien d'autres manières de contaminer
+l'ordinateur de la victime alors que celui-ci est connecté à l'Internet. Tous
+ces exemples peuvent être efficaces mais dépendent du niveau de connaissance en
+matière d'Internet de la victime. Ainsi, l'attaquant devra vérifier tous les
+aspects que j'ai mentionné dans cet article. Sachant cela, l'attaquant pourra
+choisir la meilleure attaque pour contaminer sa cible.
+
+6.5 Par les vulnérabilités des navigateurs & logiciels de courrier électronique
+
+Les utilisateurs ne mettent pas suffisamment souvent à jour leurs logiciels.
+Les attaquants le savent et mettent cela à profit. Imaginez que vous utilisez
+une vieille version d'Internet Explorer. Un site peu recommandable sur lequel
+vous naviguez peut vérifier automatiquement la version de votre navigateur et
+contaminer votre ordinateur sans que vous n'ayez rien téléchargé ni exécuté.
+La même chose peut se produire lorsque vous consultez vos courriers
+électroniques avec Outlook Express ou tout autre logiciel ayant les mêmes
+vulnérabilités. Encore une fois, vous serez contaminé sans avoir téléchargé le
+fichier joint. Soyez sur de disposer toujours de la version la plus récente de
+votre navigateur et de votre logiciel de courrier. Vous réduirez d'autant les
+risques de contamination. Voici quelques liens sur les vulnérabilités de ces
+logiciels. Consultez-les et essayez de comprendre à quel point ces failles sont
+dangereuses.
+
+
+http://www.guninski.com/browsers.html
+http://www.guninski.com/netscape.html
+
+6.6 Netbios(Partage de fichier)
+
+Si le port 139 de votre ordinateur est ouvert, vous partagez certainement vos
+fichiers avec d'autres ordinateurs sur le réseau. Il s'agit ainsi d'un moyen
+supplémentaire utilisé pour accéder à votre ordinateur, y installer un cheval
+de Troie et modifier vos fichiers systèmes pour que, la prochaine fois que
+votre ordinateur soit redémarré, le cheval de Troie est exécuté. Parfois,
+l'attaquant peut même initier une attaque par dénis de service (DoS), bloquant
+votre ordinateur et vous forçant à le redémarrer. Ainsi, le cheval de Troie est
+immédiatement opérationnel. Pour supprimer le partage de fichiers, suivez la
+procédure suivante:
+
+Le bouton Démarrer->Paramètres->Panneau de configuration->Réseau->
+                               Partage defichiers et d'imprimantes
+
+Décocher toutes les cases. Vous n'aurez alors plus de risque d'être attaqué par
+le Netbios.
+
+
+7.Faux Programmes
+  ---------------
+
+Imaginez un gratuiciel SimpleMail qui correspond exactement à vos besoins. Il
+comprend des fonctions très pratiques comme son carnet d'adresses, la
+possibilité de gérer plusieurs comptes POP3 ou toute autre fonction qui le rend
+bien plus attractif que votre logiciel habituel. En plus, il est gratuit. Comme
+vous utilisez ZoneAlarm ou un logiciel équivalent pour vous protéger, vous
+configurez ce dernier pour qu'il considère votre nouveau logiciel comme étant
+digne de confiance. Ainsi, votre logiciel de protection ne vous gênera pas
+lorsque vous utiliserez quotidiennement votre logiciel de courrier
+électronique. Il fonctionne très bien, vous êtes satisfait, mais vous ne
+remarquez pas que votre ordinateur travaille plus qu'il ne devrait. Chaque
+courrier que vous envoyez, ainsi que les mots de passe de vos comptes POP3,
+sont transmis directement à l'attaquant sans que vous vous en rendiez compte.
+Les mots de passe cachés dans Windows ainsi que les touches du clavier que vous
+avez pressées peuvent aussi être envoyés. Il s'agit, pour l'attaquant, de
+récupérer le maximum d'informations comme les numéros de cartes de crédit, les
+mots de passes de logiciels divers et encore bien d'autres.
+
+Dans certains cas, l'attaquant peur même avoir un accès complet à votre
+ordinateur. Cela dépend des fonctions implémentées dans le cheval de Troie. Les
+ports 25 ou 110, utilisés lorsque vous envoyez un courrier, peuvent être
+sollicités par l'attaquant pour se connecter à votre ordinateur et utiliser les
+fonctions cachées du logiciel. Bien sûr, il prendra la précaution de s'y
+connecter à travers un autre ordinateur piraté pour l'occasion. L'astuce de
+l'attaque consiste à vous offrir un logiciel qui nécessite qu'il se connecte
+régulièrement à un serveur. Intégré dans l'interface du logiciel, un bandeau
+publicitaire se rafraîchit toutes les minutes. Il s'agit officiellement de la
+seule source de revenu permettant au programmeur de continuer à vous offrir ce
+très bon logiciel. Il l'explique d'ailleurs dans la section " A propos " de son
+logiciel. Tout cela renforce la confiance que vous accordez à ce logiciel. Le
+logiciel de protection, configuré par vos soins, ne bloquera ses tentatives de
+connexion. L'attaquant a réussi à vous tromper. Même en imaginant que vous
+constatiez les activités anormales de votre connexion, vous ne serez pas
+inquiété car le rafraîchissement du bandeau publicitaire expliquera ces
+communications vers un serveur inconnu.
+
+L'imagination est la seule chose dont un attaquant ait besoin. Et la plupart
+d'entre eux en ont. Imaginez un faux Audigalaxy, renommé différemment,
+permettant l'échange de fichiers mp3. L'attaquant pourra créer sur son propre
+ordinateur une base de données importante de mp3. Il pourra faire de même sur
+d'autres ordinateurs piratés. Lorsque vous téléchargerez vos mp3, vous aurez
+l'impression d'être connecté à des utilisateurs présents dans le monde entier.
+L'attaquant peut aussi simplement vous proposer une interface qui ne montre pas
+la provenance du fichier mp3. Le logiciel sera infecté d'un cheval de Troie,
+contaminant des milliers d'utilisateurs trop naïfs et utilisant certainement
+des connexion ADSL.
+
+Ces faux logiciels infectés sont souvent proposé sur des sites Internet
+d'apparence très professionnelle, avec des liens à divers logiciels anti-troyen
+partenaires. Tout est arrangé pour que vous accordiez votre confiance au
+logiciel, comme le fichier lisez-moi.txt inclus dans les fichiers
+d'installations. Faites attention à tous les gratuiciels que vous téléchargez.
+Considérez les comme extrêmement dangereux. Ils constituent un moyen très
+simple pour contaminer votre ordinateur avec un cheval de Troie.
+
+
+8.Sites sensibles et gratuiciels
+  -----------------------------
+
+Un site Internet, hébergé par un fournisseur gratuit ou proposant en
+téléchargement des programmes utilisables dans des activités illégales, peut
+être considéré comme sensible. Comme vous le savez, il existe des milliers de
+sites, spécialisés en piratage et en sécurité, hébergés par des fournisseurs
+comme Xoom, Tripod, Geocities et d'autres. Ces sites disposent de quantités de
+programmes de piratage, des scanneurs, des logiciels de bombards (mail bomb),
+des flooders (logiciels inondant un ordinateur) et d'autres utilitaires.
+Souvent certains de ces programmes, voir tous, sont infectés par le créateur
+du site. Il est donc risqué de télécharger ces types de fichiers sur ses sites
+sensibles. Etes-vous prêts à prendre de tels risques ? Certains de ces sites
+vous apparaîtront très professionnels, contenant une base de données
+importante, des logiciels, des formulaires pour communiquer avec les
+concepteurs du site et des liens avec d'autres sites connus. Je pense que si
+vous prenez le temps de regarder les choses de plus près, en analysant les
+fichiers que vous téléchargez, vous pourrez décider par vous-même de la
+confiance que vous pourrez donner à ce site.
+
+Vous devez télécharger les logiciels comme mIRC, ICQ, PGP sur les sites
+officiels ou un de leurs sites miroirs, et certainement pas sur d'autres.
+Parfois un site sensible peut vous proposer la dernière version de mIRC 7.0,
+par exemple, alors que votre version est la 6.0. Bien sûr, il est facile de
+cliquer et de télécharger en une minute le fichier exécutable, et vous serez à
+coup sûr contaminé. Un site pourra même vous informer de la présence de fausses
+failles contenues dans la version précédente, celle dont vous disposez, et vous
+proposer une "nouvelle" version. Encore une fois, il est plus facile de
+télécharger directement ce logiciel que d'aller vérifier sur le site officiel
+l'existence de correctifs ou de toute information concernant ces fameuses
+failles.
+
+Les webmestres de portails connus en matière de sécurité, qui disposent de
+nombreux programmes de piratage, se sentent généralement responsable des
+fichiers qu'ils fournissent et les scannent régulièrement avec des logiciels
+anti-virus et anti-troyen pour garantir la qualité de leurs téléchargements. Il
+arrive que des attaquants proposent au webmestre de ces sites un logiciel, un
+flooder UDP par exemple, mais qui sera infecté. Les visiteurs qui
+téléchargeront le fichier seront contaminés. Les attaquants profitent alors du
+manque de conscience sécuritaire des webmestres. Un magazine de jeux
+électroniques avait pour habitude de distribuer un CD-Rom comprenant des démo
+gratuites de nouveaux jeux. Les éditeurs du magazine organisèrent un concours
+dans l'espoir de découvrir de nouveaux talents. Ils proposèrent alors de leur
+envoyer leurs jeux. Un programmeur envoya son propre jeux sans avoir oublié de
+l'infecté par un cheval de Troie de sa propre conception. Vous pouvez imaginer
+les conséquences de la parution du CD-Rom. Cela est arrivé car les éditeurs du
+CD-Rom, n'ayant que peu de connaissance sur la matière, ont utilisé un
+anti-virus qui ne détectait à l'époque qu'une infime quantité de chevaux de
+Troie connus. Les webmestres proposant des logiciels se doivent de les analyser
+régulièrement et doivent aussi examiner tout nouveau fichier. En cas de doute,
+il doit être envoyé à votre laboratoire d'analyse de fichiers pour une analyse
+plus poussée. Si vous voulez prendre soin de vous-même, prenez soin de vos
+visiteurs ou de vos lecteurs.
+
+Considérant la facilité pour un attaquant de vous contaminer avec des
+gratuiciels, ceux-ci doivent être considérés comme suspects et extrêmement
+dangereux. Comprenez bien que gratuit ne veuille pas forcément dire bon. Je
+vous conseille, avant d'utiliser un gratuiciel, de rechercher des commentaires
+qui auront pu être rédigés sur le logiciel, de vérifier sur les moteurs de
+recherche connus en y recherchant toute information disponible sur ces
+logiciels. Lorsque vous trouvez des critiques sur des sites respectables, cela
+veut dire que ces logiciels ont été utilisés et testés. La chance que le
+logiciel soit infecté est alors minimisée. Si vous ne trouvez aucun
+commentaire, il peut être dangereux d'utiliser le logiciel.
+
+
+9.Comment détectent-ils ma présence sur l'Internet?
+  -------------------------------------------------
+
+Les nouveaux internautes se posent souvent cette question. Ils ne comprennent
+pas que quelqu'un puisse vouloir les attaquer eux. Ils n'ont jamais fait de mal
+à personne. Ils ne se sont jamais mis dans une situation qui aurait pu les
+mettre en danger. En lisant les sections précédentes, j'espère que vous avez
+compris qu'il suffit de visiter un site Internet avec un navigateur
+non-sécurisé pour être contaminé.
+
+Voici quelques exemples grâce auxquels un attaquant peut être averti de
+l'existence de votre ordinateur sur l'Internet:
+ 
+- Lorsque vous visitez une page Internet, un programme, intégré dans le code
+  source de cette page, peut vérifier automatiquement la présence de failles
+  dans votre navigateur. S'il en découvre, il peut installer un cheval de
+  Troie sur votre ordinateur ou prévenir l'attaquant pour qu'il y jette un
+  coup d'œil. Assurez-vous d'avoir toujours la dernière version de votre
+  navigateur. Cela vous donnera une protection maximale. Vérifiez
+  régulièrement les mises à jour et appliquez-les!
+- En vous connectant sur un canal IRC, un IRCbot (Robot IRC) peut être
+  configuré pour rechercher des ports ouverts utilisés par des chevaux de
+  Troie ou par le partage de fichier (Netbios). Si l'attaquant est
+  intelligent, il programmera le scannage quelques minutes après que vous
+  ayez rejoint le canal IRC et utilisera pour cela une adresse IP qui n'est
+  pas utilisée par quelqu'un sur le canal.
+- Le scannage, plus ou moins aléatoire, de blocs d'adresses IP permet de
+  trouver des ports ouverts utilisés par des chevaux de Troie ou par le
+  partage de fichier (Netbios). Une fois contaminé, votre ordinateur, comme
+  aussi un IRCbot, peut être utilisé en scannant par exemple les utilisateurs
+  des canaux IRC très connus.
+ 
+Il s'agit là des techniques les plus courantes utilisées par les pirates pour
+trouver des nouvelles victimes à leurs activités illégales. Si vous êtes une
+cible directe, l'attaquant n'utilisera pas ces méthodes. Il se renseignera sur
+les versions de votre système d'exploitation et du navigateur que vous utilisez
+puis établira avec vous un contact personnel par IRC ou ICQ. Il cherchera
+ensuite à vous tromper et vous contaminer.
+
+
+10.Que Recherche Un Attaquant?
+   ---------------------------
+
+Certains peuvent croire que les chevaux de Troie sont utilisés uniquement pour
+détruire. Ils peuvent aussi être utilisés pour espionner l'ordinateur de
+quelqu'un et pour récolter toutes sortes d'informations privées ou sensibles,
+dans le cas d'espionnage industriel. Voici une liste non limitative des
+informations qui peuvent intéresser un attaquant:
+
+- Les informations sur les cartes de crédit souvent utilisées pour acheter
+  en-ligne, notamment des noms de domaines.
+- Les informations de connexion (mots de passe de courrier électronique,
+  mots de passe de connexion à l'Internet, mots de passe de services Internet,
+  etc.)
+- Les adresses de courrier électronique, pouvant être utilisé pour du spamming.
+- Des documents et travaux professionnels
+- Les photos, noms et ages d'enfants peuvent peut-être intéresser un attaquant
+  pédophile
+- Les travaux universitaires, pour les publier sous un autre nom.
+
+Voici encore d'autres exemples de l'usage dont peut faire un attaquant de votre
+ordinateur:
+
+- Une fois contaminé, votre ordinateur peut être utilisé comme espace de
+  téléchargement de logiciels piratés. Quelque soit la quantité d'espace libre
+  dont vous disposer, cela sûrement suffisant. L'attaquant prendra soin de
+  limiter le nombre d'accès à votre ordinateur, économisant ainsi la bande
+  passante. Vous pourrez continuer d'utiliser normalement votre ordinateur sans
+  savoir qu'il a été transformé en serveur de logiciels piratés et qu'il est
+  connu et utilisé par des personnes dans le monde entier.
+- Des collectionneurs d'images pornographiques pédophiles peuvent aussi
+  transformer votre ordinateur en espace de stockage et, encore un fois,
+  permettre à d'autres collectionneurs de télécharger des images. Jamais vous
+  ne vous rendrez compte que votre ordinateur est utilisé dans de telles
+  activités.
+- L'attaquant peut juste vouloir s'amuser en ouvrant votre lecteur de CD-Rom
+  ou en jouant avec votre souris. Cela est complètement idiot et n'a aucun
+  intérêt, pourtant nombre de pirates en herbe le font.
+- Votre ordinateur peut aussi être utilisé dans le cadre d'autres activités
+  illégales, permettant au pirate d'utiliser votre adresse IP pour pirater,
+  scanner, " flooder ", pénétrer d'autres ordinateurs sur l'Internet. C'est
+  alors votre adresse IP qui s'affichera chez les victimes, et vous risquez
+  d'avoir des problèmes.
+
+11.Espionnage Avec Un Cheval De Troie
+   ----------------------------------
+
+Prenez le temps pour comprendre à quel point votre vie peut dépendre de votre
+ordinateur, de votre ICQ, de votre logiciel de discussion, de votre courrier
+électronique. Votre vie devient extrêmement vulnérable si jamais votre
+ordinateur est contaminé par un cheval de Troie. Les chevaux de Troie peuvent,
+et ont été utilisés, pour de l'espionnage. Votre profil psychologique peut être
+tiré en quelques heures en examinant vos courriers, vos contacts, en lisant vos
+conversations privées, vérifiant les sites sur lesquels vous avez navigué, en
+analysant l'historique d'ICQ ou de mIRC. Votre vie, mode de pensée, vos
+réactions dans des situations données, vos besoins pourront être récupérés par
+un fou voulant vous manipuler ou vous enrôler. En s'éloignant de notre sujet,
+imaginez la puissance d'une personne qui maîtrise la psychologie, l'ingénierie
+sociale et possède une connaissance en sécurité informatique. Et rappelez-vous
+que la plupart des gens révèlent leur vraie personnalité, leurs désirs, leur
+mode pensée, leurs intérêts, lorsqu'ils sont persuadés que personne ne les
+regarde.
+
+
+12.Les ports utilisés par les chevaux de Troie
+   -------------------------------------------
+
+Les chevaux de Troie utilisent des ports spéciaux pour établir la communication
+avec le logiciel client. Les anciens chevaux de Troie utilisaient certains
+ports particuliers, mais aujourd'hui ces ports peuvent être modifiés à chaque
+redémarrage du cheval de Troie. Voici un lien vers la liste, la plus complète
+que j'ai vu, des ports utilisés par les chevaux de Troie connus:
+
+http://www.simovits.com/trojans/trojans.html
+
+
+13.Comment savoir si je suis contaminé?
+   ------------------------------------
+
+Lorsque 500 Mo en trop sont utilisés sur votre disque dur, vous pouvez penser
+qu'il s'agit d'un comportement normal de Windows. Certains logiciels peuvent en
+avoir besoin ou alors vous avez peut-être oublié de désinstaller un jeu. Toutes
+ces raisons peuvent cacher la vraie raison. Voici quelques comportements
+suspects qu'il faut à tout prix prendre au sérieux et chercher à en déterminer
+la cause, même si votre logiciel anti-virus vous affirme que vous n'êtes pas
+contaminé. En connaissant certaines des fonctions des chevaux de Troie, vous
+serez plus apte à réagir lorsque vous serez confrontés à de telles activités
+sur votre ordinateur. J'ai rajouté dans cet article des liens vers diverses
+bases de données relatives aux chevaux de Troie que vous devriez visiter si
+vous voulez approfondir vos connaissances.
+
+- Lorsque vous visiter un site Internet, des fenêtres (pop-up) peuvent s'ouvrir
+  automatiquement. Cela est tout à fait normal. Mais si jamais, alors que vous
+  ne faîtes rien, votre navigateur vous emmène sur un site Internet que vous ne
+  connaissez pas, alors vous devez vous inquiéter.  
+  
+- Un message étrange peut apparaître sur votre écran, vous demandant de
+  répondre à des questions personnelles.
+  
+- La configuration de Windows peut se modifier automatiquement, en changeant
+  votre économiseur d'écran, la date et l'heure, le volume du son. La souris
+  peut bouger toute seule et le lecteur de CD-Rom peut s'ouvrir.
+
+Evidemment les attaquants les plus expérimentés se contenteront de vous
+espionner et d'utiliser votre ordinateur pour une raison particulière. Ils ne
+s'amuseront pas avec les astuces citées ci-dessus. Ils s'arrangeront pour ne
+pas éveiller la suspicion sur l'ordinateur cible évitant de se faire facilement
+remarquer.
+
+14.Logiciels Anti-Virus
+   --------------------
+
+Les vieux logiciels anti-virus ne détectaient que les virus et seulement
+quelques rares chevaux de Troie très connus. Depuis, réalisant la gravité de
+la situation, la plupart des anti-virus détectent la majorité des chevaux de
+Troie. Mais, comme toujours, les gens pensent être en sécurité lorsqu'ils
+utilisent un logiciel anti-virus. Ils n'ont de réelle conscience sécuritaire.
+Ces logiciels se basent sur la "signature" de chacun de ces chevaux de Troie et
+sur les méthodes connues d'exécution automatique. Mais il ne s'agit pas là de
+la solution parfaite. Les chevaux de Troie peuvent utiliser d'autres méthodes
+pour se cacher, de méthodes qui sont indétectables par les logiciels
+anti-virus. Lorsque les premiers logiciels anti-troyen sont sortis, les
+logiciels anti-virus, pour s'assurer leur clientèle, ont dû développer des
+modules anti-troyen, certains étant même très efficaces. Pour votre sécurité
+optimale, il est tout de même recommandé d'utiliser la combinaison d'un
+logiciel anti-virus et logiciel d'un anti-troyen.
+
+De nouveaux chevaux de Troie apparaissent tous les jours et les logiciels de
+détection sont remis à jour quotidiennement pour la protection maximale de
+leurs clients. Mais souvent les utilisateurs ne mettent pas à jour leur fichier
+de signatures aussi souvent qu'ils le devraient. Leur logiciel de détection est
+donc incapable de reconnaître certains virii et chevaux de Troie. Vous devez
+mettre à jour quotidiennement votre logiciel. Cela ne vous prendra que quelques
+minutes. Chaque fois que vous téléchargez un nouveau fichier, il doit être
+systématiquement analysé par vos logiciels avant d'être exécuté. Si, pour une
+raison quelconque, le fichier vous paraît suspect, ne l'exécutez sous aucun
+prétexte, mais envoyez le plutôt à votre laboratoire d'analyse de fichiers pour
+analyse.
+
+
+15.Logiciels Anti-Troyen
+   ---------------------
+
+Voici une liste des logiciels anti-troyen les plus connus. Cette liste comprend
+aussi des logiciels, gratuiciel, divers qui vous aideront à analyser votre
+ordinateur à la recherche d'activités pouvant résulter de la présence d'un
+cheval de Troie. Je vous propose de visiter chaque site. Vous pourrez choisir
+vous-même le logiciel qui correspond au mieux à vos besoins. Dans la section
+des liens, vous trouverez des sites Internet vous proposant des analyses et des
+critiques des logiciels présents dans cette section.
+
+-- TDS-3 --
+
+Trojan Defence Suite (TDS) est un logiciel indispensable en matière de
+protection contre les chevaux de Troie. Il contient des fonctions encore jamais
+rencontrées dans d'autres logiciels. Ces fonctions sont très avancées et cela
+vous prendra certainement un peu de temps avant de pouvoir utiliser pleinement
+le logiciel. Lisez les excellent fichiers d'aide.
+
+Vous pouvez télécharger TDS à http://tds.diamondcs.com.au/
+
+-- LockDown2000 --
+
+Il s'agit d'un très bon logiciel anti-troyen qui détecte une majorité des
+chevaux de Troie et autres logiciels de piratage. Il vous aidera à surveiller
+vos fichiers systèmes, les processus, la base de registre, ainsi que toute
+modification qui y sera apportée. Vous aurez plus d'informations sur le site
+Internet.
+
+Vous pouvez télécharger LockDown2000 à http://www.lockdown2000.com
+
+-- TFAK5 --
+
+Trojans First Aid Kit (trousse de secours) est un scanneur de chevaux de Troie
+développé par SnakeByte. Il dispose de fonctions uniques. Il pourrait aussi
+être utilisé comme logiciel client pour certains chevaux de Troie.
+
+Vous pouvez télécharger TFAK5 à http://www.snake-basket.de/tfak/TFAK5.zip 
+
+-- Trojan Remover --
+
+Ce logiciel de détection reconnaît, le 15 août 2002, 5468 chevaux de Troie et
+vers, ainsi que leurs variantes. Des fonctions de surveillance des fichiers
+systèmes et de la base de registre sont incluses. Vous aurez plus
+d'informations sur le site Internet:
+
+http://www.simplysup.com/tremover/details.html
+ 
+-- Pest Patrol --
+
+Cet utilitaire scanne votre ordinateur à la recherche de chevaux de Troie de
+certains logiciels de piratage connus ainsi que des logiciels espions. Vous
+aurez plus d'informations sur le site Internet officiel:
+
+http://www.safersite.com/ 
+
+-- Anti-Trojan 5.5 --
+
+Ce logiciel est capable de supprimer la plupart des chevaux de Troie connus.
+Vous aurez plus d'informations sur le site Internet officiel:
+
+http://www.anti-trojan.net
+
+-- Tauscan  --
+
+Ce scanneur indispensable de chevaux de Troie dispose de fonctions uniques. Il
+est capable de détecter de nouveaux chevaux de Troie encore jamais distribués
+publiquement. Vous aurez plus d'informations sur le site Internet officiel:
+
+http://www.agnitum.com/products/tauscan/
+
+-- The Cleaner --
+
+Logiciel anti-troyen très populaire, connu de tous. Visitez le site Internet:
+
+http://www.moosoft.com/
+
+-- PC Door Guard --
+
+Logiciel de détection de chevaux de Troie. Il en détecte un nombre important et
+comprend aussi une fonction de surveillance des fichiers et des répertoires.
+Pour plus d'informations:
+
+http://www.trojanclinic.com/pdg.html
+
+-- Trojan Hunter --
+
+Logiciel très pratique de détection de chevaux de Troie disposant de nombreuses
+fonctions.
+
+Vous aurez plus d'information à http://www.mischel.dhs.org/trojanhunter.jsp
+
+-- LogMonitor --
+
+Cet un outil de surveillance des fichiers et des répertoires. Le logiciel
+s'exécute périodiquement et surveille la date de modification de fichiers
+sélectionnés. Il permet d'exécuter un logiciel externe. Il surveille aussi les
+répertoires à la recherche d'ajout, suppression et modification de fichier. Je
+recommande cet outil pratique et qui vous sera très utile. 
+
+Site Internet: http://logmon.bitrix.ru/logmon/eng/
+
+-- PrcView --
+
+PrcView est un gratuiciel permettant de surveiller les processus en cours,
+montrant des informations détaillées sur chacun d'entre eux. Ces informations
+comprennent la date de création, la version, le chemin complet d'accès aux DLL
+utilisés par chaque processus, la liste complète des threads, blocs mémoire et
+des heaps. PrcView permet aussi de terminer ou d'ajouter un débuggeur un
+processus sélectionné. PrcView fonctionne sur les systèmes d'exploitation
+Windows 95/98 et Windows NT. Il comprend une interface graphique et en ligne
+de commande. 
+
+Pour obtenir PrcView: http://www.xmlsp.com/pview/prcview.htm
+
+-- XNetStat --
+
+Outil de surveillance réseau pour Windows avec une interface graphique. Il vous
+aidera à surveiller les ports ouverts sur votre ordinateur. Vous pouvez le
+télécharger à:
+
+http://packetstormsecurity.org/Win/netstat.zip
+
+-- ConSeal PC FIREWALL --
+
+Un très bon pare-feu pour des utilisateurs avancés de Windows ayant des
+connaissance basique du TCP/IP et d'autres protocoles. Ce logiciel vous aidera
+à sécuriser votre ordinateur. Il possède de nombreux avantages sur d'autre
+pare-feu pour Windows. Pour obtenir le détail des fonctionnalités, visitez le
+site officiel:
+
+http://www.consealfirewall.com/ 
+
+
+16.Après Le Nettoyage
+   ------------------
+
+La sécurité de votre ordinateur a été compromise, des données sensibles ont pu
+être volées, des fichiers ont pu être modifiés et votre ordinateur a peut-être
+été utilisé dans le cadre d'activités illégales. Voici ce que vous devez faire
+après avoir nettoyé votre ordinateur de tout cheval de Troie.
+
+- Le pirate connaît désormais les données de connexion à votre FAI (Fournisseur
+  d'Accès Internet) comme vos mots de passe, ceux d'ICQ, de mIRC, de sites FTP
+  ou de certains services web. Vous devez contacter votre FAI pour qu'il
+  modifie votre mot de passe. Modifier aussi vos mots de passe ICQ et mIRC.
+  Modifiez les même si, apparemment, ils n'ont pas été changés. Un pirate peut
+  vous faire croire que tout va bien en prenant le soin de ne rien modifier. Il
+  vous sera d'autant plus facile de récupérer vos données. Changez les mots de
+  passe de vos comptes de courrier électronique, notamment ceux de compte
+  en-ligne comme Yahoo! et Hotmail. Les pirates peuvent uniquement modifier la
+  "question secrète" ce qui leur permettra de se connecter à votre compte que
+  vous ayez modifié votre mot de passe ou non.
+
+- Si vous utilisez la fonction carnet d'adresse de votre logiciel de courrier,
+  vous y avez certainement entré la liste complète des adresses électroniques
+  de vos amis ou collègues. L'attaquant peut utiliser cette liste et tenter de
+  contaminer vos contacts. Informez-les de la situation et conseillez-les de
+  vérifier à leur tour l'intégrité des fichiers que vous leur avez envoyés et
+  la présence de chevaux de Troie dans leurs ordinateurs. Faites de même pour
+  vos contacts ICQ. Ces derniers sont aussi des cibles potentielles.
+
+- Rechercher sur votre disque dur la présence de d'espace libre manquant
+  pouvant être occupé par des fichiers pirates ou par des images pédophiles
+  pornographiques.
+
+- Pensez aussi à toute donnée sensible que vous possédiez avant que la sécurité
+  de votre ordinateur soit compromise. Si vous êtes persuadés que le pirate a
+  pu y avoir accès, prenez les décisions nécessaire, comme contacter les
+  propriétaires des données.
+
+- Exécutez une analyse complète de votre ordinateur avec un logiciel
+  anti-virus. Le pirate aura pu contaminer votre ordinateur avec des virus
+  pouvant détruire vos données au cas où il n'aurait plus accès. 
+
+- Surveillez les processus du système d'exploitation, AVANT et APRES que vous
+  vous soyez connecté à l'Internet. Pour vous tromper, certains chevaux de
+  Troie peuvent s'exécuter une fois qu'ils ont détecté une connexion réseau.
+  Soyez donc très vigilant.
+
+
+17.Scanneurs En-Ligne
+   ------------------
+
+Ces services sont, de nos jours, devenus très pratique pour tout utilisateur
+n'ayant que peu de connaissance en matière de sécurité mais soucieux de se
+protéger. Si cette section se trouve à la fin de l'article, c'est qu'il y a une
+raison. Si vous avez lu l'article, vous êtes sensés avoir maintenant une bonne
+connaissance des chevaux de Troie, de leur fonctionnement et des techniques
+permettant de les détecter. Vous êtes alors capable de juger de l'utilité de
+ces scanneurs en-ligne ou s'ils vous procurent un faux sentiment de sécurité.
+
+Il existe différents types de scanneurs en-ligne: Les scanneurs anti-troyen,
+les scanneurs de ports et les analyseurs de failles. 
+
+- Les scanneurs anti-troyen
+  Ils utilisent une liste, avec des ports prédéfinis associés avec le nom du
+  cheval de Troie utilisant son port par défaut, par exemple Girl Friend=21544.
+  Si ce port en mode "écoute" est détecté sur votre ordinateur, le logiciel
+  vous informera que vous êtes contaminé par le cheval de Troie Girl Friend.
+  Mais, comme vous le savez maintenant, le cheval de Troie peut être modifié,
+  selon le choix de l'attaquant, pour utiliser n'importe quel port. Ces
+  scanneurs deviennent alors inutiles. Des attaquants sérieux n'oublieront pas
+  de modifier le port.
+
+- Les scanneurs de ports  
+  Ce service vous permettra de scanner les ports connus ainsi que la totalité
+  des ports disponibles. Encore une fois, les ports connus sont ceux associés à
+  des protocoles définis, par exemple 21-FTP, 23-Telnet, 25-SMTP. Le scannage
+  total des 65.535 ports disponibles ne sera généralement pas proposé
+  gratuitement à cause de la charge que représente l'opération en terme de
+  bande passante. Une association avec les ports connus sera faite, mais dans
+  le cas où le scannage découvrirait un port non-associé, il le mentionnera de
+  la manière suivante: Port 34525 Etat:en écoute. Cela veut dire que ce port
+  est prêt à recevoir une tentative de connexion de l'extérieur.
+
+- Les analyseurs de failles
+  Le but est d'analyser votre navigateur ou logiciel de courrier électronique
+  à la recherche de failles. Si des failles sont découvertes, il vous sera
+  proposé des liens vers des sites disposant de mises à jour ou de la dernière
+  version les corrigeant.
+
+Il est conseillé de fermer tout logiciel utilisant l'Internet avant d'être
+scanné par de tels services. Vous pourrez décider quel service, capable de
+détecté une contamination, correspond le mieux à vos besoins. J'espère que vous
+connaissez maintenant les principes généraux ainsi que les réponses qui peuvent
+être apportées. Des liens vers certains de ces services ont été inclus dans la
+section des liens. 
+
+
+18.Conseils
+   --------
+
+Voici une section utile qui vous présente des astuces et des conseils pour se
+protéger des chevaux de Troie. Elle rassemble différentes techniques déjà
+expliquées auparavant mais résumées ici pour vous permettre les lire et de les
+comprendre plus facilement.
+
+[01] N'acceptez de fichiers de personne, même d'un ami. Vous ne pouvez jamais
+     être certain de l'identité réelle de l'expéditeur. Si vous avez besoin,
+     par exemple, d'un document de travail, assurez-vous par d'autres moyens,
+     comme le téléphone, que ce fichier provient bien de votre correspondant.
+     Cela prendra certainement du temps, mais cet excès de précautions vous
+     évitera une contamination.
+    
+[02] Avant d'exécuter un fichier, vérifier son extension. S'agit-il vraiment
+     d'un .doc ou d'un exécutable avec l'icône d'un .doc.
+
+[03] Mettez régulièrement à jour les bibliothèques de vos logiciels anti-virus
+     et anti-troyen. Pour une sécurité optimale, faites-le quotidiennement. De
+     nouveaux virus et chevaux de Troie sont découverts tous les jours. La
+     plupart de ces logiciel ont une fonction de scannage automatique.
+     Programmez cette fonction pour qu'elle se déclenche la nuit, alors que
+     votre ordinateur est peut-être allumé. Cela renforcera encore l'efficacité
+     de votre système de sécurité. 
+
+[04] Soyez toujours en possession de la dernière version de vos logiciels. Des
+     nouvelles failles apparaissent fréquemment. Vérifiez aussi l'existence de
+     tout problème de sécurité liés à vos logiciels et modifiez les ou mettez
+     les à jour si nécessaire. Certains logiciels disposent d'une fonction de
+     recherche automatique des mises à jour. Utilisez cette fonction.
+
+[05] Prenez le temps de surveiller régulièrement les tâches exécutées par votre
+     ordinateur avec certain des logiciels mentionnés. Vous serez surpris de ce
+     que vous pourrez y trouver.
+
+[06] Soyez conscient du risque que vous prenez en acceptant un logiciel envoyé
+     par quelqu'un que vous venez de rencontrer sur ICQ ou IRC.
+
+[07] Considérez les gratuiciels comme dangereux. Avant d'en télécharger un,
+     recherchez les analyses dont ils ont fait l'objet.
+
+[08] Lisez attentivement les fichiers d'aide des logiciels de détection pour
+     être sûr de les utiliser le plus efficacement possible.
+
+[09] Téléchargez un logiciel uniquement sur le site Internet officiel ou un à
+     partir d'un site miroir référencé. Ne téléchargez jamais la dernière
+     version d'ICQ ou de mIRC d'un site hébergé chez un fournisseur d'espace
+     gratuit comme Geocities. Considérez ce site comme sensible.
+
+[10] Si vous voulez jouer avec des chevaux de Troie, vous pouvez aussi être
+     contaminé. Certains auront pris le soin d'infecter des chevaux de Troie
+     avec un autre cheval de Troie. Ils n'auront plus qu'a attendre qu'un
+     apprenti moins expérimenté tente de les utiliser.
+
+[11] Ne croyez pas tout ce que vous lisez sur l'Internet, et ne téléchargez
+     pas des logiciels sur lesquels vous n'avez jamais rien lu. 
+
+19.Liens
+   -----
+
+Cette section peut être très utile pour tous ceux d'entre vous qui
+s'intéressent aux chevaux de Troie. Vous y trouverez des articles, des analyses
+de logiciels, des bases de données, des portails dédiés à la sécurité
+informatique et d'autres sites se rattachant au sujet de l'article. J'ajouterai
+volontiers, dans la prochaine version de cet article, les liens que vous
+pourrez m'envoyer, pointant sur des sites intéressants pour ce sujet.
+
+Vous retrouverez tous ces liens, ainsi que d'autres concernant la sécurité
+informatique, dans le répertoire de liens de Frame4 Security Systems. Il se
+trouve à: http://www.frame4.com/php/modules.php?name=Web_Links
+
+-- Portails spécialisés sur les chevaux de Troie --
+
+URL  : http://www.tlsecurity.net
+DESC : Excellent portail dédié à la sécurité, disposant de nombreuses
+       informations concernant les chevaux de Troie.
+
+URL  : http://www.euyulio.org
+DESC : Portail dédié à la sécurité avec une grande base de données et d'autres
+       services particuliers.
+
+URL  : http://www.megasecurity.org/
+DESC : Portail dédié à la sécurité disposant d'une bibliothèque bien organisée.
+
+URL  : http://www.trojan.ch
+DESC : Portail dédié aux chevaux de Troie avec des nouvelles, une bibliothèque
+       et des logiciels.
+
+URL  : http://www.trojanforge.net/
+DESC : Portail dédié aux chevaux de Troie avec une bibliothèque, des documents,
+       et un forum de discussion.
+
+URL  : http://packetstormsecurity.org/trojans
+DESC : Une section dédiée aux chevaux de Troie.
+
+URL  : http://www.pcflank.com
+DESC : Portail dédié à la sécurité disposant de logiciels d'analyse en-ligne de
+       navigateurs et de détection de chevaux de Troie à distance.
+
+URL  : http://www.staff.uiuc.edu/~ehowes/trojans/tr-tests.htm
+DESC : Site Internet présentant des comparatifs de résultats d'analyse de
+       divers logiciel de détection de chevaux de Troie.
+
+-- Base de données de chevaux de Troie --
+
+URL  : http://www.simovits.com/trojans/trojans.html
+DESC : Enorme liste détaillée de chevaux de Troie avec leurs fonctions. 
+
+URL  : http://www.tlsecurity.net/tlfaq.htm
+DESC : List complète et bien présentée, avec analyse, des chevaux de Troie
+       connus.
+
+URL  : http://www.blackcode.com/trojans/
+DESC : Bibliothèque de vers et de chevaux de Troie mis à disposition par
+       BlackCode.
+
+-- Site Internet anti-troyen --
+
+URL  : http://www.hackfix.org/
+DESC : Site Internet présentant la sécurité informatique aux débutants.
+
+URL  : http://www.nohack.net/ 
+DESC : Le projet nohack aide les débutants à nettoyer leur ordinateur et à se
+       protéger. 
+
+URL  : http://www.virushelp.info
+DESC : Canal IRC dédié à la lutte contre les virii et les chevaux de Troie.
+
+URL  : http://www.anti-trojan.org 
+DESC : Site Internet d'aide de lutte contre les chevaux de Troie.
+
+-- Analyses de logiciels de détection --
+
+URL  : http://www.wilders.org/anti_trojans.htm
+DESC : Site Internet proposant des analyses de logiciels anti-troyen.
+
+URL  : http://www.rokopsecurity.de/
+DESC : Site Internet allemand proposant des analyses de logiciels anti-troyen
+       et anti-virus ainsi que d'autres informations. (Ce site est en allemand)
+
+URL  : http://www.fruitloop.net/virushelp/index.html
+DESC : Site Internet proposant des analyses de logiciels de détection.
+
+URL  : http://www.firewallguide.com/anti-trojan.htm
+DESC : Site Internet proposant des analyses et des services liés à la sécurité.
+
+-- Articles sur les chevaux de Troie --
+
+URL  : http://www.jmu.edu/computing/info-security/engineering/issues/remote.shtml
+DESC : Article intéressant sur les chevaux de Troie.
+
+URL  : http://members.ozemail.com.au/~netsafe/trojan_index.html
+DESC : Des informations détaillées concernant les chevaux de Troie.
+
+URL  : http://researchweb.watson.ibm.com/antivirus/SciPapers/Whalley/inwVB99.html
+DESC : Les chevaux de Troie sous Windows.
+
+URL  : http://researchweb.watson.ibm.com/antivirus/SciPapers/Smoke/smoke.html
+DESC : Un article indispensable.
+
+URL  : http://www.frame4.com/content/files/the_gentle_art_of_trojan_horsing_under_windows.txt
+DESC : Les chevaux de Troie sous Windows.
+
+URL  : http://www.frame4.com/content/files/trojdetecte.txt
+DESC : La détection des chevaux de Troie et les astuces de Snakebyte.
+
+URL  : http://www.frame4.com/content/files/what_trojan.pdf
+DESC : Article sur les chevaux de Troie sous Windows.
+
+URL  : http://www.frame4.com/content/files/Trojan_reversing.txt
+DESC : De la lecture intéressante.
+
+-- Scanneurs en-ligne --
+
+URL  : http://www.hackerwhacker.com/
+DESC : Un scanneur en-ligne indispensable avec des fonctions spéciales.
+
+URL  : http://www.scannerx.com
+DESC : Service d'audit de sécurité.
+
+URL  : http://scan.sygatetech.com/
+DESC : Scanneur de sécurité.
+
+-- Navigateur et Logiciel de courrier électronique --
+
+URL  : http://www.nwnetworks.com/iesc.html 
+DESC : Site dédié à la sécurité d'Internet Explorer.
+
+URL  : http://www.guninski.com
+DESC : Site Internet d'un chercheur spécialiste en sécurité et des failles des
+       navigateurs et du contenu actif, une référence.
+ 
+URL  : http://www.sophos.com/virusinfo/whitepapers/activecontent.html
+DESC : Document de présentation technique sur la sécurité du contenu actif
+
+-- Divers --
+
+URL  : http://directory.google.com/Top/Computers/Security/Anti_Virus/Trojans/
+DESC : Le répertoire de Google sur les chevaux de Troie.
+
+URL  : http://support.microsoft.com/support/kb/articles/q262/6/31.asp?LN=EN-US&SD=gn&FR=0 
+DESC : Les extensions des fichiers à risque.
+
+URL  : http://www.frame4.com/content/files/razor.wintrinoo.txt
+DESC : Une analyse du cheval de Troie WinTrinoo.
+
+URL  : http://www.megasecurity.org/Info/mIRC.txt
+DESC : Article détaillant les portes dérobées contenues dans mIRC.
+
+
+20.Conclusion
+   ----------
+
+J'espère que vous avez réalisé l'importance du problème que posent les chevaux
+de Troie en matière de sécurité sous Windows et que vous êtes devenus un peu
+paranoïaque. Si vous avez déjà été contaminé, vous aurez peut-être compris, en
+lisant cet article, comment cela s'est produit. Je suis sûr que vous ne ferez
+pas les mêmes erreurs. De nouveaux chevaux de Troie et de nouvelles méthodes
+d'infection apparaissant régulièrement, cet article sera mis à jour avec les
+dernières informations. Toutes vos critiques, idées, commentaires, suggestions
+ou tout ce qui à un rapport avec le sujet seront appréciées. Je peux être
+contacté à l'adresse suivante: dancho.danchev@frame4.com.
+
+Cet article fait partie de la bibliothèque de documents publiés par Frame4
+Security Systems et se trouve à http://www.frame4.com/publications/index.php.
+Vous y trouverez la dernière version de l'article ainsi que d'autres documents
+ayant pour sujet la sécurité informatique.
+
+-------------------------------------------------------------------------------
+Cet article est publié par Frame4 Security Systems. Tous les droits sont
+réservés. Vous pouvez distribuer librement cet article, tant que son contenu
+reste inchangé et ainsi que cet en-tête. Je vous encourage aussi à le proposer
+en téléchargement sur votre site web, FTP, lettre de diffusion ou autre. Si
+toutefois vous voulez le modifier, obtenez d'abord l'accord de son auteur.
+
+ATTENTION - CET ARTICLE N'EST PROPOSE QUE PAR SOUCI D'INFORMATION. Dans les
+limites des textes juridiques applicables, Frame4 Security Systems ne pourra
+être tenu pour responsable d'aucun dommage, comprenant de manière non
+exhaustive la perte de profits, l'interruption d'activités professionnelles,
+la perte de données professionnelles ou toute perte financière, résultant de
+l'utilisation des logiciels cités ou des procédures décrites dans cet article,
+et cela même si Frame4 Security Systems a été informé de la survenance possible
+d'un tel dommage. Cet article ne donne aucune garantie quant à son contenu,
+mais vous aide à améliorer sensiblement la sécurité de Windows.
+
+Cet article demeure la propriété de Frame4 Security Systems.
+Tous droits réservés.
+Copyright (c) 1999-2002 Frame4 Security Systems -- http://www.frame4.com/
+===============================================================================

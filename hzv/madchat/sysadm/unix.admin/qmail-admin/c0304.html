@@ -1,0 +1,203 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML
+><HEAD
+><TITLE
+>SMTP par qmail-smtpd via UCSPI-TCP</TITLE
+><META
+NAME="CREATOR"
+CONTENT="Modular DocBook HTML Stylesheet version 1.07"><META
+NAME="form"
+CONTENT="html"><META
+NAME="Description"
+CONTENT="Introduction to qmail in french"><META
+NAME="Keywords"
+CONTENT="qmail mta"><META
+NAME="Robot"
+CONTENT="index,follow"><META
+NAME="Author"
+CONTENT="Djalil Chafai"></HEAD
+><BODY
+BGCOLOR="#FFFFFF"
+TEXT="#000000"
+><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TH
+COLSPAN="3"
+ALIGN="center"
+>Introduction à qmail</TH
+></TR
+><TR
+><TD
+WIDTH="10%"
+ALIGN="left"
+VALIGN="bottom"
+><A
+HREF="c0303.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="80%"
+ALIGN="center"
+VALIGN="bottom"
+>Chapitre 3. Mise en place de SMTP, POP3, UCSPI et QMTP</TD
+><TD
+WIDTH="10%"
+ALIGN="right"
+VALIGN="bottom"
+><A
+HREF="c0305.html"
+>Suivant</A
+></TD
+></TR
+></TABLE
+><HR
+ALIGN="LEFT"
+WIDTH="515"><H1
+><A
+NAME="I(SERVICES)C(4,SECT1)"
+>SMTP par qmail-smtpd via UCSPI-TCP</A
+></H1
+><P
+>Pour ce faire, se procurer <I
+CLASS="PRODUCTNAME"
+>UCSPI-TCP</I
+> sur
+<A
+HREF="http://pobox.com/~djb/ucsp-tcp.html"
+>http://pobox.com/~djb/ucsp-tcp.html</A
+>,
+compiler et installer les binaires dans <TT
+CLASS="FILENAME"
+>/usr/local/bin/</TT
+>.</P
+><P
+>Ensuite, il faut préfixer la ligne SMTP de
+<TT
+CLASS="FILENAME"
+>/etc/inetd.conf</TT
+> par une dièse et relancer le daemon
+<I
+CLASS="APPLICATION"
+>inetd</I
+> par un
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>root:bash$ kill -HUP $(pidof inetd)</PRE
+></TD
+></TR
+></TABLE
+>&#13;</P
+><P
+>Puis il faut ajouter les deux lignes suivantes à la section start du script
+<TT
+CLASS="FILENAME"
+>/etc/rc.d/init.d/qmail</TT
+> :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>/usr/local/bin/tcpserver -v -u 7770 -g 2108 0 smtp /var/qmail/bin/qmail-smtpd \
+   2&#62;&#38;1 | /var/qmail/bin/splogger smtpd 3 &#38;;
+echo $! &#62; /var/lock/subsys/qmail-smtpd</PRE
+></TD
+></TR
+></TABLE
+>
+
+(voir les pages de manuel pour les détails)
+et ces deux-ci dans la section stop :
+
+<TABLE
+BORDER="0"
+BGCOLOR="#E0E0E0"
+WIDTH="100%"
+><TR
+><TD
+><PRE
+CLASS="PROGRAMLISTING"
+>kill `cat /var/lock/subsys/qmail-smtpd`
+rm -f /var/lock/subsys/qmail-smtpd</PRE
+></TD
+></TR
+></TABLE
+>
+
+Voilà, il ne reste plus qu'à stopper puis relancer
+<I
+CLASS="PRODUCTNAME"
+>qmail</I
+>.</P
+><HR
+ALIGN="LEFT"
+WIDTH="515"><TABLE
+WIDTH="515"
+BORDER="0"
+CELLPADDING="0"
+CELLSPACING="0"
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+><A
+HREF="c0303.html"
+>Précédent</A
+></TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+><A
+HREF="book01.html"
+>Page principale</A
+></TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+><A
+HREF="c0305.html"
+>Suivant</A
+></TD
+></TR
+><TR
+><TD
+WIDTH="33%"
+ALIGN="left"
+VALIGN="top"
+>UCSPI-TCP et TCPcontrol</TD
+><TD
+WIDTH="34%"
+ALIGN="center"
+VALIGN="top"
+><A
+HREF="c03.html"
+>Niveau précédent</A
+></TD
+><TD
+WIDTH="33%"
+ALIGN="right"
+VALIGN="top"
+>POP3 par qmail-pop3d via UCSPI-TCP</TD
+></TR
+></TABLE
+></BODY
+></HTML
+>

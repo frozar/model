@@ -1,0 +1,996 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with LaTeX2HTML 99.2beta8 (1.46)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>32. init, ?
+getty, and UNIX Run Levels</TITLE>
+<META NAME="description" CONTENT="32. init, ?
+getty, and UNIX Run Levels">
+<META NAME="keywords" CONTENT="rute">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="LaTeX2HTML v99.2beta8">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="rute.css">
+
+<LINK REL="next" HREF="node36.html">
+<LINK REL="previous" HREF="node34.html">
+<LINK REL="up" HREF="rute.html">
+<LINK REL="next" HREF="node36.html">
+</HEAD>
+
+<BODY BGCOLOR=#FFFFFF >
+<TABLE width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR><TD align=left bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-purchase.html"><FONT COLOR=white>Purchase</FONT></A>&nbsp;
+</FONT>
+</TD><TD align=center bgcolor="#000000">
+<FONT COLOR=white>
+Copyright&nbsp;&#169;&nbsp;2002&nbsp;Paul Sheer. <A HREF="copying.html"><FONT COLOR=white>Click here for copying permissions.</FONT></A>
+</FONT>
+</TD><TD align=right bgcolor="#000000">
+<FONT COLOR=white>
+&nbsp;<A HREF="http://www.icon.co.za/~psheer/rute-home.html"><FONT COLOR=white>Home</FONT></A>&nbsp;
+</FONT>
+</TD></TR>
+<TR><TD colspan=2 align=left bgcolor="#ECEBF4">
+<IMG SRC="va-btn-small-light-60.png">
+</TD><TD align=right bgcolor="#ECEBF4">
+<IMG SRC="sflogo2-steel-60.png">
+</TD></TR>
+</TABLE><BR>
+
+<!--Navigation Panel-->
+<A NAME="tex2html2431"
+  HREF="node36.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2427"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2421"
+  HREF="node34.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2429"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2432"
+  HREF="node36.html">33. Sending Faxes</A>
+<B> Up:</B> <A NAME="tex2html2428"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2422"
+  HREF="node34.html">31. lilo, initrd, and</A>
+ &nbsp <B>  <A NAME="tex2html2430"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+<!--Table of Child-Links-->
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+<LI><A NAME="tex2html2433"
+  HREF="#SECTION003510000000000000000">32.1 <TT>
+<FONT COLOR="#0000ff">init</FONT></TT> -- the First Process</A>
+<LI><A NAME="tex2html2434"
+  HREF="#SECTION003520000000000000000">32.2 <TT>
+<FONT COLOR="#0000ff">/etc/inittab</FONT></TT></A>
+<UL>
+<LI><A NAME="tex2html2435"
+  HREF="#SECTION003521000000000000000">32.2.1 Minimal configuration</A>
+<LI><A NAME="tex2html2436"
+  HREF="#SECTION003522000000000000000">32.2.2 Rereading <TT>
+<FONT COLOR="#0000ff">inittab</FONT></TT></A>
+<LI><A NAME="tex2html2437"
+  HREF="#SECTION003523000000000000000">32.2.3 The <TT>
+<FONT COLOR="#0000ff">respawning too fast</FONT></TT> error</A>
+</UL>
+<LI><A NAME="tex2html2438"
+  HREF="#SECTION003530000000000000000">32.3 Useful Run Levels</A>
+<LI><A NAME="tex2html2439"
+  HREF="#SECTION003540000000000000000">32.4 <TT>
+<FONT COLOR="#0000ff">getty</FONT></TT> Invocation</A>
+<LI><A NAME="tex2html2440"
+  HREF="#SECTION003550000000000000000">32.5 Bootup Summary</A>
+<LI><A NAME="tex2html2441"
+  HREF="#SECTION003560000000000000000">32.6 Incoming Faxes and Modem Logins</A>
+<UL>
+<LI><A NAME="tex2html2442"
+  HREF="#SECTION003561000000000000000">32.6.1 <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> with character terminals</A>
+<LI><A NAME="tex2html2443"
+  HREF="#SECTION003562000000000000000">32.6.2 <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> log files</A>
+<LI><A NAME="tex2html2444"
+  HREF="#SECTION003563000000000000000">32.6.3 <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> with modems</A>
+<LI><A NAME="tex2html2445"
+  HREF="#SECTION003564000000000000000">32.6.4 <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> receiving faxes</A>
+</UL></UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION003500000000000000000">
+32. <TT>
+<FONT COLOR="#0000ff">init</FONT></TT>, <I>?</I><TT>
+<FONT COLOR="#0000ff">getty</FONT></TT>, and U<SMALL>NIX</SMALL> Run Levels</A>
+</H1>
+
+<P>
+<A NAME="chap:bootup"></A>
+<P>
+This chapter explains how L<SMALL>INUX</SMALL> (and a U<SMALL>NIX</SMALL> system in general)
+initializes itself. It follows on from the
+kernel boot explained in
+Section <A HREF="node34.html#sec:bootuptheory">31.2</A>. We also go into some advanced
+uses for <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT>, like receiving of
+faxes.
+
+<P>
+
+<H1><A NAME="SECTION003510000000000000000">
+32.1 <TT>
+<FONT COLOR="#0000ff">init</FONT></TT> -- the First Process</A>
+</H1>
+
+<P>
+After the kernel has been unpacked into memory, it begins to execute,
+initializing hardware. The last thing it does is mount the root file system,
+which necessarily contains a program <TT>
+<FONT COLOR="#0000ff">/sbin/init</FONT></TT>, which the kernel
+executes. <TT>
+<FONT COLOR="#0000ff">init</FONT></TT> is one of the only programs the kernel ever executes
+explicitly; the onus is then on <TT>
+<FONT COLOR="#0000ff">init</FONT></TT> to bring the U<SMALL>NIX</SMALL> system up.
+<TT>
+<FONT COLOR="#0000ff">init</FONT></TT> always has the process ID <TT>
+<FONT COLOR="#0000ff">1</FONT></TT>.
+
+<P>
+For the purposes of <TT>
+<FONT COLOR="#0000ff">init</FONT></TT>, the (rather arbitrary) concept of a U<SMALL>NIX</SMALL>
+<I>run level</I> was invented. The run level is the current operation of the
+machine, numbered run level <TT>
+<FONT COLOR="#0000ff">0</FONT></TT> through run level <TT>
+<FONT COLOR="#0000ff">9</FONT></TT>. When the
+U<SMALL>NIX</SMALL> system is <I>at</I> a particular run level, it means that a certain
+selection of services is running. In this way, the machine could be a
+mail server or an <B>X</B> Window workstation depending on what run level it is
+in.
+
+<P>
+The traditionally defined run levels are:
+<TABLE CELLPADDING=1 BORDER="1">
+<TR><TH ALIGN="LEFT"><B><TT>
+<FONT COLOR="#0000ff">0</FONT></TT></B></TH>
+<TD ALIGN="LEFT">Halt.</TD>
+</TR>
+<TR><TH ALIGN="LEFT"><B><TT>
+<FONT COLOR="#0000ff">1</FONT></TT></B></TH>
+<TD ALIGN="LEFT">Single-user mode.</TD>
+</TR>
+<TR><TH ALIGN="LEFT"><B><TT>
+<FONT COLOR="#0000ff">2</FONT></TT></B></TH>
+<TD ALIGN="LEFT">Multiuser, without network file system (NFS).</TD>
+</TR>
+<TR><TH ALIGN="LEFT"><B><TT>
+<FONT COLOR="#0000ff">3</FONT></TT></B></TH>
+<TD ALIGN="LEFT">Full multiuser mode.</TD>
+</TR>
+<TR><TH ALIGN="LEFT"><B><TT>
+<FONT COLOR="#0000ff">4</FONT></TT></B></TH>
+<TD ALIGN="LEFT">Unused.</TD>
+</TR>
+<TR><TH ALIGN="LEFT"><B><TT>
+<FONT COLOR="#0000ff">5</FONT></TT></B></TH>
+<TD ALIGN="LEFT"><B>X</B> Window System Workstation (usually identical to run level <TT>
+<FONT COLOR="#0000ff">3</FONT></TT>).</TD>
+</TR>
+<TR><TH ALIGN="LEFT"><B><TT>
+<FONT COLOR="#0000ff">6</FONT></TT></B></TH>
+<TD ALIGN="LEFT">Reboot.</TD>
+</TR>
+<TR><TH ALIGN="LEFT"><B><TT>
+<FONT COLOR="#0000ff">7</FONT></TT></B></TH>
+<TD ALIGN="LEFT">Undefined.</TD>
+</TR>
+<TR><TH ALIGN="LEFT"><B><TT>
+<FONT COLOR="#0000ff">8</FONT></TT></B></TH>
+<TD ALIGN="LEFT">Undefined.</TD>
+</TR>
+<TR><TH ALIGN="LEFT"><B><TT>
+<FONT COLOR="#0000ff">9</FONT></TT></B></TH>
+<TD ALIGN="LEFT">Undefined.</TD>
+</TR>
+</TABLE>
+
+<P>
+The idea here is that <TT>
+<FONT COLOR="#0000ff">init</FONT></TT> begins at a particular run level
+that can then be manually changed to any other by the superuser. <TT>
+<FONT COLOR="#0000ff">init</FONT></TT> uses
+a list of scripts for each run level to start or stop each of
+the many services pertaining to that run level. These scripts
+are
+<TT>
+<FONT COLOR="#0000ff">/etc/rc</FONT></TT><I>?</I><TT>
+<FONT COLOR="#0000ff">.d/K</FONT></TT><I>NN</I><I>service</I>
+or
+<TT>
+<FONT COLOR="#0000ff">/etc/rc</FONT></TT><I>?</I><TT>
+<FONT COLOR="#0000ff">.d/S</FONT></TT><I>NN</I><I>service</I> <FONT COLOR="#ffa500">[On some
+systems
+<TT>
+<FONT COLOR="#0000ff">/etc/rc.d/rc</FONT></TT><I>?</I><TT>
+<FONT COLOR="#0000ff">.d/</FONT></TT>...&nbsp;.]</FONT>, where
+<I>NN</I>, <TT>
+<FONT COLOR="#0000ff">K</FONT></TT>, or <TT>
+<FONT COLOR="#0000ff">S</FONT></TT> is a prefix to force the order of
+execution (since the files are executed in alphabetical order).
+
+<P>
+These scripts all take the options <TT>
+<FONT COLOR="#0000ff">start</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">stop</FONT></TT> on the
+command-line, to begin or terminate the service.
+
+<P>
+For example, when <TT>
+<FONT COLOR="#0000ff">init</FONT></TT> enters, say, run level <TT>
+<FONT COLOR="#0000ff">5</FONT></TT> from
+run level <TT>
+<FONT COLOR="#0000ff">3</FONT></TT>, it executes the particular scripts from <TT>
+<FONT COLOR="#0000ff">/etc/rc3.d/</FONT></TT>
+and <TT>
+<FONT COLOR="#0000ff">/etc/rc5.d/</FONT></TT> to bring up or down the appropriate services. This may
+involve, say, executing
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/etc/rc3.d/S20exim&nbsp;stop</code><br>
+</FONT></TD></TR></TABLE><P>
+and similar commands.
+
+<P>
+
+<H1><A NAME="SECTION003520000000000000000">
+32.2 <TT>
+<FONT COLOR="#0000ff">/etc/inittab</FONT></TT></A>
+</H1>
+
+<P>
+<TT>
+<FONT COLOR="#0000ff">init</FONT></TT> has one config file:
+<TT>
+<FONT COLOR="#0000ff">/etc/inittab</FONT></TT> which is
+scanned once on bootup.
+
+<P>
+
+<H2><A NAME="SECTION003521000000000000000">
+32.2.1 Minimal configuration</A>
+</H2>
+
+<P>
+A minimal <TT>
+<FONT COLOR="#0000ff">inittab</FONT></TT> file might consist of the
+following.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>20</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>id:3:initdefault:</code><br>
+<code>&nbsp;</code><br>
+<code>si::sysinit:/etc/rc.d/rc.sysinit</code><br>
+<code>&nbsp;</code><br>
+<code>l0:0:wait:/etc/rc.d/rc&nbsp;0</code><br>
+<code>l1:1:wait:/etc/rc.d/rc&nbsp;1</code><br>
+<code>l2:2:wait:/etc/rc.d/rc&nbsp;2</code><br>
+<code>l3:3:wait:/etc/rc.d/rc&nbsp;3</code><br>
+<code>l4:4:wait:/etc/rc.d/rc&nbsp;4</code><br>
+<code>l5:5:wait:/etc/rc.d/rc&nbsp;5</code><br>
+<code>l6:6:wait:/etc/rc.d/rc&nbsp;6</code><br>
+<code>&nbsp;</code><br>
+<code>ud::once:/sbin/update</code><br>
+<code>&nbsp;</code><br>
+<code>1:2345:respawn:/sbin/getty&nbsp;38400&nbsp;tty1</code><br>
+<code>2:2345:respawn:/sbin/getty&nbsp;38400&nbsp;tty2</code><br>
+<code>3:2345:respawn:/sbin/getty&nbsp;38400&nbsp;tty3</code><br>
+<code>4:2345:respawn:/sbin/getty&nbsp;38400&nbsp;tty4</code><br>
+<code>&nbsp;</code><br>
+<code>S0:2345:respawn:/sbin/mgetty&nbsp;-n&nbsp;3&nbsp;-s&nbsp;115200&nbsp;ttyS0&nbsp;57600</code><br>
+<code>&nbsp;</code><br>
+<code>S4:2345:respawn:/sbin/mgetty&nbsp;-r&nbsp;-s&nbsp;19200&nbsp;ttyS4&nbsp;DT19200</code><br>
+<code>&nbsp;</code><br>
+<code>x:5:respawn:/usr/bin/X11/xdm&nbsp;-nodaemon</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+The lines are colon-separated fields and have the following meaning
+(lots more can be gotten from <TT>
+<FONT COLOR="#0000ff">inittab</FONT></TT>(5)):
+<DL>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">id:3:initdefault:</FONT></TT></STRONG></DT>
+<DD>This dictates that the default
+run level is <TT>
+<FONT COLOR="#0000ff">3</FONT></TT>. It is the run level that the system will
+boot up into. This field usually has a <TT>
+<FONT COLOR="#0000ff">3</FONT></TT> or a <TT>
+<FONT COLOR="#0000ff">5</FONT></TT>,
+which are most often the only two run levels that the system ever
+sits in.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">si::sysinit:/etc/rc.d/rc.sysinit</FONT></TT></STRONG></DT>
+<DD>This says to run
+a script on bootup to initialize the system. If you view the file
+<TT>
+<FONT COLOR="#0000ff">/etc/rc.d/rc.sysinit</FONT></TT>, you will
+see a fairly long script that does the following: mounts the proc file system; initializes
+the keyboard maps, console font, NIS domain, host name, and swap partition;
+runs <TT>
+<FONT COLOR="#0000ff">isapnp</FONT></TT> and <TT>
+<FONT COLOR="#0000ff">depmod -a</FONT></TT>;
+cleans the <TT>
+<FONT COLOR="#0000ff">utmp</FONT></TT> file;
+as well as other things. <I>This script is only run once on bootup</I>.
+On Debian this is a script, <TT>
+<FONT COLOR="#0000ff">/etc/init.d/rcS</FONT></TT>, that runs
+everything under <TT>
+<FONT COLOR="#0000ff">/etc/rcS.d/</FONT></TT>. <FONT COLOR="#ffa500">[As usual, Debian gravitated
+to the most clean, elegant and extensible solution.]</FONT>
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">l3:3:wait:/etc/rc.d/rc&nbsp;3</FONT></TT></STRONG></DT>
+<DD>The first field is a descriptive tag and could be anything.
+The second is a list of run levels under which the particular script (last field) is
+to be invoked: in this case, <TT>
+<FONT COLOR="#0000ff">/etc/rc.d/rc&nbsp;3</FONT></TT> is to be run when
+entering run level <TT>
+<FONT COLOR="#0000ff">3</FONT></TT>. The <TT>
+<FONT COLOR="#0000ff">wait</FONT></TT> means to pause until
+<TT>
+<FONT COLOR="#0000ff">/etc/rc.d/rc</FONT></TT> has finished execution. If you view the file
+<TT>
+<FONT COLOR="#0000ff">/etc/rc.d/rc</FONT></TT>, you will see it merely executes scripts
+under <TT>
+<FONT COLOR="#0000ff">/etc/rc</FONT></TT><I>?</I><TT>
+<FONT COLOR="#0000ff">.d/</FONT></TT> as appropriate for a run level
+change.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">ud::once:/sbin/update</FONT></TT></STRONG></DT>
+<DD>This flushes the disk cache on each run level
+change.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">1:2345:respawn:/sbin/getty 38400 tty1</FONT></TT></STRONG></DT>
+<DD>This says to
+run the command <TT>
+<FONT COLOR="#0000ff">/sbin/getty 38400 tty1</FONT></TT> when in run level <TT>
+<FONT COLOR="#0000ff">2</FONT></TT>
+through <TT>
+<FONT COLOR="#0000ff">5</FONT></TT>. <TT>
+<FONT COLOR="#0000ff">respawn</FONT></TT> means to restart the process if it dies.
+</DD>
+<DT><STRONG><TT>
+<FONT COLOR="#0000ff">x:5:respawn:/usr/bin/X11/xdm -nodaemon</FONT></TT></STRONG></DT>
+<DD>This says to
+run the command <TT>
+<FONT COLOR="#0000ff">/usr/bin/X11/xdm -nodaemon</FONT></TT> when in run level <TT>
+<FONT COLOR="#0000ff">5</FONT></TT>.
+This is the <B>X</B> Window System graphical login program.
+</DD>
+</DL>
+
+<P>
+
+<H2><A NAME="SECTION003522000000000000000">
+32.2.2 Rereading <TT>
+<FONT COLOR="#0000ff">inittab</FONT></TT></A>
+</H2>
+
+<P>
+If you modify the <TT>
+<FONT COLOR="#0000ff">inittab</FONT></TT> file, <TT>
+<FONT COLOR="#0000ff">init</FONT></TT>
+will probably not notice until you issue it a <TT>
+<FONT COLOR="#0000ff">SIGHUP</FONT></TT>.
+This is the same as typing
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>telinit&nbsp;q</code><br>
+</FONT></TD></TR></TABLE><P>
+which causes <TT>
+<FONT COLOR="#0000ff">init</FONT></TT> to reread <TT>
+<FONT COLOR="#0000ff">/etc/inittab</FONT></TT>.
+
+<P>
+
+<H2><A NAME="SECTION003523000000000000000">
+32.2.3 The <TT>
+<FONT COLOR="#0000ff">respawning too fast</FONT></TT> error</A>
+</H2>
+
+<P>
+You get a <TT>
+<FONT COLOR="#0000ff">respawning too fast</FONT></TT> error when an
+<TT>
+<FONT COLOR="#0000ff">inittab</FONT></TT> line makes no sense <FONT COLOR="#ffa500">[These errors
+are common and very irritating when you are doing console work,
+hence an explicit section on it.]</FONT>:
+like a <TT>
+<FONT COLOR="#0000ff">getty</FONT></TT> running on a non-functioning serial port.
+Simply comment out or delete the appropriate line and then run
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>telinit&nbsp;q</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H1><A NAME="SECTION003530000000000000000">
+32.3 Useful Run Levels</A>
+</H1>
+
+<P>
+Switching run levels manually is something that is rarely done.
+The most common way of shutting down the machine is to use:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>shutdown&nbsp;-h&nbsp;now</code><br>
+</FONT></TD></TR></TABLE><P>
+which effectively goes to run level <TT>
+<FONT COLOR="#0000ff">0</FONT></TT>, and 
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>shutdown&nbsp;-r&nbsp;now</code><br>
+</FONT></TD></TR></TABLE><P>
+which effectively goes to run level <TT>
+<FONT COLOR="#0000ff">6</FONT></TT>.
+
+<P>
+You can also specify the run level at the <TT>
+<FONT COLOR="#0000ff">LILO:</FONT></TT>
+prompt. Type
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>linux&nbsp;1</code><br>
+</FONT></TD></TR></TABLE><P>
+or
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>linux&nbsp;single</code><br>
+</FONT></TD></TR></TABLE><P>
+to enter single-user mode when booting your machine. You
+change to single-user mode on a running system with:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>telinit&nbsp;S</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+You can forcefully enter any run level with
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>telinit&nbsp;&#060;N&#062;</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+
+<H1><A NAME="SECTION003540000000000000000">
+32.4 <TT>
+<FONT COLOR="#0000ff">getty</FONT></TT> Invocation</A>
+</H1>
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">getty</FONT></TT> man page begins with:
+
+<BLOCKQUOTE><FONT SIZE="-1"><B>getty</B> opens  a  tty  port,  prompts  for a login name and
+invokes the /bin/login command. It is normally invoked  by
+<I>init(8)</I>.
+</FONT></BLOCKQUOTE>
+Note that <TT>
+<FONT COLOR="#0000ff">getty</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">agetty</FONT></TT>,
+<TT>
+<FONT COLOR="#0000ff">fgetty</FONT></TT> and
+<TT>
+<FONT COLOR="#0000ff">mingetty</FONT></TT> are
+just different implementations of <TT>
+<FONT COLOR="#0000ff">getty</FONT></TT>.
+
+<P>
+The most noticeable effect of <TT>
+<FONT COLOR="#0000ff">init</FONT></TT> running at all is that it
+spawns a login to each of the L<SMALL>INUX</SMALL> virtual consoles. It is the
+<TT>
+<FONT COLOR="#0000ff">getty</FONT></TT> (or sometimes <TT>
+<FONT COLOR="#0000ff">mingetty</FONT></TT>) command as
+specified in the <TT>
+<FONT COLOR="#0000ff">inittab</FONT></TT> line above that displays this login. Once the
+login name is entered, <TT>
+<FONT COLOR="#0000ff">getty</FONT></TT> invokes the <TT>
+<FONT COLOR="#0000ff">/bin/login</FONT></TT> program,
+which then prompts the user for a password.
+
+<P>
+The <TT>
+<FONT COLOR="#0000ff">login</FONT></TT> program (discussed in Section <A HREF="node14.html#sec:loginprogram">11.7</A>)
+then executes a shell. When the shell dies (as a result of the user
+<TT>
+<FONT COLOR="#0000ff">exit</FONT></TT>ing the session) <TT>
+<FONT COLOR="#0000ff">getty</FONT></TT> is just
+<TT>
+<FONT COLOR="#0000ff">respawn</FONT></TT>ed.
+
+<P>
+
+<H1><A NAME="SECTION003550000000000000000">
+32.5 Bootup Summary</A>
+</H1>
+
+<P>
+Together with Chapter <A HREF="node34.html#chap:lilo">31</A> you should now have a
+complete picture of the entire bootup process:
+
+<DL COMPACT>
+<DT>1.
+<DD>First sector loaded into RAM and executed--<TT>
+<FONT COLOR="#0000ff">LILO:</FONT></TT> prompt appears.
+<DT>2.
+<DD>Kernel loaded from sector list.
+<DT>3.
+<DD>Kernel executed; unpacks.
+<DT>4.
+<DD>Kernel initializes hardware.
+<DT>5.
+<DD>Kernel mounts root file system, say <TT>
+<FONT COLOR="#0000ff">/dev/hda1</FONT></TT>.
+<DT>6.
+<DD>Kernel executes <TT>
+<FONT COLOR="#0000ff">/sbin/init</FONT></TT> as PID <TT>
+<FONT COLOR="#0000ff">1</FONT></TT>.
+<DT>7.
+<DD><TT>
+<FONT COLOR="#0000ff">init</FONT></TT> executes all scripts for default run level.
+<DT>8.
+<DD><TT>
+<FONT COLOR="#0000ff">init</FONT></TT> spawns <TT>
+<FONT COLOR="#0000ff">getty</FONT></TT> programs on each terminal.
+<DT>9.
+<DD><TT>
+<FONT COLOR="#0000ff">getty</FONT></TT> prompts for login.
+<DT>10.
+<DD><TT>
+<FONT COLOR="#0000ff">getty</FONT></TT> executes <TT>
+<FONT COLOR="#0000ff">/bin/login</FONT></TT> to
+authentic user.
+<DT>11.
+<DD><TT>
+<FONT COLOR="#0000ff">login</FONT></TT> starts shell.
+</DD>
+</DL>
+
+<P>
+
+<H1><A NAME="SECTION003560000000000000000">
+32.6 Incoming Faxes and Modem Logins</A>
+</H1>
+
+<P>
+
+<H2><A NAME="SECTION003561000000000000000">
+32.6.1 <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> with character terminals</A>
+</H2>
+
+<P>
+The original purpose of <TT>
+<FONT COLOR="#0000ff">getty</FONT></TT> was to manage
+character terminals on
+mainframe computers. <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> is a more comprehensive <TT>
+<FONT COLOR="#0000ff">getty</FONT></TT>
+that deals with proper serial devices. A typical
+<TT>
+<FONT COLOR="#0000ff">inittab</FONT></TT> entry is
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>S4:2345:respawn:/sbin/mgetty&nbsp;-r&nbsp;-s&nbsp;19200&nbsp;ttyS4&nbsp;DT19200</code><br>
+</FONT></TD></TR></TABLE><P>
+which would open a login on a
+terminal connected to a serial
+line on <TT>
+<FONT COLOR="#0000ff">/dev/ttyS4</FONT></TT>. See page
+<A HREF="node45.html#page:serialdevices"><IMG  ALIGN="BOTTOM" BORDER="1" ALT="[*]" SRC="crossref.png"></A> for information on configuring
+multiport serial cards.
+
+<P>
+(The L<SMALL>INUX</SMALL> devices <TT>
+<FONT COLOR="#0000ff">/dev/tty1</FONT></TT>
+through <TT>
+<FONT COLOR="#0000ff">/dev/tty12</FONT></TT> as used
+by <TT>
+<FONT COLOR="#0000ff">getty</FONT></TT> emulate classic terminals in this way.)
+
+<P>
+
+<H2><A NAME="SECTION003562000000000000000">
+32.6.2 <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> log files</A>
+</H2>
+
+<P>
+<TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> will log to
+<TT>
+<FONT COLOR="#0000ff">/var/log/mgetty.log.ttyS</FONT></TT><I>?</I>. This log
+file contains everything you need for troubleshooting. It is worthwhile running
+<TT>
+<FONT COLOR="#0000ff">tail -f</FONT></TT> on these files while watching a login take place.
+
+<P>
+
+<H2><A NAME="SECTION003563000000000000000">
+32.6.3 <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> with modems</A>
+</H2>
+
+<P>
+<A NAME="sec:mgettwithmodems"></A>Running <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> (see <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT>(8)) is a common and
+trivial way to get a dial login to a L<SMALL>INUX</SMALL> machine. Your
+<TT>
+<FONT COLOR="#0000ff">inittab</FONT></TT> entry is just
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>S0:2345:respawn:/sbin/mgetty&nbsp;-n&nbsp;3&nbsp;-s&nbsp;115200&nbsp;ttyS0&nbsp;57600</code><br>
+</FONT></TD></TR></TABLE><P>
+where <TT>
+<FONT COLOR="#0000ff">-n 3</FONT></TT> says to answer the phone after the
+<TT>
+<FONT COLOR="#0000ff">3</FONT></TT>rd ring. Nothing more is needed than to plug your
+modem into a telephone. You can then use <TT>
+<FONT COLOR="#0000ff">dip -t</FONT></TT>, as done
+in Section <A HREF="node44.html#sec:diptest">41.1.1</A>, to dial this machine from another
+L<SMALL>INUX</SMALL> machine. Here is an example session: <FONT COLOR="#ffa500">[This example
+assumes that an initialization string
+of <TT>
+<FONT COLOR="#0000ff">AT&#38;F1</FONT></TT> is
+sufficient. See Section <A HREF="node6.html#sec:hardwaremodem">3.5</A>.]</FONT>
+<P>
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>[root@cericon]#&nbsp;<font color="navy"><B>dip&nbsp;-t</B></font></code><br>
+<code>DIP:&nbsp;Dialup&nbsp;IP&nbsp;Protocol&nbsp;Driver&nbsp;version&nbsp;3.3.7o-uri&nbsp;(8&nbsp;Feb&nbsp;96)</code><br>
+<code>Written&nbsp;by&nbsp;Fred&nbsp;N.&nbsp;van&nbsp;Kempen,&nbsp;MicroWalt&nbsp;Corporation.</code><br>
+<code>&nbsp;</code><br>
+<code>DIP&#062;&nbsp;<font color="navy"><B>port&nbsp;ttyS0</B></font></code><br>
+<code>DIP&#062;&nbsp;<font color="navy"><B>speed&nbsp;57600</B></font></code><br>
+<code>DIP&#062;&nbsp;<font color="navy"><B>term</B></font></code><br>
+<code>[&nbsp;Entering&nbsp;TERMINAL&nbsp;mode.&nbsp;&nbsp;Use&nbsp;CTRL-]&nbsp;to&nbsp;get&nbsp;back&nbsp;]</code><br>
+<code><font color="navy"><B>AT&#38;F1</B></font></code><br>
+<code>OK</code><br>
+<code><font color="navy"><B>ATDT5952521</B></font></code><br>
+<code>CONNECT&nbsp;19200/ARQ/V34/LAPM/V42BIS</code><br>
+<code>&nbsp;</code><br>
+<code>Red&nbsp;Hat&nbsp;Linux&nbsp;release&nbsp;6.1&nbsp;(Cartman)</code><br>
+<code>Kernel&nbsp;2.2.12-20&nbsp;on&nbsp;an&nbsp;i686</code><br>
+<code>&nbsp;</code><br>
+<code>remote.dialup.private&nbsp;login:</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Note that this is purely a login session having nothing
+to do with PPP dialup.
+
+<P>
+
+<H2><A NAME="SECTION003564000000000000000">
+32.6.4 <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> receiving faxes</A>
+</H2>
+
+<P>
+
+<TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> receives faxes by default, provided your modem supports 
+faxing <FONT COLOR="#ffa500">[If your modem says it supports faxing, and this still does not work,
+you will have to spend a lot of time reading through your modem's <TT>
+<FONT COLOR="#0000ff">AT</FONT></TT>
+command set manual, as well as the <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> <TT>
+<FONT COLOR="#0000ff">info</FONT></TT> documentation.]</FONT>and provided it has not been explicitly disabled with the <TT>
+<FONT COLOR="#0000ff">-D</FONT></TT> option.
+An appropriate <TT>
+<FONT COLOR="#0000ff">inittab</FONT></TT> line is,
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>S0:2345:respawn:/sbin/mgetty&nbsp;-x&nbsp;4&nbsp;-n&nbsp;3&nbsp;-s&nbsp;57600&nbsp;-I&nbsp;'27&nbsp;21&nbsp;7654321'&nbsp;ttyS0&nbsp;57600</code><br>
+</FONT></TD></TR></TABLE><P>
+The options mean, respectively, to set the debug level to <TT>
+<FONT COLOR="#0000ff">4</FONT></TT>,
+answer after <TT>
+<FONT COLOR="#0000ff">3</FONT></TT> rings, set the port speed to <TT>
+<FONT COLOR="#0000ff">57600</FONT></TT>,
+and set the fax ID number to <TT>
+<FONT COLOR="#0000ff">27&nbsp;21&nbsp;7654321</FONT></TT>. Alternatively, 
+you can use the line
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>S0:2345:respawn:/sbin/mgetty&nbsp;ttyS0&nbsp;57600</code><br>
+</FONT></TD></TR></TABLE><P>
+and instead put your configuration options in the file <TT>
+<FONT COLOR="#0000ff">mgetty.config</FONT></TT>
+under <TT>
+<FONT COLOR="#0000ff">/etc/mgetty+sendfax/</FONT></TT>:
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>debug&nbsp;4</code><br>
+<code>rings&nbsp;3</code><br>
+<code>speed&nbsp;57600</code><br>
+<code>fax-id&nbsp;27&nbsp;21&nbsp;7654321</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+Faxes end up in <TT>
+<FONT COLOR="#0000ff">/var/spool/fax/incoming/</FONT></TT> as
+useless <TT>
+<FONT COLOR="#0000ff">.g3</FONT></TT> format files, but note how the command
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>strings&nbsp;/sbin/mgetty&nbsp;|&nbsp;grep&nbsp;new_fax</code><br>
+</FONT></TD></TR></TABLE><P>
+gives
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>/etc/mgetty+sendfax/new_fax</code><br>
+</FONT></TD></TR></TABLE><P>
+which is a script that <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> secretly runs when new
+faxes arrive. It can be used to convert faxes into something (like
+<TT>
+<FONT COLOR="#0000ff">.gif</FONT></TT> graphics files <FONT COLOR="#ffa500">[I recommend
+<TT>
+<FONT COLOR="#0000ff">.png</FONT></TT> over <TT>
+<FONT COLOR="#0000ff">.gif</FONT></TT> any day, however.]</FONT>) readable
+by typical office programs. The following example
+<TT>
+<FONT COLOR="#0000ff">/etc/mgetty+sendfax/new_fax</FONT></TT> script puts incoming
+faxes into <TT>
+<FONT COLOR="#0000ff">/home/fax/</FONT></TT> as <TT>
+<FONT COLOR="#0000ff">.gif</FONT></TT> files
+that all users can
+access. <FONT COLOR="#ffa500">[Modified from the <TT>
+<FONT COLOR="#0000ff">mgetty</FONT></TT> contribs.]</FONT> Note
+how it uses the CPU-intensive <TT>
+<FONT COLOR="#0000ff">convert</FONT></TT> program from the
+<TT>
+<FONT COLOR="#0000ff">ImageMagic</FONT></TT>
+package.
+
+<P><TABLE nowrap="1" width="100%" border="0" cellspacing="0" cellpadding="0">
+<TR>
+<TD valign="top" class="source" width="2%"><FONT color=red>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>5</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>10</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>15</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>20</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>25</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<font size="-1"><code>30</code></font><code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+<code>&nbsp;</code><br>
+</FONT></TD><TD valign="top" class="source" bgcolor="#FFE0C0"><FONT color=blue>
+<code>#!/bin/sh</code><br>
+<code>&nbsp;</code><br>
+<code>#&nbsp;you&nbsp;must&nbsp;have&nbsp;pbm&nbsp;tools&nbsp;and&nbsp;they&nbsp;must&nbsp;be&nbsp;in&nbsp;your&nbsp;PATH</code><br>
+<code>PATH=/usr/bin:/bin:/usr/X11R6/bin:/usr/local/bin</code><br>
+<code>&nbsp;</code><br>
+<code>HUP="$1"</code><br>
+<code>SENDER="$2"</code><br>
+<code>PAGES="$3"</code><br>
+<code>&nbsp;</code><br>
+<code>shift&nbsp;3</code><br>
+<code>P=1</code><br>
+<code>&nbsp;</code><br>
+<code>while&nbsp;[&nbsp;$P&nbsp;-le&nbsp;$PAGES&nbsp;]&nbsp;&#059;&nbsp;do</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;FAX=$1</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;BASENAME=`basename&nbsp;$FAX`</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;RES=`echo&nbsp;$BASENAME&nbsp;|&nbsp;sed&nbsp;'s/.\(.\).*/\1/'`</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;if&nbsp;[&nbsp;"$RES"&nbsp;=&nbsp;"n"&nbsp;]&nbsp;&#059;&nbsp;then</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;STRETCH="-s"</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;else</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;STRETCH=""</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;fi</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;nice&nbsp;g32pbm&nbsp;$STRETCH&nbsp;$FAX&nbsp;&#062;&nbsp;/tmp/$BASENAME.pbm&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#038;&#038;&nbsp;rm&nbsp;-f&nbsp;$FAX&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#038;&#038;&nbsp;nice&nbsp;convert&nbsp;-colorspace&nbsp;gray&nbsp;-colors&nbsp;16&nbsp;-geom&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'50%x50%'&nbsp;/tmp/$BASENAME.pbm&nbsp;/home/fax/$BASENAME.gif&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#038;&#038;&nbsp;rm&nbsp;-f&nbsp;/tmp/$BASENAME.pbm&nbsp;\</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&#038;&#038;&nbsp;chmod&nbsp;0666&nbsp;/home/fax/$BASENAME.gif</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;shift</code><br>
+<code>&nbsp;&nbsp;&nbsp;&nbsp;P=`expr&nbsp;$P&nbsp;+&nbsp;1`</code><br>
+<code>done</code><br>
+<code>&nbsp;</code><br>
+<code>exit&nbsp;0</code><br>
+</FONT></TD></TR></TABLE><P>
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html2431"
+  HREF="node36.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next" SRC="next.png"></A> 
+<A NAME="tex2html2427"
+  HREF="rute.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up" SRC="up.png"></A> 
+<A NAME="tex2html2421"
+  HREF="node34.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous" SRC="prev.png"></A> 
+<A NAME="tex2html2429"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents" SRC="contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html2432"
+  HREF="node36.html">33. Sending Faxes</A>
+<B> Up:</B> <A NAME="tex2html2428"
+  HREF="rute.html">rute</A>
+<B> Previous:</B> <A NAME="tex2html2422"
+  HREF="node34.html">31. lilo, initrd, and</A>
+ &nbsp <B>  <A NAME="tex2html2430"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+
+</BODY>
+</HTML>

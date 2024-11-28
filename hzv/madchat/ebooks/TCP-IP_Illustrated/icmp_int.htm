@@ -1,0 +1,1002 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 6. ICMP: Internet Control Message Protocol</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="6_0"><H1><I>ICMP: Internet Control Message Protocol</I></H1></a>
+<a name="6_1"><H3>6.1 Introduction</H3></a>
+<P>
+ICMP is often considered part of the IP layer. It
+communicates error messages and other conditions that require
+attention. ICMP messages are usually acted on by either the IP
+layer or the higher layer protocol (TCP or UDP). Some ICMP messages
+cause errors to be returned to user processes.
+<P>
+ICMP messages are transmitted within IP datagrams,
+as shown in Figure 6.1.
+<P>
+<CENTER><a name="fig_6_1"><img src="f_6_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_6_1.gif"></a><BR>
+<B>Figure 6.1</B> ICMP
+messages encapsulated within an IP datagram.</CENTER>
+<P>
+RFC 792 [Postel 1981b] contains the official specification
+of ICMP.
+<P>
+Figure 6.2 shows the format of an ICMP message. The
+first 4 bytes have the same format for all messages, but the remainder
+differs from one message to the next. We'll show the exact format
+of each message when we describe it.
+<P>
+There are 15 different values for the <I>type</I>
+field, which identify the particular ICMP message. Some types
+of ICMP messages then use different values of the <I>code</I>
+field to further specify the condition.
+<P>
+The <I>checksum</I> field covers the entire ICMP
+message. The algorithm used is the same as we described for the
+IP header checksum in <A HREF="ip_inter.htm#3_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_2">Section 3.2</A>.
+The ICMP checksum is required.
+<P>
+<CENTER>
+<a name="fig_6_2"><img src="f_6_2.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_6_2.gif"></a><br><B>Figure 6.2</B> ICMP
+message.</CENTER>
+<P>
+In this chapter we talk about ICMP messages in general
+and a few in detail: address mask request and reply, timestamp
+request and reply, and port unreachable. We discuss the echo request
+and reply messages in detail with the Ping program in <A HREF="pingprog.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm">Chapter 7</A>,
+and we discuss the ICMP messages dealing with IP routing in <A HREF="ip_rout.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm">Chapter 9</A>.
+<a name="6_2"><H3>6.2 ICMP Message Types</H3></a>
+<P>
+<a href="#fig_6_3">Figure 6.3</a> lists the different ICMP message types,
+as determined by the <I>type</I> field and <I>code</I> field in
+the ICMP message.
+<P>
+The final two columns in this figure specify whether
+the ICMP message is a query message or an error message. We need
+to make this distinction because ICMP error messages are sometimes
+handled specially. For example, an ICMP error message is never
+generated in response to an ICMP error message. (If this were
+not the rule, we could end up with scenarios where an error generates
+an error, which generates an error, and so on, indefinitely)
+<P>
+When an ICMP error message is sent, the message always
+contains the IP header and the first 8 bytes of the IP datagram
+that caused the ICMP error to be generated. This lets the receiving
+ICMP module associate the message with one particular protocol
+(TCP or UDP from the protocol field in the IP header) and one
+particular user process (from the TCP or UDP port numbers that
+are in the TCP or UDP header contained in the first 8 bytes of
+the IP datagram). We'll show an example of this in <A HREF="#6_5">Section 6.5</A>.
+An ICMP error message is never generated in response to
+<OL>
+<LI>An ICMP error message. (An ICMP error message
+may, however, be generated in response to an ICMP query message.)
+<LI>A datagram destined to an IP broadcast address
+(Figure 3.9) or an IP multicast address (a class D address,
+<a href="f_1_5.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_1_5.gif">Figure 1.5</a>).
+<LI>A datagram sent as a link-layer broadcast.
+<LI>A fragment other than the first. (We describe
+fragmentation in <A HREF="udp_user.htm#11_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_5">Section 11.5</A>.)
+<LI>A datagram whose source address does not define
+a single host. This means the source address cannot be a zero
+address, a loopback address, a broadcast address, or a multicast
+address.
+</OL>
+<P>
+<a name="fig_6_3"><TABLE BORDER=1></a>
+<TR><TD WIDTH=38><CENTER>type</CENTER></TD>
+<TD WIDTH=38><CENTER><I>code</I></CENTER>
+</TD><TD WIDTH=315><CENTER>Description</CENTER>
+</TD><TD WIDTH=45><CENTER>Query</CENTER></TD>
+<TD WIDTH=39><CENTER>Error</CENTER></TD></TR>
+<TR><TD WIDTH=38><CENTER>0</CENTER></TD><TD WIDTH=38><CENTER><I>0</I></CENTER>
+</TD><TD WIDTH=315>echo reply (Ping reply. <A HREF="pingprog.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm">Chapter 7</A>)
+</TD><TD WIDTH=45><CENTER>*</CENTER></TD>
+<TD WIDTH=39></TD></TR>
+<TR><TD WIDTH=38><CENTER>3</CENTER></TD><TD WIDTH=38>
+<BR>
+<CENTER>
+0<BR>
+1<BR>
+2<BR>
+3<BR>
+4<BR>
+5<BR>
+6<BR>
+7<BR>
+8<BR>
+9<BR>
+10<BR>
+11<BR>
+12<BR>
+13<BR>
+14<BR>
+15</CENTER>
+</TD><TD WIDTH=385>destination unreachable:<BR>
+network unreachable (<A HREF="ip_rout.htm#9_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_3">Section 9.3</A>)<BR>
+host unreachable (<A HREF="ip_rout.htm#9_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_3">Section 9.3</A>)<BR>
+protocol unreachable<BR>
+port unreachable (<A HREF="#6_5">Section 6.5</A>)<BR>
+fragmentation needed but don't-fragment bit set (<A HREF="udp_user.htm#11_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_6">Section 11.6</A>)<BR>
+source route failed (<A HREF="tracerou.htm#8_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm#8_5">Section 8.5</A>)<BR>
+destination network unknown<BR>
+destination host unknown<BR>
+source host isolated (obsolete)<BR>
+destination network administratively prohibited<BR>
+destination host administratively prohibited<BR>
+network unreachable for TOS (<A HREF="ip_rout.htm#9_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_3">Section 9.3</A>)<BR>
+host unreachable for TOS (<A HREF="ip_rout.htm#9_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_3">Section 9.3</A>)<BR>
+communication administratively prohibited by filtering<BR>
+host precedence violation<BR>
+precedence cutoff in effect
+</TD><TD WIDTH=45></TD><TD WIDTH=39>
+<BR>
+<CENTER>
+*<BR>
+*<BR>
+*<BR>
+*<BR>
+*<BR>
+*<BR>
+*<BR>
+*<BR>
+*<BR>
+*<BR>
+*<BR>
+*<BR>
+*<BR>
+*<BR>
+*<BR>
+*<BR>
+</CENTER>
+</TD></TR>
+<TR><TD WIDTH=38><CENTER>4</CENTER></TD><TD WIDTH=38><CENTER>0</CENTER>
+</TD><TD WIDTH=385>source quench (elementary flow control. <A HREF="udp_user.htm#11_11" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_11">Section 11.11</A>)
+</TD><TD WIDTH=45></TD><TD WIDTH=39><CENTER>*</CENTER>
+</TD></TR>
+<TR><TD WIDTH=38><CENTER>5</CENTER></TD><TD WIDTH=38>
+<BR>
+<CENTER>0<BR>
+1<BR>
+2<BR>
+3</CENTER>
+</TD><TD WIDTH=385>redirect (<A HREF="ip_rout.htm#9_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_5">Section 9.5</A>):
+<BR>
+redirect for network<BR>
+redirect for host<BR>
+redirect for type-of-service and network<BR>
+redirect for type-of-service and host
+</TD><TD WIDTH=45></TD><TD WIDTH=39><BR>
+<CENTER>*<BR>
+*<BR>
+*<BR>
+*</CENTER>
+</TD></TR>
+<TR><TD WIDTH=38><CENTER>8</CENTER></TD><TD WIDTH=38><CENTER>0</CENTER>
+</TD><TD WIDTH=385>echo request (Ping request. <A HREF="pingprog.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm">Chapter 7</A>)
+</TD><TD WIDTH=45><CENTER>*</CENTER></TD>
+<TD WIDTH=39></TD></TR>
+<TR><TD WIDTH=38><CENTER>9
+<BR>
+10</CENTER>
+</TD><TD WIDTH=38><CENTER>0<BR>
+0</CENTER>
+</TD><TD WIDTH=385>router advertisement (<A HREF="ip_rout.htm#9_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_6">Section 9.6</A>)
+<BR>
+router solicitation (<A HREF="ip_rout.htm#9_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_6">Section 9.6</A>)
+</TD><TD WIDTH=45><CENTER>
+*<BR>
+*</CENTER>
+</TD><TD WIDTH=39></TD></TR>
+<TR><TD WIDTH=38><CENTER>11</CENTER></TD>
+<TD WIDTH=38>
+<BR>
+<CENTER>0<BR>
+1</CENTER>
+</TD><TD WIDTH=385>time exceeded:<BR>
+time-to-live equals 0 during transit (Traceroute, <A HREF="tracerou.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm">Chapter 8</A>)<BR>
+time-to-live equals 0 during reassembly (<A HREF="udp_user.htm#11_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_5">Section 11.5</A>)
+</TD><TD WIDTH=45></TD><TD WIDTH=39>
+<BR>
+<CENTER>*<BR>
+*</CENTER>
+</TD></TR>
+<TR><TD WIDTH=38><CENTER>12</CENTER></TD>
+<TD WIDTH=38>
+<BR>
+<CENTER>0<BR>
+1</CENTER>
+</TD><TD WIDTH=385>parameter problem:<BR>
+IP header bad (catchall error)<BR>
+required option missing
+</TD><TD WIDTH=45></TD><TD WIDTH=39>
+<BR>
+<CENTER>*<BR>
+*</CENTER>
+</TD></TR>
+<TR><TD WIDTH=38><CENTER>13<BR>
+14</CENTER>
+</TD><TD WIDTH=38><CENTER>0<BR>
+0</CENTER>
+</TD><TD WIDTH=385>timestamp request (<A HREF="#6_4">Section 6.4</A>)<BR>
+timestamp reply (<A HREF="#6_4">Section 6.4</A>)
+</TD><TD WIDTH=45><CENTER>*<BR>
+*</CENTER>
+</TD><TD WIDTH=39></TD></TR>
+<TR><TD WIDTH=38><CENTER>15<BR>
+16</CENTER>
+</TD><TD WIDTH=38><CENTER>0<BR>
+0</CENTER>
+</TD><TD WIDTH=385>information request (obsolete)<BR>
+information reply (obsolete)
+</TD><TD WIDTH=45><CENTER>*<BR>
+*</CENTER>
+</TD><TD WIDTH=39></TD></TR>
+<TR><TD WIDTH=38><CENTER>17<BR>
+18</CENTER>
+</TD><TD WIDTH=38><CENTER>0<BR>
+0</CENTER>
+</TD><TD WIDTH=385>address mask request (<A HREF="#6_3">Section 6.3</A>)<BR>
+address mask reply (<A HREF="#6_3">Section 6.3</A>)
+</TD><TD WIDTH=45><CENTER>*<BR>
+*</CENTER>
+</TD><TD WIDTH=39></TD></TR>
+</TABLE>
+<P>
+<CENTER><B>Figure 6.3</B> ICMP
+message types.</CENTER>
+<P>
+These rules are meant to prevent the <I>broadcast
+storms</I> that have occurred in the past when ICMP errors were
+sent in response to broadcast packets.
+<a name="6_3"><H3>6.3 ICMP Address Mask Request and Reply</H3></a>
+<P>
+The ICMP address mask request is intended for a diskless
+system to obtain its subnet mask (<A HREF="ip_inter.htm#3_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_5">Section 3.5</A>)
+at bootstrap time. The requesting system broadcasts its ICMP request.
+(This is similar to a diskless system using RARP to obtain its
+IP address at bootstrap time.) An alternative method for a diskless
+system to obtain its subnet mask is the BOOTP protocol, which
+we describe in <A HREF="bootp.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/bootp.htm">Chapter 16</A>. Figure 6.4
+shows the format of the ICMP address mask request and reply messages.
+
+<P>
+<CENTER>
+<a name="fig_6_4"><img src="f_6_4.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_6_4.gif"></a><br><B>Figure 6.4</B> ICMP
+address mask request and reply messages.</CENTER>
+<P>
+The identifier and sequence number fields in the
+ICMP message can be set to anything the sender chooses, and these
+values are returned in the reply This allows the sender to match
+replies with requests.
+<P>
+We can write a simple program (named <TT>icmpaddrmask</TT>)
+that issues an ICMP address mask request and prints all replies.
+Since normal usage is to send the request to the broadcast address,
+that's what we'll do. The destination address (140.252.13.63)
+is the broadcast address for the subnet 140.252.13.32 (<a href="ip_inter.htm#fig_3_12" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_12">Figure
+3.12</a>).
+<P>
+<TABLE >
+<TR><TD WIDTH=390><TT>sun % <B>icmpaddnnask 140.252.13.63<BR>
+</B>received mask = ffffffeO, from 140.252.13.33<BR>
+received mask = ffffffeO, from 140.252.13.35<BR>
+received mask = ffff0000, from 140.252.13.34</TT>
+</TD><TD WIDTH=193><BR>
+<I>from ourself<BR>
+from</I> <TT>bsdi<BR>
+</TT><I>from</I> <TT>svr4</TT>
+</TD></TR>
+</TABLE>
+<P>
+The first thing we note in this output is that the
+returned value from <TT>svr4</TT> is wrong.
+It appears that SVR4 is returning the general class B address
+mask, assuming no subnets, even though the interface on <TT>svr4</TT>
+has been configured with the correct subnet mask:
+<P>
+<TABLE >
+<TR><TD WIDTH=583><TT>svr4 % <B>ifconfig emd0 <BR>
+</B>emd0: flags=23&lt;UP, BROADCAST ,NOTRAILERS&gt;<BR>
+inet 140.252.13.34 netmask ffffffe0 broadcast 140.252.13.63</TT>
+</TD></TR>
+</TABLE>
+<P>
+There is a bug in the SVR4 handling of the ICMP address
+mask request.
+<P>
+We'll watch this exchange on the host <TT>bsdi</TT>
+using <TT>tcpdump</TT>. The output is shown
+in Figure 6.5. We specify the <TT>-e</TT>
+option to see the hardware addresses.
+<P>
+<a name="fig_6_5"><TABLE ></a>
+<TR><TD WIDTH=33>1</TD><TD WIDTH=83>0.0
+</TD><TD WIDTH=467><TT>8:0:20:3:f6:42 ff;ff:ff:ff:ff:ff ip 60: <BR>
+sun &gt; 140.252.13.63: icmp: address mask request</TT>
+</TD></TR>
+<TR><TD WIDTH=33>2 </TD><TD WIDTH=83>0.00 (0.00)
+</TD><TD WIDTH=467><TT>0:0:c0:6f:2d:40 ff;ff:ff:ff:ff:ff ip 46:
+<BR>
+bsdi &gt; sun: icmp: address mask is 0xffffffe0</TT>
+</TD></TR>
+<TR><TD WIDTH=33>3 </TD><TD WIDTH=83>0.01 (0.01)
+</TD><TD WIDTH=467><TT>0:0:c0:c2:9b:26 8:0:20:3:f6:42 ip 60:
+<BR>
+svr4 &gt; sun: icmp: address mask is 0xffff0000</TT>
+</TD></TR>
+</TABLE>
+<CENTER><B>Figure 6.5</B> ICMP
+address mask request sent to broadcast address.</CENTER>
+<P>
+Note that the sending host, <TT>sun</TT>,
+receives an ICMP reply (the output line with the comment from
+<I>ourself </I>shown earlier), even though nothing is seen on
+the wire. This is a general characteristic of broadcasting: the
+sending host receives a copy of the broadcast packet through some
+internal loopback mechanism. Since by definition the term &quot;broadcast&quot;
+means <I>all</I> the hosts on the local network, it should include
+the sending host. (Referring to <A HREF="link_lay.htm#fig_2_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#fig_2_4">Figure 2.4</A>
+what is happening is that when the Ethernet driver recognizes
+that the destination address is the broadcast address, the packet
+is sent onto the network <I>and</I> a copy is made and passed
+to the loopback interface.)
+<P>
+Next, <TT>bsdi</TT> broadcasts
+the reply, while <TT>svr4</TT> sends the reply
+only to the requestor. Normally the reply should be unicast unless
+the source IP address of the request is 0.0.0.0, which it isn't
+in this example. Therefore, sending the reply to the broadcast
+address is a BSD/386 bug.
+<P>
+The Host Requirements RFC says that a system must
+not send an address mask reply unless it is an authoritative agent
+for address masks. (To be an authoritative agent it must be specifically
+configured to send these replies. See <A HREF="append_e.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_e.htm">Appendix E</A>.)
+As we can see from this example, however, most host implementations
+send a reply if they get a request. Some hosts even send the wrong
+reply!
+<P>
+The final point is shown by the following example.
+We send an address mask request to our own IP address and to the
+loopback address:
+<P>
+<TABLE >
+<TR><TD WIDTH=583><TT>sun % <B>icmpaddrmask sun <BR>
+</B>received mask = ff000000, from 140.252.13.33</TT>
+</TD></TR>
+<TR><TD WIDTH=583><TT>sun % <B>icmpaddrmask localhost<BR>
+</B>received mask = ff000000, from 127.0.0.1</TT>
+</TD></TR>
+</TABLE>
+<P>
+In both cases the returned address mask corresponds
+to the loopback address, the class A address 127.0.0.1. Again,
+referring to <A HREF="link_lay.htm#fig_2_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#fig_2_4">Figure 2.4</A> we see
+that IP datagrams sent to the host's own IP address (140.252.13.33
+in this example) are actually sent to the loop-back interface.
+The ICMP address mask reply must correspond to the subnet mask
+of the interface on which the request was received (since a multihomed
+host can have different subnet masks for each interface), and
+in both cases the request is received from the loopback interface.
+<a name="6_4"><H3>6.4 ICMP Timestamp Request and Reply</H3></a>
+<P>
+The ICMP timestamp request allows a system to query
+another for the current time. The recommended value to be returned
+is the number of milliseconds since midnight, Coordinated Universal
+Time (UTC). (Older manuals refer to UTC as Greenwich Mean Time.)
+The nice feature of this ICMP message is that it provides millisecond
+resolution, whereas some other methods for obtaining the time
+from another host (such as the <TT>rdate</TT>
+command provided by some Unix systems) provide a resolution of
+seconds. The drawback is that only the time since midnight is
+returned-the caller must know the date from some other means.
+Figure 6.6 shows the format of the ICMP timestamp request and
+reply messages.
+<P>
+<CENTER>
+<a name="fig_6_6"><img src="f_6_6.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_6_6.gif"></a><br><B>Figure 6.6</B> ICMP
+timestamp request and reply messages.</CENTER>
+<P>
+The requestor fills in the <I>originate</I> timestamp
+and sends the request. The replying system fills in the <I>receive</I>
+timestamp when it receives the request, and the <I>transmit</I>
+time-stamp when it sends the reply. In actuality, however, most
+implementations set the latter two fields to the same value. (The
+reason for providing the three fields is to let the sender compute
+the time for the request to be sent, and separately compute the
+time for the reply to be sent.)
+<P>
+We can write a simple program (named <TT>icmptime</TT>)
+that sends an ICMP timestamp request to a host and prints the
+returned reply. We try it first on our small internet:
+<P>
+<TABLE >
+<TR><TD WIDTH=583><TT>sun % <B>icmptime bsdi <BR>
+</B>orig = 83573336, recv = 83573330, xmit = 83573330, rtt = 2 ms<BR>
+difference = -6 ms</TT>
+</TD></TR>
+<TR><TD WIDTH=583><TT>sun % <B>icmptime bsdi
+<BR>
+</B>orig = 83577987, recv = 83577980, xmit = 83577980, rtt = 2 ms<BR>
+difference = -7 ms</TT>
+</TD></TR>
+</TABLE>
+<P>
+The program prints the three timestamps in the ICMP
+message: the originate (<TT>orig</TT>), receive
+(<TT>recv</TT>), and transmit (<TT>xmit</TT>)
+timestamps. As we can see in this and the following examples,
+all the hosts set the receive and transmit timestamps to the same
+value.
+<P>
+We also calculate the round-trip time (<TT>rtt</TT>),
+which is the time the reply is received minus the time the request
+was sent. The <TT>difference</TT> is the received
+timestamp minus the originate timestamp. Figure 6.7 shows the
+relationship between these values.
+<P>
+<CENTER>
+<a name="fig_6_7"><img src="f_6_7.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_6_7.gif"></a><br><B>Figure 6.7</B> Relationship
+between values printed by our <TT>icmptime</TT>
+program.</CENTER>
+<P>
+If we believe the RTT and assume that one-half of
+the RTT is for the request, and the other half for the reply,
+then the sender's clock needs to be adjusted by <TT>difference</TT>
+minus one-half the RTT, to have the same time as the host being
+queried. In the preceding example, the clock on <TT>bsdi</TT>
+was 7 and 8 ms behind the clock on <TT>sun</TT>.
+<P>
+Since the timestamp values are the number of milliseconds
+past midnight, UTC, they should always be less than 86,400,000
+(24 x 60 x 60 x 1000). These examples were run just before 4:00
+P.M. in a time zone that is 7 hours behind UTC, so the values
+being greater than 82,800,000 (2300 hours) makes sense.
+<P>
+If we run this program several times to the host
+<TT>bsdi</TT> we see that the final digit
+in the receive and transmit timestamp is always 0. This is because
+the software release (Version 0.9.4) only provides a 10-ms clock.
+(We describe this in <A HREF="append_b.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_b.htm">Appendix B</A>.)
+<P>
+If we run the program twice to the host <TT>svr4</TT>
+we see that the low-order three digits of the SVR4 timestamp are
+always 0:
+<P>
+<TABLE >
+<TR><TD WIDTH=583><TT>sun % <B>icmptime svr4<BR>
+</B>orig = 83588210, recv = 83588000, xmit = 83588000, rtt = 4 ms<BR>
+difference = -210 ms</TT>
+</TD></TR>
+<TR><TD WIDTH=583><TT>sun % <B>icmptime svr4
+<BR>
+</B>orig = 83591547, recv = 83591000, xmit = 83591000, rtt = 4 ms<BR>
+difference = -547 ms</TT>
+</TD></TR>
+</TABLE>
+<P>
+For some reason SVR4 doesn't provide any millisecond
+resolution using the ICMP time-stamp. This imprecision makes the
+calculated differences useless for subsecond adjustments.
+<P>
+If we try two other hosts on the 140.252.1 subnet,
+the results show that one clock differs from sun's by 3.7 seconds,
+and the other by nearly 75 seconds:
+<P>
+<TABLE >
+<TR><TD WIDTH=583><TT>sun % <B>icmptime gemini <BR>
+</B>orig = 83601883, recv = 83598140, xmit = 83598140, rtt = 247 ms<BR>
+difference = -3743 ms</TT>
+</TD></TR>
+<TR><TD WIDTH=583><TT>sun % <B>icmptime aix
+<BR>
+</B>orig = 83606768, recv = 83532183, xmit = 83532183, rtt = 253 ms<BR>
+difference = -74585 ms</TT>
+</TD></TR>
+</TABLE>
+<P>
+Another interesting example is to the router <TT>gateway</TT>
+(a Cisco router). It shows that when a system returns a nonstandard
+timestamp value (something other than milliseconds past midnight,
+UTC), it is supposed to turn on the high-order bit of the 32-bit
+timestamp. Our program detects this, and prints the receive and
+transmit timestamps in angle brackets (after turning off the high-order
+bit). Also, we can't calculate the difference between the originate
+and receive timestamps, since they're not the same units.
+<P>
+<TABLE >
+<TR><TD WIDTH=583><TT>sun % <B>icmptime gateway <BR>
+</B>orig = 83620811, recv = &lt;4871036&gt;, xmit = &lt;4871036&gt;, rtt = 220 ms</TT>
+</TD></TR>
+<TR><TD WIDTH=583><TT>sun % <B>icmptime gateway<BR>
+</B>orig = 83641007, recv = &lt;4891232&gt;, xmit = &lt;4891232&gt;, rtt = 213 ms</TT>
+</TD></TR>
+</TABLE>
+<P>
+If we run our program to this host a few times it
+becomes obvious that the values do contain millisecond resolution
+and do count the number of milliseconds past some starting point,
+but the starting point is not midnight, UTC. (It could be a counter
+that's incremented every millisecond since the router was bootstrapped,
+for example.)
+<P>
+As a final example we'll compare <TT>sun</TT>'s
+clock with a system whose clock is known to be accurate-an NTP
+stratum 1 server. (We say more about NTP, the Network Time Protocol,
+below.)
+<P>
+<TABLE >
+<TR><TD WIDTH=583><TT>sun % <B>icmptime clock.llnl.gov<BR>
+</B>orig = 83662791, recv = 83662919, xmit = 83662919, rtt = 359 ms<BR>
+difference = 128 ms</TT>
+</TD></TR>
+<TR><TD WIDTH=583><TT>sun % <B>icmptime clock.llnl.gov
+<BR>
+</B>orig = 83670425, recv = 83670559, xmit = 83670559, rtt = 345 ms<BR>
+difference = 134 ms</TT>
+</TD></TR>
+</TABLE>
+<P>
+If we calculate the difference minus one-half the
+RTT, this output indicates that the clock on <TT>sun</TT>
+is between 38.5 and 51.5 ms fast.
+<H4>Alternatives</H4>
+<P>
+There are other ways to obtain the time and date.
+<P>
+<OL>
+<LI>We described the daytime service and time service
+in Section 1.12. The former returns the current time and date
+in a human readable form, a line of ASCII characters. We can test
+this service using the telnet command:
+<P>
+<TABLE >
+<TR><TD WIDTH=275><TT>sun % <B>telnet bsdi daytime <BR>
+</B>Trying 140.252.13.35 ...<BR>
+Connected to bsdi.<BR>
+Escape character is &quot;^]&quot;<BR>
+Wed Feb 3 16:38:33 1993<BR>
+Connection closed by foreign host.</TT>
+</TD><TD WIDTH=320><BR>
+<BR>
+<I>first three lines output are from the Telnet client<BR>
+here's the daytime service output<BR>
+this is also from the Telnet client</I>
+</TD></TR>
+</TABLE>
+<P>
+The time server, on the other hand, returns a 32-bit
+binary value with the number of seconds since midnight January
+1, 1900, UTC. While this provides the date, the time value is
+in units of a second. (The <TT>rdate</TT>
+command that we mentioned earlier uses the TCP time service.)
+<P>
+<LI>Serious timekeepers use the Network Time Protocol
+(NTP) described in RFC 1305 [Mills 1992]. This protocol uses sophisticated
+techniques to maintain the clocks for a group of systems on a
+LAN or WAN to within millisecond accuracy. Anyone interested in
+precise timekeeping on computers should read this RFC.
+<P>
+<LI>The Open Software Foundation's (OSF) Distributed
+Computing Environment (DCE) defines a Distributed Time Service
+(DTS) that also provides clock synchronization between computers.
+[Rosenberg, Kenney, and Fisher 1992] provide additional details
+on this service.
+<P>
+<LI>Berkeley Unix systems provide the daemon <TT>timed</TT>(8)
+to synchronize the clocks of systems on a local area network.
+Unlike NTP and DTS, timed does not work across wide area networks.
+</OL>
+<a name="6_5"><H3>6.5 ICMP Port Unreachable Error</H3></a>
+<P>
+The last two sections looked at ICMP query messages-the
+address mask and time-stamp queries and replies. We'll now examine
+an ICMP error message, the port unreachable message, a subcode
+of the ICMP destination unreachable message, to see the additional
+information returned in an ICMP error message. We'll watch this
+using UDP (<A HREF="udp_user.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm">Chapter 11</A>).
+<P>
+One rule of UDP is that if it receives a UDP datagram
+and the destination port does not correspond to a port that some
+process has in use, UDP responds with an ICMP port unreachable.
+We can force a port unreachable using the TFTP client. (We describe
+TFTP in <A HREF="tftp_tri.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tftp_tri.htm">Chapter 15</A>.)
+<P>
+The well-known UDP port for the TFTP server to be
+reading from is 69. But most TFTP client programs allow us to
+specify a different port using the connect command. We use this
+to specify a port of 8888:
+<P>
+<TABLE >
+<TR><TD WIDTH=230><TT>bsdi % <B>tftp<BR>
+</B>tftp&gt; <B>connect svr4 8888<BR>
+</B>tftp&gt; <B>get temp.foo<BR>
+</B>Transfer timed out.<BR>
+tftp&gt; <B>quit</B></TT>
+</TD><TD WIDTH=300><BR>
+<I>specify the hostname and port number<BR>
+try to fetch a file<BR>
+about 15 seconds later</I>
+</TD></TR>
+</TABLE>
+<P>
+The connect command saves the name of the host to
+contact and the port number on that host, for when we later issue
+the get command. After typing the get command a UDP datagram is
+sent to port 8888 on host <tt>svr4</tt>. Figure 6.8 shows the <tt>tcpdump</tt> output
+for the exchange of packets that takes place.
+<P>
+Before the UDP datagram can be sent to svr4 an ARP
+request is sent to determine its hardware address (line 1). The
+ARP reply (line 2) is returned and then the UDP datagram is sent
+(line 3). (We have left the ARP request-reply in this tcpdump
+output to remind us that this exchange may be required before
+the first IP datagram is sent from one host to the other. In future
+output we'll delete this exchange if it's not relevant to the
+topic being discussed.)
+<P>
+<a name="fig_6_8"><TABLE></a>
+<TR><TD WIDTH=36>1<BR>
+2</TD><TD WIDTH=172><TT>0.0<BR>
+0.002050 (0.0020)</TT>
+</TD><TD WIDTH=375><TT>arp who-has svr4 tell bsdi<BR>
+arp reply svr4 is-at 0:0:c0:c2:9b:26</TT>
+</TD></TR>
+<TR><TD WIDTH=36>3<BR>
+4</TD><TD WIDTH=172><TT>0.002723 (0.0007) <BR>
+0.006399 (0.0037)</TT>
+</TD><TD WIDTH=375><TT>bsdi.2924 &gt; svr4.8888: udp 20<BR>
+svr4 &gt; bsdi: icmp: svr4 udp port 8888</TT>
+</TD></TR>
+<TR><TD WIDTH=36>5<BR>
+6</TD><TD WIDTH=172><TT>5.000776 (4.9944)<BR>
+5.004304 (0.0035)</TT>
+</TD><TD WIDTH=375><TT>bsdi. 2924 &gt; svr4.8888: udp 20<BR>
+svr4 &gt; bsdi: icmp: svr4 udp port 8888</TT>
+</TD></TR>
+<TR><TD WIDTH=36>7<BR>
+8</TD><TD WIDTH=172><TT>10.000887 (4.9966)<BR>
+10.004416 (0.0035)</TT>
+</TD><TD WIDTH=375><TT>bsdi. 2924 &gt; svr4.8888: udp 20<BR>
+svr4 &gt; bsdi: icmp: svr4 udp port 8888</TT>
+</TD></TR>
+<TR><TD WIDTH=36>9<BR>
+10</TD><TD WIDTH=172><TT>15.001014 (4.9966)<BR>
+15.004574 (0.0036)</TT>
+</TD><TD WIDTH=375><TT>bsdi.2924 &gt; svr4.8888: udp 20<BR>
+svr4 &gt; bsdi: icmp: svr4 udp port 8888</TT>
+</TD></TR>
+<TR><TD WIDTH=36>11<BR>
+12</TD><TD WIDTH=172><TT>20.001177 (4.9966)<BR>
+20.004759 (0.0036)</TT>
+</TD><TD WIDTH=375><TT>bsdi.2924 &gt; svr4.8888: udp 20
+<BR>
+svr4 &gt; bsdi: icmp: svr4 udp port 8888</TT>
+</TD></TR>
+</TABLE>
+<CENTER>
+<B>Figure 6.8</B> ICMP port unreachable
+generated by TFTP request.</CENTER>
+<P>
+An ICMP port unreachable is immediately returned
+(line 4). But the TFTP client appears to ignore the ICMP message,
+sending another UDP datagram about 5 seconds later (line 5). This
+continues three more times before the client gives up.
+<P>
+Notice that the ICMP messages are exchanged between
+hosts, without a port number designation, while each 20-byte UDP
+datagram is from a specific port (2924) and to a specific port
+(8888).
+<P>
+The number 20 at the end of each UDP line is the
+length of the data in the UDP datagram. In this example 20 is
+the sum of the TFTP's 2-byte opcode, the 9-byte null terminated
+name <TT>temp.foo</TT>, and the 9-byte null terminated string <TT>netascii</TT>.
+(See <a href="tftp_tri.htm#fig_15_1" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tftp_tri.htm#fig_15_1">Figure 15.1</a> for the details of the TFTP packet layout.)
+<P>
+If we run this same example using the <TT>-e</TT> option of
+<TT>tcpdump</TT> we see the exact length of each ICMP port unreachable
+message that's returned to the sender. This length is 70 bytes,
+and is allocated as shown in Figure 6.9.
+
+<CENTER>
+<a name="fig_6_9"><img src="f_6_9.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_6_9.gif"></a><BR>
+<B>Figure 6.9</B> ICMP message returned for our &quot;UDP port unreachable&quot;
+example.</CENTER>
+<P>
+One rule of ICMP is that the ICMP error messages
+(see the final column of <a href="#fig_6_3">Figure 6.3</a>) must include the IP
+header (including any options) of the datagram that generated
+the error along with at least the first 8 bytes that followed
+this IP header. In our example, the first 8 bytes following the
+IP header contain the UDP header (<a href="udp_user.htm#fig_11_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#fig_11_2">Figure 11.2</a>).
+<P>
+The important fact is that contained in the UDP header
+are the source and destination port numbers. It is this destination
+port number (8888) that caused the ICMP port unreachable to be
+generated. The source port number (2924) can be used by the system
+receiving the ICMP error to associate the error with a particular
+user process (the TFTP client in this example).
+<P>
+One reason the IP header of the datagram that caused
+the error is sent back is because in this IP header is the protocol
+field that lets ICMP know how to interpret the 8 bytes that follow
+(the UDP header in this example). When we look at the TCP header
+(<a href="tcp_tran.htm#fig_17_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_tran.htm#fig_17_2">Figure 17.2</a>) we'll see that the source and destination port numbers
+are contained in the first 8 bytes of the TCP header. The general
+format of the ICMP unreachable messages is shown in Figure 6.10.
+<P>
+<CENTER>
+<a name="fig_6_10"><img src="f_6_10.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_6_10.gif"></a><BR>
+<b>Figure 6.10</b> ICMP unreachable message.</CENTER>
+<P>
+In <a href="#fig_6_3">Figure 6.3</a> we noted that there are 16 different
+ICMP unreachable messages, <I>codes 0 </I>through 15. The ICMP
+port unreachable is <I>code</I> 3. Also, although Figure 6.10
+indicates that the second 32-bit word in the ICMP message must
+be 0, the Path MTU Discovery mechanism (Section 2.9) allows a
+router to place the MTU of the outgoing interface in the low-order
+16 bits of this 32-bit value, when <I>code</I> equals 4 (&quot;fragmentation
+needed but the don't fragment bit is set&quot;). We show an example
+of this error in Section 11.6.
+<P>
+<FONT SIZE=2>Although the rules of ICMP allow a system to return
+more than the first 8 bytes of the data portion of the IP datagram
+that caused the ICMP error, most Berkeley-derived implementations
+return exactly 8 bytes. The Solaris 2.2 <TT>ip_icmp_return_data_bytes</TT>
+option returns the first 64 bytes of data by default
+(<a href="append_e.htm#E_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_e.htm#E_4">Section E.4</a>).</FONT>
+<P>
+<h4>tcpdump Time Line</h4>
+<P>
+Throughout the text we'll also display the tcpdump
+output in a time line diagram as shown in Figure 6.11.
+<P>
+<CENTER>
+<a name="fig_6_11"><img src="f_6_11.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_6_11.gif"></a><br><B>Figure 6.11</B> Time line
+of TFTP request to an invalid port.</CENTER>
+<P>
+Time increases down the page and the labels on the
+far left of the figure are the same time values as in our tcpdump
+output (<a href="#fig_6_8">Figure 6.8</a>). The labels at the top are the hostnames and
+port numbers for each side of the time line. Be aware that the
+y-axis down the page is <I>not</I> exactly proportional to the
+time value. When there is a significant time lag, as between each
+5-second retransmission in this example, we'll designate that
+with a squiggle on both sides of the time line. When UDP or TCP
+data is being transmitted, we show that packet with a thicker
+line.
+<P>
+Why does the TFTP client keep retransmitting its
+request when the ICMP messages are being returned? An element
+of network programming is occurring in which BSD systems don't
+notify user processes using UDP of ICMP messages that are received
+for that socket unless the process has issued a connect on that
+socket. The standard BSD TFTP client does not issue the <tt>connect</tt>,
+so it never receives the ICMP error notification.
+<P>
+Another point
+to notice here is the poor retransmission timeout algorithm used
+by this TFTP client. It just assumes that 5 seconds is adequate
+and retransmits every 5 seconds, for a total of 25 seconds. We'll
+see later that TCP has a much better algorithm.
+<P>
+<FONT SIZE=2>This old-fashioned timeout and retransmission algorithm
+used by the TFTP client is forbidden by the Host Requirements
+RFC. Nevertheless, all three systems on the author's subnet, and
+Solaris 2.2 still use it. AIX 3.2.2 applies an exponential backoff
+to its timeout, sending packets at 0, 5, 15, and 35 seconds, which
+is the recommended way We talk much more about timeouts in
+<a href="tcp_time.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_time.htm">Chapter 21</a>.</FONT>
+<P>
+Finally note that the ICMP messages are returned
+about 3.5 ms after the UDP datagram is sent, which we'll see in
+Chapter 7 is similar to the round-trip times for Ping replies.
+<P>
+<a name="6_6"><h3>6.6 4.4BSD Processing of ICMP Messages</h3></a>
+<P>
+Since ICMP covers such a wide range of conditions,
+from fatal errors to informational messages, each ICMP message
+is handled differently, even within a given implementation. Figure
+6.12 is a redo of <a href="#fig_6_3">Figure 6.3</a>, showing the handling performed by
+4.4BSD for each of the possible ICMP messages.
+<P>
+If the final column specifies the kernel, that ICMP
+message is handled by the kernel. If the final column specifies
+&quot;user process&quot;, then that message is passed to all user
+processes that have registered with the kernel to read received
+ICMP messages. If there are none of these user processes, the
+message is silently discarded. (These user processes also receive
+a copy of all the other ICMP messages, even those handled by the
+kernel, but only after the kernel has processed the message.)
+Some messages are completely ignored. Finally, if the final column
+is a string in quotes, that is the Unix error message corresponding
+to that condition. Some of these errors, such as TCP's handling
+of a source quench, we'll cover in later chapters.
+<P>
+<CENTER>
+<a name="fig_6_12"><TABLE BORDER=1></a>
+<TR><TD WIDTH=47><CENTER><I>type</I></CENTER></TD><TD WIDTH=47><CENTER><I>code</I></CENTER>
+</TD><TD WIDTH=274><CENTER>Description</CENTER></TD><TD WIDTH=208><CENTER>Handled by</CENTER>
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>0</CENTER></TD><TD WIDTH=47><CENTER>0</CENTER>
+</TD><TD WIDTH=274>echo reply</TD><TD WIDTH=208>user process</TD>
+</TR>
+<TR><TD WIDTH=47><CENTER>3 </CENTER></TD><TD WIDTH=47>
+<BR>
+<CENTER>0<BR>
+1<BR>
+2<BR>
+3<BR>
+4<BR>
+5<BR>
+6<BR>
+7<BR>
+8<BR>
+9<BR>
+10<BR>
+11<BR>
+12<BR>
+13<BR>
+14<BR>
+15</CENTER>
+</TD><TD WIDTH=274>destination unreachable:<BR>
+network unreachable<BR>
+host unreachable<BR>
+protocol unreachable<BR>
+port unreachable<BR>
+fragmentation needed but DF bit set<BR>
+source route failed<BR>
+destination network unknown<BR>
+destination host unknown<BR>
+source host isolated (obsolete)<BR>
+dest. network administratively prohibited<BR>
+dest. host administratively prohibited<BR>
+network unreachable for TOS<BR>
+host unreachable for TOS<BR>
+communication administratively prohibited<BR>
+host precedence violation<BR>
+precedence cutoff in effect
+</TD><TD WIDTH=208><BR>
+&quot;No route to host&quot;<BR>
+&quot;No route to host&quot;<BR>
+&quot;Connection refused&quot;<BR>
+&quot;Connection refused&quot;<BR>
+&quot;Message too long&quot;<BR>
+&quot;No route to host&quot;<BR>
+&quot;No route to host&quot;<BR>
+&quot;No route to host&quot;<BR>
+&quot;No route to host&quot;<BR>
+&quot;No route to host&quot;<BR>
+&quot;No route to host&quot;<BR>
+&quot;No route to host&quot;<BR>
+&quot;No route to host&quot;<BR>
+(ignored)<BR>
+(ignored)<BR>
+(ignored)
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>4</CENTER></TD><TD WIDTH=47><CENTER>0</CENTER>
+</TD><TD WIDTH=274>source quench</TD><TD WIDTH=208>kernel for TCP, ignored by UDP
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>5</CENTER></TD><TD WIDTH=47><BR>
+<CENTER>0<BR>
+1<BR>
+2<BR>
+3</CENTER>
+</TD><TD WIDTH=274>redirect:<BR>
+redirect for network<BR>
+redirect for host<BR>
+redirect for type-of-service and network<BR>
+redirect for type-of-service and host
+</TD><TD WIDTH=208><BR>
+kernel updates routing table<BR>
+kernel updates routing table<BR>
+kernel updates routing table<BR>
+kernel updates routing table
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>8 </CENTER></TD><TD WIDTH=47><CENTER>0</CENTER>
+</TD><TD WIDTH=274>echo request</TD><TD WIDTH=208>kernel generates reply
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>9<BR>
+10 </CENTER></TD><TD WIDTH=47><CENTER>0<BR>
+0</CENTER>
+</TD><TD WIDTH=274>router advertisement<BR>
+router solicitation
+</TD><TD WIDTH=208>user process<BR>
+user process</TD></TR>
+<TR><TD WIDTH=47><CENTER>11</CENTER></TD><TD WIDTH=47><BR>
+<CENTER>0<BR>
+1</CENTER>
+</TD><TD WIDTH=274>time exceeded:<BR>
+TTL equals 0 during transit<BR>
+TTL equals 0 during reassembly
+</TD><TD WIDTH=208><BR>
+user process<BR>
+user process</TD></TR>
+<TR><TD WIDTH=47><CENTER>12</CENTER></TD><TD WIDTH=47><BR>
+<CENTER>0<BR>
+1</CENTER>
+</TD><TD WIDTH=274>parameter problem:<BR>
+IP header bad (catchall error)<BR>
+required option missing
+</TD><TD WIDTH=208><BR>
+&quot;Protocol not available&quot;<BR>
+&quot;Protocol not available&quot;
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>13<BR>
+14</CENTER></TD><TD WIDTH=47><CENTER>0<BR>
+0</CENTER>
+</TD><TD WIDTH=274>timestamp request<BR>
+timestamp reply</TD>
+<TD WIDTH=208>kernel generates reply<BR>
+user process</TD></TR>
+<TR><TD WIDTH=47><CENTER>15<BR>
+16 </CENTER></TD><TD WIDTH=47><CENTER>0<BR>
+0</CENTER>
+</TD><TD WIDTH=274>information request (obsolete)<BR>
+information reply (obsolete)
+</TD><TD WIDTH=208>(ignored)<BR>
+user process</TD></TR>
+<TR><TD WIDTH=47><CENTER>17<BR>
+18</CENTER></TD><TD WIDTH=47><CENTER>0<BR>
+0</CENTER>
+</TD><TD WIDTH=274>address mask request<BR>
+address mask reply
+</TD><TD WIDTH=208>kernel generates reply<BR>
+user process</TD>
+</TR>
+</TABLE>
+<B>Figure 6.12</B> Handling
+of the ICMP message types by 4.4BSD.</CENTER>
+<P>
+<h3><a name="6_7">6.7 Summary</a></h3>
+<P>
+This chapter has been a look at the Internet Control
+Message Protocol, a required part of every implementation.
+<a href="#fig_6_3">Figure 6.3</a> lists all the ICMP message types, most of which we'll discuss
+later in the text.
+<P>
+We looked at the ICMP address mask request and reply
+and the timestamp request and reply in detail. These are typical
+of the request-reply messages. Both have an identifier and sequence
+number in the ICMP message. The sending application stores a unique
+value in the identifier field, to distinguish between replies
+for itself and replies for other processes. The sequence number
+field lets the client match replies with requests.
+<P>
+We also saw the ICMP port unreachable error, a common
+ICMP error. This let us examine the information returned in an
+ICMP error: the IP header and the next 8 bytes of the IP datagram
+that caused the error. This information is required by the receiver
+of the ICMP error, to know more about the cause of the error.
+Both TCP and UDP store the source and destination port numbers
+in the first 8 bytes of their headers for this reason.
+<P>
+Finally, we presented our first time line of <tt>tcpdump</tt>
+output, a presentation format we'll use in later chapters.
+
+<h4>Exercises</h4>
+
+<B>6.1</B> At the end of Section 6.2 we listed five special conditions
+under which an ICMP error
+message is not sent. What would happen if these five conditions
+weren't followed and we sent a broadcast UDP datagram to an unlikely
+port on the local cable?
+<P>
+<b>6.2</b> Read the Host Requirements RFC [Braden
+1989a] to see if the generation of an ICMP port unreachable is
+a &quot;must,&quot; &quot;should,&quot; or &quot;may.&quot; What
+section and page is this found on?
+<P>
+<b>6.3</b> Read RFC 1349 [Almquist 1992] to see how the
+IP type-of-service field (<a href="ip_inter.htm#fig_3_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_2">Figure 3.2</a>) should be set by ICMP.
+<P>
+<b>6.4</b> If your system provides the <tt>netstat</tt> command,
+use it to see what types of ICMP messages are received and sent.
+</BODY>
+</HTML>

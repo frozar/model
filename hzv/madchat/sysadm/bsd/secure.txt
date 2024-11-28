@@ -1,0 +1,311 @@
++===================================================================+
++           A basic guide to securing FreeBSD 4.x-STABLE            +
++-------------------------------------------------------------------+
++                                                                   +
++          Written by Marc Silver <marcs@draenor.org> 2001          +
++                   http://draenor.org/securebsd                    +
++                                                                   +
++                                                                   +
++===================================================================+
+
+$Id: secure,v 1.6 2001/11/23 00:11:19 marcs Exp $;
+
+Overview
+========
+
+The word security means different things to different people.  While
+this document covers various aspects and suggests things that can be
+done to secure FreeBSD, it is is by no means a definitive guide to
+securing FreeBSD.  It is merely a model that I use on my own machines,
+and one that I have had great success with.  I'd also like to point out
+that I am by no means a security 'expert'... I am merely a _very_
+paranoid sysadmin who takes great pride in securing my servers.
+
+For a broader look at security on FreeBSD, and as a primer to this
+document, I would suggest that everyone read the man page for
+security(7) on their FreeBSD system.  
+
+This is a work in progress.  As such, this document will change, grow
+and develop over time.  If you have something to add, or wish to suggest
+a change/make a comment or say anything for that matter, please email me
+(marcs@draenor.org).  
+
+With that out of the way, let's begin.
+
+It should be noted that this document isn't by any means going to stop
+remote or local DoS attacks.  It can merely help you to better secure
+default FreeBSD instalations.
+
+The Foundation for a secure system
+==================================
+
+A system should be set up to be secure from the very beginning.  There
+are a number of things that can be done during the FreeBSD installation
+that can save you serious headaches later.  In my opinion, file system
+setup can make a big difference in cases where you can (and must) assume
+that the attacker already has a local login on the machine.  
+
+o  File System Layout
+
+   The file system layout below is specific to a shell server where many
+   users will be connecting to the machine and using it for various
+   tasks such as mail, irc, etc.  You will most likely need to adapt
+   this to suit your own needs.  
+
+   Filesystem  1K-blocks     Used    Avail Capacity  Mounted on
+   /dev/ad0s1a    198399    33019   149509    18%    /
+   /dev/ad0s1f     49583    27879    17738    61%    /tmp
+   /dev/ad0s1d  12348393  2563101  8797421    23%    /usr
+   /dev/ad0s1h   4065262    97983  3642059     3%    /home
+   /dev/ad0s1g   2032623     6026  1863988     0%    /var
+   procfs              4        4        0   100%    /proc
+
+   Now, let's look at the output from the mount(8) command:
+
+   /dev/ad0s1a on / (ufs, local, soft-updates)
+   /dev/ad0s1f on /tmp (ufs, local, nodev, nosuid, soft-updates)
+   /dev/ad0s1d on /usr (ufs, local, soft-updates)
+   /dev/ad0s1h on /home (ufs, local, nosuid, with quotas, soft-updates)
+   /dev/ad0s1g on /var (ufs, local, soft-updates)
+   procfs on /proc (procfs, local)
+
+   Now, let's discuss why I've set things up this way.
+
+   The root partition (/) is a reasonable 200MB, (which should allow you
+   a little room to play with) and is home to the kernel as well as
+   KLD's and various other fairly important directories which are linked
+   directly off it (/sbin comes to mind).  With this in mind, it's
+   possible at a later stage to mount the root partition as read-only,
+   by editing the flags for this partition in the fstab(5) file.
+
+   Temporary files are stored in /tmp, and since this directory is
+   usually world writeable, it's important to not allow certain files to
+   be used from this directory.  Using the fstab(5) file (also see
+   mount(8)) you should add the NOSUID and NODEV flags for /tmp which
+   disables suid programs and stops character or block special devices
+   on the filesystem.  You may also want to add the NOEXEC flag for
+   /tmp, but this is severely restrictive, and may begin to make things
+   difficult for your users, and may also limit your ability to find an
+   intruder.  It's important to note that you should symlink /usr/tmp
+   and /var/tmp to this /tmp partition, else you're still giving users a
+   tmp directory with no restrictions.
+
+   User specific directories are kept in /home (I prefer /usr/people)
+   and on this partition it's a good idea to add the NOSUID flag, as
+   well as adding QUOTA support to limit the amount of disk space that
+   your users may use.
+
+   Both /usr and /var are standard partitions with soft-updates enabled.  
+
+   This model can obviously be changed to suit your needs, and you can
+   be even more anal if you wish.  This however, is intended to strike a
+   happy medium between security and usability.
+
+o  System Secure Levels
+
+   For most machines, there is absolutely no reason to run in
+   securelevel -1, unless you're running X-Windows on the machine.  If
+   you're not running X, then I would suggest switching to securelevel 1
+   using the sysctl(8) variable kern.securelevel.  Changing this to 1
+   will mean that you may no longer replace the kernel without being in
+   single user mode (system immutable and system append-only flags are
+   enforced), KLD's may not be loaded/unloaded and /dev/mem and
+   /dev/kmem may not be opened for writing. To change this without
+   rebooting issue the command:
+
+   sysctl kern.securelevel=1
+
+   To make this change more permanent, add the following to
+   /etc/rc.conf:
+
+   kern_securelevel_enable="YES"
+   kern_securelevel="1"
+
+   On more critical machines, you may wish to increase the securelevel
+   to 2 or 3.  For more information on the various secure levels and
+   what they do, please read the man page for init(8).
+
+Securing your newly installed BSD box
+=====================================
+
+o  Removal of the toor user
+
+   By default, FreeBSD ships with an additional user that has a UID of
+   0.  This user is known as toor (root backwards), and is intended as a
+   backup user, so that if you mistakenly broke (for eg) root's shell,
+   you could log in using this user and fix things.  The account is
+   disabled (passwordless) by default, and hence of no use unless you
+   change the password.  You may either choose to set a password for it,
+   or remove it.  I prefer to remove it.  This is purely up to you.
+
+o  Shut down services
+
+   It's important to not have any non-essential services running on the
+   machine.  The best thing to do is kill all the services running on
+   your machine, and then explicitly enable those that you want running.
+   This way you know for sure what's running on your machine.  You can
+   tell what ports are open on your machine by using the netstat(1)
+   command.  eg:
+
+   secure-me (1) :  netstat -na | grep LIST
+   tcp4       0      0  *.80                   *.* LISTEN
+   tcp4       0      0  *.25                   *.* LISTEN
+   tcp4       0      0  *.22                   *.* LISTEN
+
+   This shows that ports 22 (ssh), 25 (smtp), and 80 (http) are
+   listening on this machine on all IP's.  If you have a process
+   listening and you're unsure of what process is keeping that port
+   open, you may use sockstat(1) to list open sockets and provide you
+   with the relevant information.
+
+   Use rc.conf(5) to easily configure which services start up by
+   default, as well as local package init scripts which can be found in
+   /usr/local/etc/rc.d
+
+o  Telnetd and it's replacement - sshd
+
+   There are certain services which you do not want to run at any cost
+   if at all possible.  Specifically I am going to mention telnetd.  In
+   this day and age, it's amazing to find that people still use this
+   horribly insecure protocol.  Do NOT use telnetd if at all possible.
+   FreeBSD (since 4.1.1) now comes with OpenSSH as part of the base
+   system, and sshd is a perfect drop in replacement for telnetd, while
+   remaining more secure by using encryption to protect your session.
+   The protocol also allows for stronger encryption with the use of
+   RSA/DSA keys.
+   
+   It should be noted that the most current version of OpenSSH now use
+   the SSH protocol version 2, but for those systems that use a slightly
+   older version, it is advised to only allow version 2 of the protocol.
+   This can be done by making sure the following line exists in
+   /etc/ssh/sshd_config:
+
+   Protocol 2
+
+   This will tell the sshd that it should only allow SSH protocol
+   version 2 - and it will not fallback to version 1.  Please note that
+   you may need to restart the sshd in order for this change to take
+   effect.  It's also preferable to use DSA keys wherever possible to
+   enhance security even more.
+
+o  Crontabs
+
+   Firstly, there are certain files which you may generally not want
+   users looking at.  You can safely chmod /etc/crontab to 0640 so that
+   only root and users in the wheel group can see it.  Your users do not
+   need to know what jobs cron triggers.
+
+   At the same time, you may not want to allow users to use crontab(1)
+   at all.  You can easily stop them by creating /var/cron/deny and
+   adding a list of users to that file.  Those users will then be told:
+
+   crontab: you (marcs) are not allowed to use this program
+
+o  Secure the console
+
+   Many people are concerned that a malicious user with physical access
+   could simply reboot into single user mode and change the root
+   password.  While it's quite clear that if an attacker has physical
+   access to your machine, NOTHING you do can keep it safe, you can
+   prevent people from simply changing the root password in single user
+   mode by performing one simple step.  This can be done by changing the
+   the word 'secure' on the 'console' line to 'insecure'.  This will
+   require you to enter the root password when dropping into single user
+   mode.  
+
+o  Process accounting
+
+   It's nice to know exactly what's happening on your machine and to
+   this end, I would suggest enabling process accounting on any machine
+   that you run.  This enables to you tell more or less what commands
+   users are executing, and it can also be useful when debugging certain
+   problems.  To enable, merely execute the following commands:
+
+   secure-me (1) :  touch /var/account/acct
+   secure-me (2) :  accton /var/account/acct
+
+   To make this change more permanent, add the following line to
+   /etc/rc.conf:
+
+   accounting_enable="YES"
+
+o  ipfw
+
+   While ipfw is well beyond the scope of this document, you may wish to
+   secure the machine further as well as gain information on attack
+   patterns on your machine using ipfw.  This can sometimes provide
+   information that someone is more interested in your machine than they
+   should be.  See the ipfw(8) page for more information.
+
+Services
+========
+
+o  Keep your packages current
+
+   When you're running daemons that are worldly visible and accessible
+   it's important to make sure (and it's common sense) that your
+   packages are always up to date.  If you see a new version of a
+   package you have installed, then update it via the ports tree to make
+   sure that you've always got the latest version.  It only takes a few
+   minutes in most cases, but it's worth the effort if you're saving the
+   machine from being compromised.  It'll help to watch lists like
+   bugtraq for security advisories.
+
+o  Keep your OS current
+
+   Similarly, it's important to keep FreeBSD itself up to date.  Keep
+   your source tree up to date, and 'make world' if/when new security
+   patches are made available.  It'll help to watch lists like bugtraq
+   for security advisories.
+
+Kernel changes
+==============
+
+o  Disable bpf if you dont need it
+
+   One of the first things I do when I install a FreeBSD machine is
+   recompile the kernel.  One of the options that I like to disable in
+   the kernel is the bpf device, since this would stop an attacker from
+   putting the network card of the machine into promiscious mode.  This
+   is useful should the machine itself is compromised.  Simply comment
+   out the following line in your kernel file:
+
+   #pseudo-device   bpf             #Berkeley packet filter
+
+   You may also want to add in the options for ipfw, ipfilter, and add
+   quota support at the same time.
+
+o  Disable Ctrl-Alt-Del
+
+   You can stop users with physical access from using the Ctrl-Alt-Del
+   combination to reboot your machine.  Simple add the following line to
+   your kernel to disable this:
+
+   options         SC_DISABLE_REBOOT       # disable reboot key sequence
+
+o  Other things to look at
+   
+   You may also want to look at the TCP_DROP_SYNFIN kernel option in
+   LINT.
+
+Managing user accounts
+======================
+
+o  User quotas
+
+   By enforcing user quotas on certain filesystems you can limit the
+   damage that an attacker who wants to consume disk space can do.
+   Enforce quotas wherever possible.
+
+o  Control what users see
+
+   You should be aware of what it is your users can see.  Just as you
+   dont want users to be able to see what is in root's crontab, you may
+   also not want them to view what is in root's directory.  A quick
+   'chmod 0750 /root' will make sure that they can't see the contents
+   unless they're in the wheel group.
+
+   To that end, you may also want to restrict user home directories by
+   setting their permissions to 0700 by default.  This way, users will
+   have to explicitly change their directory permissions in order for
+   other users to view their directory contents.

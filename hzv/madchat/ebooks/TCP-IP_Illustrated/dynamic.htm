@@ -1,0 +1,909 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 10. Dynamic Routing Protocols</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="10_0"><H1><I>Dynamic Routing Protocols</I></H1></a>
+<a name="10_1"><H3>10.1 Introduction</H3></a>
+<P>
+Our discussion in the <A HREF="ip_rout.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm">previous chapter</A>
+dealt with <I>static routing.</I> The routing table entries were
+created by default when an interface was configured (for directly
+connected interfaces), added by the <TT>route</TT>
+command (normally from a system bootstrap file), or created by
+an ICMP redirect (usually when the wrong default was used).
+<P>
+This is fine if the network is small, there is a
+single connection point to other networks, and there are no redundant
+routes (where a backup route can be used if a primary route fails).
+If any of these three conditions is false, dynamic routing is
+normally used.
+<P>
+This chapter looks at the dynamic routing protocols
+used by routers to communicate with each other. We concentrate
+on RIP, the Routing Information Protocol, a widely used protocol
+that is provided with almost every TCP/IP implementation. We then
+look at two newer routing protocols, OSPF and BGP. The chapter
+finishes with an examination of a new routing technique, called
+classless interdomain routing, that is starting to be implemented
+across the Internet to conserve class B network numbers.
+<a name="10_2"><H3>10.2 Dynamic Routing</H3></a>
+<P>
+<I>Dynamic routing</I> occurs
+when routers talk to adjacent routers, informing each other of
+what networks each router is currently connected to. The routers
+must communicate using a <I>routing protocol,</I> of which there
+are many to choose from. The process on the router that is running
+the routing protocol, communicating with its neighbor routers,
+is usually called a <I>routing daemon.</I> As shown in <A HREF="ip_rout.htm#fig_9_1" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#fig_9_1">Figure 9.1</A>,
+the routing daemon updates the kernel's routing table with information
+it receives from neighbor routers.
+<P>
+The use of dynamic routing does <I>not</I> change
+the way the kernel performs routing at the IP layer, as we described
+in <A HREF="ip_rout.htm#9_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_rout.htm#9_2">Section 9.2</A>. We called this the
+<I>routing mechanism.</I> &quot;The kernel still searches its
+routing table in the same way, looking for host routes, network
+routes, and default routes. What changes is the information placed
+into the routing table-instead of coming from <TT>route</TT>
+commands in bootstrap files, the routes are added and deleted
+dynamically by a routing daemon, as routes change over time.
+<P>
+As we mentioned earlier, the routing daemon adds
+a <I>routing policy</I> to the system, choosing which routes to
+place into the kernel's routing table. If the daemon finds multiple
+routes to a destination, the daemon chooses (somehow) which route
+is best, and which one to insert into the kernel's table. If the
+daemon finds that a link has gone down (perhaps a router crashed
+or a phone line is out of order), it can delete the affected routes
+or add alternate routes that bypass the problem.
+<P>
+In a system such as the Internet, many different
+routing protocols are currently used. The Internet is organized
+into a collection of <I>autonomous systems</I> (ASs), each of
+which is normally administered by a single entity. A corporation
+or university campus often defines an autonomous system. The NSFNET
+backbone of the Internet forms an autonomous system, because all
+the routers in the backbone are under a single administrative
+control.
+<P>
+Each autonomous system can select its own routing
+protocol to communicate between the routers in that autonomous
+system. This is called an <I>interior gateway protocol</I> (IGP)
+or <I>intradomain</I> routing protocol. The most popular IGP has
+been the <I>Routing Information Protocol</I> (RIP). A newer IGP
+is the <I>Open Shortest Path First</I> protocol (OSPF). It is
+intended as a replacement for RIP. An older IGP that has fallen
+out of use is HELLO-the IGP used on the original NSFNET backbone
+in 1986.
+<P>
+<FONT SIZE=-1>The new Router Requirements RFC [Almquist 1993] states
+that a router that implements any dynamic routing protocol must
+support both OSPF and RIP, and may support other IGPs.</FONT>
+<P>
+Separate routing protocols called <I>exterior gateway
+protocols</I> (EGPs) or <I>interdomain routing protocols</I> are
+used between the routers in different autonomous systems. Historically
+(and confusingly) the predominant EGP has been a protocol of the
+same name: EGP A newer EGP is the Border Gateway Protocol (BGP)
+that is currently used between the NSFNET backbone and some of
+the regional networks that attach to the backbone. BGP is intended
+to replace EGP.
+<a name="10_3"><H3>10.3 Unix Routing Daemons</H3></a>
+<P>
+Unix systems often run the routing daemon named routed.
+It is provided with almost every implementation of TCP/IP This
+program communicates using only RIP, which we describe in the
+next section. It is intended for small to medium-size networks.
+<P>
+An alternative program is gated. It supports both
+IGPs and EGPs. [Fedor 1988] describes the early development of
+<TT>gated</TT>. Figure 10.1 compares the various
+routing protocols supported by <TT>routed</TT>
+and two different versions of <TT>gated</TT>.
+Most systems that run a routing daemon run routed, unless they
+need support for the other protocols supported by <TT>gated</TT>.
+<P>
+<CENTER>
+<a name="fig_10_1"><TABLE BORDER="1"></a>
+<TR><TD WIDTH=130><CENTER>Daemon</CENTER>
+</TD><TD COLSPAN=3 WIDTH=255><CENTER>Interior Gateway Protocol</CENTER>
+</TD><TD COLSPAN=2 WIDTH=170><CENTER>Exterior Gateway Protocol</CENTER>
+</TD></TR>
+<TR><TD WIDTH=130></TD><TD WIDTH=85><CENTER>HELLO</CENTER>
+</TD><TD WIDTH=85><CENTER>RIP</CENTER></TD>
+<TD WIDTH=85><CENTER>OSPF</CENTER></TD><TD WIDTH=85><CENTER>EGP</CENTER>
+</TD><TD WIDTH=85><CENTER>BGP</CENTER></TD>
+</TR>
+<TR><TD WIDTH=130><TT>routed</TT></TD><TD WIDTH=85></TD><TD WIDTH=85><CENTER>V1</CENTER>
+</TD><TD WIDTH=85></TD><TD WIDTH=85></TD><TD WIDTH=85></TD></TR>
+<TR><TD WIDTH=130><TT>gated</TT>, Version 2
+</TD><TD WIDTH=85><CENTER>*</CENTER></TD>
+<TD WIDTH=85><CENTER>V1</CENTER></TD><TD WIDTH=85>
+</TD><TD WIDTH=85><CENTER>*</CENTER></TD>
+<TD WIDTH=85><CENTER>V1</CENTER></TD></TR>
+<TR><TD WIDTH=130><TT>gated</TT>, Version 3
+</TD><TD WIDTH=85><CENTER>*</CENTER></TD>
+<TD WIDTH=85><CENTER>V1, V2</CENTER></TD>
+<TD WIDTH=85><CENTER>V2</CENTER></TD><TD WIDTH=85><CENTER>*</CENTER>
+</TD><TD WIDTH=85><CENTER>V2, V3</CENTER>
+</TD></TR>
+</TABLE>
+</CENTER><P>
+<CENTER><B>Figure 10.1</B> Routing
+protocols supported by routed and gated.</CENTER>
+<P>
+We describe RIP Version I in the next section, the
+differences with RIP Version 2 in <A HREF="#10_5">Section 10.5</A>,
+OSPF in <A HREF="#10_6">Section 10.6</A>, and BGP in <A HREF="#10_7">Section 10.7</A>.
+<a name="10_4"><H3>10.4 RIP: Routing Information Protocol</H3></a>
+<P>
+This section provides an overview of RIP, because
+it is the most widely used (and most often maligned) routing protocol.
+The official specification for RIP is RFC 1058 [Hedrick 1988a],
+but this RFC was written years after the protocol was widely implemented.
+<H4>Message Format</H4>
+<P>
+RIP messages are carried in UDP datagrams, as shown
+in Figure 10.2. (We talk more about UDP in <A HREF="udp_user.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm">Chapter 11</A>.)
+<P>
+<CENTER><a name="fig_10_2"><IMG SRC="f_10_2.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_10_2.gif"></a><BR>
+<B>Figure 10.2</B> RIP message
+encapsulated within a UDP datagram.</CENTER>
+<P>
+<A HREF="#fig_10_3">Figure 10.3</A> shows the format
+of the RIP message, when used with IP addresses.
+<P>
+A <I>command</I> of 1 is a request, and 2 is a reply.
+There are two other obsolete commands (3 and 4), and two undocumented
+ones: poll (5) and poll-entry (6). A request asks the other system
+to send all or part of its routing table. A reply contains all
+or part of the sender's routing table.
+<P>
+The <I>version</I> is normally 1, although RIP Version
+2 (<A HREF="#10_5">Section 10.5</A>) sets this to 2.
+<P>
+The next 20 bytes specify the <I>address family</I>
+(which is always 2 for IP addresses), an <I>IP address,</I> and
+an associated <I>metric.</I> We'll see later in this section that
+RIP metrics are hop counts.
+<P>
+Up to 25 routes can be advertised in a RIP message
+using this 20-byte format. The limit of 25 is to keep the total
+size of the RIP message, 20 x 25+4 = 504, less than 512 bytes.
+With this limit of 25 routes per message, multiple messages are
+often required to send an entire routing table.
+<P>
+<CENTER><a name="fig_10_3"><IMG SRC="f_10_3.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_10_3.gif"></a><BR>
+<B>Figure 10.3</B> Format of
+a RIP message.</CENTER>
+<H4>Normal Operation</H4>
+<P>
+Let's look at the normal operation of <TT>routed</TT>,
+using RIP. The well-known port number for RIP is UDP port 520.
+<UL>
+<LI>Initialization. When the daemon starts it determines
+all the interfaces that are up and sends a request packet out
+each interface, asking for the other router's complete routing
+table. On a point-to-point link this request is sent to the other
+end. The request is broadcast if the network supports it. The
+destination UDP port is 520 (the routing daemon on the other router).
+<br>
+This request packet has a <I>command</I> of 1
+but the <I>address family</I> is set to 0 and the <I>metric</I>
+is set to 16. This is a special request that asks for a complete
+routing table from the other end.
+<LI>Request received. If the request is the special
+case we just mentioned, then the entire routing table is sent
+to the requestor. Otherwise each entry in the request is processed:
+if we have a route to the specified address, set the metric to
+our value, else set the metric to 16. (A metric of 16 is a special
+value called &quot;infinity&quot; and means we don't have a route
+to that destination.) The response is returned.
+<LI>Response received. The response is validated
+and may update the routing table. New entries can be added, existing
+entries can be modified, or existing entries can be deleted.
+<LI>Regular routing updates. Every 30 seconds, all
+or part of the router's entire routing table is sent to every
+neighbor router. The routing table is either broadcast (e.g.,
+on an Ethernet) or sent to the other end of a point-to-point link.
+<LI>Triggered updates. These occur whenever the metric
+for a route changes. The entire routing table need not be sent
+- only those entries that have changed must be transmitted.
+</UL>
+<P>
+Each route has a timeout associated with it. If a
+system running RIP finds a route that has not been updated for
+3 minutes, that route's metric is set to infinity (16) and marked
+for deletion. This means we have missed six of the 30-second updates
+from the router that advertised that route. The deletion of the
+route from the local routing table is delayed for another 60 seconds
+to ensure the invalidation is propagated.
+<H4>Metrics</H4>
+<P>
+The metrics used by RIP are hop counts. The hop count
+for all directly connected interfaces is 1. Consider the routers
+and networks shown in Figure 10.4. The four dashed lines we show
+are broadcast RIP messages.
+<P>
+<CENTER><a name="fid_10_4"><IMG SRC="f_10_4.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_10_4.gif"></a><BR>
+<B>Figure 10.4</B> Example routers
+and networks.</CENTER>
+<P>
+Router Rl advertises a route to N2 with a hop count
+of 1 by sending a broadcast on Nl. (It makes no sense to advertise
+a route to Nl in the broadcast sent on Nl.) It also advertises
+a route to Nl with a hop count of 1 by sending a broadcast on
+N2. Similarly, R2 advertises a route to N2 with a metric of 1,
+and a route to N3 with a metric of 1.
+<P>
+If an adjacent router advertises a route to another
+network with a hop count of 1, then our metric for that network
+is 2, since we have to send a packet to that router to get to
+the network. In our example, the metric to Nl for R2 is 2, as
+is the metric to N3 for Rl.
+<P>
+As each router sends its routing tables to its neighbors,
+a route can be determined to each network within the AS. If there
+are multiple paths within the AS from a router to a network, the
+router selects the path with the smallest hop count and ignores
+the other paths.
+<P>
+The hop count is limited to 15, meaning RIP can be
+used only within an AS where the maximum number of hops between
+hosts is 15. The special metric of 16 indicates that no route
+exists to the IP address.
+<H4>Problems</H4>
+<P>
+As simple as this sounds, there are pitfalls. First,
+RIP has no knowledge of subnet addressing. If the normal 16-bit
+host ID of a class B address is nonzero, for example, RIP can't
+tell if the nonzero portion is a subnet ID or if the IP address
+is a complete host address. Some implementations use the subnet
+mask of the interface through which the RIP information arrived,
+which isn't always correct.
+<P>
+Next, RIP takes a long time to stabilize after the
+failure of a router or a link. The time is usually measured in
+minutes. During this settling time routing loops can occur. There
+are many subtle details in the implementation of RIP that must
+be followed to help prevent routing loops and to speed convergence.
+RFC 1058 [Hedrick 1988a] contains many details on how RIP should
+be implemented.
+<P>
+The use of the hop count as the routing metric omits
+other variables that should be taken into consideration. Also,
+a maximum of 15 for the metric limits the sizes of networks on
+which RIP can be used.
+<H4>Example</H4>
+<P>
+We'll use the program <TT>ripquery</TT>,
+which is available from the gated distribution, to query some
+routers for their routing table, <TT>ripquery</TT>
+tries to send one of the undocumented requests (named &quot;poll,&quot;
+a <I>command</I> of 5 from <A HREF="#fig_10_3">Figure 10.3</A>)
+to the router, asking for its entire routing table. If no response
+is received in 5 seconds, the standard RIP request is issued <I>(command</I>
+of 1). (Earlier we said a request with <I>the family set</I> to
+0 and the <I>metric set</I> to 16 asks the other router for its
+entire routing table.)
+<P>
+<A HREF="#fig_10_5">Figure 10.5</A> shows the two
+routers that we'll query for their routing table from the host
+sun. If we execute <TT>ripquery</TT> from
+sun, fetching the routing information from its next-hop router,
+netb, we get the following:
+<P>
+<TABLE >
+<TR><TD WIDTH=315><TT>sun % <B>ripquery -n netb <BR>
+</B>504 bytes from netb (140.252.1.183): <BR>
+<BR>
+140.252.1.0, metric 1<BR>
+140.252.13.0, metric 1 <BR>
+244 bytes from netb (140.252.1.183):</TT>
+</TD><TD WIDTH=268><BR>
+<I>first message contains 504 bytes<BR>
+lots of other lines deleted<BR>
+the top Ethernet in Figure 10.5<BR>
+the bottom Ethernet in Figure 10.5<BR>
+second message with remaining 244 bytes<BR>
+lots of other lines deleted</I>
+</TD></TR>
+</TABLE>
+<P>
+As we expect, the metric for our subnet that is announced
+by <TT>netb</TT> is 1. Additionally, the top
+Ethernet that <TT>netb</TT> is also attached
+to (140.252.1.0) has a metric of 1. (The <TT>-n</TT>
+flag says to print the IP addresses numerically instead of trying
+to look up the names.) In this example <TT>netb</TT>
+has been configured to consider all the hosts on the subnet 140.252.13
+as directly connected to it - that is, <TT>netb</TT>
+knows nothing about which hosts are actually on the 140.252.13
+subnet. Since there is only one connection point to the 140.252.13
+subnet, advertising different metrics for each host makes little
+practical sense.
+<P>
+<CENTER><a name="fig_10_5"><IMG SRC="f_10_5.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_10_5.gif"></a><BR>
+<B>Figure 10.5</B> Two routers
+<TT>netb</TT> and <TT>gateway</TT>
+that we'll query for their routing tables.</CENTER>
+<P>
+Figure 10.6 shows the packet exchange using tcpdump.
+We specify the SLIP interface with the <TT>-i sl0</TT>
+option.
+<P>
+<CENTER><a name="fig_10_6"><TABLE ></a>
+<TR><TD WIDTH=33></TD><TD WIDTH=240><TT>sun % <B>tcpdump s600 i sl0</B></TT>
+</TD><TD WIDTH=311></TD></TR>
+<TR><TD WIDTH=33><TT>1</TT></TD><TD WIDTH=240><TT>0.0</TT></TD>
+<TD WIDTH=311><TT>sun.2879 &gt; netb.route: rip-poll 24</TT></TD>
+</TR>
+<TR><TD WIDTH=33><TT>2</TT></TD><TD WIDTH=240><TT>5.014702 (5.0147)</TT>
+</TD><TD WIDTH=311><TT>sun.2879 &gt; netb.route: rip-req 24</TT>
+</TD></TR>
+<TR><TD WIDTH=33><TT>3</TT></TD><TD WIDTH=240><TT>5.560427 (0.5457)</TT>
+</TD><TD WIDTH=311><TT>netb.route &gt; sun.2879: rip-resp 25:</TT>
+</TD></TR>
+<TR><TD WIDTH=33><TT>4</TT></TD><TD WIDTH=240><TT>5.710251 (0.1498)</TT>
+</TD><TD WIDTH=311><TT>netb.route &gt; sun.2879: rip-resp 12:</TT>
+</TD></TR>
+</TABLE>
+<P>
+</CENTER>
+<CENTER><B>Figure 10.6</B> <TT>tcpdump</TT>
+output while running <TT>ripquery</TT> program.</CENTER>
+<P>
+The first request issued is the RIP poll command
+(line 1). This times out after 5 seconds and a normal RIP request
+is issued (line 2). The number 24 at the end of lines 1 and 2
+is the size of the request packets in bytes: the 4-byte RIP header
+(with the command and version) followed by a single 20-byte address
+and metric.
+<P>
+Line 3 is the first reply message. The number 25
+at the end indicates that 25 address and metric pairs are in the
+message, which we calculated earlier to be 504 bytes. This is
+what <TT>ripquery</TT> printed above. We specified
+the <TT>-s600</TT> option to tcpdump telling
+it to read 600 bytes from the network. This allows it to receive
+the entire UDP datagram (instead of just the first portion of
+it) and it then prints the contents of the RIP response. We've
+omitted that output.
+<P>
+Line 4 is the second response message from the router,
+with the next 12 address and metric pairs. We can calculate the
+size of this message to be 12 x 20 + 4 = 244, which is what <TT>ripquery</TT>
+printed earlier.
+<P>
+If we go one router beyond netb, to gateway, we expect
+the metric to our subnet (140.252.13.0) to be 2. We can check
+this by executing:
+<P>
+<TABLE >
+<TR><TD WIDTH=325><TT>sun % <B>ripquery -n gateway <BR>
+</B>504 bytes from gateway (140.252.1.4):<BR>
+<BR>
+140.252.1.0, metric 1<BR>
+10.5 140.252.13.0, metric 2</TT>
+</TD><TD WIDTH=258><BR>
+<BR>
+<I>lots of other lines deleted<BR>
+the top Ethernet in <A HREF="#fig_10_5"><I>Figure 10.5</I></A><BR>
+<I>the bottom Ethernet in <A HREF="#fig_10_5"><I>Figure 10.5</I></A></I></I>
+</TD></TR>
+</TABLE>
+<P>
+Here the metric for the top Ethernet in <A HREF="#fig_10_5">Figure 10.5</A>
+(140.252.1.0) stays at 1, since that Ethernet is directly connected
+to both <TT>gateway</TT> and <TT>netb</TT>.
+Our subnet 140.252.13.0, however, now has the expected metric
+of 2.
+<H4>Another Example</H4>
+<P>
+We'll now watch all the unsolicited RIP updates on
+an Ethernet and see just what RIP sends on a regular basis to
+its neighbors. Figure 10.7 shows the arrangement of many of the
+<TT>noao.edu</TT> networks. We have named
+the routers R<I>n</I> for simplicity, where <I>n</I> is the subnet
+number, except for the ones we use elsewhere in the text. We show
+the point-to-point links with dashed lines and the IP address
+at each end of these links.
+<P>
+<CENTER><a name="fig_10_7"><IMG SRC="f_10_7.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_10_7.gif"></a><BR>
+<B>Figure 10.7</B> Many of the
+<TT>noao.edu</TT> 140.252 networks.</CENTER>
+<P>
+We'll run the Solaris 2.x program <TT>snoop</TT>,
+which is similar to <TT>tcpdump</TT>, on the
+host <TT>solaris</TT>. We can run this program
+without superuser privileges, but only to capture broadcast packets,
+multicast packets, or packets sent to the host. Figure 10.8 shows
+the packets captured during a 60-second period. We have replaced
+most of the official host-names with our notation Rn.
+<a name="fig_10_8"><P></a>
+<TT>solaris % <B>snoop -P -tr
+udp port 520</B></TT>
+<P>
+<TT>0.00000 R6.tuc.noao.edu -&gt; 140.252.1.255 RIP R (1 destinations)
+<BR>
+4.49708 R4.tuc.noao.edu -&gt;
+140.252.1.255 RIP R (1 destinations)<BR>
+6.30506 R2.tuc.noao.edu -&gt; 140.252.1.255 RIP R (1 destinations)
+<BR>
+11.68317 R7.tuc.noao.edu -&gt; 140.252.1.255 RIP R (1 destinations)
+<BR>
+16.19790 R8.tuc.noao.edu -&gt; 140.252.1.255 RIP R (1 destinations)
+<BR>
+16.87131 R3.tuc.noao.edu -&gt; 140.252.1.255 RIP R (1 destinations)
+<BR>
+17.02187 gateway.tuc.noao.edu -&gt; 140.252.1.255 RIP R (15 destinations)
+<BR>
+20.68009 R10.tuc.noao.edu -&gt; BROADCAST RIP R (4 destinations)</TT>
+<P>
+<TT>29.87848 R6.tuc.noao.edu -&gt; 140.252.1.255 RIP R (1 destinations)
+<BR>
+34.50209 R4.tuc.noao.edu -&gt;
+140.252.1.255 RIP R (1 destinations)<BR>
+36.32385 R2.tuc.noao.edu -&gt; 140.252.1.255 RIP R (1 destinations)
+<BR>
+41.34565 R7.tuc.noao.edu ~&gt; 140.252.1.255 RIP R (1 destinations)
+<BR>
+46.19257 R8.tuc.noao.edu -&gt; 140.252.1.255 RIP R (1 destinations)
+<BR>
+46.52199 R3.tuc.noao.edu -&gt; 140.252.1.255 RIP R (1 destinations)
+<BR>
+47.01870 gateway.tuc.noao.edu -&gt; 140.252.1.255 RIP R (15 destinations)
+<BR>
+50.66453 R10.tuc.noao.edu -&gt; BROADCAST RIP R (4 destinations)</TT>
+<P>
+<CENTER><B>Figure 10.8</B> RIP
+broadcasts captured at <TT>solaris</TT> over
+a 60-second period.</CENTER>
+<P>
+The <TT>-P</TT> flag captures
+packets in nonpromiscuous mode, <TT>-tr</TT>
+prints the relative time-stamps, and <TT>udp port 520 </TT>captures
+only UDP datagrams with a source or destination port of 520.
+<P>
+The first six packets, from R6, R4, R2, R7, R8, and
+R3, each advertise just one network. If we looked at the packets
+we would see that R6 advertises a route to 140.252.6.0 with a
+hop count of 1, R4 advertises a route to 140.252.4.0 with a hop
+count of 1, and so on.
+<P>
+The router <TT>gateway</TT>,
+however, advertises 15 routes. We can run <TT>snoop</TT>
+with the <TT>-v</TT> flag and see the entire
+contents of the RIP message. (This flag outputs the entire contents
+of the entire packet: the Ethernet header, the IP header, the
+UDP header, and the RIP message. We've deleted everything except
+the RIP information.) Figure 10.9 shows the output.
+<P>
+Compare these advertised hop counts on the 140.252.1
+network with the topology shown in <A HREF="#fig_10_7">Figure 10.7</A>.
+<P>
+A puzzle in the output in Figure 10.8 is why R10
+is advertising four networks when <A HREF="#fig_10_7">Figure 10.7</A>
+shows only three. If we look at the RIP packet with snoop we see
+the following advertised routes:
+<P>
+<CENTER><a name="fig_10_9"><TABLE ></a>
+<TR><TD WIDTH=64><TT>RIP:<BR>
+RIP:<BR>
+RIP:<BR>
+RIP:<BR>
+RIP:</TT>
+</TD><TD WIDTH=142><TT>Address<BR>
+140.251.0.0<BR>
+140.252.9.0<BR>
+140.252.10.0<BR>
+140.252.11.0</TT>
+</TD><TD WIDTH=189><TT>Metric<BR>
+16 (not reachable)<BR>
+1<BR>
+1<BR>
+1</TT>
+</TD></TR>
+</TABLE>
+<P>
+The route to the class B network 140.251 is bogus
+and should not be advertised. (It belongs to another institution,
+not <TT>noao.edu.</TT>)
+<P>
+<TABLE >
+<TR><TD COLSPAN=3 WIDTH=583><TT>solaris % <B>snoop -P -v -tr udp port 520 host gateway</B></TT>
+</TD></TR>
+<TR><TD WIDTH=162></TD><TD WIDTH=244></TD><TD WIDTH=176><TT><I>many lines deleted</I></TT>
+</TD></TR>
+<TR><TD WIDTH=162><TT>RIP:
+<BR>
+RIP:</TT>
+</TD><TD WIDTH=244><TT>0pcode = 2 (route response) <BR>
+Version = 1</TT>
+</TD><TD WIDTH=176></TD></TR>
+<TR><TD WIDTH=162><TT>RIP:</TT></TD><TD WIDTH=244><TT>Address</TT>
+</TD><TD WIDTH=176><TT>Metric</TT></TD></TR>
+<TR><TD WIDTH=162><TT>RIP:
+<BR>
+RIP:</TT>
+</TD><TD WIDTH=244><TT>140.252.101.0<BR>
+140.252.104.0</TT>
+</TD><TD WIDTH=176><TT>1<BR>
+1</TT>
+</TD></TR>
+<TR><TD WIDTH=162><TT>RIP:<BR>
+RIP:<BR>
+RIP:<BR>
+RIP:</TT>
+</TD><TD WIDTH=244><TT>140.252.51.0<BR>
+140.252.81.0<BR>
+140.252.105.0<BR>
+140.252.106.0</TT>
+</TD><TD WIDTH=176><TT>2<BR>
+2<BR>
+2<BR>
+2</TT>
+</TD></TR>
+<TR><TD WIDTH=162><TT>RIP:<BR>
+RIP:<BR>
+RIP:<BR>
+RIP:<BR>
+RIP:<BR>
+RIP:<BR>
+RIP:<BR>
+RIP:</TT>
+</TD><TD WIDTH=244><TT>140.252.52.0<BR>
+140.252.53.0<BR>
+140.252.54.0<BR>
+140.252.55.0<BR>
+140.252.58.0 3<BR>
+140.252.60.0 3<BR>
+140.252.82.0 3<BR>
+192.68.189.0</TT>
+</TD><TD WIDTH=176><TT>3<BR>
+3<BR>
+3<BR>
+3<BR>
+3<BR>
+3<BR>
+3<BR>
+3</TT>
+</TD></TR>
+<TR><TD WIDTH=162><TT>RIP:</TT></TD><TD WIDTH=244><TT>140.252.57.0</TT>
+</TD><TD WIDTH=176><TT>4</TT></TD></TR>
+</TABLE>
+<P>
+</CENTER>
+<CENTER><B>Figure 10.9</B> RIP
+response from gateway.</CENTER>
+<P>
+The notation &quot;BROADCAST&quot; output by snoop
+in <A HREF="#fig_10_8">Figure 10.8</A> for the RIP packet sent
+by R10 means the destination IP address is the limited broadcast
+address 255.255.255.255 (<A HREF="broadcas.htm#12_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm#12_2">Section 12.2</A>),
+instead of the subnet-directed broadcast address (140.252.1.255)
+that the other routers use.
+<a name="10_5"><H3>10.5 RIP Version 2</H3></a>
+<P>
+RFC 1388 [Malkin 1993a] defines newer extensions
+to RIP, and the result is normally called RIP-2. These extensions
+don't change the protocol, but pass additional information in
+the fields labeled &quot;must be zero&quot; in <A HREF="#fig_10_3">Figure 10.3</A>.
+RIP and RIP-2 can interoperate if RIP ignores the fields that
+must be zero.
+<P>
+Figure 10.10 is a redo of that figure, as defined
+by RIP-2. The <I>version</I> is 2 for RIP-2. The <I>routing domain</I>
+is an identifier of the routing daemon to which this packet belongs.
+In a Unix implementation this could be the daemon's process ID.
+This field allows an administrator to run multiple instances of
+RIP on a single router, each operating within one routing domain.
+<P>
+The <I>route tag</I> exists to support exterior gateway
+protocols. It carries an autonomous system number for EGP and
+BGP.
+<P>
+The <I>subnet mask</I> for each entry applies to
+the corresponding <I>IP address.</I> The <I>next-hop IP address</I>
+is where packets to the corresponding destination IP address should
+be sent. A value of 0 in this field means packets to the destination
+should be sent to the system sending the RIP message.
+<P>
+<CENTER><a name="fig_10_10"><IMG SRC="f_10_10.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_10_10.gif"></a><BR>
+<B>Figure 10.10</B> Format of
+a RIP-2 message.</CENTER>
+<P>
+A simple authentication scheme is provided with RIP-2.
+The first 20-byte entry in a RIP message can specify an <I>address
+family</I> of <TT>0xffff</TT>, with a <I>route
+tag</I> value of 2. The remaining 16 bytes of the entry contain
+a cleartext password.
+<P>
+Finally, RIP-2 supports multicasting in addition
+to broadcasting (<A HREF="broadcas.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm">Chapter 12</A>). This
+can reduce the load on hosts that are not listening for RIP-2
+messages.
+<a name="10_6"><H3>10.6 OSPF: Open Shortest Path First</H3></a>
+<P>
+OSPF is a newer alternative to RIP as an interior
+gateway protocol. It overcomes all the limitations of RIP. OSPF
+Version 2 is described in RFC 1247 [Moy 1991].
+<P>
+OSPF is a <I>link-state</I> protocol, as opposed
+to RIP, which is a <I>distance-vector</I> protocol. The term distance-vector
+means the messages sent by RIP contain a vector of distances (hop
+counts). Each router updates its routing table based on the vector
+of these distances that it receives from its neighbors.
+<P>
+In a link-state protocol a router does not exchange
+distances with its neighbors. Instead each router actively tests
+the status of its link to each of its neighbors, sends this information
+to its other neighbors, which then propagate it throughout the
+autonomous system. Each router takes this link-state information
+and builds a complete routing table.
+<P>
+From a practical perspective, the important difference
+is that a link-state protocol will always converge faster than
+a distance-vector protocol. By <I>converge</I> we mean stabilizing
+after something changes, such as a router going down or a link
+going down. Section 9.3 of [Periman 1992] compares other issues
+between the two types of routing protocols.
+<P>
+OSPF is different from RIP (and many other routing
+protocols) in that OSPF uses IP directly. That is, it does not
+use UDP or TCP. OSPF has its own value for the <I>protocol </I>field
+in the IP header (<A HREF="ip_inter.htm#fig_3_1" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_1">Figure 3.1</A>).
+<P>
+Besides being a link-state protocol instead of a
+distance-vector protocol, OSPF has many other features that make
+it superior to RIP.
+<OL>
+<LI>OSPF can calculate a separate set of routes for
+each IP type-of-service (<A HREF="ip_inter.htm#fig_3_2" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_2">Figure 3.2</A>).
+This means that for any destination there can be multiple routing
+table entries, one for each IP type-of-service.
+<LI>Each interface is assigned a dimensionless cost.
+This can be assigned based on throughput, round-trip time, reliability,
+or whatever. A separate cost can be assigned for each IP type-of-service.
+<LI>When several equal-cost routes to a destination
+exist, OSPF distributes traffic equally among the routes. This
+is called <I>load balancing.</I>
+<LI>OSPF supports subnets: a subnet mask is associated
+with each advertised route. This allows a single IP address of
+any class to be broken into multiple subnets of various sizes.
+(We showed an example of this in <A HREF="ip_inter.htm#3_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_7">Section 3.7</A>
+and called it <I>variable-length subnets.)</I> Routes to a host
+are advertised with a subnet mask of all one bits. A default route
+is advertised as an IP address of 0.0.0.0 with a mask of all zero
+bits.
+<LI>Point-to-point links between routers do not need
+an IP address at each end. These are called <I>unnumbered</I>
+networks. This can save IP addresses - a scarce resource these
+days!
+<LI>A simple authentication scheme can be used. A
+cleartext password can be specified, similar to the RIP-2 scheme
+(<A HREF="#10_5">Section 10.5</A>).
+<LI>OSPF uses multicasting (<A HREF="broadcas.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm">Chapter 12</A>),
+instead of broadcasting, to reduce the load on systems not participating
+in OSPF.
+</OL>
+<P>
+With most router vendors supporting OSPF, it will
+start replacing RIP in many networks.
+<a name="10_7"><H3>10.7 BGP: Border Gateway Protocol</H3></a>
+<P>
+BGP is an exterior gateway protocol for communication
+between routers in different autonomous systems. BGP is a replacement
+for the older EGP that was used on the ARPANET. BGP Version 3
+is defined in RFC 1267 [Lougheed and Rekhter 1991].
+<P>
+RFC 1268 [Rekhter and Gross 1991] describes the use
+of BGP in the Internet. Much of the following description comes
+from these two RFCs. Also, during 1993 BGP Version 4 was under
+development (see RFC 1467 [Topolcic 1993]) to support CIDR, which
+we describe in <a href="#fig_10_8">Section 10.8</a>.
+<P>
+A BGP system exchanges network reachability information
+with other BGP systems. This information includes the full path
+of autonomous systems that traffic must transit to reach these
+networks. This information is adequate to construct a graph of
+AS connectivity. Routing loops can then be pruned from this graph
+and routing policy decisions can be enforced.
+<P>
+We first categorize an IP datagram in an AS as either
+<I>local traffic</I> or <I>transit traffic. </I>Local traffic
+in an AS either originates or terminates in that AS. That is,
+either the source IP address or the destination IP address identifies
+a host in that AS. Anything else is called transit traffic. A
+major goal of BGP usage in the Internet is to reduce transit traffic.
+An AS can be categorized as one of the following:
+<OL>
+<LI>A <I>stub AS</I> has only a single connection
+to one other AS. A stub AS carries only local traffic.
+<LI>A <I>multihomed AS</I> has connections to more
+than one other AS, but refuses to carry transit traffic.
+<LI>A <I>transit AS</I> has connections to more than
+one other AS and is designed, under certain policy restrictions,
+to carry both local and transit traffic.
+</OL>
+<P>
+The overall topology of the Internet is then viewed
+as an arbitrary interconnection of transit, multihomed, and stub
+ASs. Stub and multihomed ASs need not use BGP - they can run EGP
+to exchange reachability information with transit ASs.
+<P>
+BGP allows for <I>policy-based routing.</I> Policies
+are determined by the AS administrator and specified to BGP in
+configuration files. Policy decisions are not part of the protocol,
+but policy specifications allow a BGP implementation to choose
+between paths when multiple alternatives exist and to control
+the redistribution of information. Routing policies are related
+to political, security, or economic considerations.
+<P>
+BGP is different from RIP and OSPF in that BGP uses
+TCP as its transport protocol. Two systems running BGP establish
+a TCP connection between themselves and then exchange the entire
+BGP routing table. From that point on, incremental updates are
+sent as the routing table changes.
+<P>
+BGP is a distance vector protocol, but unlike RIP
+(which announces hops to a destination), BGP enumerates the route
+to each destination (the sequence of AS numbers to the destination).
+This removes some of the problems associated with distance-vector
+protocols. An AS is identified by a 16-bit number.
+<P>
+BGP detects the failure of either the link or the
+host on the other end of the TCP connection by sending a <I>keepalive</I>
+message to its neighbor on a regular basis. The recommended time
+between these messages is 30 seconds. This application-level keepalive
+message is independent of the TCP keepalive option (<A HREF="tcp_keep.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_keep.htm">Chapter 23</A>).
+<a name="10_8"><H3>10.8 CIDR: Classless Interdomain Routing</H3></a>
+<P>
+In <A HREF="ip_inter.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm">Chapter 3</A> we said there
+is a shortage of class B addresses, requiring sites with multiple
+networks to now obtain multiple class C network IDs, instead of
+a single class B network ID. Although the allocation of these
+class C addresses solves one problem (running out of class B addresses)
+it introduces another problem: every class C network requires
+a routing table entry. <I>Classless Interdomain Routing</I> (CIDR)
+is a way to prevent this explosion in the size of the Internet
+routing tables. It is also called <I>supernetting</I> and is described
+in RFC 1518 [Rekhter and Li 1993] and RFC 1519 [Fuller et al.
+1993], with a overview in [Ford, Rekhter, and Braun 1993]. CIDR
+has the Internet Architecture Board's blessing [Huitema 1993].
+RFC 1467 [Topolcic 1993] summarizes the state of deployment of
+CIDR in the Internet.
+<P>
+The basic concept in CIDR is to allocate multiple
+IP addresses in a way that allows <I>summarization</I> into a
+smaller number of routing table entries. For example, if a single
+site is allocated 16 class C addresses, and those 16 are allocated
+so that they can be summarized, then all 16 can be referenced
+through a single routing table entry on the Internet. Also, if
+eight different sites are connected to the same Internet service
+provider through the same connection point into the Internet,
+and if the eight sites are allocated eight different IP addresses
+that can be summarized, then only a single routing table entry
+need be used on the Internet for all eight sites.
+<P>
+Three features are needed to allow this summarization
+to take place.
+<OL>
+<LI>Multiple IP addresses to be summarized together
+for routing must share the same high-order bits of their addresses.
+<LI>The routing tables and routing algorithms must
+be extended to base their routing decisions on a 32-bit IP address
+and a 32-bit mask.
+<LI>The routing protocols being used must be extended
+to carry the 32-bit mask in addition to the 32-bit address. OSPF
+(<A HREF="#10_5">Section 10.6</A>) and RIP-2 (<A HREF="#10_5">Section 10.5</A>)
+are both capable of carrying the 32-bit mask, as is the proposed
+BGP Version 4.
+</OL>
+<P>
+As an example, RFC 1466 [Gerich 1993] recommends
+that new class C addresses in Europe be in the range 194.0.0.0
+through 195.255.255.255. In hexadecimal these addresses are from
+<TT>0xc2000000</TT> through <TT>0xc3ffffff</TT>.
+This represents 65536 different class C network IDs, but they
+all share the same high-order 7 bits. In countries other than
+Europe a single routing table entry with an IP address of <TT>0xc2000000</TT>
+and a 32-bit mask of <TT>0xfe000000</TT> (254.0.0.0)
+could be used to route all of these 65536 class C network IDs
+to a single point. Subsequent bits of the class C address (that
+is, the bits following 194 or 195) can also be allocated hierarchically,
+perhaps by country or by service provider, to allow additional
+summarization within the European routers using additional bits
+beyond the 7 high-order bits of the 32-bit mask.
+<P>
+CIDR also uses a technique whereby the best match
+is always the one with the <I>longest match:</I> the one with
+the greatest number of one bits in the 32-bit mask. Continuing
+the example from the previous paragraph, perhaps one service provider
+in Europe needs to use a different entry point router than the
+rest of Europe. If that provider has been allocated the block
+of addresses 194.0.16.0 through 194.0.31.255 (16 class C network
+IDs), routing table entries for just those networks would have
+an IP address of 194.0.16.0 and a mask of 255.255.240.0 (<TT>0xfffff000</TT>).
+A datagram being routed to the address 194.0.22.1 would match
+both this routing table entry and the one for the rest of the
+European class C networks. But since the mask 255.255.240 is &quot;longer&quot;
+than the mask 254.0.0.0, the routing table entry with the longer
+mask is used.
+<P>
+The term &quot;classless&quot; is because routing
+decisions are now made based on masking operations of the entire
+32-bit IP address. Whether the IP address is class A, B, or C
+makes no difference.
+<P>
+The initial deployment of CIDR is proposed for new
+class C addresses. Making just this change will slow down the
+growth of the Internet routing tables, but does nothing for all
+the existing routes. This is the short-term solution. As a long-term
+solution, if CIDR were applied to all IP addresses, and if existing
+IP addresses were reallocated (and all existing hosts renumbered!)
+according to continental boundaries and service providers, [Ford,
+Rekhter, and Braun 1993] claim that the current routing table
+consisting of 10,000 network entries could be reduced to 200 entries.
+<a name="10_9"><H3>10.9 Summary</H3></a>
+<P>
+There are two basic types of routing protocols: interior
+gateway protocols (IGPs), for routers within an autonomous system,
+and exterior gateway protocols (EGPs), for routers to communicate
+with routers in other autonomous systems.
+<P>
+The most popular IGP is the Routing Information Protocol
+(RIP) with OSPF being a newer IGP that is gaining widespread use.
+A new and popular EGP is the Border Gateway Protocol (BGP). In
+this chapter we looked at RIP and the types of messages that it
+exchanges. RIP Version 2 is a recent enhancement that supports
+subnetting and other minor improvements. We also described OSPF,
+BGP, and classless interdomain routing (CIDR), a newer technique
+being deployed to reduce the size of the Internet routing tables.
+<P>
+There are a two other OSI routing protocols that
+you may encounter. <I>Interdomain </I>Routing Protocol (IDRP)
+started out as a version of BGP modified for use with OSI addresses
+instead of 1P. <I>Intermediate System to Intermediate System Protocol</I>
+(IS-IS) is the OSI standard IGP. It is used for routing CLNP (Connectionless
+Network Protocol), an OSI protocol similar to IP. IS-IS and OSPF
+are similar.
+<P>
+Dynamic routing is still a fertile area of internetworking
+research. The choice of which routing protocol to use, and which
+routing daemon to run, is complex. [Periman 1992] provides many
+of the details.
+<H4>Exercises</H4>
+<P>
+<B>10.1</B> In <A HREF="#fig_10_9">Figure 10.9</A>
+which of the routes came to gateway from the router <TT>kpno</TT>?
+<P>
+<B>10.2</B> Assume a router has
+30 routes to advertise using RIP, requiring one datagram with
+25 routes and another with the remaining 5. What happens if once
+an hour the first datagram with 25 routes is lost?
+<P>
+<B>10.3</B>The OSPF packet format has a checksum field,
+but the RIP packet does not. Why?
+
+<P>
+<B>10.4</B> What effect does
+load balancing, as done by OSPF, have on a transport layer?
+<P>
+<B>10.5</B> Read RFC 1058 for
+additional details on the implementation of RIP. In Figure 10.8
+each router advertises only the routes that it provides, and none
+of the other routes that it learned about through the other router's
+broadcasts on the 140.252.1 network. What is this technique called?
+<P>
+<B>10.6</B> In <A HREF="ip_inter.htm#3_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_4">Section 3.4</A>
+we said there are more than 100 hosts on the 140.252.1 subnet
+in addition to the eight routers we show in <A HREF="#fig_10_7">Figure 10.7</A>.
+What do these 100 hosts do with the eight broadcasts that arrive
+every 30 seconds (<A HREF="#fig_10_8">Figure 10.8</A>)?
+</BODY>
+</HTML>

@@ -1,0 +1,565 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<HTML>
+<HEAD>
+ <META NAME="GENERATOR" CONTENT="SGML-Tools 1.0.9">
+ <TITLE>L'incontournable éditeur VI</TITLE>
+
+
+</HEAD>
+<BODY>
+<H1>L'incontournable éditeur VI</H1>
+
+<H2>Christophe Chisogne</H2>Mercredi 18 octobre 2000
+<P><HR>
+<EM>Cet article présente l'éditeur par excellence du monde Unix/Linux, à savoir
+vi. Rapide, puissant et compact, vi est l'éditeur
+de tout administrateur qui se respecte. Son utilisation n'étant pas vraiment naturelle, il faut apprendre à le dompter. Une fois cet effort
+accompli, on a du mal à s'en passer. Cet article vous apprendra les parties
+qui me paraissent les plus utiles.</EM>
+<HR>
+<H2><A NAME="s1">1. A propos de cet article</A></H2>
+
+<P>Cet article a été rédigé pour servir au plus grand nombre, mais il
+est orienté vers un public d'informaticiens ou d'étudiants en informatique
+plutôt qu'au grand public. Il devrait être plus adapté aux novices en
+matière de Unix/Linux, avec évidemment une forte orientation vers Linux.
+<P>Si vous avez des commentaires sur cet article, n'hésitez surtout pas
+à m'envoyer un email 
+(
+<A HREF="mailto:christophe.chisogne@fundp.ac.be">mailto:christophe.chisogne@fundp.ac.be</A>).
+Ceci permettra d'améliorer progressivement ce document, qui se trouve
+sur le site web du NamurLUG, le groupe d'utilisateurs de Linux de Namur.
+Vous pourrez le trouver sur 
+<A HREF="http://www.namurlug.org">http://www.namurlug.org</A>.
+<P>Cet article a été rédigé au format ''linuxdoc'', ce qui a l'avantage
+de pouvoir générer des fichiers <CODE>HTML</CODE>, <CODE>TXT</CODE> ou
+<CODE>RTF</CODE> pour un accès aisé, mais aussi des fichiers 
+<CODE>PS</CODE> ou <CODE>PDF</CODE> pour une impression haute qualité.
+<P>Le format ''linuxdoc'' n'est qu'une DTD SGML : les fichiers dans ce format 
+sont donc des textes bruts parsemés de balises (tags). Cet article a donc pu
+être entièrement rédigé avec <CODE>vi</CODE>, l'éditeur qui y est présenté.
+<P>
+<P>
+<H2><A NAME="s2">2. &Eacute;dition de textes sous Linux</A></H2>
+
+<P>Une des tous premiers utilitaires dont on a besoin sur tout système 
+d'exploitation, c'est un éditeur de texte. Par ''texte'', j'entends
+bien sûr les textes ''brut'', sans formatage. 
+<P>Sur les systèmes de type Unix,
+on est certain de trouver le célèbre éditeur <CODE>vi</CODE>, même sur les
+systèmes très anciens : <CODE>vi</CODE> est livré en standard sur tous les
+Unix, ce qui en fait l'éditeur à base installée la plus large, le plus
+utilisé.
+<P>Il en existe un autre, <CODE>GNU/Emacs</CODE>, très performant et
+très versatile. &Eacute;crit par Richard Stallman lui-même (alias RMS),
+<CODE>Emacs</CODE> sait éditer des textes, lire des mails ou des news, 
+lancer un shell, etc. Mais il n'est pas toujours installé,
+car il occupe beaucoup plus d'espace disque.
+<P>
+<H2>2.1 Qu'est-ce que vi ?</H2>
+
+<P><CODE>vi</CODE>, est une abréviation pour ''VIsual editor''.
+C'est une extension de <CODE>ed</CODE> et <CODE>ex</CODE>, deux éditeurs
+plus anciens ne pouvant éditer les fichiers que ligne par ligne.
+Mais <CODE>vi</CODE> est tout de même un éditeur plein écran. 
+<P><CODE>vi</CODE> est rapide, puissant et compact : il tient sur une 
+disquette de boot, capacité que lui envient pas mal d'autres éditeurs. 
+Sous Linux existe une version améliorée de <CODE>vi</CODE>. 
+Il s'agit de <CODE>vim</CODE>, pour ''VI iMproved''.
+<P>Il est tout de même nettement conseillé d'utiliser <CODE>vim</CODE>
+plutôt que <CODE>vi</CODE>, car il dispose d'un certain nombre de 
+fonctionnalités supplémentaires que d'aucun jugerait indispensable 
+d'un point de vue confort. Néanmoins, en cas de gros problème nécessitant
+de rebooter sur disquette, il vaut mieux savoir utiliser <CODE>vi</CODE>
+pur, étant donné que plus rien d'autre n'est possible, dans ce cas.
+<P>
+<H2>2.2 Fonctionnalités de vi</H2>
+
+<P>Dans la suite, le terme ''vi'' réfèrera à ''vim'', par facilité et abus de
+langage. Les fonctionnalités de vi sont bien plus élevées que celles 
+attendues d'un éditeur texte par les utilisateurs de systèmes non Unix/Linux.
+Parmi celles-ci, on trouve notamment
+<UL>
+<LI>Edition en mode (texte) plein écran, pas ligne par ligne</LI>
+<LI>Indépendance par rapport au terminal (via stty)</LI>
+<LI>Edition de fichier: insertion, modification, etc</LI>
+<LI>Edition de fichiers multiples</LI>
+<LI>Recherche/Remplacement avec des expressions régulières</LI>
+<LI>Coloration syntaxique automatique, en fonction du type de fichier
+édité (code source en C, fichier HTML, PHP, SGML, etc)</LI>
+<LI>Lancement de commandes shell</LI>
+<LI>Macros, abréviations</LI>
+<LI>Répétition de commandes</LI>
+<LI>Undo infini</LI>
+<LI>Insertion du contenu d'un fichier externe à partir de la position
+du curseur</LI>
+<LI>Fenêtrage multiple (oui, en mode texte!)</LI>
+</UL>
+<P>
+<H2>2.3 Cas où vi est particulièrement adapté</H2>
+
+<P>L'administration sous Linux consiste souvent à éditer des fichiers de 
+configuration en mode texte. C'est à ce niveau que l'on a un contrôle
+maximal sur ce qui peut se passer sur son système : il n'y a pas d'interface
+graphique qui cache les détails.
+<P>L'outil idéal de modification des fichiers de configuration en mode texte
+est incontestablement vi. Une fois qu'il est suffisamment maîtrisé, il n'est
+pas impossible d'avoir terminé une édition avec vim alors que la même édition
+sous Emacs en est encore au stade du chargement de l'éditeur.
+<P>Pour l'édition de scripts vim est aussi un maître-achat. Il existe d'ailleurs
+un nombre considérable de formats de fichiers textes pour lesquels vim 
+utilise une coloration syntaxique appropriée.
+<P>Les seuls cas où l'on pourrait se dire que vim n'est pas l'éditeur idéal,
+c'est sans doute dans le cadre de projets plus importants. Lorsque l'on
+édite plus d'une vingtaine de fichiers simultanément, ça devient vite 
+lourd. Dans ces cas, le besoin de plugins se fait sentir, et Emacs, 
+l'éditeur le plus personnalisable au monde, remplit parfaitement cette
+tâche.
+<P>
+<H2><A NAME="s3">3. Concepts de base sous vim</A></H2>
+
+<P>Avant de commencer à expliquer les commandes utilisés sous vim, il
+est indispensable d'avoir bien compris les quelques principes de base
+de vim. Ils surprennent souvent le débutant, par leur caractère peu
+répandu.
+<P>
+<H2>3.1 Edition de fichiers</H2>
+
+<P>Pour lancer vim, rien de plus simple. Il suffit de taper son nom:
+<BLOCKQUOTE><CODE>
+<PRE>
+vim
+</PRE>
+</CODE></BLOCKQUOTE>
+
+Pour éditer un fichier, il suffit de passer son nom en paramètre:
+<BLOCKQUOTE><CODE>
+<PRE>
+vim monfichier.txt
+</PRE>
+</CODE></BLOCKQUOTE>
+<P>L'édition se passe comme l'on peut s'y attendre. Le fichier à 
+éditer est chargé en mémoire. vim utilise le terme ''buffer'' pour se
+référer aux fichiers édités, car ils sont placés en mémoire dans des
+''buffers''. Ensuite, après avoir apporté toutes les modifications voulues
+au buffer, on peut l'écrire sur disque (sans quoi elles sont bien sûr perdues).
+L'écriture peut bien sûr se faire sous un autre nom, afin de garder intacte
+la version originale du fichier.
+Tout ceci est un fonctionnement classique bien connu.
+<P>
+<H2>3.2 Modes utilisés par vim</H2>
+
+<P>Les modes de travail utilisés par vim sont nettement moins naturels. Ils 
+rebutent souvent le débutant, au premier abord. Mais une fois le pas 
+franchi, ce système s'avère diablement efficace.
+<P>vim possède trois grands modes, entre lesquels on switche souvent :
+<OL>
+<LI>Le mode <B>saisie</B> ou <B>insertion</B>.
+C'est le mode que tout le monde connaît : 
+lorsque l'on frappe des touches au clavier, les lettres sont insérées telles
+quelles dans le fichier texte. C'est le fonctionnement classique des autres
+éditeurs.</LI>
+<LI>Le mode <B>commande</B> est plus inhabituel. C'est le mode dans lequel
+on donne des commandes simples à effectuer sur le texte : déplacement dans le
+buffer, suppression d'éléments, remplacement d'un mot, etc. Dans ce mode, 
+chaque lettre tapée lance la commande correspondante !</LI>
+<LI>Le mode <B>ex</B>, ou <B>ligne de commandes</B>. Mode similaire au
+précédent, il permet d'entrer des commandes, mais plus complexes cette fois.
+Dans ce mode, on tape une commande complexe après l'invite (<CODE>:</CODE>),
+et on la valide par la touche ENTER. Ces commandes groupe notamment les
+recherches/remlacement par expression régulière, l'écriture des buffers
+dans des fichiers, la sortie de vim, etc.</LI>
+</OL>
+<P>
+<H2>3.3 Changer de mode</H2>
+
+<P>Les deux premiers modes sont les plus utilisés au début. Au lancement de
+vim, on se trouve en mode commande. Pour pouvoir entrer du texte, il faut
+donc passer en mode insertion. 
+<P>Pour passer en mode insertion lorsqu'on est en mode commande, il suffit
+de donner la commande <CODE>i</CODE> (insert) pour passer en mode insertion et
+insérer des caractères à partir de la position sous le curseur.
+Une alternative est de donner la commande <CODE>a</CODE> (append)
+pour passer en mode insertion et insérer des caractères à partir de la
+position qui suit celle sous le curseur.
+<P>Après avoir entré le texte souhaité, il faut revenir au mode commande, 
+y compris si la commande qu'on veut donner est un simple déplacement dans
+le texte ! Pour sortir du mode insertion, il suffit d'appuyer sur la touche
+<CODE>Escape</CODE>. On peut alors entrer des commandes simples
+(déplacement dans le texte, suppression de la ligne courante, etc.
+<P>Le troisième mode devient vite indispensable pour profiter de la puissance
+de vim. Pour y rentrer (à partir du mode commande), on tape le caractère
+d'invite (<CODE>:</CODE>). vim passe alors en mode ligne de commande.
+Il attend que l'utilisateur tape sa commande complexe validée par
+la touche Enter. vim exécute alors la commande complexe (recherche, 
+remplacement, etc), puis revient tout seul en mode principal, le mode
+commande.
+<P>Il faut évidemment constamment passer du mode commande au mode insertion,
+ce qui paraît abominablement lourd, a priori. Cependant, les avantages
+contrebalancent largement ces inconvénients. Une fois l'habitude prise,
+ce sont les modes plus classiques d'édition de texte qui paraissent
+contre-naturels !
+<P>Comme d'habitude sous Linux, il faut mettre les mains dans le cambouis : 
+lancer vim, essayer les quelques commandes, chipoter un peu pour bien
+assimiler le concept, etc. Ce n'est qu'au fil du temps passé à s'exercer
+que l'investissement consenti devient extrêmement rentable.
+<P>
+<H2>3.4 Comment sortir de vim ?</H2>
+
+<P>Une question angoissante est : comment sortir de vim ? La manière classique
+est celle du mode ligne de commande (ex). Cela consiste à taper la ligne
+suivante, en validant par Enter:
+<BLOCKQUOTE><CODE>
+<PRE>
+:q!
+</PRE>
+</CODE></BLOCKQUOTE>
+
+Cette commande ''complexe'' (<CODE>:</CODE>) fait sortir de vim 
+(<CODE>q</CODE>), sans enregistrer les modifications (<CODE>!</CODE>).
+<P>Une autre manière classique est d'utiliser la commande simple 
+<BLOCKQUOTE><CODE>
+<PRE>
+ZZ
+</PRE>
+</CODE></BLOCKQUOTE>
+
+Cette commande (en mode commande, naturellement) fait sortir de vim,
+mais en enregistrant les éventuelles modifications.
+<P>
+<H2>3.5 Principes généraux de vim</H2>
+
+<P>Dans le mode ligne de commande (ex), vim utilise un certain nombre 
+de conventions qu'il est très utile de connaître.
+<P>Une première convention est l'utilisation du caractère <CODE>!</CODE>.
+En ajoutant ce caractère directement après la commande, on obtient une
+version légèrement modifiée de la commande. Ainsi, <CODE>:q</CODE> 
+sort de vim, sauf si le buffer a été modifié, tandis que
+<CODE>:q!</CODE> sort de vim même si le buffer a été modifié (càd avec
+perte des modifications, dans ce cas).
+<P>Une seconde convention est similaire à son équivalent sous Emacs : c'est
+la notion de répétition. En préfixant une commande par un 
+nombre <CODE>X</CODE> (dans le mode commande ou ligne de commande/ex),
+on obtient le même effet que si on avait entré <CODE>X</CODE> fois la
+commande sans ce nombre. Ainsi, pour la commande <CODE>dd</CODE> qui 
+supprime la ligne courante, la commande <CODE>5dd</CODE> a pour effet
+de supprimer 5 lignes (comme si on avait tapé 5 fois la commande
+<CODE>dd</CODE>.
+<P>Après avoir rapidement passé en revue ces différents principes, on
+peut raisonnablement se lancer dans l'exploration de vim. 
+Il suffira de donner une liste des commandes les plus utilisées, 
+et de faire des essais sur machine pour voir si l'on a bien compris.
+Sous Linux, la meilleure façon de faire est bien souvent l'auto-formation
+par l'action (de préférence après présentation des concepts par une 
+personne compétente).
+<P>
+<H2><A NAME="s4">4. Utilisation basique de vim</A></H2>
+
+<P>Il est temps de passer à la pratique, en appliquant les principes vus
+ci-dessus. Une première façon de faire est de lancer le tutoriel de vim.
+Pour ce faire, lancer, au niveau du shell, la commande
+<BLOCKQUOTE><CODE>
+<PRE>
+vimtutor
+</PRE>
+</CODE></BLOCKQUOTE>
+
+Si cette commande n'est pas disponible, ce n'est pas très grave. Il
+suffit de copier le fichier texte
+<BLOCKQUOTE><CODE>
+<PRE>
+/usr/share/vim/tutor/tutor
+</PRE>
+</CODE></BLOCKQUOTE>
+
+dans son répertoire personnel, puis de lancer vim en lui passant l'emplacement 
+de la copie comme fichier à éditer (premier paramètre de la commande vim).
+<P>Une autre façon est de lire la documentation système (un peu longue), et
+de se mettre à la tâche. Pour ce genre de solution, autant lire d'abord
+ce qui suit avant de revenir à la doc complète : ce sont les formes les
+plus utilisées de vim.
+<P>
+<H2>4.1 Commandes de déplacement</H2>
+
+<P>Une des premières choses à connaître, ce sont les commandes de déplacement
+au sein d'un fichier. Parmi les très nombreuses, voici les plus utilisées.
+Il en existe encore d'autres, mais elles ne sont pas vraiement indispensables
+dans une utilisation standard (sauf pour les utilisateurs très avancés).
+<P>
+<H3>Déplacement d'une unité</H3>
+
+<P>Pour se déplacer d'un caractère (en mode commande), les commandes suivantes
+sont disponibles :
+<UL>
+<LI>h pour aller au caractère à gauche (flèche gauche)</LI>
+<LI>j pour descendre à la ligne suivante (flèche bas)</LI>
+<LI>k pour remonter à la ligne précédente (flèche haut)</LI>
+<LI>l pour aller au caractère à droite (flèche droite)</LI>
+</UL>
+
+Ceci a l'air fort primitif, mais est indispensable sur les claviers qui ne
+disposent pas des touches fléchées ! Pour les autres claviers, l'utilisation
+des touches fléchées est possible.
+<P>
+<H3>Déplacement au sein d'une ligne</H3>
+
+<P>Voici comment se déplacer à l'intérieur de la ligne courante :
+<P>
+<UL>
+<LI>0,  ou la touche ''home'' pour aller en début de ligne</LI>
+<LI>$ ou la touche ''end'' pour aller en fin de ligne</LI>
+<LI>w (word) pour aller au mot suivant</LI>
+<LI>b (back) pour aller au mot précédent</LI>
+<LI>fx (forward x) pour aller au prochain caractère ''x''.</LI>
+<LI>Fx fait la même chose que fx, mais en reculant vers la gauche 
+pour trouver le caractère ''x''</LI>
+<LI>tx (to x) pour aller au caractère précédant le prochain caractère ''x''.</LI>
+<LI>Tx fait la même chose que tx, mais vers la gauche</LI>
+</UL>
+
+Les commandes ''f'' et ''t'' sont un peu spéciales. Elles acceptent comme 
+argument un caractère. 
+Par exemple: ''fp'' déplace le curseur sous le prochain caractère ''p'' 
+de la ligne. C'est pratique pour un déplacement plus rapide au sein d'une ligne,
+mais surtout en association avec la commande ''d'' de suppression.
+Ainsi, ''df.'' supprime (<CODE>d</CODE>) tout depuis la position du curseur 
+jusqu'au premier caractère ''.'' de la ligne (<CODE>f.</CODE>). Ceci correspond
+à la suppression de la fin de phrase courante.
+<P>La commande 't'' est utile aussi. Lorsqu'on édite du HTML, il est souvent 
+utile de supprimer le texte du curseur jusqu'au prochain début de tab, non
+inclusif. Pour réaliser cela, la commande est ''dt&lt;'', ce qui signifie
+supprimer les caractères à partir du curseur jusqu'au prochain caractère
+''&lt;'' de la ligne, non inclusivement.
+<P>
+<H3>Déplacements entre lignes</H3>
+
+<P>
+<UL>
+<LI>G sert à se déplacer à la dernière ligne du fichier</LI>
+<LI>xG sert à se déplacer à la ligne x (paramètre numérique x).
+Exemple: ''1G'' sert à se déplacer à la ligne 1, càd en début de fichier.</LI>
+<LI>:x pour se déplacer à la ligne x (paramètre numérique x)</LI>
+<LI>ctrl+F (forward) pour se déplacer d'un écran vers le bas</LI>
+<LI>ctrl+B (backwar) pour se déplacer d'un écran vers le haut</LI>
+<LI>%  (sur une parenthèse) pour se déplacer sur la parenthèse correspondant
+à la paire (ouverture-fermeture). Très utile lorsqu'on programme en C, et
+surtout dans des langages fonctionnels, connus pour leur utilisation
+massive des parenthèses.</LI>
+<LI>{  ou }  pour se déplacer au bloc précédent ou suivant. La notion de bloc
+varie selon le type de fichier édité. C'est par exemple un paragraphe en HTML,
+ou le corps d'une fonction en langage C.</LI>
+</UL>
+<P>
+<H2>4.2 Commandes de changement de mode</H2>
+
+<P>En mode commande, lorsque l'on se trouve sur un caractère donné, 
+on peut passer en mode insertion avec, principalement:
+<UL>
+<LI>a pour insertion après le curseur</LI>
+<LI>i pour insertion avant le curseur</LI>
+<LI>I pour insertion en début de ligne</LI>
+<LI>A pour insertion en fin de ligne</LI>
+<LI>o pour insertion sur la ligne suivante</LI>
+<LI>O pour insertion à la ligne précédente</LI>
+</UL>
+<P>
+<P>
+<H2>4.3 Commandes de suppression</H2>
+
+<P>Toujours en mode commande, voici quelques commandes utiles de suppression.
+<UL>
+<LI>x pour supprimer le caractère sous le curseur</LI>
+<LI>X pour supprimer le caractère avant le curseur (backspace)</LI>
+<LI>dw (delete word) pour supprimer la fin du mot courant</LI>
+<LI>dd pour supprimer la ligne courante</LI>
+<LI>xdd pour supprimer x lignes. Ex: 5dd pour supprimer 5 lignes</LI>
+<LI>dG (delete, EOF) pour supprimer du curseur jusqu'à la fin du fichier</LI>
+<LI>dfx (delete forward param x) pour supprimer du curseur jusqu'au prochain
+caractère x (paramètre) de la ligne courante (ce caractère x inclus)</LI>
+<LI>dtx (delete to x) pour supprimer du curseur jusqu'au prochain
+caractère x (paramètre) de la ligne courante (ce caractère x exclus)</LI>
+</UL>
+<P>
+<H2>4.4 Commandes de modification</H2>
+
+<P>En mode commande, voici les commandes principales pour substituer du texte:
+<UL>
+<LI>cw (change word) pour changer la fin du mot en cours (suppression
+de la fin du mot et passage en mode insertion)</LI>
+<LI>cc pour changer la ligne entière (suppression et passage en mode 
+insertion)</LI>
+<LI>s (substitute) pour substituer le caractère (suppression et entrée en
+mode insertion)</LI>
+<LI>xs (paramètre: x) pour substituer ''x'' caractères </LI>
+<LI>~ pour mettre la lettre sous le curseur en majuscule</LI>
+<LI>x~ (param: x) pour mettre les x caractères suivants en majuscule </LI>
+</UL>
+<P>
+<H2>4.5 Commandes ''Fichiers''</H2>
+
+<P>
+<UL>
+<LI>ZZ ou :x pour quitter vim et sauvegarder les changements éventuels</LI>
+<LI>:w pour enregistrer le buffer courant (''Save'')</LI>
+<LI>:w nom (param: nom) pour enregistrer le buffer sous un nouveau nom
+(''Save as'')</LI>
+<LI>:w! nom (param: nom) pour enregistrer le buffer sous un nouveau nom,
+et l'écraser s'il existait déjà.</LI>
+<LI>:q pour quitter (échoue si un buffer a été modifié)</LI>
+<LI>:q! pour quitter vim (changements perdus si buffer modifié)</LI>
+<LI>:e nom (param: nom) pour éditer un fichier supplémentaire (en gardant
+les anciens en mémoire).</LI>
+</UL>
+<P>
+<H2>4.6 Commandes couper-copier-coller</H2>
+
+<P>
+<UL>
+<LI>yy ou Y pour copier la ligne en cours dans le tampon</LI>
+<LI>p pour coller le contenu du tampon après le curseur</LI>
+<LI>P pour coller le contenu du tampon après le curseur</LI>
+<LI>dd pour couper la ligne en cours dans le tampon</LI>
+<LI>&quot;xyy (x: paramètre de type caractère) pour copier 
+la ligne en cours dans le tampon portant le nom x</LI>
+<LI>&quot;xp pour coller le contenu du tampon de nom x (paramètre)</LI>
+<LI>&quot;xP idem, mais juste avant la position actuelle, pas juste 
+après</LI>
+<LI>y + commandes de déplacement pour mettre dans le tampon ce qui suit
+le curseur jusqu'où arrive la commande de déplacement. Exemple: yw pour y 
+placer le mot courant, y0 pour y placer le début de ligne jusqu'au curseur</LI>
+</UL>
+<P>
+<H2><A NAME="s5">5. Commandes plus avancées</A></H2>
+
+<P>Vim possède aussi un certain nombre de fonctionnalités bien plus avancées.
+Les plus utiles parmi celles-ci sont présentées ci-dessous.
+<P>
+<H2>5.1 Recherches et remplacement</H2>
+
+<P>Pour chercher une occurence, il suffit de définir le terme recherché.
+<UL>
+<LI>/nom pour rechercher la 1ère occurence de ''nom'', en paramètre.
+''nom'' peut être simplement le texte cherché, ou une expression régulière.</LI>
+<LI>n pour chercher l'occurence suivante</LI>
+<LI>N pour chercher l'occurence précédente</LI>
+<LI><CODE>set ic</CODE> pour ignorer la casse lors des recherches
+(ne pas différencier majuscules et minuscules)</LI>
+<LI><CODE>set noic</CODE> pour ne pas ignorer la casse lors des recherches
+(recherche case-sensitive, celle par défaut)</LI>
+</UL>
+<P>Pour remplacer une occurence, on précise en plus le terme de remplacement
+lorsque l'occurence est trouvée:
+<UL>
+<LI>:s/avant/après pour remplacer la première occurence ''avant''
+dans la ligne courante par ''après''</LI>
+<LI>:s/avant/après/g pour remplacer toutes les occurences ''avant''
+de la ligne courante par ''après''</LI>
+<LI>:%s/avant/après/g pour faire un rechercher/remplacer global, sur tout
+le fichier. ''%'' signifie toutes les lignes. On peut spécifier d'autres 
+étendues (bloc en cours, de la ligne x à la ligne y, etc)</LI>
+</UL>
+<P>
+<H2>5.2 Sélection</H2>
+
+<P>Il est possible de définir un block sur lequel effectuer des actions
+plus tard. C'est la sélection telle qu'on la connaît habituellement.
+<UL>
+<LI>v pour définir un bloc qui commence sous le curseur et s'étend jusqu'où
+on déplace le curseur avec les commandes de délacement.</LI>
+<LI>V pour passer en ''mode visuel'', càd définir un bloc composé de lignes
+entières, commançant à la ligne courante et s'étendant jusqu'à la ligne où
+l'on se déplace.</LI>
+</UL>
+<P>Une fois la sélection effectuée, on peut effectuer des actions similaires
+à celles du couper-coller, et plusieurs autres. Par exemple:
+<UL>
+<LI>d pour couper la sélection dans un tampon</LI>
+<LI>y pour copier la sélection dans un tampon</LI>
+<LI>p pour coller la sélection après le curseur</LI>
+<LI>P pour coller la sélection avant le curseur</LI>
+<LI>:s... pour effectuer des rechercher/remplacer limités au bloc</LI>
+</UL>
+<P>
+<H2>5.3 Coloration syntaxique</H2>
+
+<P>
+<UL>
+<LI>:syntax on pour activer la coloration syntaxique</LI>
+<LI>:syntax off pour la désactiver</LI>
+<LI>:set background=dark pour que la coloration choisisse des couleurs
+adaptées à un fond sombre (cas de la console texte)</LI>
+<LI>:set background=light pour que la coloration choisisse des couleurs
+adaptées à un fond clair (cas d'un xterm par exemple)</LI>
+</UL>
+<P>
+<H2>5.4 Insertion d'un autre fichier texte</H2>
+
+<P><CODE>:r filename</CODE> pour inclure le contenu du fichier ''filename'' 
+à partir de la position du curseur.
+<P>
+<H2>5.5 Lancer un sous-shell</H2>
+
+<P>Pour lancer une commande shell, taper <CODE>:! commande</CODE>, en remplaçant
+<CODE>commande</CODE> par la commande désirée. C'est pratique dans de nombreux
+cas. Exemples:
+<UL>
+<LI><CODE>:! sgml2html -l fr -c latin1 -s 1 fichier.sgml</CODE> pour 
+générer les pages html correspondant au fichier source linuxdoc que l'on
+édite</LI>
+<LI><CODE>:! sort</CODE>pour trier les lignes du fichier par ordre
+alphabétique. Ce type de commande peut même agir sur un bloc, s'il a été
+sélectionné avant.</LI>
+<LI>ctrl+Z : mettre vim en arrière-plan. Cela correspond à la combinaison
+de touche standard du shell pour mettre un processus en arrière-plan. Pour
+le remettre au premier plan, utiliser la commande ''fg'' ou les raccourcis
+du genre ''%n'' où n est le numéro du job.</LI>
+</UL>
+<P>
+<H2>5.6 Edition multi-fichiers</H2>
+
+<P>
+<UL>
+<LI>:e filename pour éditer ''filename'' en plus, en gardant les autres
+buffers</LI>
+<LI>:b filename pour passer le buffer ''filename'' (affichage)</LI>
+<LI>:b n pour passer au buffer numéro n</LI>
+<LI>:ls pour lister les buffers ouverts</LI>
+<LI>ctrl-^ pour switcher entre deux buffers (dits ''alternate'').</LI>
+</UL>
+<P>
+<H2><A NAME="s6">6. Pour aller plus loin</A></H2>
+
+<P>''<B>Linux in a nutshell</B>, a desktop quick reference'', est une
+excellente référence à avoir sur son bureau. On y trouve un condensé
+et des rappels sur les commandes de bases de Linux, sur les shells
+de type sh et csh, sur les expressions régulières, sur les éditeurs
+vi et emacs, les langages sed, awk, et perl, sur les gestionnaires
+de version RCS et CVS, etc. Comme souvent sous Linux, ce livre est
+disponible aux très bonnes éditions <B>O'Reilly</B>.
+<P>Pour en savoir plus sur vim, il suffit de consulter la documentation
+disponible sur son système (man, info, <CODE>/usr/doc/vim/*</CODE>).
+On trouve également un tutoriel nommé ''vimtutor''. Enfin,
+vim possède une documentation intégrée, accessible à l'intérieur de
+vim par la commande <CODE>:help</CODE> (<CODE>:q</CODE> pour sortir
+de l'aide et revenir à vim).
+<P>Si vous avez encore des questions après avoir lu tout cela, il vous
+reste deux possibilités: consulter un gourou local, voire
+lire le code source (pour une éventuelle modification).
+<P>
+</BODY>
+</HTML>
+<script language="javascript">
+<!--
+function st(_serial,_theme) { document.write(
+		"<img src=\"http://estat.chez.com/cgi-bin/ft/"+_serial+
+		"?n="+ Math.round(Math.random()*10000000)+
+		"&page="+escape(document.title)+
+		"&theme="+escape(_theme)+
+		"&scw="+escape(screen.availWidth)+
+		"&sch="+escape(screen.availHeight)+
+		"&scp="+escape(screen.pixelDepth)+
+		"&referer="+escape(document.referrer)+
+		"\" border=0>") }
+st("489089334272", "popup") ;
+//-->
+</script>

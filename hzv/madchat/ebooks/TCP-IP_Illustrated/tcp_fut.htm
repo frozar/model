@@ -1,0 +1,1102 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 24. TCP Futures and Performance</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="24_0"><H1><I>TCP Futures and Performance</I></H1></a>
+<a name="24_1"><H3>24.1 Introduction</H3></a>
+<P>
+TCP has operated for many years over data links ranging
+from 1200 bits/sec dialup SLIP links to Ethernets. Ethernets were
+the predominant form of data link for TCP/IP in the 1980s and
+early 1990s. Although TCP operates correctly at speeds higher
+than an Ethernet (T3 phone lines, FDDI, and gigabit networks,
+for example), certain TCP limits start to be encountered at these
+higher speeds.
+<P>
+This chapter looks at some proposed modifications
+to TCP that allow it to obtain the maximum throughput at these
+higher speeds. We first look at the path MTU discovery mechanism,
+which we've seen earlier in the text, focusing this time on how
+it operates with TCP. This often lets TCP use an MTU greater than
+536 for nonlocal connections, increasing its throughput.
+<P>
+We then look at long fat pipes, networks that have
+a large bandwidth-delay product, and the TCP limits that are encountered
+on these networks. Two new TCP options are described that deal
+with long fat pipes: a window scale option (to increase TCP's
+maximum window above 65535 bytes) and a timestamp option. This
+latter option lets TCP perform more accurate RTT measurement for
+data segments, and also provides protection against wrapped sequence
+numbers, which can occur at high speeds. These two options are
+defined in RFC 1323 [Jacobson, Braden, and Borman 1992].
+<P>
+We also look at the proposed T/TCP, modifications
+to TCP for transactions. The transaction mode of communication
+features a client request responded to by a server reply. It is
+a common paradigm for client-server computing. The goal of T/TCP
+is to reduce the number of segments exchanged by the two ends,
+avoiding the three-way handshake and the four segments to close
+the connection, so that the client receives the server's reply
+in one RTT plus the time required to process the request.
+<P>
+What is impressive about these new options-path MTU
+discovery, the window scale option, the tirnestamp option, and
+T/TCP - is that they are backward compatible with existing TCP
+implementations. Newer systems that include these options can
+still interoperate with all older systems. With the exception
+of an additional field in an ICMP message that can be used by
+path MTU discovery, these newer options need only be implemented
+on the end systems that want to take advantage of them.
+<P>
+We finish the chapter by looking at recently published
+figures dealing with TCP performance.
+<a name="24_2"><H3>24.2 Path MTU Discovery</H3></a>
+<P>
+In <a href="link_lay.htm#2_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_9">Section 2.9</a> we described the concept of the <I>path
+MTU.</I> It is the minimum MTU on any network that is currently
+in the path between two hosts. Path MTU discovery entails setting
+the &quot;don't fragment&quot; (DF) bit in the IP header to discover
+if any router on the current path needs to fragment IP datagrams
+that we send. In <a href="udp_user.htm#11_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_6">Section 11.6</a> we showed the ICMP unreachable error
+returned by a router that is asked to forward an IP datagram with
+the DF bit set when the MTU is less than the datagram size. In
+<a href="udp_user.htm#11_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_7">Section 11.7</a> we showed a version of the <TT>traceroute</TT>
+program that used this mechanism to determine the path MTU to
+a destination. In <a href="udp_user.htm#11_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_8">Section 11.8</a> we saw how UDP handled path MTU
+discovery. In this section we'll examine how this mechanism is
+used by TCP, as specified by RFC 1191 [Mogul and Deering 1990].
+<P>
+<FONT SIZE=-1>Of the various systems used in this text (see the
+Preface) only Solaris 2.x supports path MTU discovery.</FONT>
+<P>
+TCP's path MTU discovery operates as follows. When
+a connection is established, TCP uses the minimum of the MTU of
+the outgoing interface, or the MSS announced by the other end,
+as the starting segment size. Path MTU discovery does not allow
+TCP to exceed the MSS announced by the other end. If the other
+end does not specify an MSS, it defaults to 536. It is also possible
+for an implementation to save path MTU information on a per-route
+basis, as we mentioned in <a href="tcp_time.htm#21_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_time.htm#21_9">Section 21.9</a>.
+<P>
+Once the initial segment size is chosen, all IP datagrams
+sent by TCP on that connection have the DF bit set. If an intermediate
+router needs to fragment a datagram that has the DF bit set, it
+discards the datagram and generates the ICMP &quot;can't fragment&quot;
+error we described in <a href="udp_user.htm#11_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_6">Section 11.6</a>.
+<P>
+If this ICMP error is received, TCP decreases the
+segment size and retransmits. If the router generated the newer
+form of this ICMP error, the segment size can be set to the next-hop
+MTU minus the sizes of the IP and TCP headers. If the older ICMP
+error is returned, the probable value of the next smallest MTU
+(<a href="link_lay.htm#fig_2_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#fig_2_5">Figure 2.5</a>) must be tried. When a retransmission caused by this
+ICMP error occurs, the congestion window should not change, but
+slow start should be initiated.
+<P>
+Since routes can change dynamically, when some time
+has passed since the last decrease of the path MTU, a larger value
+(up to the minimum of the MSS announced by the other end, or the
+outgoing interface MTU) can be tried. RFC 1191 recommends this
+time interval be about 10 minutes. (We saw in <a href="udp_user.htm#11_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#11_8">Section 11.8</a> that
+Solaris 2.2 uses a 30-sec-ond timer for this.)
+<P>
+Given the normal default MSS of 536 for nonlocal
+destinations, path MTU discovery avoids fragmentation across intermediate
+links with an MTU of less than 576 (which is rare). It can also
+avoid fragmentation on local destinations when an intermediate
+link (e.g., an Ethernet) has a smaller MTU than the end-point
+networks (e.g., a token ring). But for path MTU discovery to be
+more useful, and take advantage of wide area networks with MTUs
+greater than 576, implementations must stop using a default MSS
+of 536 bytes for nonlocal destinations. A better choice for the
+MSS is the MTU of the outgoing interface (minus the size of the
+IP and TCP headers, of course). (In <a href="append_e.htm#E_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_e.htm#E_0">Appendix E</a> we'll see that
+most implementations allow the system administrator to change
+this default MSS value.)
+<H4>An Example</H4>
+<P>
+We can see how path MTU discovery operates when an
+intermediate router has an MTU less than either of the end point's
+interface MTUs. Figure 24.1 shows the topology for this example.
+<P>
+<CENTER><a name="fig_24_1"><img src="f_24_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_24_1.gif"></a><br>
+<B>Figure 24.1</B> Topology
+for path MTU example.</CENTER>
+<P>
+We'll establish a connection from the host <TT>solaris</TT>
+(which supports the path MTU discovery mechanism) to the host
+<TT>slip</TT>. This setup is identical to
+the one used for our UDP path MTU discovery example (<a href="udp_user.htm#fig_11_13" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/udp_user.htm#fig_11_13">Figure 11.13</a>)
+but here we have set the MTU of the interface on <TT>slip</TT>
+to 552, instead of its normal 296. This causes <TT>slip</TT>
+to announce an MSS of 512. But leaving the MTU of the SLIP link
+on <TT>bsdi</TT> at 296 will cause TCP segments
+greater than 256 to be fragmented, and we can see how the path
+MTU discovery mechanism on <TT>solaris</TT>
+handles this.
+<P>
+We'll run our <TT>sock</TT> program
+on <TT>solaris</TT> and perform one 512-byte
+write to the discard server on <TT>slip</TT>:
+<P>
+<TT>solaris % <B>sock -i -nl -w512
+slip discard</B></TT>
+<P>
+Figure 24.2 shows the <TT>tcpdump</TT>
+output, collected on the SLIP interface on the host <TT>sun</TT>.
+<P><CENTER>
+<a name="fig_24_2"><TABLE></a>
+<TR><TD WIDTH=36>1</TD><TD WIDTH=161><TT>0.0</TT>
+</TD><TD WIDTH=515><TT>solaris.33016 &gt; slip.discard: S 1171660288:1171660288(0)
+<BR>
+ win 8760 &lt;mss 1460&gt; (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=36>2</TD><TD WIDTH=161><TT>0.101597 (0.1016)</TT>
+</TD><TD WIDTH=515><TT>slip.discard &gt; solaris.33016: S 137984001:137984001(0)
+<BR>
+ ack 1171660289 win 4096 &lt;mss 512&gt;</TT>
+</TD></TR>
+<TR><TD WIDTH=36>3</TD><TD WIDTH=161><TT>0.630609 (0.5290)</TT>
+</TD><TD WIDTH=515><TT>solaris.33016 &gt; slip.discard: P 1:513(512)
+<BR>
+ ack 1 win 9216 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=36>4</TD><TD WIDTH=161><TT>0.634433 (0.0038)</TT>
+</TD><TD WIDTH=515><TT>bsdi &gt; solaris: icmp:
+<BR>
+ slip unreachable - need to frag, mtu = 296 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=36>5</TD><TD WIDTH=161><TT>0.660331 (0.0259)</TT>
+</TD><TD WIDTH=515><TT>solaris.33016 &gt; slip.discard: F 513:513(0)
+<BR>
+ ack 1 win 9216 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=36>6</TD><TD WIDTH=161><TT>0.752664 (0.0923)</TT>
+</TD><TD WIDTH=515><TT>slip.discard &gt; solaris.33016: . ack 1 win 4096</TT>
+</TD></TR>
+<TR><TD WIDTH=36>7</TD><TD WIDTH=161><TT>1.110342 (0.3577)</TT>
+</TD><TD WIDTH=515><TT>solaris.33016 &gt; slip.discard: P 1:257(256)
+<BR>
+ ack 1 win 9216 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=36>8</TD><TD WIDTH=161><TT>1.439330 (0.3290)</TT>
+</TD><TD WIDTH=515><TT>slip.discard &gt; solaris.33016: . ack 257 win 3840</TT>
+</TD></TR>
+<TR><TD WIDTH=36>9</TD><TD WIDTH=161><TT>1.770154 (0.3308)</TT>
+</TD><TD WIDTH=515><TT>solaris.33016 &gt; slip.discard: FP 257:513(256)
+<BR>
+ ack 1 win 9216 (DF)</TT>
+</TD></TR>
+<TR><TD WIDTH=36>10</TD><TD WIDTH=161><TT>2.095987 (0.3258)</TT>
+</TD><TD WIDTH=515><TT>slip.discard &gt; solaris.33016: . ack 514 win 3840</TT>
+</TD></TR>
+<TR><TD WIDTH=36>11</TD><TD WIDTH=161><TT>2.138193 (0.0422)</TT>
+</TD><TD WIDTH=515><TT>slip.discard &gt; solaris.33016: F 1:1(0) ack 514 win 4096</TT>
+</TD></TR>
+<TR><TD WIDTH=36>12</TD><TD WIDTH=161><TT>2.310103 (0.1719)</TT>
+</TD><TD WIDTH=515><TT>solaris.33016 &gt; slip.discard: . ack 2 win 9216 (DF)</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 24.2</B> <TT>tcpdump</TT>
+output for path MTU discovery.</CENTER>
+<P>
+The MSS values in lines 1 and 2 are what we expect.
+We then see <TT>solaris</TT> send a 512-byte
+segment (line 3) containing the 512 bytes of data and the ACK
+of the SYN. (We saw this combination of the ACK of a SYN along
+with the first segment of data in Exercise 18.9.) This generates
+the ICMP error in line 4 and we see that the router <TT>bsdi</TT>
+generates the newer ICMP error containing the MTU of the outgoing
+interface.
+<P>
+It appears that before this error makes it back to
+<TT>solaris</TT>, the FIN is sent (line 5).
+Since <TT>slip</TT> never received the 512
+bytes of data discarded by the router <TT>bsdi</TT>,
+it is not expecting this sequence number (513), so it responds
+in line 6 with the expected sequence number (1).
+<P>
+At this time the ICMP error has made it back to <TT>solaris</TT>
+and it retransmits the 512 bytes of data in two 256-byte segments
+(lines 7 and 9). Both are sent with the DF bit set, since there
+could be another router beyond <TT>bsdi</TT>
+with a smaller MTU.
+<P>
+A longer transfer was run (taking about 15 minutes)
+and after moving from the 512-byte initial segment to 256-byte
+segments, <TT>solaris</TT> never tried the
+higher segment size again.
+<H4>Big Packets or Small Packets?</H4>
+<P>
+Conventional wisdom says that bigger packets are
+better [Mogul 1993, Sec. 15.2.8] because sending fewer big packets
+&quot;costs less&quot; than sending more smaller packets. (This
+assumes the packets are not large enough to cause fragmentation,
+since that introduces another set of problems.) The reduced cost
+is that associated with the network (packet header overhead),
+routers (routing decisions), and hosts (protocol processing and
+device interrupts). Not everyone agrees with this [Bellovin 1993].
+<P>
+Consider the following example. We send 8192 bytes
+through four routers, each connected with a Tl telephone line
+(1,544,000 bits/sec). First we use two 4096-byte packets, as shown
+in Figure 24.3.
+<P>
+<CENTER><a name="fig_24_3"><img src="f_24_3.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_24_3.gif"></a><br>
+<B>Figure 24.3</B> Sending
+two 4096-byte packets through four routers.</CENTER>
+<P>
+The basic problem is that routers are store-and-forward
+devices. They normally receive the entire input packet, validate
+the IP header including the IP checksum, make their routing decision,
+and start sending the output packet. In this figure we're assuming
+the ideal case where it takes no time for these operations to
+occur at the router (the horizontal dashed lines). Nevertheless,
+it takes four units of time to send all 8192 bytes from Rl to
+R4. The time for each hop is
+<P>
+<CENTER>(4096 + 40 bytes) x 8 bits/bytes / 1'544'000
+bits/sec = 21.4 ms per hop</CENTER>
+<P><P><CENTER><TABLE>
+<TR><TD WIDTH=240><CENTER>(4096 + 40 bytes) x 8 bits/bytes</CENTER>
+</TD><TD WIDTH=152></TD></TR>
+<TR><TD WIDTH=240><HR></TD><TD WIDTH=152><CENTER>= 21.4 ms per hop</CENTER>
+</TD></TR>
+<TR><TD WIDTH=240><CENTER>1,544,000 bits/sec</CENTER></TD><TD WIDTH=152>
+</TD></TR>
+</TABLE></CENTER>
+<P>
+<CENTER></CENTER>
+<P>
+(We account for the 40 bytes of IP and TCP header.)
+The total time to send the data is the number of packets plus
+the number of hops, minus one, which we can see visually in this
+example is four units of time, or 85.6 ms. Each link is idle for
+two units of time, or 42.8 ms. Figure 24.4 shows what happens
+if we send sixteen 512-byte packets.
+<P>
+<CENTER><a name="fig_24_4"><img src="f_24_4.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_24_4.gif"></a><br>
+<B>Figure 24.4</B> Sending
+sixteen 512-byte packets through four routers.</CENTER>
+<P>
+It takes more units of time, but the units are shorter
+since a smaller packet is being sent.
+<P><CENTER>
+(512 + 40 bytes) x 8 bits/byte / 1,544,000 bits/sec
+= 2.9 ms per hop</CENTER>
+<P>
+The total time is now (18 x 2.9) = 52.2 ms. Each
+link is again idle for two units of time, which is now 5.8 ms.
+<P>
+In this example we have ignored the time required
+for the ACKs to be returned, the connection establishment and
+termination times, and the possible sharing of the links with
+other traffic. Nevertheless, measurements in [Bellovin 1993] indicate
+that bigger is not always better. More research is required in
+this area on various networks.
+<a name="24_3"><H3>24.3 Long Fat Pipes</H3></a>
+<P>
+In <a href="tcp_bulk.htm#20_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#20_7">Section 20.7</a> we showed the capacity of a connection
+as
+<P>
+<CENTER><I>capacity</I> (bits)
+= <I>bandwidth</I> (bits/sec) x <I>round-trip time</I> (sec)</CENTER>
+<P>
+and called this the <I>bandwidth-delay product.</I>
+This is also called the size of the pipe between the end points.
+<P>
+Existing limits in TCP are being encountered as this
+product increases to larger and larger values. Figure 24.5 shows
+some values for various types of networks.
+<P><CENTER>
+<a name="fig_24_5"><TABLE BORDER=1></a>
+<TR><TD WIDTH=286><CENTER>Network</CENTER>
+</TD><TD WIDTH=91><CENTER>Bandwidth<BR>
+(bits/sec)</CENTER>
+</TD><TD WIDTH=68><CENTER>Round-trip<BR>
+time (ms)</CENTER>
+</TD><TD WIDTH=96><CENTER>Bandwidth-delay<BR>
+product (bytes)</CENTER>
+</TD></TR>
+<TR><TD WIDTH=286>Ethernet LAN<BR>
+T1 telephone line, transcontinental<BR>
+T1 telephone line, satellite<BR>
+T3 telephone line, transcontinental<BR>
+gigabit, transcontinental
+</TD><TD WIDTH=91><CENTER>10,000,000<BR>
+1,544,000<BR>
+1,544,000<BR>
+45,000,000<BR>
+1,000,000,000</CENTER>
+</TD><TD WIDTH=68><CENTER>3<BR>
+60<BR>
+500<BR>
+60<BR>
+60</CENTER>
+</TD><TD WIDTH=96><CENTER>3,750<BR>
+11,580<BR>
+95,500<BR>
+337,500<BR>
+7,500,000</CENTER>
+</TD></TR>
+</TABLE>
+</CENTER><P>
+<CENTER><B>Figure 24.5</B> Bandwidth-delay
+product for various networks.</CENTER>
+<P>
+We show the bandwidth-delay product in bytes, because
+that's how we typically measure the buffer sizes and window sizes
+required on each end.
+<P>
+Networks with large bandwidth-delay products are
+called <I>long fat networks</I> (LFNs, pronounced &quot;elefan(t)s&quot;),
+and a TCP connection operating on an LFN is called a <I>long fat
+pipe.</I> Going back to <a href="tcp_bulk.htm#fig_20_11" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#fig_20_11">Figure 20.11</a> and
+<a href="tcp_bulk.htm#fig_20_12" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#fig_20_12">Figure 20.12</a>,
+the pipe can be stretched in the horizontal direction (a longer
+RTT), or stretched in the vertical direction (a higher bandwidth),
+or both. Numerous problems are encountered with long fat pipes.
+<P>
+<OL>
+<LI>The TCP window size is a 16-bit field in the TCP
+header, limiting the window to 65535 bytes. As we can see from
+the final column in <a href="#fig_24_5">Figure 24.5</a>, existing networks already require
+a larger window than this, for maximum throughput.
+<P>
+The window scale option described in <a href="#24_4">Section 24.4</a>
+solves this problem.
+<P>
+<LI>Packet loss in an LFN can reduce throughput drastically.
+If only a single segment is lost, the fast retransmit and fast
+recovery algorithm that we described in
+<P>
+<a href="tcp_time.htm#21_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_time.htm#21_7">Section 21.7</a> is required to keep the pipe from draining.
+But even with this algorithm, the loss of more than one packet
+within a window typically causes the pipeline to drain. (If the
+pipe drains, slow start gets things going again, but that takes
+multiple round-trip times to get the pipe filled again.)
+<P>
+Selective acknowledgments (SACKs) were proposed in
+RFC 1072 [Jacobson and Braden 1988] to handle multiple dropped
+packets within a window. But this feature was omitted from RFC
+1323, because the authors felt several technical problems needed
+to be worked out before including them in TCP.
+<P>
+<LI>We saw in <a href="tcp_time.htm#21_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_time.htm#21_4">Section 21.4</a> that many TCP implementations
+only measure one round-trip time per window. They do not measure
+the RTT of every segment. Better RTT measurements are required
+for operating on an LFN.
+<P>
+The timestamp option, which we describe in <a href="#24_5">Section 24.5</a>,
+allows more segments to be timed, including retransmissions.
+<P>
+<LI>TCP identifies each byte of data with a 32-bit
+unsigned sequence number. What's to prevent a segment that gets
+delayed in the network from reappearing at a later time, after
+the connection that it was associated with has been terminated,
+and after a new connection has been established between the same
+two hosts and port numbers? First recall that the TTL field in
+the IP header puts an upper bound on the lifetime of any IP datagram-255
+hops or 255 seconds, whichever comes first. In <a href="tcp_conn.htm#18_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#18_6">Section 18.6</a> we
+defined the maximum segment lifetime (MSL) as an implementation
+parameter used to prevent this scenario from happening. The recommended
+value of the MSL is 2 minutes (giving a 2MSL of 240 seconds),
+but we saw in <a href="tcp_conn.htm#18_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#18_6">Section 18.6</a> that many implementations use an MSL
+value of 30 seconds.
+<P>
+A different problem with TCP's sequence numbers appears
+with LFNs. Since the sequence number space is finite, the same
+sequence number is reused after 4,294,967,296 bytes have been
+transmitted. What if a segment containing the byte with a sequence
+number <I>N</I> gets delayed in the network and then reappears
+later, while the connection is still up? This is only a problem
+if the same sequence number <I>N</I> is reused within the MSL
+period, that is, if the network is so fast that sequence number
+wrap occurs in less than MSL. On an Ethernet it takes almost 60
+minutes to send this much data, so there is no chance of this
+happening, but the time required for the wrap to occur drops as
+the bandwidth increases: a T3 telephone line (45 Mbits/sec) wraps
+in 12 minutes, FDDI (100 Mbits/sec) in 5 minutes, and a gigabit
+network (1000 Mbits/sec) in 34 seconds. The problem here is not
+the bandwidth-delay product, but the bandwidth itself.
+<P>
+In <a href="#24_6">Section 24.6</a> we describe a way to handle this:
+the PAWS algorithm (protection against wrapped sequence numbers),
+which uses the TCP timestamp option.
+<P>
+<FONT SIZE=-1>4.4BSD contains all the options and algorithms that
+we describe in the following sections: the window scale option,
+the timestamp option, and the protection against wrapped sequence
+numbers. Numerous vendors are also starting to support these options.</FONT>
+</OL>
+<H4>Gigabit Networks</H4>
+<P>
+When networks reach gigabit speeds, things change.
+[Partridge 1994] covers gigabit networks in detail. Here we'll
+look at the differences between latency and bandwidth [Kleinrock
+1992].
+<P>
+Consider sending a one million byte file across the
+United States, assuming a 30-ms latency. Figure 24.6 shows two
+scenarios, the top illustration uses a Tl telephone line (1,544,000
+bits/sec) and the bottom uses a 1 gigabit/sec network. Time is
+shown along the x-axis, with the sender on the left and the receiver
+on the right, and capacity on the y-axis. The shaded area in both
+pictures is the one million bytes to send.
+<P>
+<CENTER><a name="fig_24_6"><img src="f_24_6.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_24_6.gif"></a><br>
+<B>Figure 24.6</B> Sending
+a 1-Mbyte file across networks with a 30-ms latency.</CENTER>
+<P>
+Figure 24.6 shows the status of both networks after
+30 ms. With both networks the first bit of data reaches the other
+end after 30 ms (the latency), but with the T1 network the capacity
+of the pipe is only 5,790 bytes, so 994,210 bytes are still at
+the sender, waiting to be sent. The capacity of the gigabit network,
+however, is 3,750,000 bytes, so the entire file uses just over
+25% of the pipe. The last bit of the file reaches the receiver
+8 ms after the first bit.
+<P>
+The total time to transfer the file across the T1
+network is 5.211 seconds. If we throw more bandwidth at the problem,
+a T3 network (45,000,000 bits/sec), the total time decreases to
+0.208 seconds. Increasing the bandwidth by a factor of 29 reduces
+the total time by a factor of 25.
+<P>
+With the gigabit network the total time to transfer
+the file is 0.038 seconds: the 30-ms latency plus the 8 ms for
+the actual file transfer. Assuming we could double the bandwidth
+to 2 gigabits/sec, we only reduce the total time to 0.034 seconds:
+the same 30-ms latency plus 4 ms to transfer the file. Doubling
+the bandwidth now decreases the total time by only 10%. At gigabit
+speeds we are latency limited, not bandwidth limited.
+<P>
+The latency is caused by the speed of light and can't
+be decreased (unless Einstein was wrong). The effect of this fixed
+latency becomes worse when we consider the packets required to
+establish and terminate a connection. Gigabit networks will cause
+several networking issues to be looked at differently.
+<a name="24_4"><H3>24.4 Window Scale Option</H3></a>
+<P>
+The window scale option increases the definition
+of the TCP window from 16 to 32 bits. Instead of changing the
+TCP header to accommodate the larger window, the header still
+holds a 16-bit value, and an option is defined that applies a
+scaling operation to the 16-bit value. TCP then maintains the
+&quot;real&quot; window size internally as a 32-bit value.
+<P>
+We saw an example of this option in <a href="tcp_conn.htm#fig_18_20" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#fig_18_20">Figure 18.20</a>.
+The 1-byte shift count is between 0 (no scaling performed)
+and 14. This maximum value of 14 is a window of 1,073,725,440
+bytes (65535 x 2<SUP>14</SUP>).
+<P>
+This option can only appear in a SYN segment; therefore
+the scale factor is fixed in each direction when the connection
+is established. To enable window scaling, both ends must send
+the option in their SYN segments. The end doing the active open
+sends the option in its SYN, but the end doing the passive open
+can send the option only if the received SYN specifies the option.
+The scale factor can be different in each direction.
+<P>
+If the end doing the active open sends a nonzero
+scale factor, but doesn't receive a window scale option from the
+other end, it sets its send and receive shift count to 0. This
+lets newer systems interoperate with older systems that don't
+understand the new option.
+<P>
+<FONT SIZE=-1>The Host Requirements RFC requires TCP to accept
+an option in any segment. (The only previously defined option,
+the maximum segment size, only appeared in SYN segments.) It further
+requires TCP to ignore any option it doesn't understand. This
+is made easy since all the new options have a length field (<a href="tcp_conn.htm#fig_18_20" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#fig_18_20">Figure 18.20</a>).</FONT>
+<P>
+Assume we are using the window scale option, with
+a shift count of S for sending and a shift count of <I>R</I> for
+receiving. Then every 16-bit advertised window that we receive
+from the other end is left shifted by <I>R</I> bits to obtain
+the real advertised window size. Every time we send a window advertisement
+to the other end, we take our real 32-bit window size and right
+shift it S bits, placing the resulting 16-bit value in the TCP
+header.
+<P>
+The shift count is automatically chosen by TCP, based
+on the size of the receive buffer. The size of this buffer is
+set by the system, but the capability is normally provided for
+the application to change it. (We discussed this buffer in <a href="tcp_bulk.htm#20_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_bulk.htm#20_4">Section 20.4</a>.)
+<H4>An Example</H4>
+<P>
+If we initiate a connection using our <TT>sock</TT>
+program from the 4.4BSD host <TT>vangogh.cs.berkeley.edu</TT>,
+we can see its TCP calculate the window scale factor. The following
+interactive output shows two consecutive runs of the program,
+first specifying a receive buffer of 128000 bytes, and then a
+receive buffer of 220000 bytes:
+<TABLE>
+<TR><TD COLSPAN=2 WIDTH=590><TT>vangogh % <B>sock -v -R128000 bsdi.tuc.noao.edu echo</B></TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=590><TT>SO_RCVBUF = 128000</TT></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=590><TT>connected on 128.32.130.2.4107 to 140.252.13.35.7</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=590><TT>TCP_MAXSEG = 512</TT></TD></TR>
+<TR><TD WIDTH=295><TT><B>hello, world</B></TT>
+</TD><TD WIDTH=295><I>we type this line</I>
+</TD></TR>
+<TR><TD WIDTH=295><TT>hello, world</TT></TD><TD WIDTH=295><I>and it's echoed here</I>
+</TD></TR>
+<TR><TD WIDTH=295><TT><B>^D</B></TT>
+</TD><TD WIDTH=295><I>type end-of-file character to terminate</I>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=590><TT>vangogh % sock -v -R220000 bsdi.tuc.noao.edu echo</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=590><TT>SO_RCVBUF = 220000</TT></TD></TR>
+<TR><TD COLSPAN=2 WIDTH=590><TT>connected on 128.32.130.2.4108 to 140.252.13.35.7</TT>
+</TD></TR>
+<TR><TD COLSPAN=2 WIDTH=590><TT>TCP_MAXSEG = 512</TT></TD></TR>
+<TR><TD WIDTH=295><TT><B>bye, bye</B></TT>
+</TD><TD WIDTH=295><I>type this line</I></TD>
+</TR>
+<TR><TD WIDTH=295><TT>bye, bye</TT></TD><TD WIDTH=295><I>and it's echoed here</I>
+</TD></TR>
+<TR><TD WIDTH=295><TT><B>^D</B></TT>
+</TD><TD WIDTH=295><I>type end-of-file character to terminate</I>
+</TD></TR>
+</TABLE>
+<P>
+Figure 24.7 shows the <TT>tcpdump</TT>
+output for these two connections. (We have deleted the final 8
+lines for the second connection, because nothing new is shown.)
+<P><CENTER>
+<a name="fig_24_7"><TABLE></a>
+<TR><TD WIDTH=36>1</TD><TD WIDTH=189><TT>0.0</TT>
+</TD><TD WIDTH=501><TT>vangogh.4107 &gt; bsdi.echo: S 462402561:462402561(0)
+<BR>
+ win 65535<BR>
+ &lt;mss 512,nop,wscale l,nop,nop,timestamp 995351 0&gt;</TT>
+</TD></TR>
+<TR><TD WIDTH=36>2</TD><TD WIDTH=189><TT>0.003078 ( 0.0031)</TT>
+</TD><TD WIDTH=501><TT>bsdi.echo &gt; vangogh.4107: S 177032705:177032705(0)<BR>
+ ack 462402562 win 4096 &lt;mss 512&gt;</TT>
+</TD></TR>
+<TR><TD WIDTH=36>3</TD><TD WIDTH=189><TT>0.300255 ( 0.2972)</TT>
+</TD><TD WIDTH=501><TT>vangogh.4107 &gt; bsdi.echo: . ack 1 win 65535</TT>
+</TD></TR>
+<TR><TD WIDTH=36>4</TD><TD WIDTH=189><TT>16.920087 (16.6198)</TT>
+</TD><TD WIDTH=501><TT>vangogh.4107 &gt; bsdi.echo: P 1:14(13) ack 1 win 65535</TT>
+</TD></TR>
+<TR><TD WIDTH=36>5</TD><TD WIDTH=189><TT>16.923063 ( 0.0030)</TT>
+</TD><TD WIDTH=501><TT>bsdi.echo &gt; vangogh.4107: P 1:14(13) ack 14 win 4096</TT>
+</TD></TR>
+<TR><TD WIDTH=36>6</TD><TD WIDTH=189><TT>17.220114 ( 0.2971)</TT>
+</TD><TD WIDTH=501><TT>vangogh.4107 &gt; bsdi.echo: . ack 14 win 65535</TT>
+</TD></TR>
+<TR><TD WIDTH=36>7</TD><TD WIDTH=189><TT>26.640335 ( 9.4202)</TT>
+</TD><TD WIDTH=501><TT>vangogh.4107 &gt; bsdi.echo: F 14:14(0) ack 14 win 65535</TT>
+</TD></TR>
+<TR><TD WIDTH=36>8</TD><TD WIDTH=189><TT>26.642688 ( 0.0024)</TT>
+</TD><TD WIDTH=501><TT>bsdi.echo &gt; vangogh.4107: . ack 15 win 4096</TT>
+</TD></TR>
+<TR><TD WIDTH=36>9</TD><TD WIDTH=189><TT>26.643964 ( 0.0013)</TT>
+</TD><TD WIDTH=501><TT>bsdi.echo &gt; vangogh.4107: F 14:14(0) ack 15 win 4096</TT>
+</TD></TR>
+<TR><TD WIDTH=36>10</TD><TD WIDTH=189><TT>26.880274 ( 0.2363)</TT>
+</TD><TD WIDTH=501><TT>vangogh.4107 &gt; bsdi.echo: . ack 15 win 65535</TT>
+</TD></TR>
+<TR><TD WIDTH=36>11</TD><TD WIDTH=189><TT>44.400239 (17.5200)</TT>
+</TD><TD WIDTH=501><TT>vangogh.4108 &gt; bsdi.echo: S 468226561:468226561(0)
+<BR>
+ win 65535<BR>
+ &lt;mss 512,nop,wscale 2,nop,nop,timestamp 995440 0&gt;</TT>
+</TD></TR>
+<TR><TD WIDTH=36>12</TD><TD WIDTH=189><TT>44.403358 ( 0.0031)</TT>
+</TD><TD WIDTH=501><TT>bsdi.echo &gt; vangogh.4108: S 182792705:182792705(0)<BR>
+ ack 468226562 win 4096 &lt;mss 512&gt;</TT>
+</TD></TR>
+<TR><TD WIDTH=36>13</TD><TD WIDTH=189><TT>44.700027 ( 0.2967)</TT>
+</TD><TD WIDTH=501><TT>vangogh.4108 &gt; bsdi.echo: . ack 1 win 65535</TT>
+</TD></TR>
+<TR><TD WIDTH=36> </TD><TD WIDTH=189></TD>
+<TD WIDTH=501><I>remainder of this connection deleted</I>
+</TD></TR>
+</TABLE>
+</CENTER><P>
+<CENTER><B>Figure 24.7</B> Example
+of window scale option.</CENTER>
+<P>
+In line 1 <TT>vangogh</TT> advertises
+a window of 65535 and specifies the window scale option with a
+shift count of 1. This advertised window is the largest possible
+value that is less than the receive buffer size (128000), because
+the window field in a SYN segment is never scaled.
+<P>
+The scale factor of 1 means <TT>vangogh</TT>
+would like to send window advertisements up to 131070 (65535 x
+2<SUP>1</SUP>). This will accommodate our receive buffer size
+(128000). Since <TT>bsdi</TT> does not send
+the window scale option in its SYN (line 2), the option is not
+used.
+<P>
+Notice that <TT>vangogh</TT>
+continues to use the largest window possible (65535) for the remainder
+of the connection.
+<P>
+For the second connection <TT>vangogh</TT>
+requests a shift count of 2, meaning it would like to send window
+advertisements up to 262140 (65535 x 2<SUP>2</SUP>), which is greater than
+our receive buffer size (220000).
+<a name="24_5"><H3>24.5 Timestamp Option</H3></a>
+<P>
+The timestamp option lets the sender place a timestamp
+value in every segment. The receiver reflects this value in the
+acknowledgment, allowing the sender to calculate an RTT for each
+received ACK. (We must say &quot;each received ACK&quot; and not
+&quot;each segment&quot; since TCP normally acknowledges multiple
+segments per ACK.) We said that many current implementations only
+measure one RTT per window, which is OK for windows containing
+eight segments. Larger window sizes, however, require better RTT
+calculations.
+<P>
+<FONT SIZE=-1>Section 3.1 of RFC 1323 gives the signal processing
+reasons for requiring better RTT estimates for bigger windows.
+Basically the RTT is measured by sampling a data signal (the data
+segments) at a lower frequency (once per window). This introduces
+<I>aliasing</I> into the estimated RTT. When there are eight segments
+per window, the sample rate is one-eighth the data rate, which
+is tolerable, but with 100 segments per window, the sample rate
+is 1/IOOth the data rate. This can cause the estimated RTT to
+be inaccurate, resulting in unnecessary retransmissions. If a
+segment is lost, it only gets worse.</FONT>
+<P>
+<a href="tcp_conn.htm#fig_18_20" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#fig_18_20">Figure 18.20</a> showed the format of the timestamp option.
+The sender places a 32-bit value in the first field, and the receiver
+echoes this back in the reply field. TCP headers containing this
+option will increase from the normal 20 bytes to 32 bytes.
+<P>
+The timestamp is a monotonically increasing value.
+Since the receiver echoes what it receives, the receiver doesn't
+care what the timestamp units are. This option does not require
+any form of clock synchronization between the two hosts. RFC 1323
+recommends that the timestamp value increment by one between 1
+ms and 1 second.
+<P>
+<FONT SIZE=-1>4.4BSD increments the timestamp clock once every
+500 ms and this timestamp clock is reset to 0 on a reboot.
+<P>
+In <a href="#fig_24_7">Figure 24.7</a>, if we look at the timestamp in segment
+1 and the timestamp in segment II, the difference (89 units) corresponds
+to 500 ms per unit for the time difference of 44.4 seconds.</FONT>
+<P>
+The specification of this option during connection
+establishment is handled the same way as the window scale option
+in the <a href="#24_4">previous section</a>. The end doing the active open specifies
+the option in its SYN. Only if it receives the option in the SYN
+from the other end can the option be sent in future segments.
+<P>
+We've seen that a receiving TCP does not have to
+acknowledge every data segment that it receives. Many implementations
+send an ACK for every other data segment. If the receiver sends
+an ACK that acknowledges two received data segments, which received
+timestamp is sent back in the timestamp echo reply field?
+<P>
+To minimize the amount of state maintained by either
+end, only a single timestamp value is kept per connection. The
+algorithm to choose when to update this value is simple.
+<OL>
+<LI>TCP keeps track of the timestamp value to send
+in the next ACK (a variable named <I>tsrecent)</I> and the acknowledgment
+sequence number from the last ACK that was sent (a variable named
+<I>lastack).</I> This sequence number is the next sequence number
+the receiver is expecting.
+<LI>When a segment arrives, if the segment contains
+the byte numbered <I>lastack,</I> then the timestamp value from
+the segment is saved in <I>tsrecent.</I>
+<LI>Whenever a timestamp option is sent, <I>tsrecent</I>
+is sent as the timestamp echo reply field and the sequence number
+field is saved in <I>lastack.</I>
+</OL>
+<P>
+This algorithm handles the following two cases:
+<P>
+<OL>
+<LI>If ACKs are delayed by the receiver, the timestamp
+value returned as the echo value will correspond to the earliest
+segment being acknowledged.
+<P>
+For example, if two segments containing bytes 1-1024
+and 1025-2048 arrive, both with a timestamp option, and the receiver
+acknowledges them both with an ACK 2049, the timestamp in the
+ACK will be the value from the first segment containing bytes
+1-1024. This is correct because the sender must calculate its
+retransmission timeout taking the delayed ACKs into consideration.
+<P>
+<LI>If a received segment is in-window but out-of-sequence,
+implying that a previous segment has been lost, when that missing
+segment is received, its time-stamp will be echoed, not the timestamp
+from the out-of-sequence segment.
+<P>
+For example, assume three segments, each containing
+1024 bytes, are received in the following order: segment 1 with
+bytes 1-1024, segment 3 with bytes 2049-3072, then segment 2 with
+bytes 1025-2048. The ACKs sent back will be ACK 1025 with the
+timestamp from segment 1 (a normal ACK for data that was expected),
+ACK 1025 with the timestamp from segment 1 (a duplicate ACK in
+response to the in-window but the out-of-sequence segment), then
+ACK 3073 with the timestamp from segment 2 (not the later timestamp
+from segment 3). This has the effect of overestimating the RTT
+when segments are lost, which is better than underestimating it.
+Also, if the final ACK contained the timestamp from segment 3,
+it might include the time required for the duplicate ACK to be
+returned and segment 2 to be retransmitted, or it might include
+the time for the sender's retransmission timeout for segment 2
+to expire. In either case, echoing the timestamp from segment
+3 could bias the sender's RTT calculations.
+</OL><P>
+Although the timestamp option allows for better RTT
+calculations, it also provides a way for the receiver to avoid
+receiving old segments and considering them part of the existing
+data segment. The <a href="#24_6">next section</a> describes this.
+<a name="24_6"><H3>24.6 PAWS: Protection Against Wrapped Sequence Numbers</H3></a>
+<P>
+Consider a TCP connection using the window scale
+option with the largest possible window, 1 gigabyte (2<SUP>30</SUP>).
+(The largest window is just smaller than this, 65535 x 2<SUP>14</SUP>,
+not 2<SUP>16</SUP> x 2<SUP>14</SUP>, but that doesn't affect this
+discussion.) Also assume the timestamp option is being used and
+that the timestamp value assigned by the sender increments by
+one for each window that is sent. (This is conservative. Normally
+the timestamp increments faster than this.) Figure 24.8 shows
+the possible data flow between the two hosts, when transferring
+6 gigabytes. To avoid lots of IO-digit numbers, we use the notation
+G to mean a multiple of 1,073,741,824. We also use the notation
+from <TT>tcpdump</TT> that <I>J:K </I>means
+byte 1 through and including byte <I>K</I> - 1<I>.</I>
+<P><CENTER>
+<a name="fig_24_8"><TABLE BORDER=1></a>
+<TR><TD WIDTH=47><CENTER>Time</CENTER></TD>
+<TD WIDTH=86><CENTER>Bytes sent</CENTER></TD>
+<TD WIDTH=66><CENTER>Send
+<BR>
+sequence#</CENTER>
+</TD><TD WIDTH=66><CENTER>Send<BR>
+timestamp</CENTER>
+</TD><TD WIDTH=337><CENTER>Receive</CENTER>
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>A</CENTER></TD><TD WIDTH=86><CENTER>0G:1G</CENTER>
+</TD><TD WIDTH=66><CENTER>0G:1G</CENTER></TD>
+<TD WIDTH=66><CENTER>1</CENTER></TD><TD WIDTH=337>OK
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>B</CENTER></TD><TD WIDTH=66><CENTER>1G:2G</CENTER>
+</TD><TD WIDTH=66><CENTER>1G:2G</CENTER></TD>
+<TD WIDTH=66><CENTER>2</CENTER></TD><TD WIDTH=227>OK but one segment lost and retransmitted
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>C</CENTER></TD><TD WIDTH=66><CENTER>2G:3G</CENTER>
+</TD><TD WIDTH=66><CENTER>2G:3G</CENTER></TD>
+<TD WIDTH=66><CENTER>3</CENTER></TD><TD WIDTH=227>OK
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>D</CENTER></TD><TD WIDTH=66><CENTER>3G:4G</CENTER>
+</TD><TD WIDTH=66><CENTER>3G:4G</CENTER></TD>
+<TD WIDTH=66><CENTER>4</CENTER></TD><TD WIDTH=227>OK
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>E</CENTER></TD><TD WIDTH=66><CENTER>4G:5G</CENTER>
+</TD><TD WIDTH=66><CENTER>0G:1G</CENTER></TD>
+<TD WIDTH=66><CENTER>5</CENTER></TD><TD WIDTH=227>OK
+</TD></TR>
+<TR><TD WIDTH=47><CENTER>F</CENTER></TD><TD WIDTH=66><CENTER>5G:6G</CENTER>
+</TD><TD WIDTH=66><CENTER>1G:2G</CENTER></TD>
+<TD WIDTH=66><CENTER>6</CENTER></TD><TD WIDTH=227>OK but retransmitted segment reappears
+</TD></TR>
+</TABLE>
+</CENTER><P>
+<CENTER><B>Figure 24.8</B> Transferring
+6 gigabytes in six 1-gigabyte windows.</CENTER>
+<P>
+The 32-bit sequence number wraps between times D
+and E. We assume that one segment gets lost at time B and is retransmitted.
+We also assume that this lost segment reappears at time F.
+<P>
+This assumes that the time difference between the
+segment getting lost and reappearing is less than the MSL; otherwise
+the segment would have been discarded by some router when its
+TTL expired. As we mentioned earlier, it is only with high-speed
+connections that this problem appears, where old segments can
+reappear and contain sequence numbers currently being transmitted.
+<P>
+We can also see from <a href="#fig_24_8">Figure 24.8</a> that using the timestamp
+prevents this problem. The receiver considers the timestamp as
+a 32-bit extension of the sequence number. Since the lost segment
+that reappears at time F has a timestamp of 2, which is less than
+the most recent valid timestamp (5 or 6), it is discarded by the
+PAWS algorithm.
+<P>
+The PAWS algorithm does not require any form of time
+synchronization between the sender and receiver. All the receiver
+needs is for the timestamp values to be mono-tonically increasing,
+and to increase by at least one per window.
+<a name="24_7"><H3>24.7 T/TCP: A TCP Extension for Transactions</H3></a>
+<P>
+TCP provides a <I>virtual-circuit</I> transport service.
+There are three distinct phases in the life of a connection: establishment,
+data transfer, and termination. Applications such as remote login
+and file transfer are well suited to a virtual-circuit service.
+<P>
+Other applications, however, are designed to use
+a transaction service. A <I>transaction</I> is a client request
+followed by a server response with the following characteristics:
+<OL>
+<LI>The overhead of connection establishment and
+connection termination should be avoided. When possible, send
+one request packet and receive one reply packet.
+<LI>The latency should be reduced to RTT plus SPT,
+where RTT is the round-trip time and SPT is the server processing
+time to handle the request.
+<LI>The server should detect duplicate requests and
+not replay the transaction when a duplicate request arrives. (Avoiding
+the replay means the server does not process the request again.
+The server sends back the saved reply corresponding to that request.)
+</OL>
+<P>
+One application that we've already seen that uses
+this type of service is the Domain Name System (<a href="dns_the.htm#14_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dns_the.htm#14_0">Chapter 14</a>), although
+the DNS is not concerned with the server replaying duplicate requests.
+<P>
+Today the choice an application designer has is TCP
+or UDP. TCP provides too many features for transactions, and UDP
+doesn't provide enough. Usually the application is built using
+UDP (to avoid the overhead of TCP connections) but many of the
+desirable features (dynamic timeout and retransmission, congestion
+avoidance, etc.) are placed into the application, where they're
+reinvented over and over again.
+<P>
+A better solution is to provide a transport layer
+that provides efficient handling of transactions. The transaction
+protocol we describe in this section is called T/TCP. Our description
+is from its definition, RFC 1379 [Braden 1992b] and [Braden 1992c].
+<P>
+Most TCPs require 7 segments to open and close a
+connection (see <a href="tcp_conn.htm#fig_18_13" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#fig_18_13">Figure 18.13</a>). Three more segments are
+then added: one with the request, another with the reply and an
+ACK of the request, and a third with the ACK of the reply. If
+additional control bits are added onto the segments-that is, the
+first segment contains a SYN, the client request, and a FIN-the
+client still sees a minimal overhead of twice the RTT plus SPT.
+(Sending a SYN along with data and a FIN is legal; whether current
+TCPs handle it correctly is another question.)
+<P>
+Another problem with TCP is the TIME_WAIT state and
+its required 2MSL wait. As shown in Exercise 18.14, this limits
+the transaction rate between two hosts to about 268 per second.
+<P>
+The two modifications required for TCP to handle
+transactions are to avoid the three-way handshake and shorten
+the TIME_WAIT state. T/TCP avoids the three-way handshake by using
+an accelerated open:
+<OL>
+<LI>It assigns a 32-bit <I>connection count</I> (CC)
+value to connections it opens, either actively or passively. A
+host's CC value is assigned from a global counter that gets incremented
+by 1 each time it's used.
+<P><LI>Every segment between two hosts using T/TCP includes
+a new TCP option named CC. This option has a length of 6 bytes
+and contains the sender's 32-bit CC value for the connection.
+<P><LI>A host maintains a per-host cache of the last
+CC value received in an acceptable SYN segment from that host.
+<P><LI>When a CC option is received on an initial SYN,
+the receiver compares the value with the cached value for the
+sender. If the received CC is greater than the cached CC, the
+SYN is new and any data in the segment is passed to the receiving
+application (the server). The connection is called <I>half-synchronized.</I>
+<P>
+If the received CC is not greater than the cached
+CC, or if the receiving host doesn't have a cached CC for this
+client, the normal TCP three-way handshake is performed.
+<P><LI>The SYN, ACK segment in response to an initial
+SYN echoes the received CC value in another new option named CCECHO.
+<P><LI>The CC value in a non-SYN segment detects and
+rejects any duplicate segments from previous incarnations of the
+same connection.
+</OL>
+<P>
+The accelerated open avoids the need for a three-way
+handshake unless either the client or server has crashed and rebooted.
+The cost is that the server must remember the last CC received
+from each client.
+<P>
+The TIME_WAIT state is shortened by calculating the
+TIME_WAIT delay dynamically, based on the measured RTT between
+the two hosts. The TIME_WAIT delay is set to 8 times RTO, the
+retransmission timeout value (<a href="tcp_time.htm#21_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_time.htm#21_3">Section 21.3</a>).
+<P>
+Using these features the minimal transaction sequence
+is an exchange of three segments:
+<OL>
+<LI>Client to server, caused by an active open: client-SYN,
+client-data (the request), client-FIN, and client-CC.
+<P>When the server TCP with the passive open receives
+this segment, if the client-CC is greater than the cached CC for
+this client host, the client-data is passed to the server application,
+which processes the request.
+<P><LI>Server to client: server-SYN, server-data (reply),
+server-FIN, ACK of client-FIN, server-CC, and CCECHO of client-CC.
+Since TCP acknowledgments are cumulative, this ACK of the client
+FIN acknowledges the client's SYN, data, and FIN.
+<P>When the client TCP receives this segment it
+passes the reply to the client application.
+<P><LI>Client to server: ACK of server-FIN, which acknowledges
+the server's SYN, data, and FIN.
+</OL>
+<P>
+The client's response time to its request is RTT
+plus SPT.
+<P>
+There are many fine points to the implementation
+of this TCP option that are covered in the references. We summarize
+them here:
+<UL>
+<LI>The server's SYN, ACK (the second segment) should
+be delayed, to allow the reply to piggyback with it. (Normally
+the ACK of a SYN is not delayed.) It can't delay too long, or
+the client will time out and retransmit.
+<LI>The request can require multiple segments, but
+the server must handle their possible out-of-order arrival. (Normally
+when data arrives before the SYN, the data is discarded and a
+reset is generated. With T/TCP this out-of-order data should be
+queued instead.)
+<LI>The API must allow the server process to send
+data and close the connection in a single operation to allow the
+FIN in the second segment to piggyback with the reply (Normally
+the application would write the reply, causing a data segment
+to be sent, and then close the connection, causing the FIN to
+be sent.)
+<LI>The client is sending data in the first segment
+before receiving an MSS announcement from the server. To avoid
+restricting the client to an MSS of 536, the MSS for a given host
+should be cached along with its CC value.
+<LI>The client is also sending data to the server
+without receiving a window advertisement from the server. T/TCP
+suggests a default window of 4096 bytes and also caching the congestion
+threshold for the server.
+<LI>With the minimal three-segment exchange there
+is only one RTT that can be measured in each direction. Plus the
+client's measured RTT includes the server's processing time. This
+means the smoothed RTT value and its variance also must be cached
+for the server, similar to what we described in <a href="tcp_time.htm#21_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_time.htm#21_9">Section 21.9</a>.
+</UL>
+<P>
+The appealing feature of T/TCP is that it is a minimal
+set of changes to an existing protocol but allows backward compatibility
+with existing implementations. It also takes advantage of existing
+engineering features of TCP (dynamic timeout and retransmission,
+congestion avoidance, etc.) instead of forcing the application
+to deal with these issues.
+<P>
+An alternative transaction protocol is VMTP, the
+Versatile Message Transaction Protocol. It is described in RFC
+1045 [Cheriton 1988]. Unlike T/TCP, which is a small set of extensions
+to an existing protocol, VMTP is a complete transport layer that
+uses IP VMTP handles error detection, retransmission, and duplicate
+suppression. It also supports multicast communication.
+<a name="24_8"><H3>24.8 TCP Performance</H3></a>
+<P>
+Published numbers in the mid-1980s showed TCP throughput
+on an Ethernet to be around 100,000 to 200,000 bytes per second.
+(Section 17.5 of [Stevens 1990] gives these references.) A lot
+has changed since then. It is now common for off-the-shelf hardware
+(workstations and faster personal computers) to deliver 800,000
+bytes or more per second.
+<P>
+It is a worthwhile exercise to calculate the theoretical
+maximum throughput we could see with TCP on a 10 Mbits/sec Ethernet
+[Warnock 1991]. We show the basics for this calculation in Figure 24.9.
+This figure shows the total number of bytes exchanged for
+a full-sized data segment and an ACK.
+<P><CENTER>
+<a name="fig_24_9"><TABLE BORDER=1></a>
+<TR><TD WIDTH=240><CENTER>Field</CENTER></TD>
+<TD WIDTH=47><CENTER>Data<BR>
+#bytes</CENTER>
+</TD><TD WIDTH=47><CENTER>ACK<BR>
+#bytes</CENTER>
+</TD></TR>
+<TR><TD WIDTH=240>Ethernet preamble<BR>
+Ethernet destination address<BR>
+Ethernet source address<BR>
+Ethernet type field<BR>
+IP header<BR>
+TCP header<BR>
+user data<BR>
+pad (to Ethernet minimum)<BR>
+Ethernet CRC<BR>
+interpacket gap (9.6 microsec)
+</TD><TD WIDTH=47><CENTER>8<BR>
+6<BR>
+6<BR>
+2<BR>
+20<BR>
+20<BR>
+1460<BR>
+0<BR>
+4<BR>
+12</CENTER>
+</TD><TD WIDTH=47><CENTER>8<BR>
+6<BR>
+6<BR>
+2<BR>
+20<BR>
+20<BR>
+0<BR>
+6<BR>
+4<BR>
+12</CENTER>
+</TD></TR>
+<TR><TD WIDTH=170>total</TD><TD WIDTH=47><CENTER>1538</CENTER>
+</TD><TD WIDTH=47><CENTER>84</CENTER></TD>
+</TR>
+</TABLE>
+</CENTER><P>
+<CENTER><B>Figure 24.9</B> Field
+sizes for Ethernet theoretical maximum throughput calculation.</CENTER>
+<P>
+We must account for all the overhead: the preamble,
+the PAD bytes that are added to the acknowledgment, the CRC, and
+the minimum interpacket gap (9.6 microseconds, which equals 12
+bytes at 10 Mbits/sec).
+<P>
+We first assume the sender transmits two back-to-back
+full-sized data segments, and then the receiver sends an ACK for
+these two segments. The maximum throughput (user data) is then
+<P>
+<CENTER><I>throughput = </I>2
+x 1460 bytes / (2 x 1538 + 84 bytes) x 10,000,000 bits/sec / 8
+buts/byte =<BR>
+= 1,155,063 bytes/sec</CENTER>
+<P>
+If the TCP window is opened to its maximum size (65535,
+not using the window scale option), this allows a window of 44
+1460-byte segments. If the receiver sends an ACK every 22nd segment
+the calculation becomes
+<P>
+<CENTER><I>throughput = </I>22
+x 1460 bytes / (22 x 1538 + 84 bytes) x 10,000,000 bits/sec /
+8 buts/byte =<BR>
+= 1,183,667 bytes/sec</CENTER>
+<P>
+This is the theoretical limit, and makes certain
+assumptions: an ACK sent by the receiver doesn't collide on the
+Ethernet with one of the sender's segments; the sender can transmit
+two segments with the minimum Ethernet spacing; and the receiver
+can generate the ACK within the minimum Ethernet spacing. Despite
+the optimism in these numbers, [Wamock 1991] measured a sustained
+rate of 1,075,000 bytes/sec on an Ethernet, with a standard multiuser
+workstation (albeit a fast workstation), which is within 90% of
+the theoretical value.
+<P>
+Moving to faster networks, such as FDDI (100 Mbits/sec),
+[Schryver 1993] indicates that three commercial vendors have demonstrated
+TCP over FDDI between 80 and 98 Mbits/sec. When even greater bandwidth
+is available, [Borman 1992] reports up to 781 Mbits/sec between
+two Cray

@@ -1,0 +1,373 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD><TITLE>Outils de hackers et leurs signatures, première partie</TITLE>
+<META content="text/html; charset=windows-1252" http-equiv=Content-Type>
+<META content="MSHTML 5.00.2920.0" name=GENERATOR></HEAD>
+<BODY aLink=#0000a8 bgColor=#ffffff link=#000088 text=#000000 vLink=#7777dd>
+<TABLE border=0 cellSpacing=0 width="100%">
+  <TBODY>
+  <TR>
+    <TD>
+      <H1>Outils de hackers et leurs signatures, première partie <BR></H1>Par 
+      Toby Miller tmiller@va.prestige.net <BR>Traduit par NightBird <A 
+      href="http://www.nightbirdfr.com/">http://www.nightbirdfr.com/</A><BR><BR>
+      <HR>
+    </TD></TR>
+  <TR>
+    <TD>
+      <P><B>But </B></P>
+      <P>Cet article est le premier d'une serie de papiers detaillant les 
+      exploits/outils des hackers et leurs signatures. Nous allons examiner 
+      l'exploit du serveur de noms de domaine Berkley (BIND) bind8x.c. La 
+      discussion couvrira les details de bind8x.c et fournira les signatures qui 
+      assisteront un specialiste en systeme d'intrusions a le detecter. Ce 
+      papier assume que le lecteur a quelques connaissances de TCP/IP et du 
+      format de tcpdump. </P>
+      <P><B>BIND et DNS </B></P>
+      <P>"DNS est une base de donnees distribuees qui utilise TCP/IP pour faire 
+      le lien entre les noms de machines et les adresses IP."[1] Pour resumer, 
+      cela veut dire que lorsqu'un utilisateur ecrit <A 
+      href="http://www.securityfocus.com/" 
+      target=nonlocal>http://www.securityfocus.com/</A> sur son navigateur, 
+      l'ordinateur ne va pas automatiquement savoir ce que l'utilisateur 
+      demande. L'ordinateur ira vers le serveur DNS qu'on lui a assigne et 
+      demandera l'adresse IP de l'url demandée. Cela est aussi vrai pour 
+      resoudre les adresses IP vers les noms de machines. Un bon exemple de ce 
+      qui se passe reellement est montre sur la figure 1. Elle représente la 
+      sortie de tcpdump depuis mon ordinateur personnel quand il parle au 
+      serveur DNS. </P>
+      <TABLE align=center border=1 width="60%">
+        <TBODY>
+        <TR>
+          <TD><PRE>22:12:51.704487 &gt; my.computer.net.1025 &gt; my.isp’s.DNS.domain: 23838+A?
+www.securityfocus.com. (39) (ttl 64, id 217)
+                 4500 0043 00d9 0000 4011 8f3a xxxx xxxx
+	         xxxx xxxx 0401 0035 002f 12ea 5d1e 0100
+                 0001 0000 0000 0000 0377 7777 0d73 6563
+		 7572 6974 7966 6f63 7573 0363 6f6d 0000
+                 0100 01
+
+22:12:51.884600 &gt; my.isp’s.DNS.net.domain &gt; my.computer.net.1025:23838 q:
+www.securityfocus.com. 1/1/1 www.securityfocus.com. A www.securityfocus.com
+(89) (ttl 55, id 2916)
+                 4500 0075 0b64 0000 3711 8d7d xxxx xxxx
+                 xxxx xxxx 0035 0401 0061 62e9 5d1e 8180
+                 0001 0001 0001 0001 0377 7777 0d73 6563
+                 7572 6974 7966 6f63 7573 0363 6f6d 0000
+                 0100 01c0 0c00 0100 0100 0129 9100 0442
+                 2697 0ac0 1000 0200 0100 020b cd00 0603
+                 6e73 32c0 10c0 4300 0100 0100 00ba 4c00
+                 0442 2697 02
+
+22:12:51.887833 &gt; my.computer.net.1050 &gt; www.securityfocus.com.www S
+1691535048:1691535048(0) win 32120 &lt;mss 1460,sackOK,timestamp 464785
+0,nop,wscale 0&gt; (DF) (ttl 64, id 218)
+                4500 003c 00da 4000 4006 9f04 xxxx xxxx
+                4226 970a 041a 0050 64d2 c6c8 0000 0000
+                a002 7d78 e813 0000 0204 05b4 0402 080a
+                0007 1791 0000 0000 0103 0300</PRE></TD></TR></TBODY></TABLE>
+      <P align=center>Figure 1: Communications DNS </P>
+      <P>En regardant le premier paquet, nous voyons que le port de destination 
+      est 53 et que le paquet lui-meme est un paquet UDP. Je pense qu'une partie 
+      du paquet est assez clair. C'est la partie DNS du paquet que nous allons 
+      expliquer. Avant que nous regardions le DNS, jettons un coup d'oeil a 
+      l'en-tete du DNS dans la figure 2. </P>
+      <P></P>
+      <TABLE align=center border=1 width="60%">
+        <TBODY>
+        <TR>
+          <TD><PRE>                                     1  1  1  1  1  1      
+       0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5  
+     +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+     |                      ID                       |
+     +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+     |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
+     +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+     |                    QDCOUNT                    |
+     +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+     |                    ANCOUNT                    |
+     +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+     |                    NSCOUNT                    |
+     +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+     |                    ARCOUNT                    |
+     +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+</PRE></TD></TR></TBODY></TABLE>
+      <P align=center class=text>Figure 2: Format de l'entete DNS [2] </P>
+      <P>La figure 2 nous donne une bonne idee de ce que nous recherchons dans 
+      ce paquet. Depuis l'en-tete, nous voyons que 23838(hex 5d1e) est le numero 
+      d'identification dans le paquet DNS. Le numero ID est envoye au serveur 
+      par le client et il est ensuite renvoye au client par le serveur. Le but 
+      de cela est de permettre au client de regrouper les reponses avec les 
+      requetes correspondantes. </P>
+      <P>L'objet suivant que nous voulons regarder est le sign +. Dans le monde 
+      des mathematiques, c'est le signe de l'addition; cependant, dans le monde 
+      des DNS cela veut dire que le parametre RD (requerence desire - recursion 
+      desired) a ete mis. Le 'A' veut dire que nous voulons une adresse IP. </P>
+      <P>Le paquet numero 2 a une zone qui necessite explication. C'est la 
+      lettre q - pouvant vouloir dire requete (query). </P>
+      <P>Enfin, dans le 3eme paquet nous voyons que mon ordinateur a ete capable 
+      d'obtenir l'adresse IP de www.securityfocus.com et qu'il a commence a 
+      faire la connexion initiale. </P>
+      <P><B>BIND </B>
+      <P>BIND veut dire Berkley Internet Name Domain. Dans l'environement Linux 
+      BIND peut etre habituellement trouve sous named. Le fichier de 
+      configuration est situe a /etc/named.conf. Named (s'il est activé au 
+      demarrage) tourne sur le port 53. Je ne vais pas rentrer dans les details 
+      sur comment installer le DNS ou meme les meilleurs tactiques de securite 
+      liees au DNS. A l'ecriture de ce papier, la version de BIND disponible 
+      consideree comme la plus sure est <A href="http://www.isc.org/" 
+      target=nonlocal>BIND 8.2.3</A>. Le programme (bind8X.c) que nous allons 
+      etudier exploite la version 8.2.2. </P>
+      <P><B>Bind8x.c </B></P>
+      <P>Bind8x.c a ete ecrit par Ix et lucysoft. Il exploite les vulnerabilites 
+      trouvées dans BIND 8.2.2. Quand il est utilise, Bind8x.c vous donne un 
+      acces root sur la machine victime (fournissant une version de BIND 
+      vulnerable). Si vous voulez voir le code, regardez a <A 
+      href="http://packetstorm.securify.com/0102-exploits/bind8x.c" 
+      target=nonlocal>http://packetstorm.securify.com/0102-exploits/bind8x.c</A>. 
+      </P>
+      <P>Compiler ce programme est relativement facile - tout ce que vous avez a 
+      faire est gcc -o bind8x bind8x.c. Cela me donne le programme dont j'ai 
+      besoin. J'ai lance ce programme sur mon reseau personnel, contre une 
+      machine RedHat 6.1 (192.168.1.25) qui n'a aucun patch et tous les services 
+      sont largement ouverts. La figure 3 est une trace tcpdump des paquets que 
+      nous allons analyses. </P>
+      <TABLE align=center border=1 width="70%">
+        <TBODY>
+        <TR>
+          <TD><PRE><CODE>16:01:44.760778 &lt; 192.168.1.5.1042 &gt; 192.168.1.25.domain: 48879 inv_q+
+[b2&amp;3=0x980] (476) (ttl 64, id 4626)
+		    4500 01f8 1212 0000 4011 e374 c0a8 0105
+                    c0a8 0119 0412 0035 01e4 b242 beef 0980
+                    0000 0001 0000 0000 3e00 0000 0000 0000
+                    0000 0000 0000 0000 0000 0000 0000 0000
+                    0000 0000 0000 0000 0000 0000 0000 0000
+                    0000 0000 0000 0000 0000 0000 0000 0000
+                    0000 0000 0000 003e 0000 0000 0000 0000
+                    0000 0000 0000 0000 0000 0000 0000 0000
+                    0000
+16:01:44.761921 &gt; 192.168.1.25.domain &gt; 192.168.1.5.1042: 48879 inv_q FormErr
+[0q] q:
+^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@
+^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@.^@^@^@^@^@^@^@^@^@^@^@^@^@^@^@^
+@^@^@^@^@^@^@^@^@^@^@ 1/0/0 . (719) (ttl 64, id 2)
+                   4500 02eb 0002 0000 4011 f491 c0a8 0119			
+                   c0a8 0105 0035 0412 02d7 6a17 beef 8981
+                   0000 0001 0000 0000 3e00 0000 0000 0000
+                   0000 0000 0000 0000 0000 0000 0000 0000
+                   0000 0000 0000 0000 0000 0000 0000 0000
+                   0000 0000 0000 0000 0000 0000 0000 0000
+                   0000 0000 0000 003e 0000 0000 0000 0000
+                   0000 0000 0000 0000 0000 0000 0000 0000
+		   0000
+16:01:44.773774 &lt; 192.168.1.5.1042 &gt; 192.168.1.25.domain: 57005+ [b2&amp;3=0x180]
+[7q] [1au] (510) (ttl 64, id 4627)
+                   4500 021a 1213 0000 4011 e351 c0a8 0105
+                   c0a8 0119 0412 0035 0206 b5c3 dead 0180
+                   0007 0000 0000 0001 3f00 0102 0304 0506
+                   0708 090a 0b0c 0d0e 0f10 1112 1314 1516
+                   1718 191a 1b1c 1d1e 1f20 2122 2324 2526
+                   2728 292a 2b2c 2d2e 2f30 3132 3334 3536
+                   3738 393a 3b3c eb0a 0200 00c0 0000 0000
+                   003f 0001 eb44 5e29 c089 4610 4089 c389
+</CODE></PRE></TD></TR></TBODY></TABLE>
+      <P align=center>Figure 3: TCPDUMP de Bind8x.c </P>
+      <P>Qu'est ce qu'il y a de si interessant dans ces paquets? D'abord, nous 
+      voyons que les paquets sont des requetes inverses. Qu'est ce que des 
+      requetes inverses? Des requetes inverses sont les liens inverses d'une 
+      requete standard [3]. Une autre chose interessante que nous voulons 
+      regarder est '48879', qui est lID. Si vous regardez precisement le paquet, 
+      nous voyons que 48879 = beef (bonne signature!). En regardant a 0980 dans 
+      le premier paquet nous voyons aussi quelques elements d'interet. La figure 
+      4 est une sortie d'ethereal: </P>
+      <TABLE align=center border=1 width="40%">
+        <TBODY>
+        <TR>
+          <TD><PRE>Domain Name System (query)    
+   Transaction ID: 0xbeef    
+   Flags: 0x0980 (Inverse query)
+   0... .... .... .... = Query
+   .000 1... .... .... = Inverse query
+   .... ..0. .... .... = Message is not truncated
+   .... ...1 .... .... = Do query recursively
+   .... .... ...0 .... = Non-authenticated data is 
+unacceptable    
+   Questions: 0    
+   Answer RRs: 1
+   Authority RRs: 0
+   Additional RRs: 0
+   Answers        
+      &lt;Name goes past end of captured data in packet&lt;: 
+type unused, class unknown
+            Name: &lt;Name goes past end of captured data in 
+packet&gt;
+            Type: unused
+            Class: unknown
+            Time to live: 0 time
+            Data length: 0
+            Data</PRE></TD></TR></TBODY></TABLE>
+      <P align=center>Figure 4: Affichage d'un paquet de requete inverse </P>
+      <P>La figure 4 montre des elements DNS normaux. Mais jetons un coup d'oeil 
+      aux 'Reponses'. Les 'Reponses' nous montrent que le Nom vient apres la fin 
+      des donnees capturees dans le paquet. C'est là que le debordement de pile 
+      commence. Le prochain paquet est la reponse de la victime. Pour resumer en 
+      quelques mots, il dit "le nom vient apres la fin des donnees capturees du 
+      paquet&gt;: type non utilise, classe inconnue". En d'autres termes, il ne 
+      sait pas ce qu'il se passe. </P>
+      <P>Jetons un coup d'oeil à la sortie d'Ethereal pour le prochain paquet. 
+      </P>
+      <TABLE align=center border=1 width="40%">
+        <TBODY>
+        <TR>
+          <TD><PRE>   Domain Name System (query)    
+       Transaction ID: 0xdead   
+       Flags: 0x0180 (Standard query)        
+          0... .... .... .... = Query        
+          .000 0... .... .... = Standard query        
+          .... ..0. .... .... = Message is not truncated
+          .... ...1 .... .... = Do query recursively
+          .... .... ...0 .... = Non-authenticated data is 
+   unacceptable
+       Questions: 7    
+       Answer RRs: 0    
+       Authority RRs: 0    
+       Additional RRs: 1    
+       Queries        
+          &lt;Name contains a pointer that goes past the end of
+   the packet&gt;: type unused, class unknown            
+                 Name: &lt;Name contains a pointer that goes past 
+   the end of the packet&gt;
+                 Type: unused
+                 Class: unknown
+          &lt;Name goes past end of captured data in packet&gt;:
+   type A, class unknown
+                 Name: &lt;Name goes past end of captured data in packet&gt;
+                 Type: Host address
+                 Class: unknown
+</PRE></TD></TR></TBODY></TABLE>
+      <P align=center>Figure 5: Sortie de Ethereal </P>
+      <P>Encore une fois nous pouvons regarder a l'interieur du paquet et en 
+      sortir une belle signature. Si vous regardez a l'ID vous verrez 'dead'. 
+      Rappelez vous 57005 == dead. Cette fois la, regardez le nombre de 
+      questions envoyees - sept(7). Ces petits elements sont interessants si 
+      vous essayez de developper des signatures IDS pour des outils "hacker" 
+      specifiques. La reponse a ce paquet ressemble a ca: </P>
+      <TABLE align=center border=1 width="40%">
+        <TBODY>
+        <TR>
+          <TD><PRE>  16:01:44.774845 &gt; 192.168.1.25.domain &gt; 192.168.1.5.1042: 57005 
+  [7q] q:
+  ^@^A^B^C^D^E^F^G^H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z^[^\^]^^^_
+  !"#$%&amp;'()*+,-./0123456789:;&lt;M-k^J.^@^@. 0/0/1 (533) (ttl 64, 
+  id 3)	
+		 4500 0231 0003 0000 4011 f54a c0a8 0119
+	         c0a8 0105 0035 0412 021d 6fbc dead 8180			
+                 0007 0000 0000 0001 3f00 0102 0304 0506
+		 0708 090a 0b0c 0d0e 0f10 1112 1314 1516
+		 1718 191a 1b1c 1d1e 1f20 2122 2324 2526		
+             	 2728 292a 2b2c 2d2e 2f30 3132 3334 3536
+                 3738 393a 3b3c eb0a 0200 00c0 0000 0000
+                 003f 0001 eb44 5e29 c089 4610 4089 c389
+		 460c
+</PRE></TD></TR></TBODY></TABLE>
+      <P align=center>Figure 6: Sortie de TCPDUMP pour la 25eme reponse.</P>
+      <P>Le prochain couple de paquets que nous voyons ici nous montre 
+      192.168.1.5 faisant une connexion avec 192.168.1.25. Ensuite, nous voyons 
+      192.168.1.25 donner a 192.168.1.5 un acces root. La connexion initiale est 
+      montree dans la figure 7. </P>
+      <TABLE align=center border=1 width="60%">
+        <TBODY>
+        <TR>
+          <TD><PRE>   16:01:44.789072 &lt;: 192.168.1.5.1373 &gt; 192.168.1.25.36864: S
+   3252931087:3252931087(0) win 32120 &lt;mss 1460,sackOK,timestamp 
+   1741083 0,nop,wscale 0&gt; (DF) (ttl 64, id 4629)
+
+   16:01:44.790474 &gt; 192.168.1.25.36864 &gt; 192.168.1.5.1373: S
+   3700394557:3700394557(0) ack 3252931088 win 32120 &lt;mss 
+   1460,sackOK,timestamp 33477 1741083,nop,wscale 0&gt; (DF) (ttl 64,
+   id 4)
+
+   16:01:44.790849 &lt; 192.168.1.5.1373 &gt; 192.168.1.25.36864: . 1:1(0)
+   ack 1 win 32120 &lt;nop,nop,timestamp 1741083 33477&gt; (DF) (ttl 64, 
+   id 4630)                 
+</PRE></TD></TR></TBODY></TABLE>
+      <P align=center>Figure 7 </P>
+      <P>Notons le port eleve (36864) auquel 192.168.1.5 essaie de se connecter. 
+      Pour sauver un peu d'espace, nous omettrons les paquets ACK, a moins 
+      qu'ils soient vitaux a la sequence d'evenements. La arrive root!! </P>
+      <TABLE align=center border=1 width="60%">
+        <TBODY>
+        <TR>
+          <TD><PRE>   16:01:44.809078 &lt; 192.168.1.5.1373 &gt; 192.168.1.25.36864: P 
+   1:16(15) ack 1 win 32120 <NOP,NOP,TIMESTAMP 1741085 33477> (DF) 
+   (ttl 64, id 4631)
+                   4500 0043 1217 4000 4006 a52f c0a8 0105
+                   c0a8 0119 055d 9000 c1e3 ca10 dc8f 8a3e
+                   8018 7d78 90b5 0000 0101 080a 001a 911d
+                   0000 82c5<B> 756e 616d 6520 2d61 3b20 6964
+                   3b0a 00</B></PRE></TD></TR></TBODY></TABLE>
+      <P align=center>Figure 8 </P>
+      <P>Les nombres hexa en gras viennent de 'uname -a; id;'. Encore une fois, 
+      notons le port de destination eleve. </P>
+      <TABLE align=center border=1 width="60%">
+        <TBODY>
+        <TR>
+          <TD><PRE>    16:01:44.912351 &gt; 192.168.1.25.36864 &gt; 192.168.1.5.1373: P 
+    1:73(72) ack 16 win 32120 &lt;:nop,nop,timestamp 33490 1741085&gt; (DF) 
+    (ttl 64, id 6)
+    4500 007c 0006 4000 4006 b707 c0a8 0119
+    c0a8 0105 9000 055d dc8f 8a3e c1e3 ca1f
+    8018 7d78 9af8 0000 0101 080a 0000 82d2
+    001a 911d 4c69 6e75 7820 7374 6565 6c65
+    7273 3132 2032 2e32 2e31 322d 3230 2023
+    3120 4d6f 6e20 5365 7020 3237 2031 303a
+    3235 3a35 3420 4544 5420 3139 3939 2069
+    3538 3620 756e 6b6e 6f77 6e0a</PRE></TD></TR></TBODY></TABLE>
+      <P align=center>Figure 9 </P>
+      <P>Notons que 192.168.1.25 envoie maintenant toutes les informations sur 
+      sa machine a 192.168.1.5 </P>
+      <TABLE align=center border=1 width="60%">
+        <TBODY>
+        <TR>
+          <TD><PRE> 16:01:44.944313 &gt; 192.168.1.25.36864 &gt; 192.168.1.5.1373: P
+ 73:97(24) ack 16 win 32120 <NOP,NOP,TIMESTAMP 33493 1741095> (DF) 
+ (ttl 64, id 7)
+                  4500 004c 0007 4000 4006 b736 c0a8 0119
+                  c0a8 0105 9000 055d dc8f 8a86 c1e3 ca1f
+                  8018 7d78 bd97 0000 0101 080a 0000 82d5
+                  001a 9127<B> 7569 643d 3028 726f 6f74 2920
+                  6769 643d 3028 726f 6f74 290a</B></PRE></TD></TR></TBODY></TABLE>
+      <P align=center>Figure 10 </P>
+      <P>Maintenant, nous avons root. Les nombres hexa en gras ci-dessus 
+      montrent uid=0(root) gid=0(root). </P>
+      <P><B>Resume </B></P>
+      <P>Ce papier a parle de DNS, BIND et de l'exploit bind8x.c. Nous avons 
+      aussi trouve quelques signatures. D'abord, nous avons le paquet UDP de la 
+      requete inverse avec un ID de 'beef' et un total de 484 octets. Ensuite, 
+      nous avons le paquet de la reponse UDP avec un ID de 'dead' et un total de 
+      538 octets. Enfin, nous avons un port de destination de 36864. En 
+      utilisant ce port, l'attaquant aura un acces root (si vulnerable). </P>
+      <P>J'espere que cette discussion aura fourni assez d'informations pour 
+      aider quelqu'un qui se gratte la tete a propos de paquets similaires a 
+      ceux-ci. Si le lecteur a d'autres questions, voila quelques liens 
+      interessants qui peuvent fournir des informations utiles. </P>
+      <P><B>References </B></P>
+      <P>[1] Stevens,W.R 1994, TCP/IP Illustrated Vol. 1. Addison-Wesley, 
+      Reading Mass p. 187<BR>[2] ftp://ftp.isi.edu/in-notes/rfc1035.txt p. 
+      25<BR>[3] ftp://ftp.isi.edu/in-notes/rfc1035.txt p. 40 </P>
+      <P>Toby Miller est un contributeur au livre Intrusion Detection Signatures 
+      and Analysis (NEW RIDERS Publishing) et un contributeur au livre Maximum 
+      Security Rev. 3 (SAMS Publishing). Il a travaille dans le monde de la 
+      securite Linux et le monde des firewalls/IDS. M. Miller a publie de 
+      nombreux papiers pour SANS et Securityfocus.com. Il peut etre joint a <A 
+      href="mailto:tmiller@va.prestige.net">tmiller@va.prestige.net</A>. 
+      </P><BR>Liens interessants:<BR><BR><A class=link 
+      href="http://www.ietf.org/rfc/rfc1035.txt?number=1035" target=nonlocal>DNS 
+      RFC</A><BR><SPAN>IETF<BR><BR></SPAN><A class=link 
+      href="http://www.cert.org/advisories/CA-2001-02.html" target=nonlocal>BIND 
+      Vulnerabilities</A><BR><SPAN>CERT<BR><BR></SPAN><A class=link 
+      href="http://www.pgp.com/research/covert/advisories/047.asp" 
+      target=nonlocal>NAI Bulletin</A><BR><SPAN>PGP Security<BR><BR></SPAN>
+      <DIV></DIV></TD></TR></TBODY></TABLE><BR><BR>Traduit par NightBird <A 
+href="http://www.nightbirdfr.com/">http://www.nightbirdfr.com/</A><BR>Document 
+original en anglais: 
+http://www.securityfocus.com/focus/ids/articles/bind8.html<BR></BODY></HTML>

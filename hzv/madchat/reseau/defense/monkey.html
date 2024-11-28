@@ -1,0 +1,930 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<HTML>
+<HEAD>
+ <META NAME="GENERATOR" CONTENT="SGML-Tools 1.0.9">
+ <TITLE>Les attaques du singe intercepteur</TITLE>
+
+
+</HEAD>
+<BODY>
+<H1>Les attaques du singe intercepteur</H1>
+
+<H2>Denis Ducamp</H2>12 février 2001
+<H2><A NAME="s1">1. Les attaques du singe intercepteur</A></H2>
+
+<P>
+<P>contre
+SSH
+et
+HTTPS
+<P>Monkey In The Middle
+(tm)
+Dug Song
+<P>
+<P>
+<P>par Denis Ducamp
+Denis.Ducamp@hsc.fr
+Denis.Ducamp@groar.org
+http://www.groar.org/&nbsp;ducamp/
+<P>
+<H2><A NAME="s2">2. Introduction</A></H2>
+
+<P>
+<UL>
+<LI>    dsniff, la boite à outils
+<UL>
+<LI>            Dug Song</LI>
+<LI>            webmitm</LI>
+<LI>            sshmitm</LI>
+<LI>            dsniff</LI>
+<LI>            Les autres outils</LI>
+<LI>            Les bibliothèques
+</LI>
+</UL>
+
+</LI>
+<LI>    Pourquoi ça marche ?
+<UL>
+<LI>            SSH / HTTPS
+</LI>
+</UL>
+
+</LI>
+<LI>    Les signes d'une attaque
+<UL>
+<LI>            SSH / HTTPS
+</LI>
+</UL>
+
+</LI>
+<LI>    Comment se protéger ?
+<UL>
+<LI>            SSH / HTTPS</LI>
+<LI>            Ce qui ne marche pas contre sshmitm / webmitm
+</LI>
+</UL>
+
+</LI>
+<LI>    Conclusion
+<UL>
+<LI>            Références / Remerciements
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s3">3. dsniff, la boite à outils</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    une collection d'outils permettant :
+<UL>
+<LI>            d'auditer un réseau,</LI>
+<LI>            de réaliser des tests d'intrusion.
+</LI>
+</UL>
+
+</LI>
+<LI>    deux catégories d'outils :
+<UL>
+<LI>            écouter passivement le réseau
+<UL>
+<LI>                    pour capturer des données intéressantes,</LI>
+</UL>
+
+</LI>
+<LI>            faciliter l'interception de trafic réseau
+<UL>
+<LI>                    normalement non disponible à un attaquant.
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+<LI>    de formidables outils pour :
+<UL>
+<LI>            
+éduquer les utilisateurs et les administrateurs
+,</LI>
+<LI>            
+obtenir des budgets sécurité
+:
+<UL>
+<LI>                    montrez son mot de passe et son courrier électronique à votre patron 
+;-)
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+<LI>    Mais surtout 
+n'abusez pas de ces outils !
+<UL>
+<LI>            même s'ils sont portables : *BSD, Linux, Solaris, Win32.
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s4">4. Dug Song</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    University of Michigan :
+<UL>
+<LI>            Center for Information Technology Integration</LI>
+<LI>            http://www.citi.umich.edu/</LI>
+<LI>            Hacker
+</LI>
+</UL>
+
+</LI>
+<LI>    Coordonnées personnelles :
+<UL>
+<LI>            dugsong@monkey.org</LI>
+<LI>            http://naughty.monkey.org/&nbsp;dugsong/
+</LI>
+</UL>
+
+</LI>
+<LI>    Autres projets :
+<UL>
+<LI>            Check Point FireWall-1 vulnerabilities</LI>
+<LI>            Patches :
+<UL>
+<LI>                    popa3d : APOP / Kerberos v4</LI>
+<LI>                    John the Ripper : S/Key / Kerberos v4 TGT</LI>
+<LI>                    SSH : AFS / Kerberos v4</LI>
+</UL>
+
+</LI>
+<LI>            OpenBSD ports and audits</LI>
+<LI>            OpenSSH</LI>
+<LI>            fragrouter</LI>
+<LI>            The Honeynet Project
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s5">5. sshmitm</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    relaye et enregistre le trafic SSH redirigé par dnsspoof
+</LI>
+<LI>    capture les mots de passe d'accès SSH
+</LI>
+<LI>    détourne les sessions interactives
+</LI>
+<LI>    seule la version 1 du protocole est supportée
+
+<UL>
+<LI>            et celle-ci sera toujours la seule à être supportée,
+
+<UL>
+<LI>                    ce programme est déjà trop maléfique.
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s6">6. webmitm</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    relaye de façon transparente et enregistre :
+
+<UL>
+<LI>            le trafic HTTP/HTTPS redirigé par dnsspoof,
+</LI>
+</UL>
+
+</LI>
+<LI>    capture :
+
+<UL>
+<LI>            les accès webmail :
+<UL>
+<LI>                    hotmail, etc.
+</LI>
+</UL>
+
+</LI>
+<LI>            les soumissions de formulaires :
+<UL>
+<LI>                    numéros de cartes bleues, etc.
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+<LI>    même les plus "sécurisés" par chiffrement SSL !
+</LI>
+<LI>    nécessite que le client soit compatible HTTP/1.1 :
+
+<UL>
+<LI>            émission de la commande Host: dans l'entête HTTP.
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s7">7. dsniff</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    permet de capturer les mots de passe voyageant en clair,
+
+<UL>
+<LI>            ou de façon brouillée !!!
+</LI>
+</UL>
+
+</LI>
+<LI>    supporte plus de 30 protocoles normalisés / propriétaires :
+
+FTP, Telnet, SMTP, HTTP, POP, poppass, NNTP, IMAP, SNMP, LDAP, Rlogin, RIP, OSPF, PPTP MS-CHAP, NFS, YP/NIS, SOCKS, X11, CVS, IRC, AIM, ICQ, Napster, PostgreSQL, Meeting Maker, Citrix ICA, Symantec pcAnywhere, NAI Sniffer, Microsoft SMB, Oracle SQL*Net, Sybase et Microsoft SQL.
+</LI>
+<LI>    points forts :
+
+<UL>
+<LI>            réassemblage complet des sessions TCP/IP,</LI>
+<LI>            support des routes asymétriques,</LI>
+<LI>            détection auto-magique du protocole applicatif,</LI>
+<LI>            sauvegarde dans une base Berkeley DB,</LI>
+<LI>            HTTP : analyse de QUERY_STRING et x-www-form-urlencoded.
+
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s8">8. Les autres outils</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    arpspoof, dnsspoof, macof :
+
+<UL>
+<LI>            permettent l'interception de trafic réseau.
+</LI>
+</UL>
+
+</LI>
+<LI>    filesnarf, mailsnarf, msgsnarf, urlsnarf, webspy :
+
+<UL>
+<LI>            capture des informations intéressantes :
+
+<UL>
+<LI>                    fichiers transférés par NFS v2/v3 en UDP/TCP
+<UL>
+<LI>                            attention à vos clés privées,
+</LI>
+</UL>
+
+</LI>
+<LI>                    messages transférés par POP/SMTP, IRC/ICQ/AOL/MSN/Yahoo,
+</LI>
+<LI>                    URL visitées :
+<UL>
+<LI>                            dans un journal au format CLF,</LI>
+<LI>                            en live dans Netscape.
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+<LI>    tcpkill, tcpnice :
+
+<UL>
+<LI>            facilitent la capture de données.
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s9">9. Les bibliothèques</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    Les bibliothèques nécessaires sont nombreuses :
+
+<UL>
+<LI>            libpcap - ftp://ftp.ee.lbl.gov/
+<UL>
+<LI>                    capture et filtrage des paquets sur le réseau
+</LI>
+</UL>
+
+</LI>
+<LI>            libnet - http://www.packetfactory.net/libnet/
+<UL>
+<LI>                    génération de paquets sur le réseau
+</LI>
+</UL>
+
+</LI>
+<LI>            libnids - http://www.packetfactory.net/libnids/
+<UL>
+<LI>                    réassemblage de paquets et de sessions
+</LI>
+</UL>
+
+</LI>
+<LI>            libdb - http://www.sleepycat.com/ (for non-BSD/Linux systems)
+<UL>
+<LI>                    enregistrement unique des authentifications dans une base de données
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+<LI>    ce qui permet de limiter les abus :)
+
+<UL>
+<LI>            mais un package RPM est disponible :(
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s10">10. Pourquoi ça marche ?</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    La cryptographie de HTTPS et SSH est basée sur
+
+<UL>
+<LI>            la cryptographie à clés publiques
+
+<UL>
+<LI>                    HTTPS y ajoute la confiance des certificats à clés publiques
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+<LI>    L'utilisation de ces méthodes est fortement contraignante :
+
+<UL>
+<LI>            pour être plus acceptable, des modes dégradés sont disponibles
+
+<UL>
+<LI>                    le client peut accepter "aveuglément" la clé du serveur
+</LI>
+<LI>                    le client peut accepter que le serveur puisse avoir changé de clé
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+<LI>    sshmitm et webmitm utilisent ces vulnérabilités ainsi introduites
+</LI>
+</UL>
+<P>
+<H2><A NAME="s11">11. SSHv1</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    la clé de session est générée par le client
+</LI>
+<LI>    puis envoyée chiffrée avec la clé publique du serveur qu'il vient de recevoir
+<UL>
+<LI>            l'attaquant n'a qu'à utiliser n'importe quelle paire de clés publique / privée</LI>
+<LI>            et attendre que le client accepte d'utiliser cette clé publique.
+</LI>
+</UL>
+
+</LI>
+<LI>    authentification client par mot de passe :
+<UL>
+<LI>            envoyé en "clair" dans le tunnel chiffré
+</LI>
+</UL>
+
+</LI>
+<LI>    authentification client par RSA :
+<UL>
+<LI>            le serveur envoie au client un challenge chiffré avec une clé publique autorisée</LI>
+<LI>            le client prouve qu'il connait la clé privée en déchiffrant le challenge
+</LI>
+</UL>
+
+</LI>
+<LI>    sshmitm impose l'authentification par mot de passe dans sshv1.
+</LI>
+</UL>
+<P>
+<H2><A NAME="s12">12. SSHv2</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    la clé de session est générée par le protocole de Diffie-Hellman :
+
+<UL>
+<LI>            le serveur s'authentifie en signant une empreinte des messages échangés
+</LI>
+<LI>            l'authentification client utilise les mêmes méthodes que sshv1
+</LI>
+</UL>
+
+</LI>
+<LI>    l'attaque est toujours possible par attaque de l'intercepteur sur le protocole DH
+</LI>
+<LI>    sshmitm ne met pas en oeuvre sshv2
+</LI>
+</UL>
+<P>
+<H2><A NAME="s13">13. HTTPS</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    La clé du serveur est accompagnée d'un certificat :
+
+<UL>
+<LI>            ce certificat peut être signé par une autorité "reconnue",
+
+<UL>
+<LI>                    le navigateur n'accepte le certificat que s'il est destiné au site visité,
+</LI>
+<LI>                    mais l'utilisateur peut l'accepter.
+</LI>
+</UL>
+
+</LI>
+<LI>            ce certificat peut être signé par une autorité "inconnue",
+
+<UL>
+<LI>                    le navigateur n'accepte pas l'autorité,
+</LI>
+<LI>                    mais l'utilisateur peut l'accepter.
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s14">14. Les signes d'une attaque ?</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    Les signes de l'attaque sont parfaitement visibles dans tous les cas :
+
+<UL>
+<LI>            SSH
+
+<UL>
+<LI>                    la clé publique a changé
+</LI>
+</UL>
+
+</LI>
+<LI>            HTTPS
+
+<UL>
+<LI>                    le certificat est destiné à un autre serveur
+</LI>
+<LI>                    le certificat est signé par une autorité non reconnue
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s15">15. SSH</A></H2>
+
+<P>
+<P>$ ssh -p 2222 groar
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!
+Someone could be eavesdropping on you right now (man-in-the-middle attack)!
+It is also possible that the RSA host key has just been changed.
+Please contact your system administrator.
+Add correct host key in /home/ducamp/.ssh/known_hosts to get rid of this message.
+<P>
+<UL>
+<LI>    Avec un client OpenSSH :
+
+Password authentication is disabled to avoid trojan horses.
+Permission denied.
+</LI>
+<LI>    Avec un client SSH :
+
+Agent forwarding is disabled to avoid attacks by corrupted servers.
+X11 forwarding is disabled to avoid attacks by corrupted servers.
+Are you sure you want to continue connecting (yes/no)? yes
+ducamp@groar's password: 
+</LI>
+</UL>
+<P>
+<H2><A NAME="s16">16. HTTPS</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    Mauvais certificat
+
+<UL>
+<LI>            le certificat ne correspond pas au nom du domaine demandé,
+</LI>
+<LI>            ce certificat peut avoir été signé par une autorité reconnue.
+</LI>
+</UL>
+
+</LI>
+<LI>    Autorité non reconnue
+
+<UL>
+<LI>            le certificat a été signé par une autorité non reconnue,
+</LI>
+<LI>            ce certificat peut correspondre au nom du domaine demandé.
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s17">17. HTTPS (mauvais certificat 1/2)</A></H2>
+
+<P>
+<P>Ce certificat a été obtenu en accédant à www.groar.org ...
+<P>
+<FIGURE>
+<EPS FILE="">
+<IMG SRC="http://www.groar.org/pres/MonkeyInTheMiddle/https1.jpg">
+<CAPTION></CAPTION>
+</FIGURE>
+<H2><A NAME="s18">18. HTTPS (mauvais certificat 2/2)</A></H2>
+
+<P>
+<P>... alors qu'il a été généré pour sos.groar.org
+<P>
+<FIGURE>
+<EPS FILE="">
+<IMG SRC="http://www.groar.org/pres/MonkeyInTheMiddle/https2.jpg">
+<CAPTION></CAPTION>
+</FIGURE>
+<H2><A NAME="s19">19. HTTPS (autorité non reconnue 1/2)</A></H2>
+
+<P>
+<P>Le certificat n'est pas signé par une autorité reconnue...
+<P>
+<FIGURE>
+<EPS FILE="">
+<IMG SRC="http://www.groar.org/pres/MonkeyInTheMiddle/https3.jpg">
+<CAPTION></CAPTION>
+</FIGURE>
+<H2><A NAME="s20">20. HTTPS (autorité non reconnue 2/2)</A></H2>
+
+<P>
+<P>...et les risques de supercherie sont indiqués par Netscape.
+<P>
+<FIGURE>
+<EPS FILE="">
+<IMG SRC="http://www.groar.org/pres/MonkeyInTheMiddle/https4.jpg">
+<CAPTION></CAPTION>
+</FIGURE>
+<H2><A NAME="s21">21. Comment se protéger ?</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    Ne pas utiliser les modes dégradés
+
+<UL>
+<LI>            toujours connaître la clé de son interlocuteur au préalable
+</LI>
+<LI>            vérifier systématiquement la clé de son interlocuteur
+
+<UL>
+<LI>                    arrêter immédiatement la connexion en cas d'anomalie
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+<LI>    Attention :
+
+<UL>
+<LI>            de nombreuses recommandations 
+ne sont pas sérieuses
+!!!
+
+<UL>
+<LI>                    sauf pour les lecteurs de slashdot, une citation de Dug Song :
+
+argh! it's amazing how silly some people are. Slashdot readers are especially numb-skulled, if their insistence that SSH2 would prevent such attacks is any indication.
+i'll add compression support when i get a free second.
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s22">22. SSH</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    Avant la première connexion le client doit :
+
+<UL>
+<LI>            récupérer la clé publique du serveur
+</LI>
+<LI>            éventuellement faire déposer sa clé publique sur le serveur
+</LI>
+</UL>
+
+</LI>
+<LI>    A chaque connexion le client doit toujours :
+
+<UL>
+<LI>            forcer une vérification stricte de la clé du serveur
+
+<UL>
+<LI>                    condition sine qua non à une authentification par mot de passe
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s23">23. Ce qui ne marche pas contre sshmitm</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    hoax #1 : utiliser ssh v2
+
+<UL>
+<LI>            aujourd'hui 
+seul le protocole v1 a été mis en oeuvre
+</LI>
+<LI>            dans le cas d'une 
+authentification par mot de passe
+:
+
+<UL>
+<LI>                    ssh v2 est 
+tout aussi vulnérable
+que ssh v1
+</LI>
+</UL>
+
+</LI>
+<LI>            des versions privées ont été / seront mises au point
+</LI>
+</UL>
+
+</LI>
+<LI>    hoax #2 : utiliser la compression dans ssh
+
+<UL>
+<LI>            aujourd'hui 
+la compression n'a pas encore été mise en oeuvre
+
+<UL>
+<LI>                    ce qui peut empêcher l'attaquant de visualiser la session et de la contourner
+</LI>
+<LI>                    mais pas de récupérer le mot de passe
+</LI>
+</UL>
+
+</LI>
+<LI>            des versions privées ont été / seront mises au point
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s24">24. HTTPS</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    Une autorité n'est connue qu'à une seule et unique condition :
+
+<UL>
+<LI>            la clé publique de l'autorité doit être entrée dans le navigateur.
+</LI>
+</UL>
+
+</LI>
+<LI>    Ne pas accepter les clés signées par une autorité connue,
+
+<UL>
+<LI>            si la clé n'est pas destinée au site visité.
+</LI>
+</UL>
+
+</LI>
+<LI>    Ne pas accepter les clés signées par une autorité inconnue,
+
+<UL>
+<LI>            même si la clé est destinée au site visité.
+</LI>
+<LI>            même si le nom de l'autorité correspond à une autorité connue.
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s25">25. Ce qui ne marche pas contre webmitm</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    hoax #3 : utiliser de vieux navigateurs sans la commande Host:
+
+<UL>
+<LI>            aujourd'hui 
+les fonctionnalités nécessaires n'ont pas encore    été mises en oeuvre
+
+<UL>
+<LI>                    ceci réclame du code spécifique à chaque plate-forme
+</LI>
+</UL>
+
+</LI>
+<LI>            des versions privées ont été / seront mises au point
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s26">26. Conclusion</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    Le principal problème est l'éducation des utilisateurs :
+
+<UL>
+<LI>            les signes de l'attaque sont visibles,
+</LI>
+<LI>            mais leurs conséquences sont ignorées.
+</LI>
+</UL>
+
+</LI>
+<LI>    Doit suivre la mise en place d'une organisation permettant :
+
+<UL>
+<LI>            la distribution des clés publiques
+
+<UL>
+<LI>                    des serveurs auprès des utilisateurs
+<UL>
+<LI>                            un serveur web avec signature des clés publiques
+</LI>
+</UL>
+
+</LI>
+<LI>                    des utilisateurs sur les serveurs accédés
+<UL>
+<LI>                            une liste électronique permettant le dépôt de clés
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+<LI>    Merci à Dug Song pour le travail réalisé
+<UL>
+<LI>            et pour la prise de conscience que ses outils permettent.
+</LI>
+</UL>
+
+</LI>
+<LI>    Merci à Ghislaine Labouret pour la relecture 
+:)
+</LI>
+</UL>
+<P>
+<H2><A NAME="s27">27. Références</A></H2>
+
+<P>
+<P>
+<UL>
+<LI>    Site original :
+
+<UL>
+<LI>            http://naughty.monkey.org/&nbsp;dugsong/dsniff/
+</LI>
+</UL>
+
+</LI>
+<LI>    FAQ (Foire Aux Questions) :
+
+<UL>
+<LI>            http://naughty.monkey.org/&nbsp;dugsong/dsniff/faq.html
+</LI>
+</UL>
+
+</LI>
+<LI>    Mailing liste :
+
+<UL>
+<LI>            echo subscribe | mail dsniff-request@monkey.org
+</LI>
+</UL>
+
+</LI>
+<LI>    Traduction française
+
+<UL>
+<LI>            des manuels et de la FAQ (Foire Aux Questions) :
+
+<UL>
+<LI>                    http://www.groar.org/&nbsp;ducamp/#sec-trad
+</LI>
+</UL>
+
+</LI>
+</UL>
+
+</LI>
+</UL>
+<P>
+<H2><A NAME="s28">28. Merci de votre attention</A></H2>
+
+<P>
+<P>
+<P>
+<P>Vous pouvez poser vos questions...
+<P>
+<P>et faire connaître vos remarques...
+<P>
+<P>puis réveiller discrètement ceux qui dorment ;-)
+<P>
+<P>Bye, bye...
+<P>(c) 02/2001 Denis de service 
+:)
+[tm]
+</BODY>
+</HTML>

@@ -1,0 +1,897 @@
+Un peu de mindfood pour les h4x0rz!
+
+1. Introduction: < Utiliser du code C dans du code Perl >
+
+Je sais pas si c'est la meme chose pour vous, mais je code un truc a
+la con en C, qui fait peut-etre des trucs un chouia plus complique que
+hello-world.c, et je me prends assez vite la tete a devoir coder une
+interface utilisateur, ou meme pour debugger, parce que ecrire du
+code de test dans un gros while(1) {} ca saoule tres vite. Et gdb
+c'est pas vraiment la panacee non plus. En fait ce que je veux,
+c'est pouvoir scripter mon programme sans devoir me taper tout le
+code C de parsing, etc...
+
+En fait, je veux pouvoir utiliser les fonctions de mon code en C
+depuis un script Perl :). Heureusement, les outils que Perl nous
+donne sont assez puissant pour faire le plus gros du boulot de
+maniere automatique. 
+
+Je vais partir du fait que vous connaissez tous plus ou moins le C et
+le Perl, sans jamais avoir vraiment fait de trucs "approfondis",
+comme creer un module, ou avoir ecrit un code en C qui utilise des
+variables Perl. Donc, d'abord un petit chapitre sur les modules Perl
+:)
+
+2. < Les modules Perl >
+
+Si vous utilisez Perl, vous utilisez CPAN. Vous avez donc du
+remarquer que les modules ont souvent la meme structure, ce qui n'est
+en fait pas surprenant, car il existe un petit utilitaire bien
+pratique fourni avec Perl qui permet de generer des stubs pour creer
+un module. C'est le meme programme qui va par la suite generer des
+stubs Perl pour des fonctions C, mais on verra ca dans le prochain
+chapitre, chaque chose en son temps :). Ce petit programme, c'est
+"h2xs", qui comme son nom le dit bien est en fait la pour convertir
+un fichier .h en fichier .xs. Accessoirement, on peut l'utiliser sans
+lire de code C :
+
+..
+       -X, --omit-XS
+            Omit the XS portion.  Used to generate templates for
+            a module which is not XS-based.  "-c" and "-f" are
+            implicitly enabled.
+       -c, --omit-constant
+            Omit "constant()" from the .xs file and corresponding
+            specialised "AUTOLOAD" from the .pm file.
+       -f, --force
+            Allows an extension to be created for a header even
+            if that header is not found in standard include
+            directories.
+       -n, --name=module_name
+            Specifies a name to be used for the extension, e.g.,
+            -n RPC::DCE
+.. (man h2xs)
+
+$ h2xs -X -n Gleupi1
+Defaulting to backwards compatibility with perl 5.8.0
+If you intend this module to be compatible with earlier perl versions, please
+specify a minimum perl version with the -b option.
+
+Writing Gleupi1/Gleupi1.pm
+Writing Gleupi1/Makefile.PL
+Writing Gleupi1/README
+Writing Gleupi1/t/1.t
+Writing Gleupi1/Changes
+Writing Gleupi1/MANIFEST
+$ find Gleupi1
+Gleupi1
+Gleupi1/Changes
+Gleupi1/Makefile.PL
+Gleupi1/MANIFEST
+Gleupi1/README
+Gleupi1/Gleupi1.pm
+Gleupi1/t
+Gleupi1/t/1.t
+$
+
+h2xs nous a donc genere un Changes (ou on va foutre les changements
+au programme, ce que personne ne fait en fait, donc on va bien se
+garder de le faire nous aussi :), un Makefile.PL, qui est en fait un
+script Perl qui va generer le vrai Makefile par la suite (on fait du
+Perl, on veut etre portable, pas question d'ecrire un Makefile lie a
+$UNIX :), un MANIFEST qui contient les fichiers appartenant au
+module, un README, les stubs pour le module (Gleupi1.pm), et un fichier
+de test vide (t/1.t).
+
+C'est pas trop con de rajouter les nouveaux fichiers dans le MANIFEST,
+parce que le Makefile.PL sait checker automatiquement si le module est
+complet.
+
+Regardons le Makefile.PL d'un peu plus pres:
+
+$ cat Makefile.PL 
+use 5.008;
+use ExtUtils::MakeMaker;
+# See lib/ExtUtils/MakeMaker.pm for details of how to influence
+# the contents of the Makefile that is written. WriteMakefile(
+    'NAME'              => 'Gleupi1',
+    'VERSION_FROM'      => 'Gleupi1.pm', # finds $VERSION
+    'PREREQ_PM'         => {}, # e.g., Module::Name => 1.1
+    ($] >= 5.005 ?    ## Add these new keywords supported since 5.005
+      (ABSTRACT_FROM => 'Gleupi1.pm', # retrieve abstract from module
+       AUTHOR     => 'Manuel Odendahl <manuel@hadiko.uni-karlsruhe.de>') : ()),
+);
+$
+
+On voit dont que l'on utilise la fonction WriteMakefile du module
+ExtUtils::MakeMaker, ce qui va generer un Makefile pour le module
+Gleupi1. On peut creer le Makefile en faisant:
+
+$ perl Makefile.PL
+Checking if your kit is complete...
+Looks good
+Writing Makefile for Gleupi1
+$ ls -l Makefile
+-rw-r--r--  1 manuel  staff  17942 Jan 20 16:14 Makefile
+$
+
+Le Makefile est un peu plus gros, et contient toutes les variables
+qui vont bien tirees de la configuration de Perl pour la plateforme
+ou il est installe. Par la suite, nous modifieront quelques trucs
+dans le Makefile.PL, mais pour l'instant nous allons le laisser comme
+il est, il est tres bien comme ca. Regardons plutot un peu le
+Gleupi1.pm. 
+
+$ cat Gleupi1.pm
+..
+# This allows declaration       use Gleupi1 ':all';
+# If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
+# will save memory.
+our %EXPORT_TAGS = ( 'all' => [ qw(
+
+) ] );
+
+our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
+
+our @EXPORT = qw(
+
+);
+..
+$
+
+Comme nous sommes de gentils programmeurs Perl, nous allons pas
+exporter nos variables et nos fonctions de force en les foutant dans
+EXPORT, mais nous allons tout mettre dans EXPORT_OK, ce qui permet au
+programme qui use notre module de requester les fonctions qu'il veut
+utiliser. On a pas envie d'utiliser le use ... ':all', donc on va
+virer %EXPORT_TAGS, ce qui nous donne:
+
+our @EXPORT_OK = qw/ hello_world /;
+
+Et dans la foulee, rajoutons la fonction hello_world a la fin du
+fichier pour qu'elle soit autoloadee en fonction des besoins du user:
+
+sub hello_world {
+    print "hello_world\n";
+}
+
+Un petit test:
+
+$ make
+cp Gleupi1.pm blib/lib/Gleupi1.pm
+AutoSplitting blib/lib/Gleupi1.pm (blib/lib/auto/Gleupi1)
+Manifying blib/man3/Gleupi1.3
+$ 
+
+Toujours parce que nous sommes de forts sympathiques programmeurs
+Perl, nous allons rajouter un test pour voir que notre fonction
+fonctionne. Comme hello_world ne return rien, on ne va que pouvoir
+tester si elle ne plante pas. Pour rajouter un test, nous allons
+editer le fichier t/1.t, qui contient un test case bidon.
+
+$ cat t/1.t
+..
+# change 'tests => 1' to 'tests => last_test_to_print';
+
+use Test::More tests => 1;
+BEGIN { use_ok('Gleupi1') };
+..
+$
+
+Nous rajoutons un test, donc nous allons changer le 1 en 2:
+
+use Test::More tests => 2;
+
+Et plus bas nous rajoutons notre test:
+
+use Gleupi1 qw/ hello_world /;
+hello_world();
+ok(1);
+
+Testons le tout:
+
+$ make test
+PERL_DL_NONLAZY=1 /usr/bin/perl "-MExtUtils::Command::MM" "-e" "test_harness(0, 'blib/lib', 'blib/arch')" t/*.t
+t/1....ok                                                                    
+All tests successful.
+Files=1, Tests=2,  0 wallclock secs ( 0.11 cusr +  0.04 csys =  0.15
+CPU)
+$ perl -Mblib -MGleupi1 -e 'Gleupi1::hello_world'
+hello_world
+$
+
+Hop! Tout marche comme nous le voulions. Maintenant passons aux
+choses serieuses...
+
+3. < Acceder a des fonctions C depuis Perl >
+
+Apres avoir vu en gros comment bricoler un module Perl, nous allons
+maintenant bidouiller un module Perl qui va utiliser des fonctions
+C. Magie, nous allons l'appeler Gleupi2. Cette fois-ci, nous
+n'utiliserons plus le flag "-X", parce que nous voulons justement
+avoir un fichier XS. Cependant, nous ne voulons pas encore utiliser
+toute la puissance de XS, et nous nous passerons des fonctions
+"autoload".
+
+..
+       -A, --omit-autoload
+            Omit all autoload facilities.  This is the same as -c
+            but also removes the "use AutoLoader" statement from
+            the .pm file.
+.. (man h2xs)
+
+$ h2xs -A -n Gleupi2
+$ find Gleupi2
+Gleupi2
+Gleupi2/Changes
+Gleupi2/Makefile.PL
+Gleupi2/MANIFEST
+Gleupi2/ppport.h
+Gleupi2/README
+Gleupi2/Gleupi2.pm
+Gleupi2/Gleupi2.xs
+Gleupi2/t
+Gleupi2/t/1.t
+$
+
+Nous remarquons les fichiers supplementaires ppport.h et
+Gleupi2.xs. ppport.h est la pour permettre d'etre portable a travers
+les differentes implementations de Perl, qui ont toutes leurs
+specificites. C'est pas trop le probleme qui nous occupe pour le
+moment, on va donc l'ignorer. Le fichier qui nous interesse est
+evidemment Gleupi2.xs. Mais qu'est donc "xs"? XS est un langage qui
+permet de convertir des appels de fonctions en C vers des appels de
+fonction en Perl, et de convertir des types C en types Perl et vice
+versa. Regardons donc Gleupi2.xs d'un peu plus pres:
+
+$ cat Gleupi2.xs
+#include "EXTERN.h"
+#include "perl.h"
+#include "XSUB.h"
+
+#include "ppport.h"
+
+
+MODULE = Gleupi2          PACKAGE = Gleupi2
+$
+
+Pas vraiment grand chose de faramineux. En gros, le fichier est
+separe en deux parties. La premiere partie, avant la ligne
+"MODULE = ..." est du code C comme on le connait. Une seule
+difference, on peut rajouter de la documentation au format POD (voir
+man perlpod) qui sera ignoree lors de la compilation du fichier .xs
+vers .c. Apres la ligne "MODULE = ...", nous avons le code XS
+proprement dit. Nous allons rajouter une fonction a la con:
+
+void
+hello_world()
+	CODE: 
+	      printf("hello world\n");
+
+$ perl Makefile.PL
+Checking if your kit is complete...
+Looks good
+Writing Makefile for Gleupi2
+$ make
+cp Gleupi2.pm blib/lib/Gleupi2.pm
+/usr/bin/perl /System/Library/Perl/ExtUtils/xsubpp  -typemap /System/Library/Perl/ExtUtils/typemap  Gleupi2.xs > Gleupi2.xsc && mv Gleupi2.xsc Gleupi2.c
+Please specify prototyping behavior for Gleupi2.xs (see perlxs manual)
+cc -c  -I. -pipe -fno-common -no-cpp-precomp -fno-strict-aliasing -O3   -DVERSION=\"0.01\" -DXS_VERSION=\"0.01\"  "-I/System/Library/Perl/darwin/CORE"   Gleupi2.c
+Running Mkbootstrap for Gleupi2 ()
+chmod 644 Gleupi2.bs
+rm -f blib/arch/auto/Gleupi2/Gleupi2.bundle
+LD_RUN_PATH="" cc  -flat_namespace -bundle -undefined suppress Gleupi2.o  -o blib/arch/auto/Gleupi2/Gleupi2.bundle     
+chmod 755 blib/arch/auto/Gleupi2/Gleupi2.bundle
+cp Gleupi2.bs blib/arch/auto/Gleupi2/Gleupi2.bs
+chmod 644 blib/arch/auto/Gleupi2/Gleupi2.bs
+Manifying blib/man3/Gleupi2.3
+$ 
+
+Nous voyons dans le make qu'il a converti le fichier .xs en fichier
+.c en utilisant le compilateur xs nomme xsubpp. Ensuite le fichier .c
+est compile avec gcc, et converti en librairie dynamique qui sera
+chargee dynamiquement lors de l'utilisation du module Gleupi2. Je ne
+sais pas si quelqu'un a encore un systeme ou il n'y a pas de
+librairies dynamiques (genre Ultrix), mais il est possible de linker
+un module en statique avec le binaire Perl. Mais bon, rien qui nous
+interesse vraiment, je pense. Testons le module:
+
+$ perl -Mblib -MGleupi2 -e 'Gleupi2::hello_world'
+hello world
+$
+
+3.1 < Passer des arguments de Perl a C et vice versa >
+Magie! Nous savons donc appeler du code en C depuis Perl. Ceci dit,
+la fonction hello_world est tres basique, elle n'a pas d'arguments,
+et n'a pas de valeur de retour. Changeons cela, en retournant la
+valeur retournee par printf:
+
+int
+hello_world()
+	CODE:
+		RETVAL = printf("hello world\n");
+	OUTPUT:
+		RETVAL
+
+$ make
+..
+$ perl -Mblib -MGleupi2 -e '$x = Gleupi2::hello_world; print "x: $x\n"'
+hello world
+x: 12
+$
+
+Bon, qu'est-ce qu'il s'est passe exactement dans les deux derniers
+exemples. En gros, dans la partie XS du fichier .xs, nous mettons des
+prototypes de fonctions en C, tout en rajoutant quelques details qui
+permettent a xsubpp de savoir comment passer les arguments et
+retourner les valeurs de retour. Ca peut paraitre con, mais la
+convention en perl lorsqu'il s'agit de retourner plusieurs valeurs,
+est de les mettre dans un array (ou une liste, enfin vous voyez ce
+que je veux dire), et les splitter lors de l'appel de la fonction:
+
+my ($result1, $result2, $result3, ...) = fonction();
+
+En C, on va donner des pointeurs en argument, et ecrire dans ces
+pointeurs. Donc, quand on convertir une librairie en C, on va mettre
+un peu de glue code pour que la fonction en C corresponde a la
+calling convention en Perl.
+
+Pour l'instant, nous n'avons pas encore de "vraie" fonction en C, et
+nous avons mis tout le code dans la partie CODE:, ce qui ne sera plus
+le cas par la suite. La partie OUTPUT: est la pour dire quelles
+valeurs sont utilisees comme valeurs de retour. De plus, xsubpp est
+assez intelligent pour connaitre quelques conversions de types bien
+pratiques, du genre int en C <-> scalar number en Perl. C'est pour ca
+qu'il n'a pas ete necessaire d'indiquer que le int doit etre converti.
+
+Bon, j'espere que j'ai ete assez clair... :)
+
+Rajoutons maintenant quelques "vraies" fonctions en C a la premiere
+partie de notre Gleupi2.xs:
+
+int add(int a, int b) {
+        return a + b;
+}
+
+Ca va, je sais que c'est cretin comme fonction :) Rajoutons la partie
+.xs qui va bien:
+
+int
+add(a, b)
+       int a;
+       int b;
+       CODE:
+         RETVAL = add(a, b);
+       OUTPUT:
+         RETVAL
+
+Vous devriez commencer a comprendre le schema :)
+
+$ make
+..
+$ perl -Mblib -MGleupi2 -e 'print Gleupi2::add(3, 4), "\n"'
+7
+$
+
+Un truc genial, c'est qu'on peut se passer du code .xs chiant comme
+dans la definition de add plus haut. Remplacer donc pour voir par ca
+
+int
+add(a,b)
+	int a;
+	int b;
+
+$ make
+..
+$
+
+Miracle ca marche! Effectivement xsubpp est assez intelligent pour se
+rendre compte que voulez le fonctionnement "par defaut".
+
+3.2 < Modifier des arguments par reference >
+
+Maintenant, vous vous demandez surement comment modifier des
+arguments. C'est tres simple, il suffit de modifier OUTPUT:
+
+int
+blorg(x)
+	int x;
+	CODE:
+		x *= 3;
+	OUTPUT:
+		x
+
+$ make
+..
+$ perl -Mblib -MGleupi2 -e '$x = 4; Gleupi2::blorg($x); print "$x\n"'
+12
+$
+
+Mais attention:
+
+$ perl -Mblib -MGleupi2 -e 'Gleupi2::blorg(2)'
+Modification of a read-only value attempted at -e line 1.
+$
+
+Et oui, pas possible de modifier une constante.
+
+Prochain probleme, Perl passe les arguments par reference, c'est a
+dire qu'il va donner l'adresse de la variable comme argument. Mais,
+comment alors faire la difference entre un char passe par reference,
+et un string passe par valeur en C, ou les arguments sont passes par
+valeur par defaut, mais ou utiliser des pointeurs permet de faire du
+passage par reference? Bon, je suis pas clair, je vais reprendre
+l'exemple de man perlxstut:
+
+Comment faire la difference entre les deux char * differents dans:
+
+int string_length(char *s);
+int upper_case_char(char *c);
+
+Dans le premier cas, s est un string passe par valeur, dans le
+deuxieme cas, c est un char passe par reference. La solution est
+assez simple, et ressemble a ce qui est utilise en C++: on utilise &
+a la place de * pour signaler un passage par reference:
+
+int
+string_length(s)
+	char *s
+
+int 
+upper_case_char(c)
+	char &c
+
+Voila, rien de complique en fait :)
+
+3.3 < Le stack d'arguments >
+
+Regardons le code genere par xsubpp d'un peu plus pres.
+
+$ cat Gleupi2.c
+..
+XS(XS_Gleupi2_add); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Gleupi2_add)
+{
+    dXSARGS;
+    if (items != 2)       
+        Perl_croak(aTHX_ "Usage: Gleupi2::add(a, b)");    
+    {
+        int     a = (int)SvIV(ST(0));
+        int     b = (int)SvIV(ST(1));
+        int     RETVAL;
+        dXSTARG;
+
+        RETVAL = add(a, b);
+        XSprePUSH; PUSHi((IV)RETVAL);
+    }
+    XSRETURN(1);
+}
+..
+$
+
+Nous voyons l'utilisation de la macro ST, une fois pour choper le
+premier argument, une fois pour choper le deuxieme. En fait, ST()
+permet d'acceder aux valeurs qui ont ete pushes dans la stack
+d'argument pour l'appel de fonction. Faites abstraction du reste pour
+l'instant, nous y reviendrons plus tard. Ces valeurs sont lues dans
+l'ordre ou elles sont donnes dans le .xs, donc faites gaffe a l'ordre
+des variables, sinon c'est la porte ouverte au chaos, et comme nous
+sommes des programmeurs Perl consciencieux, nous haissons le chaos :)
+De la meme facon, quand un argument est liste dans OUTPUT, sa valeur
+est changee dans le stack d'arguments:
+
+$ cat Gleupi2.c
+..
+XS(XS_Gleupi2_blorg); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Gleupi2_blorg)
+{
+    dXSARGS;
+    if (items != 1)       
+        Perl_croak(aTHX_ "Usage: Gleupi2::blorg(x)");     
+    {
+        int     x = (int)SvIV(ST(0));
+        int     RETVAL;
+        dXSTARG;
+#line 29 "Gleupi2.xs"
+                x *= 3;
+#line 69 "Gleupi2.c"
+        sv_setiv(ST(0), (IV)x);
+        SvSETMAGIC(ST(0));
+    }
+    XSRETURN(1);
+}
+..
+$
+
+3.4. < Conversion de type >
+
+Utilisons maintenant dans une de nos fonctions un type C qui n'est
+pas encore connu par Perl. Au hasard, blorg_t:
+
+typedef char * blorg_t;
+
+MODULE ...
+..
+
+int
+conv(s)
+	const char *s
+	CODE:
+		RETVAL = atoi(s);
+
+$ make
+/usr/bin/perl /System/Library/Perl/ExtUtils/xsubpp  -typemap /System/Library/Perl/ExtUtils/typemap  Gleupi2.xs > Gleupi2.xsc && mv Gleupi2.xsc Gleupi2.c
+Error: 'blorg_t' not in typemap in Gleupi2.xs, line 37
+Please specify prototyping behavior for Gleupi2.xs (see perlxs manual)
+make: *** [Gleupi2.c] Error 1
+$
+
+La solution, c'est de rajouter tout simplement la conversion
+manquante dans le fichier typemap:
+
+$ cat typemap
+blorg_t   T_PV
+$ 
+
+blorg_t T_PV dit que le type C blorg_t doit etre converti vers le
+type Perl T_PV, qui est le type C pour un string en Perl. J'espere
+que c'est pas trop confus ce que je raconte la, plus de details dans
+man perlguts.
+
+3.5. < Quelques possibilites supplementaires dans un .xs >
+
+On peut pas mal faire joujou avec un fichier .xs, surtout quand on
+connait les possibilites que nous offre xsubpp. Nous avons deja vu
+les sections OUTPUT et CODE, mais il en existe encore bien plus (voir
+man perlxs). Ainsi, nous pouvons indiquer le code C qui sera place
+juste apres le decodage de la stack d'arguments dans la routine C
+generee par xsubpp. C'est l'endroit ideal pour declarer des variables
+locales.
+
+Par exemple, la routine
+int
+blorg2(x)
+	int x
+	INIT:
+		int i = 5;
+	CODE:
+		RETVAL = i * x;
+
+va generer le code suivant:
+
+XS(XS_Gleupi2_blorg2); /* prototype to pass -Wmissing-prototypes */
+XS(XS_Gleupi2_blorg2)
+{
+    dXSARGS;
+    if (items != 1)    
+        Perl_croak(aTHX_ "Usage: Gleupi2::blorg2(x)");
+    {
+        int     x = (int)SvIV(ST(0));
+        int     RETVAL;
+        dXSTARG;
+#line 45 "Gleupi2.xs"
+                int i = 5;
+#line 107 "Gleupi2.c"
+#line 47 "Gleupi2.xs"
+                RETVAL = i * x;
+#line 110 "Gleupi2.c"
+    }
+    XSRETURN(1);
+}
+
+Sympathique, non? De la meme facon, une section PREINIT: nous permet
+de placer du code avant la conversion de la stack. L'exemple du haut
+serait plus sur en utilisant une section PREINIT:, car des
+conversions de types compliquees pourrait introduire des erreurs.
+
+int
+blorg3(x)
+	int x
+	PREINIT:
+		int i = 5;
+	CODE:
+		RETVAL = x * i;
+
+De meme, si nous ne voulons pas laisser xsubpp faire le sale boulot
+de gerer la stack d'arguments pour le retour (c'est a dire ecrire les
+valeurs OUTPUT nous meme dans la stack d'arguments), on peut utiliser
+une section PPCODE a la place d'une section CODE (pour voir un
+exemple d'utilisation de la section PPCODE, voir la partie 4 de ce
+texte).
+
+4. < Acceder a des structures de donnees plus complexes en C >
+
+Bon, c'est bien joli tout ca me direz vous, mais comment faire pour
+retourner un array par exemple, ou un tableau de hash. Ca serait
+quand meme bigrement pratique. Pour cela, il va falloir se pencher un
+peu sur les tripes de Perl (par exemple man perlxs, man perlguts). En
+effet, il y a un certain nombre de fonctions en C qui permettent
+d'acceder a ces structures de donnees. Commencons par le debut...
+
+Perl a trois "grands" types de donnees, les donnees scalars (avec un
+$ devant le nom de variable), qui peuvent etre des strings, des
+nombres, des references, des donnees arrays (avec un @ devant le nom 
+de variable), qui sont des listes ou des tableaux, selon le point de
+vue, et enfin des donnees hash (avec un % devant le nom de variable),
+qui sont des tableaux de hachage. Il y a trois typedefs pour utiliser
+ces valeurs en C: SV pour les donnees scalars, AV pour les donnees
+arrays, et HV pour les donnees hash. De plus, il y a le typedef IV
+qui est un int assez grand pour contenir un pointer. Il y a une
+floppee de fonctions pour loader un SV. Ce sont ces fonctions qui
+sont automatiquement ajoutees par xsubpp lors de la conversion d'un
+.xs en .c. De la meme facon, il y a une floppee de fonctions pour
+acceder au contenu d'un SV en C. Pareil, ces fonctions vont etre
+automatiquement ajoutees par xsubpp lors de la conversion. Dans les
+extraits de Gleupi2.c, nous pouvons par exemple voir SvIV, qui accede a
+la valeur d'un Sv en retournant un int. De meme, sv_setiv permet de
+loader un int dans un SV. Pour plus de details, vous pouvez consulter
+man perlguts, ou toutes les fonctions qui permettent de manipuler des
+strings dans des SV, des ints, etc... sont listees.
+
+Lorsque nous gerons la stack de retour nous meme (dans une section
+PPCODE: par exemple), nous devons agrandir la stack nous meme de
+maniere a avoir assez de place pour retourner tous nos
+arguments. Pour cela, nous devons utiliser la macro EXTEND, par
+exemple pour reserver assez de place pour retourner 9 valeurs:
+
+EXTEND(SP, 9);
+
+SP est ici, vous l'avez surement devine, le pointeur de stack de
+Perl. Ensuite, il suffit de pusher les valeurs dans la stack en
+utilisant les macros PUSH*. Il existe 5 macros PUSH, une pour les
+integers (PUSHi), une pour les unsigned integers (PUSHu), une pour
+les doubles (PUSHn), une pour les strings (PUSHp), et enfin une pour
+un scalar Perl (donc un SV *, PUSHs). Vous pouvez lire la doc exacte
+de toutes ces fonctions dans man perlapi. Il est aussi possible
+d'agrandir la stack de retour au besoin en utilisant XPUSH*. Il est
+aussi possible d'utiliser les macros XSRETURN* pour retourner des
+valeurs directement. Comme pour PUSH*, la doc est dans man perlapi.
+
+Savoir comment sont convertis les valeurs scalars nous permet de
+retourner un undef dans une fonction, par exemple au lieu de
+retourner -1 pour signaler une erreur (ca ne se fait pas en Perl, ca,
+voyons). Pour ca, nous pouvons utiliser la macro XSRETURN_UNDEF qui
+nous permet de returner undef.
+
+int
+blorg4(x)
+	int x
+	CODE:
+		if (x)
+		   RETVAL = x;
+		else
+		   XSRETURN_UNDEF;
+
+Un autre moyen est d'utiliser PPCODE et de pusher un SV * undef dans
+la stack de retour:
+
+SV *
+blorg5(x)
+	int x
+	PPCODE:
+		if (x)
+		   XPUSHs(sv_2mortal(newSViv(i*x)));
+		else
+		   XPUSHs(sv_newmortal());
+
+On peut aussi utiliser XSRETURN_UNDEF dans une section PPCODE. 
+
+Bon, c'est bien joli tous ces scalars, mais ce qui nous interesse
+plus, ce sont les AVs et les HVs. En fait, c'est assez simple de
+returner des arrays :) Il suffit de pusher les valeurs que l'on veut
+renvoyer. Par exemple
+
+void
+return_array(x, i)
+		int x
+		int i
+		INIT:
+			int j;
+		PPCODE:
+			for (j = 0; i < j; j++)
+			    XPUSHs(sv_2mortal(newSViv(x + i));
+
+$ make
+..
+$ perl -Mblib -MGleupi2 -e 'print join(", ", Gleupi2::return_array(1, 5))."\n"'
+1, 2, 3, 4, 5
+$
+
+C'etait *trop* complique :) 
+
+Petit interlude: vous vous demandez surement ce que c'est que ces
+"mortal". En fait, c'est assez simple. En Perl, pas besoin de faire de
+management memoire, tout est garbage collected en utilisant un schema
+qui est appelle "reference counting". Ca veut dire en gros que chaque
+objet A qui est alloue sur le heap a un compteur qui indique le nombre
+d'objets qui referencent A. Des qu'un objet n'utilise plus A, son
+compteur est decremente. Similairement, des qu'un objet utilise A (en
+gardant un pointeur sur lui), le compteur de A est incremente. Quand
+le compteur de A est a 0, aucun objet ne l'utilise plus et il peut
+etre libere. Les variables qui sont "mortalise" ne vont pas
+decrementer leur compteur tout de suite, mais dans un temps proche,
+en general avant la prochaine instruction Perl. Ca permet de ne pas
+trop se prendre la tete quand on a des variables qui ne vont pas etre
+utilisees longtemps, par exemple les valeurs de retour d'une
+fonction, qui vont la plupart du temps etre directement copiees dans
+une autre variable et ensuite liberees. Pour plus de details, il y a
+toujours man perlguts et man perlcall.
+
+Bon, nous savons maintenant retourner un array depuis notre fonction
+en C, mais comment faire pour avoir un array en argument? Comme c'est
+dur de donner un array en reference, on va passer une reference a
+l'array en question a la fonction. Ensuite, il faut tester si le SV *
+que l'on recoit en parametre est vraiment une reference sur
+array. C'est le but du code suivant:
+
+       if ((!SvROK(strs)) || /* tester si c'est bien une reference
+                                correcte */
+	   (SvTYPE(SvRV(strs)) != SVt_PVAV) || /* tester si c'est une
+                                reference sur un array de strings */
+	   ((strnum = av_len((AV *)SvRV(strs))) < 0)) /* tester si la
+                                longueur de l'array est correcte */
+		XSRETURN_UNDEF;
+
+Les fonctions qui accedent a l'array en tant que tel (av_*) et les
+fonctions de test de scalars (Sv*) sont decrites dans man perlapi,
+mais bon, c'est pas trop sorcier a deviner quand meme :) Notre
+fonction en question retourne juste la longueur de chaque element de
+l'array, dans un nouvel array:
+
+void
+strlens(strs)
+        SV *strs
+        INIT:
+                I32 strnum = 0;
+                int n;
+
+                if ((!SvROK(strs)) ||
+                    (SvTYPE(SvRV(strs)) != SVt_PVAV) ||
+                    ((strnum = av_len((AV *)SvRV(strs))) < 0))
+                        XSRETURN_UNDEF;
+        PPCODE:
+                for (n = 0; n <= strnum; n++) {
+                        STRLEN l;
+                        char *str;
+
+                        str = SvPV(*av_fetch((AV *)SvRV(strs), n, 0), l);
+                        XPUSHs(sv_2mortal(newSViv(l)));
+                }
+
+Apres avoir checker dans la partie INIT que la reference qu'on nous a
+donnee est utilisable, on va acceder aux differents elements de
+l'array en utilisant av_fetch. Ensuite, on converti le scalar obtenu
+en un char *, dont nous obtenons la longueur dans un STRLEN (qui est
+une macro, mais bon, c'est un int en fait :). Ainsi, nous avons:
+
+$ make
+..
+$ perl -Mblib -MGleupi2 -e '@a = qw / lkdjglk blonk /; print join(", ", Gleupi2::strlens(\@a))."\n"'
+7, 5
+$
+
+C'est magique. Un petit truc, si vous voulez acceder a un array
+depuis le code en C sans vouloir le donner en argument, vous pouvez
+utiliser la fonction get_av, par exemple:
+
+AV *arr = get_av("Gleupi2::array", FALSE);
+
+Dernier petit bout, comment utiliser un tableau de hachage. La aussi,
+regardez les fonctions pour acceder a un tableau de hachage dans man
+perlapi et man perlguts. Les fonctions interessantes sont newHV, qui
+va creer un nouveau tableau de hachage avec le compteur de reference
+a 1 (ce que l'on peut changer avec sv_2mortal), et hv_store qui
+permet de stocker une valeur dans le tableau de hachage. Si vous
+voulez lire d'un tableau de hachage, il y a la fonction
+hv_fetch. Donc, en code, ca donne ca:
+
+SV *
+hashtbl(x)
+        int x
+        INIT:
+                HV *hv;
+        CODE:
+                hv = (HV *)sv_2mortal((SV *)newHV());
+                hv_store(hv, "result", 6, newSViv(x), 0);
+                RETVAL = newRV((SV *)hv);
+
+        OUTPUT:
+                RETVAL
+
+Le OUTPUT: est necessaire parce que la valeur de retour est un SV *,
+et la conversion n'est pas faite automatiquement.
+
+$ make
+..
+$ perl -Mblib -MGleupi2 -e 'print Gleupi2::hashtbl(5)->{"result"}."\n"'
+5
+$
+
+Voila donc pour les structures de donnees Perl complexes. Passons
+maintenant a la partie reellement interessante, comment acceder aux
+structures C en Perl.
+
+5. < Acceder a des structures de donnees plus complexes en Perl >
+
+En gros, pour utiliser des structures C en Perl, il suffit de
+retourner un pointeur vers la structure en question, et d'utiliser
+une entree dans la typemap qui va bien. Le pointeur sera completement
+opaque a Perl. Il y a deux possibilites de specifier un pointeur vers
+une structure dans la typemap. On peut utiliser T_PTRREF, qui va en
+faire un pointeur opaque "normal", et T_PTROBJ qui va "blesser"
+l'objet avec le nom du type + "Ptr" au bout. Je vais pas m'etendre
+sur l'OO en perl, donc man perlobj :) Lors que le pointeur Perl
+correspondant a l'objet est libere, la fonction DESTROY est calle
+dans le package auquel appartient l'objet. Si c'est T_PTRREF, c'est
+le package normal, si c'est T_PTROBJ, c'est dans le package
+"$nomdutype"."PTR".
+
+Pour tout rendre plus clair, tout de suite un essai. Tout d'abord, le
+fichier typemap:
+
+$ cat typemap 
+TYPEMAP
+Blorg * T_PTROBJ
+$ 
+
+Ensuite, le fichier Gleupi3.xs:
+
+$ cat Gleupi3.xs
+..
+
+typedef struct {
+        int a, b;
+} blorg_t;
+
+typedef blorg_t Blorg;
+
+blorg_t *new_blorg(int a, int b) {
+        blorg_t *res = malloc(sizeof(blorg_t));
+        if (res) {
+                res->a = a;
+                res->b = b;
+        }
+        return res;
+}
+
+MODULE = Gleupi3          PACKAGE = Gleupi3
+
+Blorg *
+new_blorg(a, b)
+        int a
+        int b
+
+MODULE = Gleupi3          PACKAGE = BlorgPtr    
+
+void
+DESTROY(blorg)
+        Blorg *blorg
+        CODE:
+                printf("freeing blorg\n");
+                free(blorg);
+
+int
+a(blorg)
+        Blorg *blorg
+        CODE:
+                RETVAL = blorg->a;
+        OUTPUT:
+                RETVAL
+
+$
+
+Et le tout donne:
+
+$ make
+..
+$ perl -Mblib -MGleupi3 -e '$blorg = Gleupi3::new_blorg(4, 5); print $blorg->a."\n";'
+4
+freeing blorg
+$
+
+C'est vraiment trop easy en fait :)
+
+6. < Conclusion >
+
+Voila, donc a vous de vous prendre la tete maintenant pour passer
+tout votre code C en Perl :)

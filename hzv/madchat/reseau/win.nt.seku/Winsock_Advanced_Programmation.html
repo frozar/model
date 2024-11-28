@@ -1,0 +1,1250 @@
+<html>
+<head>
+<title>Programmation Winsock avancée avec les systèmes NT</title>	 
+<body>
+<center>
+  <h1>Programmation Winsock avancée avec les systèmes NT</h1>
+  <br>
+</center>
+
+<ol>
+  <h2><li>Introduction</li></h2>
+  <p> Une des raisons importantes pour laquelle j'ai décidé d'écrire cet article 
+    est le manque de documentation en Français à ce sujet sur Internet, 
+    j'espère que ce présent article participera à la disparition de ce problème. Dans 
+    celui-ci nous étudierons l'utilisation de l'API Winsock (Winsock 1.1 en ce qui concerne 
+    les sockets streams et plus particulièrement Winsock 2 pour les raw sockets). 
+    La connaissance de cette API permettra de créer des applications TCP basiques 
+    (client, serveur) jusqu'à des applications plus complexes ayant comme possibilitées 
+    la modification de l'en tête des datagrammes réseaux. Ce qui permettra de 
+    créer des réalisations un peu plus attrayantes tel qu'un forgeur de paquets, 
+    un scanneur de ports avancé, ou encore même un sniffer ! Et tout ceci sera 
+    accompli sans aucunes des librairies distribuées sur internet tel que winpcap, 
+    ou encore la librairie de chez Komodia ! Et oui, malheureusement, une multitude 
+    de personnes pensent qu'il n'est pas possible de travailler à bas niveau avec 
+    les protocoles IP, TCP et autres sans librairies externes ou encore sans écrire 
+    un driver (NDIS) avec le DDK (Driver Development Kits) de chez Microsoft, 
+    ce qui est totalement faux et c'est bien ce que je vais démontrer par ce présent article. 
+    Je ne remettrais pas en cause l'écriture d'un drivers NDIS qui, malgrès sa 
+    complexité, offre beaucoup plus de possibilitées. Mais là n'est pas notre objectif.</p>
+  <h2> 
+    <li>Winsock 2 et architecture</li>
+  </h2>
+  <p> Nous avons pu observer que la version 1.1 de Winsock (winsock.dll ou encore 
+    wssock32.dll) présente dans les précédents systèmes d'exploitations de chez 
+    Microsoft était assez 'limitée', il n'était en aucun cas possible de modifier 
+    les datagrammes réseaux en utilisant celle ci, ce qui réduisait considérablement 
+    les possibilités. Mais ce n'est pas du tout la même situation en ce qui concerne 
+    Winsock 2, celui ci fournit beaucoup plus de flexibilité, présent sur la nouvelle 
+    génération des systèmes d'exploitation de Microsoft il va permettre contrairement 
+    à son prédécesseur de fournir une multitude de nouveaux services comme la 
+    modification de l'entête des datagrammes réseaux ou encore des fonctions 
+    de debuggage et de tracing qui faciliteront la recherche des problèmes réseaux et 
+    bien plus encore. Il va réaliser toutes ces taches grâce à une nouvelle architecture 
+    qui contient comme toujours une dll (ws2_32.dll) qui est placée sous
+    les dll de l'API Winsock 1.1 pour assurer une comptatibilité avec les programmes 
+    utilisant Winsock dans sa verion 1.1, mais plus encore, et c'est bien ici 
+    qu'intervient la puissance de Winsock 2, celui ci va directement placer une 
+    couche à plus bas niveau (Winsock 2 SPI), celle ci permettra d'intervenir 
+    directement sur les couches réseaux. Je pense vous éclaircir les idées grâce 
+    à ce petit shéma. 
+  <pre>
+     +---------------+ +-----------------++------------------+    
+     |   Winsock 2   | | 16-bit Winsock  || 32-bit Winsock   |
+     |  application  | | 1.1 application || 1.1 application  |
+     +---------------+ +-----------------++------------------+
+             |                 |                  |
+             |         +-----------------++------------------+ <--- Winsock 1.1 API
+             |         |   Winsock.dll   ||  wssock32.dll    |
+             |         |    (16-bit)     ||   (32-bit)       |
+             |         +-----------------++------------------+
+             |                                    |
+     +-------------------------------------------------------+ <--- Winsock 2.0 API
+     |                  ws2-32.dll (32-bit)                  |
+     +-------------------------------------------------------+
+                                |
+     +-------------------------------------------------------+ <--- Winsock 2.0 SPI
+     |+-----------++--------------++------------++----------+|     /
+     ||  TCP/IP   || TCP/IP-based || additional ||layered sp||    /
+     || transport ||   namespace  ||   service  |+----------+|   /
+     ||  service  || service pro- ||  providers |+----------+| <- 
+     ||  provider || vider (dns)  || (spx, etc.)|| any tsp  ||
+     |+-----------++--------------++------------++----------+|
+     +-------------------------------------------------------+
+</pre>
+  <p>Note : Winsock 2 n'est pas disponible sur les systèmes NT 3,51 ou les systèmes 
+    précédents celui-ci. <br>
+    Remarque : Vous pouvez télécharger la version 2 de Winsock pour Windows 95 
+    à cette adresse : <a href = "ftp://ftp.microsoft.com/bussys/Winsock/Winsock2/">ftp://ftp.microsoft.com/bussys/Winsock/Winsock2/</a></p>
+  <h2> 
+    <li>Les Sockets Streams</li>
+  </h2>
+  <p> Nous allons commencer par cette petite introduction sur les sockets streams 
+    pour que vous puissiez prendre conscience des différentes fonctions que peut fournir 
+    la librairie Winsock. Seulement après cette parenthèse nous nous attaquerons 
+    à la programmation des raw sockets grâce à Winsock 2 sous Windows 2000 ou 
+    encore Windows XP. 
+  <ol>
+    <h3> 
+      <li>Qu'est ce qu'un <i>socket ?</i></li>
+    </h3>
+    <p>Un socket est une sorte de point de communication, il est définit par une 
+      adresse réseau (IP) et un numéro de port qui est associé à une application 
+      sur une machine. Celui-ci va permettre une communication entre deux processus 
+      locaux ou distants.</p>
+    <h3> 
+      <li>Programmation d'un serveur TCP</li>
+    </h3>
+    <p> Dans cette sous partie nous allons étudier la création d'un petit serveur 
+      qui ne fera que réacheminer à son destinataire le message que celui ci 
+      aura précédemment envoyé (écho). Nous utiliserons Winsock 1.1 pour cette 
+      réalisation, car nous n'avons pas l'utilité de la version 2 en ce qui concerne 
+      cette application, ceci permettra une meilleur compatibilité avec les systèmes 
+      ne supportant pas Winsock 2. Etudions la structure de fonctionnement général 
+      d'un serveur :</p>
+    <pre>                               +---------------------------+
+                               | initialisation de Winsock |
+                               +---------------------------+
+                                            |
+                                            |
+           +-----------------------------------------------------------------+
+           | Création et attachement du socket d'écoute ( <i>socket()</i>, <i>bind()</i> ) |
+           +-----------------------------------------------------------------+
+                                            |
+                                            |
+                           +-----------------------------------+
+                           | Ouverture du service ( <i>listen()</i> ) |
+                           +-----------------------------------+
+                                            |
+                                            |
+                     +------------------------------------------------+
+               +---->| Attente des demandes de connexion ( <i>accept()</i> ) |
+               |     +------------------------------------------------+
+               |                            |
+               |                            |
+               |      Client =>   | Demande de connexion |
+               |                            |
+               |                            |
+               |        +----------------------------------------+
+               |        | Traitement de la demande de connection |
+               |        +----------------------------------------+
+               |                            |
+               |                            |
+               |     | Système de multithreading si le server gère |
+               |     |        plusieurs clients en même temps      |
+               |                            |
+               |                            |
+               +----------------------------+
+</pre>
+    <h4> 
+      <li>Les fichiers nécessaires</li>
+    </h4>
+    <p> Pour pouvoir utiliser Winsock 1.1, il vous faudra plusieurs fichiers que 
+      je citerais ci dessous : </p>
+    <p>- <i>winsock.h</i><br>
+      - <i>wsock32.lib</i></p>
+    <p>Ces fichiers sont tous deux présents dans visual c++ 6 ("vc98/include/" 
+      pour <i>winsock.h</i> ou encore "vc98/lib" pour <i>wsock32.lib</i>). Si encore une fois 
+      vous travaillez sous visual c++ 6 vous devrez inclure la librairie <i>wsock32.lib</i>
+      dans votre projet, pour ceci : projects => settings => link et dans cette 
+      onglet vous verrez "objets/library modules", vous devez ajouter dans cette 
+      case <i>wsock32.lib</i>. Si vous ne travaillez pas avec cette IDE, une autre 
+      solution est de charger les fonctions de la librairie dynamiquement, mais 
+      ce n'est pas le sujet de cet article. (Fonctions : <i>"LoadLibrary"</i>, <i>"GetProcAddress"</i>)</p>
+    <h4> 
+      <li>Initialisation de l'API Winsock 1.1</li>
+    </h4>
+    <p> Afin de pouvoir utiliser Winsock, il faut l'initialiser, pour ceci une 
+      fonction existe : <i>WSAStartup();</i><br>
+      <br>
+      Prototype : <i>int WSAStartup(WORD wVersionRequested, LPWSADATA lpWSAData);</i><br>
+      <br>
+      Ce prototype nous indique que nous devons passer un mot en premiere argument 
+      et l'adresse d'une structure de type <i>WSADATA</i> en second argument.<br>
+      <br>
+      Exemple :</p>
+    <pre><i>int InitWinsock(void)
+{
+ 	WORD wVersionRequested; 
+ 	WSADATA WSAData; 			       /* structure WSADATA définie dans <i>winsock.h</i> */
+ 	int err;
+	  	
+ 	wVersionRequested = MAKEWORD(1,1); 	       /* 1.1 version voulut de Winsock */  	
+ 	err = WSAStartup(wVersionRequested, &WSAData); /* appel de notre fonction */	  	
+  					               /* controle d'erreur */
+  	if(err == 0)	fprintf(stdout, "[*] Winsock a ete initialise avec succes.\n");
+	else {
+		fprintf(stderr, "Erreur lors de l'initialisation de Winsock, code d'erreur : %d\n", GetLastError());
+		return(-1);
+	}
+	
+	return(0);
+}</i>
+</pre>
+    <p>Maintenant nous pouvons utiliser les fonctions de la librairie Winsock 1.1 sans problèmes particuliers.</p>
+    <h4> 
+      <li>Création du socket</li>
+    </h4>
+    <p>Maintenant que l'API Winsock est initialisée nous allons pouvoir créer notre socket, 
+      pour réaliser ceci nous devons remplir plusieurs tâches :<br>
+      <br>
+      - Déclarer notre socket<br>
+      - Déclarer une structure <i>sockaddr_in</i> qui est définie encore une fois dans <i>winsock.h</i><br>
+      - Remplir cette structure avec les options voulues<br>
+      - Créer notre socket grâce à la fonction <i>socket();</i><br>
+      - Associer notre adresse locale au socket créé grâce à la fonction <i>bind();</i><br>
+    </p>
+    <pre>Prototypes : <i>SOCKET socket(int af, int type, int protocol);
+	     int bind (socket s, const struct sockaddr FAR * addr, int namelen);</i></pre>
+    <pre>
++------------------------------------------------+
+| <i>SOCKET socket(int af, int type, int protocol);</i> |
++------------------------------------------------+
+</pre>
+    <p> Cette fonction va permettre de créer notre socket pour ensuite travailler 
+      sur celui-ci. Le premier paramètre définit la famille du socket, vous trouverez 
+      d'ailleurs les différentes familles existantes dans <i>winsock.h</i>, nous utiliserons 
+      <i>AF_INET</i> car cette famille représente les communications Internetwork: UDP, 
+      TCP, etc. Le second paramètre définit le type du socket, toujours une définition 
+      de tous les types existants dans <i>winsock.h</i>, nous nous contenterons du type 
+      <i>SOCK_STREAM</i> car c'est bien ce que nous recherchons, un socket stream. Enfin le 
+      troisième type représente le protocole voulut, nous utiliserons <i>IPPROTO_IP.</i></p>
+<pre>
++---------------------------------------------------------------------+
+| <i>int bind(SOCKET s, const struct sockaddr FAR * addr, int namelen);</i>  |
++---------------------------------------------------------------------+
+</pre>
+    <p> Cette fonction va associer notre adresse locale au socket passé en argument.
+      Le premier paramètre n'a normalement plus de secret pour vous, c'est un socket.
+      Le second paramètre est l'adresse d'une structure de type <i>sockaddr</i>, celle 
+      que l'on a rempli juste avant l'utilisation de la fonction <i>socket()</i> d'ailleurs. 
+      Et pour finir le dernier paramètre est la taille de cette même structure donc nous nous 
+      contenterons d'un simple <i>sizeof(struct sockaddr_in);</i>.<br>
+      <br>
+      Exemple :</p>
+    <pre><i>SOCKET CreateSocket(void)
+{
+  	SOCKET sock;					 /* déclaration de notre socket */
+  	struct sockaddr_in sin;				 /* déclaration de la structure sockaddr_in */
+	 
+  	memset(&sin, 0x0, sizeof(struct sockaddr_in));
+ 	sin.sin_addr.s_addr	= htonl(inaddr_any);  	 /* définis l'adresse du server */
+  	sin.sin_family	        = AF_INET;		 /* famille du socket */
+  	sin.sin_port		= htons(1337);           /* port sur lequel va etre assigner le server */
+	 
+  	sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP); /* appel de la fonction socket */
+  	
+  	if(sock != INVALID_SOCKET)	fprintf(stdout, "[*] Socket cree avec succes.\n");
+  	else {
+ 		fprintf(stderr, "Erreur lors de la creation du socket, code d'erreur : %d\n", WSAGetLastError());
+ 		return(-1);
+  	}
+  	          	
+   	if(bind(sock, (sockaddr *)&sin, sizeof(struct sockaddr_in)) != SOCKET_ERROR) /* associe l'adresse local au socket */
+	  	fprintf(stdout, "[*] Adresse local associee au socket avec succes.\n");
+	else {
+	   	fprintf(stderr, "Erreur lors de l'association de l'adresse local au socket, code d'erreur : %d\n", WSAGetLastError());
+	   	return(-1);
+	}
+	
+	return(sock); /* retourne le socket */
+}</i>
+</pre>
+    <p> Si vous êtes asser observateur vous avez pu remarquer que j'utilise une 
+      fonction nommée <i>htons();</i> pour passer le port sur lequel va écouter le serveur 
+      à ma structure "sin". Pourquoi est-ce que j'ai utilisé cette fonction me direz vous? 
+      En fait, c'est un problème auquel sont confronté tous les ordinateurs 
+      communiquants entre eux sur le réseau : L'ordre des octets. Pour stocker 
+      en mémoire une valeur tenant sur 2 octets, les processeurs le font différemment 
+      selon leur architecture. Certains placent en première position l'octet de 
+      poids faible pour mettre en seconde position l'octet de poids fort , cette 
+      organisation est nommée "little endian". D'autres processeurs font autrement et
+      rangent d'abord l'octet de poids fort, suivi de celui de poids faible, ceux ci sont 
+      qualifiés de "big endian".</p>
+    <pre>Stockage en mémoire de la valeur : 0x1425
+          
+             big endian                    	 little endian
+          +--------------+            		+-------------+
+          | 0x14, | 0x25 +            		| 0x25 | 0x14 |
+          +--------------+            		+-------------+
+</pre>
+    <p> La librairie Winsock met à notre disposition quatres fonctions permettant 
+      de transformer un entier long ou court depuis l'ordre des octets de l'hôte 
+      vers celui du réseau, et inversement. Toutes ces routines sont encore une fois
+      déclarées dans <i>winsock.h</i> :</p>
+    <pre>Prototypes : <i>u_long  htonl(u_long  hostlong);
+	     u_short htons(u_short hostshort);
+	     u_long  ntohl(u_long  netlong);
+	     u_short ntohs(u_short netshort);</i>
+</pre>
+    <p> Je ne vais pas les décrire une par une, mais je vous conseille d'aller 
+      jeter un oeil dans ce que tout bon programmeur Windows se doit de posséder 
+      : "Win 32 Programmer's Reference". <br>
+      Toutes ces fonctions y sont très bien détaillées.</p>
+    <h4> 
+      <li>Ouverture du service et attente d'un client</li>
+    </h4>
+    <p> Notre socket est créé, maintenant nous allons le mettre en écoute et attendre 
+      la connexion d'un client. Pour réaliser ceci nous allons utiliser la fonction 
+      <i>listen()</i>, cette étape effectuée nous attendrons la connexion 
+      d'un client sur notre server. Une fois cette condition remplie, nous nous 
+      servirons de la fonction <i>accept()</i> qui permettra de gérer la demande du client. 
+      <br>
+      Donc si nous récapitulons dans un ordre logique cela donne :<br>
+      <br>
+      - Passer le socket en mode écoute ( <i>listen()</i> )<br>
+      - Attendre une connexion cliente et la gérer ( <i>accept()</i> )<br>
+    </p>
+    <pre>
+prototypes : <i>int listen(SOCKET s, int backlog);</i>
+             <i>socket accept(SOCKET s, struct sockaddr FAR *addr, int FAR *addrlen);</i>
+			
+
++------------------------------------+
+| <i>int listen(SOCKET s, int backlog);</i> |
++------------------------------------+
+</pre>
+    <p> Bon je pense qu'ici, je n'aurais pas trop besoin de détailler,  en ce 
+    qui concerne le second argument c'est ce que l'on appel le backlog, cela correspond 
+    en fait au nombre maximum de connexions qui seront ecoutées en même temps
+    par le serveur. Passons à l'étude de la fonction <i>accept();</i>. </p>
+    <pre>
++------------------------------------------------------------------------+
+| <i>socket accept(SOCKET s, struct sockaddr FAR *addr, int FAR *addrlen);</i> |
++------------------------------------------------------------------------+
+</pre>
+    <p> Cette fonction va nous permettre de traiter la ou les connexions clientes. 
+      Pour étudier celle-ci je passerais directement au second paramètre qui est 
+      en fait l'adresse d'une structure de type <i>sockaddr</i> dans laquelle la fonction se 
+      chargera de stocker les informations sur le client en cas de connexion, 
+      le dernier paramètre est la taille de cette structure que nous définirons 
+      par une simple <i>sizeof(struct sockaddr);</i>. <br>
+      <br>
+      Maintenant passons au code.<br>
+      <br>
+      Exemple :</p>
+    <pre><i>int Server(SOCKET server_socket)
+{
+  	SOCKET client_socket;
+  	struct sockaddr_in adresse;
+	int adresse_size = 0;
+	
+	memset(&adresse, 0, sizeof(struct sockaddr_in));
+  	
+  	/* passe en mode écoute le serveur */
+  	if(listen(server_socket, 0) == 0)	fprintf(stdout, "[*] Serveur passe en mode ecoute avec succes.\n");
+  	else {
+  		fprintf(stderr, "Erreur lors du passage en mode ecoute du serveur, code d'erreur : %d\n", WSAGetLastError());
+  		return(-1);
+  	}	
+  	
+  	while(1) {
+		adresse_size = sizeof(adresse);
+		/* accept les connexions clientes */
+		client_socket = accept(server_socket, (struct sockaddr *)&adresse, &adresse_size); 
+		if(client_socket != INVALID_SOCKET) fprintf(stdout, "[*] Client accepte avec succes\n");
+	 	else {
+	  		fprintf(stderr, "erreur lors de l'acceptation du client, code d'erreur : %d\n", WSAGetLastError());
+	 		return(-1);
+		}   		
+	}
+	   	
+	return(0);
+}</i>
+</pre>
+    <h4> 
+      <li>Gestion de la connexion cliente</li>
+    </h4>
+    <p> Maintenant que notre client est connecté et que le serveur l'a accepté, 
+      il va falloir réaliser une action pour rendre ce serveur un peu plus attrayant 
+      aux yeux de notre cher client. Pour ceci, le but est d'attendre que le 
+      client nous envoit des données pour qu'ensuite le serveur réachemine ces 
+      mêmes données à ce même client et ceci sera réalisé à chaque données 
+      envoyées par le client (écho). <br>
+      Comme précédemment nous allons récapituler dans un ordre précis toutes ces 
+      actions : </p>
+    <pre>	  
+	   +--- Attendre que le client envois des données ( <i>recv()</i> )
+	   |    | -> Données reçues
+	   |   - Renvoyer les mêmes données à ce client ( <i>send()</i> )
+	   |    |
+	   +----+
+	   
+prototypes : <i>int recv(SOCKET s, char FAR * buf, int len, int flags);	
+	     int send(SOCKET s, const char FAR * buf, int len, int flags);</i>
+	  	      
++---------------------------------------------------------+
+| <i>int recv(SOCKET s, char FAR * buf, int len, int flags);</i> |
++---------------------------------------------------------+
+</pre>
+    <p> Cette fonction va permettre de recevoir des données par l'intermédiaire 
+      du socket passé en argument. Ceci est très utile quand on veut communiquer 
+      avec le client, souvent même indispensable. Maintenant passons en revu les 
+      arguments, le premier argument est le socket sur lequel nous voulons lire 
+      les données reçues, le second est un buffer de type <i>char *</i> dans lequel seront 
+      stockées les données reçues, le troisième argument est la longueur du buffer 
+      précédemment utilisé, et pour finir le quatrième argument est un peu obsolète, 
+      nous le laisserons de coté pour lui attribuer la valeur 0. </p>
+    <pre>
++---------------------------------------------------------------+
+| <i>int send(SOCKET s, const char FAR * buf, int len, int flags);</i> |
++---------------------------------------------------------------+
+</pre>
+    <p> La fonction <i>send()</i> est indispensable, celle-ci va nous permettre d'envoyer 
+      des données soit en tant que client au serveur ou inversement en tant que 
+      serveur vers le client. Les arguments sont les mêmes que pour la fonction 
+      <i>recv()</i>, sauf pour le buffer, celui-ci au lieu de se voir attribuer les données 
+      reçu devra contenir ce que vous voulez envoyer. <br>
+      <br>
+      Note : Ces deux fonctions renvoient, en cas de succès, le nombre d'octets envoyés 
+      pour la fonction <i>send()</i> ou reçus pour la fonction <i>recv()</i>.</p>
+    <p>Maintenant que nous avons pris conscience de l'utilité de ces fonctions, 
+      passons à l'application ; le code.</p>
+    <pre>exemple :
+
+<i>
+void traite_connexion(SOCKET socket_client)
+{
+  	int ret;
+  	char *buffer = NULL;
+	  	
+  	buffer = (char *)malloc(1024 * sizeof(char)); 			 /* allocation de mémoire pour le buffer qui va
+	  							           recevoir les données */
+  	if(buffer == NULL) {
+    		fprintf(stderr, "Erreur d'allocation memoire.\n");
+  		exit(-1);
+  	}
+  		  	
+  	while(1) {
+		ret = recv(socket_client, buffer, 1024, 0);		/* reception et stockage des données dans buffer */
+  		if(ret != SOCKET_ERROR)	fprintf(stdout, "[*] Donnees recu.\n");
+  		else {
+  			fprintf(stderr, "Erreur lors de la reception des donnees, code d'erreur : %d\n", WSAGetLastError());
+			break;
+		}
+
+		buffer[ret] = '\0';					/* ajout du caractère de fin pour le strlen() qui va suivre */
+	  		  		
+  		ret = send(socket_client, buffer, strlen(buffer), 0);	/* envois du contenu de buffer au client */
+  		if(ret != SOCKET_ERROR)	fprintf(stdout, "[*] Donnees envoyer.\n");
+  		else {
+  			fprintf(stderr, "Erreur lors de l'envois des donnees, code d'erreur : %d\n", WSAGetLastError());
+			break;
+		}
+	}	
+	
+	closesocket(socket_client);					/* ferme le socket gerant la connexion cliente */
+  	free(buffer);	  						/* libère la mémoire allouée pour notre buffer */
+}</i>
+</pre>
+    <p> Voila c'est terminé en ce qui concerne ce serveur "écho", j'espère que cela 
+      à pu vous éclaircir les idées sur le concept de serveur et encore mieux 
+      sur sa programmation grâce à la bibliothéque Winsock.<br>
+      Vous pourrez trouver le code source complet de ce serveur ici : <a href = "http://barbus.homeunix.org/redkod/papers/winsock/echoserver.c">echoserver.c</a></p>
+    <h2> 
+      <h3> 
+        <li>Programmation d'un client TCP</li>
+      </h3>
+    </h2>
+    <p> Après vous avoir montré comment programmer un serveur grâce à Winsock, 
+      je vais ici vous apprendre à créer un client TCP vraiment basique qui permettra 
+      de dialoguer avec le précédent serveur. Etudions la structure d'un client 
+      de ce type.</p>
+    <pre>
+                               +---------------------------+
+                               | Initialisation de Winsock |
+                               +---------------------------+
+                                            |
+                                            |
+                           +---------------------------------+
+                           | Création du socket ( <i>socket()</i> ) |
+                           +---------------------------------+
+                                            |
+                                            |
+                               +--------------------------+
+                               | Connexion  ( <i>connect()</i> ) |
+                               +--------------------------+
+                                            |
+                                            |
+               +--------------------------------------------------------------+
+               | Gestion de diverses manières la connexion ( <i>recv()</i>, <i>send()</i> ) |
+               +--------------------------------------------------------------+
+</pre>
+    <p> Pour réaliser ce modèle vous devrez prendre connaissance d'une seule nouvelle fonction, 
+      car vous connaissez déjà la plupart d'entres-elles nécessaires au client 
+      grâce au travail effectué avec le serveur. Cette fonction est la fonction 
+      <i>connect();</i> . Etudions donc celle-ci.<br>
+      <br>
+      Prototype : <i>int connect(SOCKET s, const struct sockaddr FAR * name, int namelen);</i></p>
+    <pre>
++-----------------------------------------------------------------------+
+| <i>int connect(SOCKET s, const struct sockaddr FAR * name, int namelen);</i> |
++-----------------------------------------------------------------------+
+</pre>
+    <p> Cette fonction va nous permettre d'établir un lien entre nous et le serveur, 
+      une connexion plus précisément. Ce qui par la suite, nous permettra de dialoguer 
+      avec l'application serveur. Elle prend comme premier paramètre le socket 
+      avec lequel vous voulez établir la connexion, le second paramètre est l'adresse 
+      d'une structure de type sockaddr, et enfin le dernier paramètre représente 
+      la taille de cette structure.<br>
+      <br>
+      Exemple :</p>
+    <pre><i>	SOCKET sock;
+	struct sockaddr_in sin;
+
+
+	sock = socket(AF_INET, SOCK_STREAM, 0);
+	
+	memset(&sin, 0x0, sizeof(struct sockaddr_in));
+	sin.sin_addr.s_addr	= inet_addr("127.0.0.1");
+	sin.sin_family		= AF_INET;
+	sin.sin_port		= htons(1337);
+		  
+	connect(sock, (sockaddr *)&sin, sizeof(struct sockaddr_in)); 
+	</i> 
+</pre>
+    <p> Je n'incluerais pas le code du client dans cette section, cela ne ferais 
+      que l'alourdir... Il est disponible ici : <a href = "http://barbus.homeunix.org/redkod/papers/winsock/tcpclient.c">TCPclient.c</a><br>
+      <br>
+    <h3> 
+      <li>Conclusion</li>
+    </h3>
+  </ol>
+  <p> Cette introduction aux sockets streams est terminée, maintenant passons 
+    à quelque chose de plus interressant : Les raw sockets. </p>
+  <h2> 
+    <li>Les raw sockets</li>
+  </h2>
+  <ol>
+    <h3> 
+      <li>Introduction</li>
+    </h3>
+    <p>Nous allons ici aborder un sujet un peu plus complexe et plus intérressant 
+      que les sockets streams, je parle bien sûr des raw sockets. Par l'intermédiaire 
+      de ceux-ci nous apprendrons comment forger nos propres paquets que cela 
+      soit TCP, ICMP où autres. Nous analyserons de même la manière de récupérer le 
+      flux transitant sur nos interfaces réseaux, toujours uniquement grâce à Winsock 
+      2. Donc, logiquement, après avoir lu cette section vous serez capable d'écrire 
+      votre propre sniffer ou encore votre forgeur de paquets personnel, ce qui 
+      peut être très interressant, je trouve.</p>
+    <h3> 
+      <li>Qu'est ce qu'un <i>raw socket</i> ?</h3>
+    <p>Un raw socket est un socket avec un pouvoir 'supérieur', il permet d'écrire 
+      ou de lire des paquets sur une interface réseau, avec les paramètres souhaités. 
+      c'est à dire, qu'il aura la possibilité de modifier l'en tête d'un paquet 
+      pour ensuite l'envoyer avec les options de cette même en tête modifiées 
+      (adresse IP source, flag TCP, etc). </p>
+
+    <h3><li>L'accès aux <i>raw sockets</i></li></h3>
+    <p>Pour utiliser les <i>raw sockets</i>, nous allons devoir remplir certaines conditions, tout d'abord, nous devrons avoir en 
+    notre possession les droits du super utilisateur de la machine concernée. Si ce n'est pas le cas, nous allons déclencher
+    une erreur de type <i>WSAEACCESS</i> lors de la tentative de création de notre <i>raw socket</i>.<br>
+    Nous pouvons remarquer que cette restriction peut être contournée selon plusieurs méthodes :<br><br>
+    - Avec Windows XP Home Edition chaque programme s'executant obtient par default les privilèges du super utilisateur,
+    ce qui réduit donc à néant la sécurité d'accès au niveau des <i>raw
+    sockets</i>.<br>
+    - Sur Windows NT4, il est possible de neutraliser ce contrôle en modifiant une certaine clée de la base des registres, que 
+    je citerais ci dessous.
+    <PRE class="in_text">HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Afd\Parameters\DisableRawSecurity</PRE>
+    Nous devons donc modifier cette valeur <i>DWORD</i> pour la fixer à 1 et donc désactiver le système de contrôle. Pour valider
+    cette modification, un redémarrage sera nécessaire.<br><br>
+    Avec Windows 2000, à ma connaissance aucune technique "simple" ne permet de neutraliser ce contrôle d'accès.<br><br>
+    Maintenant nous allons étudier les différents moyens possibles pour renforcer cette sécurité de contrôle d'accès aux
+    <i>raw socket</i> et donc éviter qu'un utilisateur mal intentionné accède à ce type de socket et face des dégats.<br>
+    Donc notre de but est de bloquer l'accès à ces <i>raw sockets</i>, pour ceci plusieurs logiciels éxistent, j'ai pu en 
+    remarquer 2 développés par <i>Gibson Research</i> qui sont libres d'emploies. L'un permet de vérifier où en est votre 
+    système au niveau du contrôle d'accès aux <i>raw sockets</i> et l'autre permet de bloquer à TOUS les utilisateurs 
+    présents sur la machine l'utilisation de ce type de socket grâce à l'installation d'un nouveau drivers système (<i>KDM</i>).<br>
+    Tout d'abord étudions le premier, il se nomme <i>SocketToMe</i>, il va donc nous permettre d'étudier les droits 
+    de l'utilisateur lancant ce programme concernant l'accès aux <i>raw socket</i>.
+    Vous pourrez le trouver <A HREF="http://grc.com/files/SocketToMe.exe">ici</A><br>
+    Etudions maintenant le second, celui ci permet de bloquer à TOUS les utilisateurs présents sur le système l'accès aux
+    <i>raw sockets</i>. Ce second utilitaires ce nomme, "SocketLock", il est disponible <A HREF="http://grc.com/files/SocketLock.exe">
+    ici</A>.
+       
+    </p>
+    
+    <h3><li>Les différents protocoles</li></h3>
+	
+    <p>Pour pouvoir jouer avec l'en tête des datagrammes il va déjà falloir connaitre 
+      à quoi celle-ci correspond. Je vais essayer ici de vous décrire les options 
+      des protocoles de bases comme le protocole IP, TCP, ou encore ICMP. Pour 
+      forger votre propre en tête, vous allez tout simplement devoir remplir les 
+      structures représentants l'entête des datagrammes voulus.</p>
+    
+<ol>
+  <h4><li>Le protocole <i>IP</i> (<i>I</i>nternet <i>P</i>rotocol)</li></h4>
+  <p>Ce protocole joue un rôle majeur sur Internet. Celui-ci assure 
+    <i>sans connexion </i>un service <i>non fiable</i> de délivrances de paquets 
+    IP. Ce service est dit <i>non fiable</i> car il n'assure pas la délivrance 
+    de chaque paquet à l'host de destination, ces paquets peuvent très bien être 
+    perdus, retardés, dupliqués, altérés, ou encore mis dans le désordre. Et aucune 
+    option dans le paquet indique ce genre de problème. En plus concis, nous pouvons 
+    dire que ce protocole gère le routage sur Internet.<br>
+    <br>
+    Voici à quoi ressemble ce type de datagramme : </p>
+  <p align="center"> &lt;----------------------------------- 32 bits -----------------------------------&gt; 
+  <table height="202" border="1" align="center" cellpadding="0" cellspacing="0" bordercolor="#000000" bgcolor="#cccccc">
+    <tr> 
+      <td width="60" height="40"> <div align="center">version</div></td>
+      <td width="60"><div align="center">longueur d'en-t&ecirc;te</div></td>
+      <td width="120"><div align="center">type de service</div></td>
+      <td width="240" colspan="2"><div align="center">longueur totale</div></td>
+    </tr>
+    <tr> 
+      <td height="21" colspan="3"> <div align="center">identification</div></td>
+      <td><div align="center">drapeau</div></td>
+      <td><div align="center">d&eacute;calage fragment</div></td>
+    </tr>
+    <tr> 
+      <td height="21" colspan="2"> <div align="center">dur&eacute;e de vie</div></td>
+      <td><div align="center">protocole</div></td>
+      <td colspan="2"><div align="center">somme de contr&ocirc;le en-t&ecirc;te 
+          (checksum) </div></td>
+    </tr>
+    <tr> 
+      <td height="21" colspan="5"> <div align="center">adresse IP source</div></td>
+    </tr>
+    <tr> 
+      <td height="21" colspan="5"> <div align="center">adresse IP destination</div></td>
+    </tr>
+    <tr> 
+      <td colspan="5"><div align="center">donn&eacute;es</div></td>
+    </tr>
+  </table>
+  <p>Etudions ensemble chacunes des options pr&eacute;sentes dans ce datagramme.</p>
+  <p><b>version</b> : ce champ définie la version du protocole IP voulut, actuellement 
+    la version la plus courante est la 4 (IPv4), elle est codée sur 4 bits. si 
+    ce champ n'est pas initialisé avec une valeur correcte, le paquet 
+    est tout simplement rejeté.<br>
+    <b>longueur d'en-tête</b> : il s'agit du nombre de mots de 32 bits sur lesquels 
+    sont répartis l'en-tête, toujours codé sur 4 bits.<br>
+    <b>type de service (tos: type of service)</b> : ce champ indique la façon 
+    dont les packets doivent être traités. il est codé sur 8 bits.<br>
+    <b>longueur totale</b> : il s'agit de la taille totale en octets du datagramme, 
+    et comme ce champ est de 2 octets on en déduit que la taille complète 
+    d'un datagramme ne peut dépasser 65535 octets. Utilisée avec 
+    la longueur de l'en-tête elle permet de déterminer où;
+    commencent exactement les données transportées. <br>
+    <b>identification, drapeaux (flags) et déplacement de fragment</b> : ces trois 
+    champs interviennent dans le processus de fragmentation des datagrammes IP, 
+    nous ne rentrerons pas dans de profonds détails à ce sujet, 
+    pour ceci aller plutôt vous renseigner auprès du rfc. (<i>IP - internet 
+    protocol, RFC 791</i>)<br>
+    <b>durée de vie (ttl : time to live)</b> : ce champ indique le nombre maximum 
+    de routeurs que peut traverser notre paquet. cela permet d'éviter qu'un datagramme 
+    "tourne" indéfiniment sur internet. il permet aussi la réalisation 
+    d'un outil comme traceroute.<br>
+    <b>protocole</b> : ce champ permet de savoir quel protocole de plus haut niveau 
+    a servi a créé ce datagramme. Les valeurs codées etant codées sur 8 bits sont :
+    1 pour ICMP, 2 pour IGMP, 6 pour TCP et 17 pour UDP. Ainsi, la 
+    station destinatrice qui reçoit un datagramme IP pourra diriger les 
+    données qu'il contient vers la couche adéquate.<br>
+    <b>somme de contrôle en-tête</b> : ce champ contient une valeur codée sur 
+    16 bits qui permet de contrôler l'intégrité de l'en tête afin de déterminer 
+    si celui-ci n'a pas été altéré pendant la transmission. La somme de contrôle 
+    est le complément à un de tous les mots de 16 bits de l'en-tête (champ somme 
+    de contrôle exclu). Celle-ci est en fait telle que lorsque l'on fait la somme 
+    des champs de l'en-tête (somme de contrôle inclue), on obtient un nombre avec 
+    tous les bits positionnés à 1.<br>
+    <b>adresse IP source</b> : ce champ représente l'adresse IP de la machine 
+    émettrice, il permet au destinataire de répondre (codée sur 32 bits).<br>
+    <b>adresse IP destination</b> : adresse IP du destinataire (toujours codée sur 32 bits).</p>
+  <p>Maintenant observons la structure associée à ce type de datagramme :</p>
+  
+<pre><i>typedef struct iphdr { 
+    unsigned char  verlen;   /* version du protocol IP + la longeur de l'en tète */
+    unsigned char  tos;	     /* type de service */
+    unsigned short tot_len;  /* longueur totale du datagramme */
+    unsigned short id;	     /* identification */
+    unsigned short offset;   /* d&eacute;calage */
+    unsigned char  ttl;	     /* durée de vie du paquet */
+    unsigned char  protocol; /* protocole */
+    unsigned short checksum; /* somme de contrôle */
+    unsigned int   saddr;    /* adresse IP source */ 
+    unsigned int   daddr;    /* adresse IP destinataire */
+} IP_HDR;</i></pre>
+    
+  <h4><li>Le protocole <i>TCP </i>(<b>T</b>ransmission <b>C</b>ontrol <b>P</b>rotocol)</li></h4>
+  <p>Ce protocole assure la liaison entre les applications et la couche inférieure 
+    du modèle (<i>IP</i>), il est trés utilisé sur l'internet pour sa fiabilité 
+    que cela soit au niveau de la vérification de l'état des paquets, ou encore 
+    grâce à sa sécurité et ses possibilités de multiplexage/démultiplexage.</p>
+  <p>Observons comment est constitutuée une trame TCP :</p>
+  <table border="1" align="center" cellpadding="0" cellspacing="0" bordercolor="#000000" bgcolor="#cccccc" >
+    <tr> 
+      <td bordercolor="#999999">0</td>
+      <td bordercolor="#999999">1</td>
+      <td bordercolor="#999999">2</td>
+      <td bordercolor="#999999">3</td>
+      <td bordercolor="#999999">4</td>
+      <td bordercolor="#999999">5</td>
+      <td bordercolor="#999999">6</td>
+      <td bordercolor="#999999">7</td>
+      <td bordercolor="#999999">8</td>
+      <td bordercolor="#999999">9</td>
+      <td bordercolor="#999999">10</td>
+      <td bordercolor="#999999">11</td>
+      <td bordercolor="#999999">12</td>
+      <td bordercolor="#999999">13</td>
+      <td bordercolor="#999999">14</td>
+      <td bordercolor="#999999">15</td>
+      <td bordercolor="#999999">16</td>
+      <td bordercolor="#999999">17</td>
+      <td bordercolor="#999999">18</td>
+      <td bordercolor="#999999">19</td>
+      <td bordercolor="#999999">20</td>
+      <td bordercolor="#999999">21</td>
+      <td bordercolor="#999999">22</td>
+      <td bordercolor="#999999">23</td>
+      <td bordercolor="#999999">24</td>
+      <td bordercolor="#999999">25</td>
+      <td bordercolor="#999999">26</td>
+      <td bordercolor="#999999">27</td>
+      <td bordercolor="#999999">28</td>
+      <td bordercolor="#999999">29</td>
+      <td bordercolor="#999999">30</td>
+      <td bordercolor="#999999">31</td>
+    </tr>
+    <tr bgcolor="#cccccc" background="#cccccc"> 
+      <td width="240" colspan="16" background="#cccccc"><div align="center">port 
+          source</div></td>
+      <td width="240" colspan="16"><div align="center">port destination</div></td>
+    </tr>
+    <tr bgcolor="#cccccc" background="#cccccc"> 
+      <td colspan="32"> <center>
+          num&eacute;ro de s&eacute;quence </center></td>
+    </tr>
+    <tr bgcolor="#cccccc" background="#cccccc"> 
+      <td colspan="32"> <center>
+          accus&eacute; de r&eacute;ception </center></td>
+    </tr>
+    <tr bgcolor="#cccccc" background="#cccccc"> 
+      <td colspan="4"> <center>
+          d&eacute;calage<br>
+          donn&eacute;es</center></td>
+      <td colspan="6"> <center>
+          r&eacute;serv&eacute;e</center></td>
+      <td > <center>
+          urg</center></td>
+      <td > <center>
+          ack</center></td>
+      <td > <center>
+          psh</center></td>
+      <td > <center>
+          rst</center></td>
+      <td > <center>
+          syn</center></td>
+      <td > <center>
+          fin</center></td>
+      <td colspan="16"> <center>
+          fen&ecirc;tre</center></td>
+    </tr>
+    <tr bgcolor="#cccccc" background="#cccccc"> 
+      <td width="240" colspan="16"> <center>
+          somme de contr&ocirc;le (checksum) </center></td>
+      <td width="240" colspan="16"> <center>
+          pointeur de donn&eacute;es urgentes </center></td>
+    </tr>
+    <tr bgcolor="#cccccc" background="#cccccc"> 
+      <td width="240" colspan="22"><div align="center">options</div></td>
+      <td width="240" colspan="10"><div align="center">remplissage (padding)</div></td>
+    </tr>
+    <tr bgcolor="#cccccc" background="#cccccc"> 
+      <td colspan="32"> <center>
+          donn&eacute;es</center></td>
+    </tr>
+  </table>
+  <br>
+  <p>Etudions ensemble les champs constituant ce datagramme :</p>
+  <blockquote> 
+    <p><b>port source</b> : ce champ est codé sur 16 bits, il correspond au port 
+      relatif à l'application en cours sur la machine source.<br>
+      <b>port destination</b> : toujours codé sur 16 bits, il correspond au port 
+      relatif à l'application en cours sur la machine de destination.<br>
+      <b>numéro de séquence (isn)</b> : champ codé sur 32bits, il correspond 
+      au numéro du premier octet de données par rapport au début de la transmission 
+      (sauf si syn est marqué). si syn est marqué, le numéro de séquence est le 
+      numéro de séquence initial (isn) et le premier octet à pour numéro isn+1.<br>
+      <b>accusé de réception</b> : champ codé sur 32 bits. si ack est marqué 
+      ce champ contient le numéro de séquence du prochain octet que le récepteur 
+      s'attend à recevoir. une fois la connexion établie, ce champ est toujours 
+      renseigné.<br>
+      <b>décalage données (data offset)</b> : taille de l'en-tête TCP en nombre 
+      de mots de 32 bits. Il indique ou commence les données. L'en tête TCP, 
+      dans tous les cas à une taille correspondant à un nombre entier de mots 
+      de 32 bits.<br>
+      <b>réservé</b> : codé sur 6 bits. Réservé pour usage futur. Doivent nécessairement 
+      être à 0.<br>
+      <b>bits de contrôle</b> : toujours codé sur 6 bits, ces "flags" indique 
+      le "type" du paquet.<br>
+      &#8226; urg: pointeur de données urgentes significatif<br>
+      &#8226; ack: accusé de réception significatif<br>
+      &#8226; psh: fonction push<br>
+      &#8226; rst: réinitialisation de la connexion<br>
+      &#8226; syn: synchronisation des numéros de séquence<br>
+      &#8226; fin: fin de transmission 
+      <b><br>fenêtre</b> : nombre d'octets à partir de la position marquée dans l'accusé 
+      de réception que le récepteur est capable de recevoir. Codé sur 16 bits.<br>
+      <b>somme de contrôle (checksum)</b> : ce champ contient une valeur codée 
+      sur 16 bits qui permet de contrôler l'intégrité de l'en tête afin de déterminer 
+      si celui-ci n'a pas été altéré pendant la transmission. La somme de contrôle 
+      est le complément à un de tous les mots de 16 bits de l'en-tête (champ somme 
+      de contrôle exclu). Celle-ci est en fait telle que lorsque l'on fait la 
+      somme des champs de l'en-tête (somme de contrôle inclue), on obtient un 
+      nombre avec tous les bits positionnés à 1.<br>
+      <b>pointeur de données urgentes</b> : communique la position d'une donnée 
+      urgente en donnant son décalage par rapport au numéro de séquence. Le pointeur 
+      doit pointer sur l'octet suivant la donnée urgente. Ce champs n'est interprété 
+      que lorsque urg est marqué. ce champ est également codé sur 16 bits.<br>
+      <b>options</b> : les champs d'option peuvent occuper un espace de taille 
+      variable à la fin de l'en-tête TCP. ils formeront toujours un multiple de 
+      8 bits. Toutes les options sont prises en compte par le checksum. Un paramètre 
+      d'option commence toujours sur un nouvel octet. (voir <i>rfc 793</i> pour plus 
+      de renseignement)<br>
+      <b>remplissage (padding)</b> : les octets de bourrage terminent l'en-tête 
+      TCP :<br>
+    <ul>
+      &#8226; de sorte que le nombre d'octet de celle-ci soit toujours multiple 
+      de 4 (32 bits)<br>
+      &#8226; de sorte que l'offset de données marqué dans l'en-tête corresponde 
+      bien au début des données applicatives. 
+    </ul>
+    <b>options</b> : la taille maximale de segment de ce champ est de 16 bits. 
+    si cette option est présente, elle communique à l'émetteur la taille maximale 
+    des segments qu'il pourra envoyer. ce champ doit être envoyé dans la requête 
+    de connexion initiale (avec syn marqué). si cette option est absente, le segment 
+    pourra être pris de n'importe quelle taille.<br>
+    <br>
+    Maintenant nous pouvons étudier la structure associée à ce type de trame : </p> 
+
+    <pre><i>
+typedef struct tcphdr
+{
+	unsigned short sport;      /* port source */
+	unsigned short dport;      /* port de destination */
+	unsigned int   seqnum;     /* numéro de séquence */
+	unsigned int   acknum;     /* accusé de réception */
+	unsigned char  dataoffset; /* décalage des données (data offset) */ 
+	unsigned char  flags;	   /* flags */
+	unsigned short windows;    /* fenêtre */
+	unsigned short checksum;   /* checksum */
+	unsigned short urgpointer; /* pointeur de données urgentes */
+} TCP_HDR;</i></pre>
+  </blockquote>
+  <h4><li>Le protocole <i>ICMP</i> (<i>I</i>nternet <i>C</i>ontrol <i>M</i>essage <i>P</i>rotocol)</h4></li></ol><blockquote>
+      <p>ICMP est le protocole utilisé pour gérer les informations contrôlant 
+        le trafic IP, qui permet notamment aux routeurs d'envoyer des messages 
+        de contrôle ou d'erreur vers d'autres ordinateurs ou routeurs connectés. 
+        Ces messages ICMP sont transportés sur le réseau sous forme de datagramme, 
+        ainsi les messages d'erreurs peuvent eux mêmes être sujet d'erreurs. Toutefois 
+        en cas d'erreur sur un datagramme transportant un message ICMP, aucun 
+        message d'erreur n'est délivré pour éviter un effet "boule de neige" en 
+        cas d'incident sur le réseau.<br>
+        <br>
+        Voici à quoi ressemble ce genre de trame : </p>
+
+  <div align="center"> 
+    <table border="1" cellpadding="0" cellspacing="0" bordercolor="#000000" background="#cccccc" bgcolor="#cccccc" >
+      <tr bgcolor="#ecf0fa"> 
+        <td width="44" height="89" bgcolor="#cccccc">en-t&ecirc;te</td>
+        <td width="269" bgcolor="#cccccc"> <center>
+            <p><font size="-1">message ICMP</font></p>
+            <table height="54" border="1" cellpadding="0" cellspacing="0" bordercolor="#999999" bgcolor="#afbbef" >
+              <tr bgcolor="#cccccc"> 
+                <td width="61" height="52"> 
+                  <div align="center">type<br>
+                    <font size="-2">(8 bits)</font></div></td>
+                <td width="62"> 
+                  <div align="center">code<br>
+                    <font size="-2">(8 bits)</font></div></td>
+                <td width="77"> 
+                  <div align="center">checksum<br>
+                    <font size="-2">(16 bits)</font></div></td>
+                <td width="71"> 
+                  <div align="center">message<br>
+                    <font size="-2">(taille variable)</font></div></td>
+              </tr>
+            </table>
+          </center></td>
+      </tr>
+    </table>
+  </div>
+  <p>Pour ce qui est de la description des différents champs constituant ce type 
+    de datagramme je préfère vous envoyer lire le <i>RFC 792</i>, qui est plus précis 
+    à ce sujet, il y a trop de types, et de codes pour que je fasse ici une description. 
+    Observons plutôt la structure qui est associée à ce datagramme :</p>
+  <pre><i>
+typedef struct icmphdr
+{
+	unsigned char  type;       /* type ICMP */
+	unsigned char  code;       /* code ICMP */
+	unsigned short checksum;   /* checksum  */
+	unsigned short id;         /* id, utilisé lors de la reconnaissance entre programmes des paquets ICMP */
+	unsigned short sequence;   /* séquence  */
+	unsigned long  timestamp;  /* timestamp */
+} ICMP_HDR;</i></pre></blockquote>
+
+<h3><li>Forger ses propres paquets</li></h3>
+<ol><h4><li>Paquets ICMP</li></h4>
+<blockquote> 
+<p>
+Maintenant que nous sachons à quoi ressemble la structure d'un paquet ICMP ou encore celle du protocol IP, nous pouvons nous permettre
+de forger notre propre paquet grâce à un programme en C. Je vais donc ici vous montrer un simple exemple qui permettra d'envoyer une 
+requète ICMP <i>echo request</i> à une machine présente sur le réseau.<br>
+Tout d'abord nous devons initialisé l'API Winsock dans sa version 2 contrairement à précedemment, pour se faire, rien de complexe, nous avons
+juste à remplacer les paramètres passés à la macro <i>MAKEWORD</i>.<br><br>
+Ce qui donnera : <i>MAKEWORD(2, 2)</i><br><br>
+Ensuite nous devons comme d'habitude créer notre socket mais cette fois ci nous n'allons pas juste nous contenter d'un socket stream mais 
+plutôt d'un raw socket. Pour créer celui ci nous allons appeler une fonction de l'API Winsock 2, cette fonction se nomme <i>WSASocket()</i>.
+<br>
+Etudions de suite ensemble son prototype :<br>
+<br>
+prototype : <i>SOCKET WSASocket(int af, int type, int protocol, LPWSAPROTOCOL_INFO lpProtocolInfo, GROUP g, DWORD dwFlags);</i>
+</p>
+<pre>
++--------------------------------------------------------------------------------------------------------------+
+| <i>SOCKET WSASocket(int af, int type, int protocol, LPWSAPROTOCOL_INFO lpProtocolInfo, GROUP g, DWORD dwFlags);</i> |
++--------------------------------------------------------------------------------------------------------------+
+</pre>
+<p>
+Comme vous pouvez le constater cette fonction nous renvois un descripteur sur le socket créé, le premier paramètre correspond à 
+la famille du socket, le second correspond au type du socket, le troisième permet de connaitre le protocol utilisé pour ainsi savoir 
+à quelle famille d'adresse celui-ci correspond, le quatrième définie une structure de type <i>LPWSAPROTOCOL_INFO</i> permettant de spécifier
+les caractéristiques du socket créé, le sixième paramètre est réservé à Windows, nous ne en n'occupons pas, quand au dernier paramètre
+il indique les attributs de notre socket. En cas d'échec cette fonction renvoie une erreur du type <i>INVALID_SOCKET</i>, si vous voulez
+obtenir précisemment le code de sortie vous pouvez utiliser la fonction <i>WSAGetLastError()</i>.<br><br>
+Maintenant passons à un exemple :<br><br>
+
+<pre>
+<i>SOCKET socket;	
+socket = WSASocket(AF_INET, SOCK_RAW, IPPROTO_RAW, NULL, 0,0);
+if (socket == INVALID_SOCKET)
+{
+	fprintf(stderr, "erreur lors de la création du raw socket : %d\n", WSAGetLastError());
+	WSACleanup();
+	exit(-1);
+}</i>
+</pre>
+Comme vous pouvez observer ici nous passons en second paramètre <i>SOCK_RAW</i> ce qui permet de créer un socket de type raw, ensuite 
+nous passons au paramètre suivant la valeur <i>IPPROTO_RAW</i>, celle ci permet de spécifier que nous utilisons le protocol <i>IP</i>
+mais toujours en mode raw.
+<br><br>
+Après avoir initialisé Winsock, créé notre raw socket, il nous reste encore une chose à faire, spécifier les bonnes options pour notre socket,
+pour ceci une fonction éxiste, toujours appartenant à l'API Winsock, cette fonction ne nomme : <i>setsockopt();</i><br>
+étudions la de suite avant de l'utiliser.<br><br>
+Prototype : <i>int setsockopt(socket s, int level, int optname, const char *optval, int optlen);</i><br>
+<pre>
++-----------------------------------------------------------------------------------+
+| <i>int setsockopt(SOCKET s, int level, int optname, const char FAR * optval, int optlen);</i> |
++-----------------------------------------------------------------------------------+
+</pre>
+Nous passons directement au deuxième argument qui représente sur quel niveau vont ètre définie les options 
+(<i>SOL_SOCKET</i>, <i>IPPROTO_TCP</i>, et <i>IPPROTO_IP</i>), les paramètres <i>optval</i> et <i>optlen</i> sont utilisés pour déterminer 
+les options pour <i>setsockopt</i>, <i>optlen</i> doit contenir la taille du buffer pointé par <i>optval</i>, si aucune option 
+n'est fournie ou renvoyée, optval peut être <i>NULL</i>. En cas de succès cette fonction renvois 0, dans le cas contraire
+celle-ci renvoie <i>SOCKET_ERROR</i>.<br>
+Maintenant servons nous de cette fonction pour définir les bonnes options à notre socket :
+<pre><i>int optval = 1;
+  
+if (setsockopt(socket, IPPROTO_IP, 2, (char *)&optval, sizeof(optval)) == SOCKET_ERROR)
+{
+    fprintf(stderr, "erreur lors de l'appel à setsockopt : %d\n", WSAGetLastError());
+    WSACleanup();
+    exit(-1);
+}
+</i>
+</pre>
+A partir d'ici, notre socket est pret à être utilisé, donc maintenant nous allons devoir nous occupé
+de la création de notre paquet, pour ceci nous allons commencer par remplir notre structure IP avec les 
+options voulues pour ensuite faire de même notre structure ICMP.
+Donc commençons avec notre en tête IP :
+<pre><i>unsigned short packet_size, ip_version, ip_len;	/* taille de notre paquet, IP version, longueur */
+struct iphdr *ip; /* notre structure IP */
+....
+/* taille de notre paquet */
+packet_size = sizeof(struct iphdr) + sizeof(struct icmphdr); 
+/* on alloue un espace mémoire pour notre structure IP */
+ip = (struct iphdr *)malloc(sizeof(struct iphdr));
+/* On l'initialise à 0 */
+memset(ip, 0x0, sizeof(struct iphdr)); 
+
+/* longueur de l'en tête IP */
+ip_len = sizeof(struct iphdr) / sizeof(unsigned long);
+/* IP version */
+ip_version = 4;
+/* on remplie la structure IP */
+ip->verlen   = (ip_version << 4) | ip_len;
+ip->tos      = 0;
+ip->tot_len  = htons (sizeof (struct iphdr) + sizeof (struct icmphdr));
+ip->id       = 1;
+ip->offset   = 0;
+ip->ttl      = 255;
+ip->protocol = IPPROTO_ICMP;
+ip->saddr    = inet_addr(argv[1]); /* adresse IP source */
+ip->daddr    = inet_addr(argv[2]); /* adresse IP de destination */
+ip->checksum = 0; /* on initialise le champ checksum de notre structure IP à 0 avant l'appel de la fonction calculant le checksum */
+ip->checksum = in_cksum((unsigned short *)ip, sizeof(struct iphdr)); /* calcul du checksum avec la fonction */
+								     /* la fonction in_cksum se trouve dans les codes cités dans cet article */
+</i></pre>
+Maintenant que notre structure IP est correctement initialisée, passons à la structure ICMP.
+<pre><i>struct icmphdr *icmp;
+/* on alloue un espace mémoire pour notre structure ICMP */
+icmp = (struct icmphdr *)malloc(sizeof(struct icmphdr));
+/* On l'initialise à 0 */
+memset(icmp, 0x0, sizeof(struct icmphdr));
+
+/* on la remplie */
+icmp->type     = 8;  /* type ICMP echo request */
+icmp->code     = 0;
+icmp->id       = (ushort)GetCurrentProcessId(); 
+icmp->seq      = (ushort)GetCurrentProcessId(); 
+icmp->checksum = 0;
+icmp->checksum = in_cksum((unsigned short *)icmp, sizeof(struct icmphdr));
+</i></pre>
+Voila, nos deux structures sont remplies avec les options voulues, maintenant nous allons créer une image de notre paquet
+dans un buffer, un tableau de char plus précisement, ce tableau aura comme taille, la taille de notre paquet, c'est à dire,
+la taille de notre structure IP, plus la taille de notre structure ICMP. Voyons plus précisemment ce qui cela donne niveau code.
+<pre><i>char *ptr = NULL, packet[32]; /* notre paquet, 32 = sizeof(struct icmphdr) + sizeof(struct iphdr) */
+
+ZeroMemory(packet, sizeof(packet));
+ptr = packet;
+memcpy(ptr, ip, sizeof(struct iphdr));
+ptr += sizeof(struct iphdr);
+memcpy(ptr, icmp, sizeof(struct icmphdr));
+ptr += sizeof(struct icmphdr);
+</i></pre>
+Enfin, nous voila avec notre paquet prêt à être envoyé à destination, mais pour ceci, il nous reste encore une chose à découvrir,
+une nouvelle fonction plus précisemment, cette fonction se nomme <i>sendto()</i>. Etudions comment celle ci se présente.<br><br>
+Prototype : <i>int sendto(socket s, const char FAR * buf, int len, int flags, const struct sockaddr FAR * to, int tolen);</i>
+<pre>
++------------------------------------------------------------------------------------------------------------+
+| <i>int sendto(SOCKET s, const char FAR * buf, int len, int flags, const struct sockaddr FAR * to, int tolen);</i> |
++------------------------------------------------------------------------------------------------------------+
+</pre>
+Cette fonction va nous permettre d'envoyer un paquet à une adresse spécifié par la structure <i>to</i> de type <i>sockaddr</i>.
+Elle prend comme premier paramètre le socket émetteur, comme second un pointeur sur les données à envoyer, le troisième
+paramètre doit contenir la taille des données émises. Le quatrième paramètre n'est pas très important passons directement au
+cinquième qui correspond à un pointeur sur une structure de type <i>sockaddr</i> contenant l'adresse de destination, quand au dernier
+paramètre il spécifie simplement la taille de l'adresse pointée par la structure <i>to</i>.<br><br>
+observons cette exemple :
+<pre><i>struct sockaddr_in sin; /* notre structure sockaddr_in qui contiendra l'adresse de destination */
+
+/* on rempli notre structure sockaddr_in */ 
+sin.sin_family           = AF_INET;
+sin.sin_addr.s_un.s_addr = inet_addr("127.0.0.1"); // Adresse de destination
+
+/* hop, nous envoyons notre paquet à destination */
+if(sendto(socket, packet, sizeof(packet), 0x0, (struct sockaddr *)&sin, sizeof(struct sockaddr_in)) == SOCKET_ERROR)	    
+{
+	fprintf(stderr, "Erreur lors de l'appel de la fonction sendto. Code erreur : %d\n", WSAGetLastError());	
+	free(ip);
+	free(icmp);
+	WSACleanup();
+}
+</i></pre>
+Nous avons terminé en ce qui concerne le forging de paquet ICMP, ceci, bien sûr, n'est qu'un exemple d'application, 
+vous pouvez ensuite réaliser avec ceci un ICMP paquet forgeur ( <a href = "http://barbus.homeunix.org/redkod/products/win/icmprpk.c">icmprpk.c</a> )
+ou un même un smurfeur (mais c'est mal :)).
+Vous pouvez trouver le code complet démontrant toute cette section ici : <a href = "http://barbus.homeunix.org/redkod/papers/winsock/icmp.c">icmp.c</a><br>
+</p>
+</blockquote>
+<h4><li>Paquets TCP</li></h4>
+<blockquote> 
+<p>
+Après avoir joué avec le protocol ICMP, attaquons un peu le TCP, en forgeant nos propres datagrammes TCP nous allons pouvoir
+réaliser de multiples choses, comme envoyer une multitude de paquets TCP avec le flag SYN activé à une machine distante ce qui va créer un
+effet de surcharge au niveau des connexions de l'hote distante, cette attaque se nomme le "syn flooding", nous allons aussi pouvoir
+spoofer des connexions TCP avec un peu plus d'expérience (problème de connaissance du numéro de séquence, sur certain OS :)).<br>
+Maintenant passons à la pratique. Nous connaissons toutes les fonctions nécessaires pour envoyer notre propre paquet TCP, la seule 
+chose innovante ici va être de devoir remplir une structure de type <i>TCP_HDR</i> pour ensuite calculer le checksum de notre paquet
+grâce à une pseudo en tête permettant ceci. Voyons comment réaliser cela.<br>
+Je ne vais pas reparler des détails sur l'initialisation de Winsock, etc... Vous avez dejà vu ça dans la section précédente, passons
+directement aux choses intérressantes. Donc ici, à la place de déclarer une structure de type <i>ICMP_HDR</i> nous allons la remplacer
+pas une de type <i>TCP_HDR</i> :
+<pre><i>struct tcphdr *tcp;  /* notre structure TCP */
+/* maintenant passons à la structure TCP */
+/* on alloue de la mémoire pour celle ci */
+tcp = (struct tcphdr *)malloc(sizeof(struct tcphdr));
+memset(tcp, 0x0, sizeof(struct tcphdr));
+
+/* on la remplie */
+tcp->sport      = htons(1500);	/* port source */
+tcp->dport      = htons(80) ;	/* port de destination */
+tcp->seqnum     = htonl(1337);	/* numéro de séquence */
+tcp->acknum     = htonl(1337);  /* ack number */
+tcp->dataoffset = (5) << 4;     /* décalage */
+tcp->flags      = 0x02;         /* 0x02 = flag syn */
+tcp->window     = htons(1337);  /* fenètre */
+tcp->checksum   = 0;		/* checksum */
+tcp->urgpointer = 0;		/* options */
+</i></pre>
+Maintenant que notre structure TCP est remplie avec les options voulues nous allons devoir calculer le checksum pour notre paquet. 
+pour cela nous allons devoir utiliser une pseudo structure, voyons de suite à quoi ressemble cette structure :
+<pre><i>struct pseudohdr
+{
+	unsigned long saddr;
+	unsigned long daddr;
+	char useless;
+	unsigned char protocol;
+	unsigned short length;
+	struct tcphdr TCP;
+};</i>
+</pre>
+Nous connaissons maintenant l'allure de notre pseudo structure, alors nous pouvons la remplir pour ensuite calculer notre checksum, et
+c'est ce que nous allons faire de suite.
+<pre><i>struct pseudohdr *psdheader; /* pseudo header */
+
+/* allocation mémoire pour notre pseudo header */
+psdheader = (struct pseudohdr *)malloc(sizeof(struct pseudohdr));
+memset(psdheader, 0x0, sizeof(struct pseudohdr));
+
+/* on remplie notre structure */
+psdheader->saddr    = inet_addr(argv[1]); /* adresse source */
+psdheader->daddr    = inet_addr(argv[3]); /* adresse de destination */
+psdheader->useless  = 0;		  /* null */
+psdheader->protocol = IPPROTO_TCP;	  /* protocol */
+psdheader->length   = htons(sizeof(struct tcphdr)); /* longueur de notre structure TCP_HDR */
+psdheader->tcp      = *tcp;		  /* structure TCP_HDR */
+
+/* Maintenant nous calculons le checksum pour notre paquet */
+tcp->checksum = in_cksum((unsigned short *)psdheader, sizeof(struct pseudohdr)); 
+</i></pre>
+Voila tout est prêt, nous pouvons envoyé notre paquet après avoir copié le contenu des structures dans un buffer de type char, c'est d'ailleurs
+ce que nous avons fait dans la section précédente pour notre paquet ICMP. Vous trouverez donc <a href = "http://barbus.homeunix.org/redkod/papers/winsock/syn.c">ici</a>
+la source du programme illustrant ce chapitre. Ce programme permet d'envoyer des paquets TCP avec le flag SYN activé avec pour possibilité
+de modifier l'adresse source de ce même paquet.
+</p>
+</blockquote> 
+<h4><li>Paquets UDP</li></h4></ol>
+<blockquote> 
+<p>
+Forger ses propres paquets UDP est en soit très simple, il suffit de remplir la structure définissant l'en tête UDP au niveau réseau
+ce qui n'est pas très complexe, donc après lecture de cette partie vous serez en mesure d'envoyer des datagrammes UDP de tout type,
+et même en modifiant votre IP source, ce qui, avec le protocol UDP peut être très pratique, celui-ci ne requière aucune 
+authentification au niveau des connexions, vous pourrez donc exploiter ceci.
+
+<br>Etudions cette mystérieuse structure : 
+<pre><i>typedef struct udphdr
+{
+	unsigned short srcport; 
+	unsigned short dstport; 
+	unsigned short length; 
+	unsigned short checksum; 
+} UDP_HDR;
+</i></pre>
+<i>unsigned short srcport</i> : ce premier membre définie le port source.<br>
+<i>unsigned short desport</i> : ce second membre définie encore une fois le port mais cette fois ci celui de destination.<br>
+<i>unsigned short length</i>  : ce membre va définir la longueur de notre en tête UDP.<br>
+<i>unsigned short checksum</i> : ce dernier membre représente le checksum de notre paquet, sachez qu'il n'est pas obligatoire<br>
+de le calculer, vous pouvez simplement, l'initialisé à 0.<br><br>
+Voyons cette exemple d'initialisation pour notre structure de type <i>UDP_HDR</i> :<br>
+<pre><i>/* notre structure udphdr */
+struct udphdr *udp;
+		
+/* initialisation mémoire */
+udp = (struct udphdr *)malloc(sizeof(struct udphdr)); 
+memset(udp, 0x0, sizeof(struct udphdr));
+
+/* remplissage */
+udp->srcport  = htons(1500);  /* port source */
+udp->dstport  = htons(80);    /* port destination */
+udp->length   = htons (sizeof(struct udphdr)); /* longueur */
+udp>checksum = 0;            /* checksum */</i>
+</pre>
+Maintenant, vous en savez assez avec ceci et les exemples précédents pour envoyer vos propres datagrammes UDP. <br>
+Vous trouverez un exemple de code illustrant cette partie <a href = "http://barbus.homeunix.org/redkod/papers/winsock/udp.c">ici</a> .
+</p></blockquote> 
+<h3><li>Programmer un sniffer grâce aux raw sockets</li></h3></ol>
+<blockquote>
+	<ol><h4><li>Introduction</li></h4>
+	<p>
+	Ici nous allons étudier comment programmer un sniffer uniquement grâce aux fonctions que fournie la librarie Winsock 2.
+	Celle-ci va nous permettre de récupérer grâce à un raw socket toutes les trames traversant notre réseau. Après les connaissances
+	acquises précédemment cela ne va pas être très compliqué, nous prendrons uniquement conscience de deux nouvelles fonctions.
+	Je voudrais quand même ajouter une petite précision sur le sniffer que nous allons programmé, malheureusement nous ne pourrons
+	récupérer toutes les informations touchant au protocol Ethernet, comme l'adresse mac par exemple, le niveau d'implémentation de 
+	l'API Winsock 2 n'est pas asser bas pour récupérer ce type d'information.
+	</p>
+	<h4><li>Qu'est ce qu'un sniffer ?</li></h4>
+	<p>
+	Un sniffer est un programme nous permettant de capturer les trames traversant un réseau pour ensuite les affichées dans un format
+	compréhensible pour l'être humain. Par ailleurs, il permet aux administrateurs de détecter des anomalies au niveau de leurs installations
+	réseaux, ce qui est donc très utile, mais d'un autre coté, il va aussi rendre possible aux personnes mal intentionnées de récupérer des mots 
+	de passes ou toutes sortes d'informations interressantes passant sur un réseau.
+	</p>
+	<h4><li>Pratique</li></h4>
+	<p>
+	Passons maintenant à la partie la plus interressante, la programmation, enfin ceci est mon point de vue bien sûre.
+	Donc je vais vite vous résumer les étapes que nous allons devoir franchir pour arriver à nos fins.<br><br>
+	- Initialiser Winsock dans sa version 2 ou supérieur.<BR>
+	- Créer notre raw socket, qui nous servira à récupérer les trames réseaux.<BR>
+	- Récupérer notre adresse IP locale pour ensuite l'assigner au socket grâce à la fonction <I>bind()</I><BR>
+	- Placer notre interface réseau en mode promiscuous grâce à la fonction <I>WSAIoctl()</I>, ce qui va permettre de récupérer toutes les
+	trames transittant sur le réseau même celles qui ne nous sont pas destinées.<BR>
+	- Lancer une boucle qui sera destinée à recevoir tous les paquets grâce à la fonction <I>recvfrom()</I> .<BR>
+	- Traiter les paquets reçus.<BR><BR>
+	Maintenant nous allons étudier les seules choses que vous ne connaissez pas, c'est à dire les fonctions <I>WSAIoctl</I> et
+	<I>recvfrom()</I>.<BR>
+	Donc procédons à cette petite étude : <BR>
+<PRE>
+Prototype : <I>int WSAIoctl(SOCKET s, DWORD dwIoControlCode, LPVOID lpvInBuffer, DWORD cbInBuffer, LPVOID lpvOutBuffer, DWORD cbOutBuffer, 
+			 LPDWORD lpcbBytesReturned, LPWSAOVERLAPPED lpOverlapped, LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine);<BR>
+	    int recvfrom(SOCKET s, char FAR *buf, int len, int flags, struct SOCK_ADDR *from, int FAR *fromlen);</I><BR>
+</PRE>
+<pre>
++-------------------------------------------------------------------------------------------------------------------------------------+
+| <i>int WSAIoctl(SOCKET s, DWORD dwIoControlCode, LPVOID lpvInBuffer, DWORD cbInBuffer, LPVOID lpvOutBuffer, DWORD cbOutBuffer,         |
+|              LPDWORD lpcbBytesReturned, LPWSAOVERLAPPED lpOverlapped, LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine);</i>      |
++-------------------------------------------------------------------------------------------------------------------------------------+
+</pre>
+Cette fonction va nous être très utile, elle va permettre de passer notre interface réseau en mode promiscuous, ce qui aura pour but
+de pouvoir récupérer tous les paquets transittants sur le réseau même ceux qui ne nous sont pas destinés. Je préfère vous donner 
+un exemple d'utilisation de cette fonction par la suite, vous pourrez vous renseigner sur le type et l'utilité de tous ses arguments
+sur <A HREF = "http://msdn.microsoft.com/" TARGET="_blank">msdn.microsoft.com</A> ou encore dans le fichier d'aide "Win32 Programmer's Reference". 
+
+<pre>
++------------------------------------------------------------------------------------------------------+
+| <i>int recvfrom(SOCKET s, char FAR *buf, int len, int flags, struct SOCK_ADDR *from, int FAR *fromlen);</i> |
++------------------------------------------------------------------------------------------------------+
+</pre>
+Cette fonction va permettre de recevoir les datagrammes passant sur le réseau tout en stockant leur adresse source.
+Elle prend comme premier argument un socket qui correspond pour nous, à notre raw socket, le second argument est 
+un buffer dans lequel sera stocké les paquets reçus, le troisième argument correspond à sa taille, le paramètre <i>flags</i>
+n'est pas important pour nous, nous l'initialiserons à 0, la structure de type <i>sock_addr</i> correspondant au quatrième
+argument va servir à stocker les informations sur l'émetteur du paquet reçu, et enfin le dernier argument correspond à la taille
+"véritable" du buffer reçu. Si aucune erreur ne se produit, cette fonction renvoie le nombre de bytes recus, dans le cas contraire
+celle ci renvoie une erreur de type <i>SOCKET_ERROR</i>.<br><br>
+Je ne vais pas détailler toutes les opérations suivantes, comme par exemple traiter les paquets reçus, ce n'est que de la programmation
+et il n'y a aucune difficulté, je vais donc quand même vous donnez un exemple commenté de sniffer codé en C grâce à l'API Winsock 2.<br><br>
+RSniffer : <a href = "http://barbus.homeunix.org/redkod/products/win/rsniffer.c">http://barbus.homeunix.org/redkod/products/win/rsniffer.c</a>
+</p>
+</ol>
+</blockquote>
+
+<br>
+<h2><li>Références</li></h2>
+<blockquote>
+<p>Win32 Programmer's Reference.<br>
+Windows* Sockets 2 Application Programming Interface.<br>
+Winsock direct: the value of system area networks by Jim Pinkerton.<br>
+Microsoft Developer Network : <A HREF ="http://msdn.microsoft.com/" TARGET="_blank">http://msdn.microsoft.com/</A><br>
+Gibson Research Corporation : <A HREF = "http://grc.com/" TARGET="_blank">http://grc.com/</A><br>
+IP - Internet Protocol - RFC 791<br>
+ICMP - Internet Control Message Protocol - RFC 792<br>
+TCP - Transmission Control Protocol - RFC 793<br>
+</p></blockquote>
+
+<h2><li>Remerciements</li></h2></ol>
+<blockquote>
+Je voudrais tout d'abord remercier <a href="http:\\www.madchat.org\" target="_blank">Madchat</a> pour avoir participer
+à l'évolution du développement sous Windows en créant un répertoire dédié à ce sujet sur leur site. Ensuite je tiens aussi
+à passer un remerciement à toutes les personnes soutenant RedKod que cela soit, sur IRC ou ailleurs. 
+Et bien sûre un grand greets pour tous les membres actifs de RedKod (NostroBO, ChiRon).<br><br><br>
+</blockquote>
+<hr>
+  
+<address>R-e-D <a
+href="mailto:red@secureroot.com">red@secureroot.com</a> <a
+href="http://barbus.homeunix.org/r-e-d/">http://barbus.homeunix.org/r-e-d/</a></address></body>
+</html>

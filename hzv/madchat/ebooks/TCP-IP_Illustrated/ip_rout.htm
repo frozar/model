@@ -1,0 +1,1022 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 9. IP Routing</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="9_0"><H1><I>IP Routing</I></H1></a>
+<a name="9_1"><H3>9.1 Introduction</H3></a>
+<P>
+Routing is one of the most important functions of
+IP. <a href="#fig_9_1">Figure 9.1</a> shows a simplified view of the processing done
+at the IP layer. Datagrams to be routed can be generated either
+on the local host or on some other host. In the latter case this
+host must be configured to act as a router, or datagrams received
+through the network interfaces that are not ours are dropped (i.e.,
+silently discarded).
+<P>
+In <a href="#fig_9_1">Figure 9.1</a> we also show a routing daemon, which
+is normally a user process. The most common daemons used on Unix
+systems are the programs routed and <TT>gated</TT>.
+(The term <I>daemon</I> means the process is running &quot;in
+the background,&quot; carrying out operations on behalf of the
+whole system. Daemons are normally started when the system is
+bootstrapped and run as long as the system is up.) The topics
+of which routing protocol to use on a given host, how to exchange
+routing information with adjacent routers, and how the routing
+protocols work are complex and can fill an entire book of their
+own. (Interested readers are referred to [Periman 1992] for many
+of the details.) We'll look briefly at dynamic routing and the
+Routing Information Protocol (RIP) in <A HREF="dynamic.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dynamic.htm">Chapter 10</A>.
+Our main interest in the current chapter is how a single IP layer
+makes its routing decisions.
+<P>
+The routing table that we show in <a href="#fig_9_1">Figure 9.1</a> is accessed
+frequently by IP (on a busy host this could mean hundreds of times
+a second) but is updated much less frequently by a routing daemon
+(possibly about once every 30 seconds). The routing table can
+also be updated when ICMP &quot;redirect&quot; messages are received,
+something we'll look at in <A HREF="#9_5">Section 9.5</A>, and
+by the route command. This command is often executed when the
+system is bootstrapped, to install some initial routes. We'll
+also use the <TT>netstat</TT> command in this
+chapter to display the routing table.
+<P>
+<a name="fig_9_1"><CENTER><IMG SRC="f_9_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_9_1.gif"></a><BR>
+<B>Figure 9.1</B> Processing
+done at the IP layer.</CENTER>
+<a name="9_2"><H3>9.2 Routing Principles</H3></a>
+<P>
+The place to start our discussion of IP routing is
+to understand what is maintained by the kernel in its routing
+table. The information contained in the routing table drives all
+the routing decisions made by IP.
+<P>
+In <A HREF="ip_inter.htm#3_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_3">Section 3.3</A> we
+listed the steps that IP performs when it searches its routing
+table.
+<OL>
+<LI>Search for a matching host address.
+<LI>Search for a matching network address.
+<LI>Search for a default entry. (The default entry
+is normally specified in the routing table as a network entry,
+with a network ID of 0.)
+</OL>
+<P>
+A matching host address is always used before a matching
+network address.
+<P>
+The routing done by IP, when it searches the routing
+table and decides which interface to send a packet out, is a <I>routing
+mechanism.</I> This differs from a <I>routing policy,</I> which
+is a set of rules that decides which routes go into the routing
+table. IP performs the routing mechanism while a routing daemon
+normally provides the routing policy.
+<H4>Simple Routing Table</H4>
+<P>
+Let's start by looking at some typical host routing
+tables. On the host svr4 we execute the <TT>netstat</TT>
+command with the <TT>-r</TT> option to list
+the routing table and the <TT>-n</TT> option,
+which prints IP addresses in numeric format, rather than as names.
+(We do this because some of the entries in the routing table are
+for networks, not hosts. Without the <TT>-n</TT>
+option, the <TT>netstat</TT> command searches
+the file <TT>/etc/networks</TT> for the network
+names. This confuses the discussion by adding another set of names-network
+names in addition to hostnames.)
+<P>
+<TABLE >
+<TR><TD WIDTH=156><TT>svr4 % <B>netstat -rn</B></TT>
+</TD><TD WIDTH=121></TD><TD WIDTH=56></TD><TD WIDTH=65></TD><TD WIDTH=90>
+</TD><TD WIDTH=94></TD></TR>
+<TR><TD WIDTH=156><TT>Routing tables</TT></TD><TD WIDTH=121></TD>
+<TD WIDTH=56></TD><TD WIDTH=65></TD><TD WIDTH=90></TD><TD WIDTH=94>
+</TD></TR>
+<TR><TD WIDTH=156><TT>Destination
+<BR>
+140.252.13.65<BR>
+127.0.0.1<BR>
+default<BR>
+140.252.13.32</TT>
+</TD><TD WIDTH=121><TT>Gateway<BR>
+140.252.13.35<BR>
+127.0.0.1<BR>
+140.252.13.33<BR>
+140.252.13.34</TT>
+</TD><TD WIDTH=56><TT>Flags<BR>
+UGH<BR>
+UH<BR>
+UG<BR>
+U</TT>
+</TD><TD WIDTH=65><TT>Refcnt<BR>
+0<BR>
+1<BR>
+0<BR>
+4</TT>
+</TD><TD WIDTH=90><TT>Use<BR>
+0<BR>
+0<BR>
+0<BR>
+25043</TT>
+</TD><TD WIDTH=94><TT>Interface<BR>
+emd0<BR>
+lo0<BR>
+<A NAME="OLE_LINK1">emd0</A><BR>
+emd0</TT>
+</TD></TR>
+</TABLE>
+<P>
+The first line says for destination 140.252.13.65
+(host <TT>slip</TT>) the gateway (router)
+to send the packet to is 140.252.13.35 (<TT>bsdi</TT>).
+This is what we expect, since the host <TT>slip</TT>
+is connected to <TT>bsdi</TT> with a SLIP
+link, and <TT>bsdi</TT> is on the same Ethernet
+as this host. There are five different flags that can be printed
+for a given route.
+<P>
+<TT>U </TT>The route is up.<BR>
+<TT>G </TT>The route is to a gateway (router).
+If this flag is not set, the destination is directly connected.
+<BR>
+<TT>H </TT>The route is to a host, that is,
+the destination is a complete host address. If this flag is not
+set, the route is to a network, and the destination is a network
+address: a net ID, or a combination of a net ID and a subnet ID.
+<BR>
+<TT>D </TT>The route was created by a redirect
+(<A HREF="#9_5">Section 9.5</A>).<BR>
+<TT>M </TT>The route was modified by a redirect
+(<A HREF="#9_5">Section 9.5</A>).
+<P>
+The <TT>G</TT> flag is important
+because it differentiates between an <I>indirect route</I> and
+a <I>direct route.</I> (The <TT>G</TT> flag
+is not set for a direct route.) The difference is that a packet
+going out a direct route has both the IP address and the link-layer
+address specifying the destination (<A HREF="ip_inter.htm#fig_3_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_3">Figure 3.3</A>).
+When a packet is sent out an indirect route, the IP address specifies
+the final destination but the link-layer address specifies the
+gateway (that is, the next-hop router). We saw an example of this
+in <A HREF="ip_inter.htm#fig_3_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_4">Figure 3.4</A>. In this routing
+table example we have an indirect route (the <TT>G</TT>
+flag is set) so the IP address of a packet using this route is
+the final destination (140.252.13.65), but the link-layer address
+must correspond to the router 140.252.13.35.
+<P>
+It's important to understand the difference between
+the <TT>G</TT> and <TT>H</TT>
+flags. The <TT>G</TT> flag differentiates
+between a direct and an indirect route, as described above. The
+<TT>H</TT> flag, however, specifies that the
+destination address (the first column of <TT>netstat</TT>
+output) is a complete host address. The absence of the <TT>H</TT>
+flag means the destination address is a network address (the host
+ID portion will be 0). When the routing table is searched for
+a route to a destination IP address, a host address entry must
+match the destination address completely, while a network address
+only needs to match the network ID and any subnet ID of the destination
+address. Also, some versions of the <TT>netstat</TT>
+command print all the host entries first, followed by the network
+entries.
+<P>
+The reference count column gives the number of active
+uses for each route. A connection-oriented protocol such as TCP
+holds on to a route while the connection is established. If we
+established a Telnet connection between the two hosts <TT>svr4</TT>
+and <TT>slip</TT>, we would see the reference
+count go to 1. With another Telnet connection the reference count
+would go to 2, and so on.
+<P>
+The next column (&quot;use&quot;) displays the number
+of packets sent through that route. If we are the only users of
+the route and we run the <TT>ping</TT> program
+to send 5 packets, the count goes up by 5. The final column, the
+interface, is the name of the local interface.
+<P>
+The second line of output is for the loopback interface
+(<A HREF="link_lay.htm#2_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#2_7">Section 2.7</A>), always named <TT>lo0</TT>.
+The <TT>G</TT> flag is not set, since the
+route is not to a gateway. The <TT>H</TT>
+flag indicates that the destination address (127.0.0.1) is a host
+address, and not a network address. When the <TT>G</TT>
+field is not set, indicating a direct route, the gateway column
+gives the IP address of the outgoing interface.
+<P>
+The third line of output is for the default route.
+Every host can have one or more default routes. This entry says
+to send packets to the router 140.252.13.33 (<TT>sun</TT>)
+if a more specific route can't be found. This means the current
+host (<TT>svr4</TT>) can access other systems
+across the Internet through the router <TT>sun</TT>
+(and its SLIP link), using this single routing table entry. Being
+able to establish a default route is a powerful concept. The flags
+for this route (<TT>UG</TT>) indicate that
+it's a route to a gateway, as we expect.
+<P>
+<FONT SIZR=-1>Here we purposely call sun a router and not a host
+because when it's used as a default router, its IP forwarding
+function is being used, not its host functionality.
+<P>
+The Host Requirements RFC specifically states that
+the IP layer must support multiple default routes. Many implementations,
+however, don't support this. When multiple default routes exist,
+a common technique is to round robin among them. This is what
+Solaris 2.2 does, for example.</FONT>
+<P>
+The final line of output is for the attached Ethernet.
+The <TT>H</TT> flag is not set, indicating
+that the destination address (140.252.13.32) is a network address
+with the host portion set to 0. Indeed, the low-order 5 bits are
+0 (<A HREF="javascript:if(confirm('http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/P_Inter.htm  \n\nThis file was not retrieved by Teleport Pro, because the server reports that this file cannot be found.  \n\nDo you want to open it from the server?'))window.location='http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/P_Inter.htm#fig_3_11'" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/P_Inter.htm#fig_3_11">Figure 3.11</A>). Since this is
+a direct route (the <TT>G</TT> flag is not
+set) the gateway column specifies the IP address of the outgoing
+interface.
+<P>
+Implied in this final entry, but not shown by the
+<TT>netstat</TT> output, is the mask associated
+with this destination address (140.252.13.32). If this destination
+is being compared against the IP address 140.252.13.33, the address
+is first logically ANDed with the mask associated with the destination
+(the subnet mask of the interface, <TT>0xffffffe0</TT>,
+from <A HREF="ip_inter.htm#3_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_7">Section 3.7</A>) before the comparison.
+For a network route to a directly connected network, the routing
+table mask defaults to the subnet mask of the interface. But in
+general the routing table mask can assume any 32-bit value. A
+value other than the default can be specified as an option to
+the route command.
+<P>
+The complexity of a host's routing table depends
+on the topology of the networks to which the host has access.
+<OL>
+<LI>The simplest (but least interesting) case is
+a host that is not connected to any networks at all. The TCP/IP
+protocols can still be used on the host, but only to communicate
+with itself! The routing table in this case consists of a single
+entry for the loopback interface.
+<LI>Next is a host connected to a single LAN, only
+able to access hosts on that LAN. The routing table consists of
+two entries: one for the loopback interface and one for the LAN
+(such as an Ethernet).
+<LI>The next step occurs when other networks (such
+as the Internet) are reachable through a single router. This is
+normally handled with a default entry pointing to that router.
+<LI>The final step is when other host-specific or
+network-specific routes are added. In our example the route to
+the host <TT>slip</TT>, through the router
+<TT>bsdi</TT>, is an example of this.
+</OL>
+<P>
+Let's follow through the steps IP performs when using
+this routing table to route some example packets on the host <TT>svr4</TT>.
+<OL>
+<LI>Assume the destination address is the host <TT>sun</TT>,
+140.252.13.33. A search is first made for a matching host entry.
+The two host entries in the table (<TT>slip</TT>
+and <TT>localhost</TT>) don't match, so a
+search is made through the routing table again for a matching
+network address. A match is found with the entry 140.252.13.32
+(the network IDs and subnet IDs match), so the <TT>emd0</TT>
+interface is used. This is a direct route, so the link-layer address
+will be the destination address.
+<LI>Assume the destination address is the host <TT>slip</TT>,
+140.252.13.65. The first search through the table, for a matching
+host address, finds a match. This is an indirect route so the
+destination IP address remains 140.252.13.65, but the link-layer
+address must be the link-layer address of the gateway 140.252.13.35,
+and the interface is <TT>emd0</TT>.
+<LI>This time we're sending a datagram across the
+Internet to the host <TT>aw.com</TT> (192.207.117.2).
+The first search of the routing table for a matching host address
+fails, as does the second search for a matching network address.
+The final step is a search for a default entry, and this succeeds.
+The route is an indirect route through the gateway 140.252.13.33
+using the interface <TT>emd0</TT>.
+<LI>In our final example we send a datagram to our
+own host. There are four ways to do this, using either the hostname,
+the host IP address, the loopback name, or the loopback IP address:
+<P>
+<TT>ftp svr4 ftp<BR>
+140.252.13.34</TT>
+<P>
+<TT>ftp localhost<BR>
+ftp 127.0.0.1</TT>
+<P>
+In the first two cases, the second search of the
+routing table yields a network match with 140.252.13.32, and the
+packet is sent down to the Ethernet driver. As we showed in
+<a href="link_lay.htm#fig_2_4" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/link_lay.htm#fig_2_4">Figure 2.4</a>  it will be seen
+that this packet is destined for the
+host's own IP address, and the packet is sent to the loopback
+driver, which sends it to the IP input queue.
+<P>
+In the latter two cases, specifying the name of the
+loopback interface or its IP address, the first search of the
+routing table finds the matching host address entry, and the packet
+is sent to the loopback driver, which sends it to the IP input
+queue.
+<P>
+In all four cases the packet is sent to the loopback
+driver, but two different routing decisions are made.
+</OL>
+
+<H4>Initializing a Routing Table</H4>
+<P>
+We never said how these routing table entries are
+created. Whenever an interface is initialized (normally when the
+interface's address is set by the <TT>ifconfig</TT>
+command) a direct route is automatically created for that interface.
+For point-to-point links and the loopback interface, the route
+is to a host (i.e., the H flag is set). For broadcast interfaces
+such as an Ethernet, the route is to that network.
+<P>
+Routes to hosts or networks that are not directly
+connected must be entered into the routing table somehow. One
+common way is to execute the <TT>route</TT>
+command explicitly from the initialization files when the system
+is bootstrapped. On the host <TT>svr4</TT>
+the following two commands were executed to add the entries that
+we showed earlier:
+<P>
+<TT>route add default sun 1<BR>
+route add slip bsdi 1</TT>
+<P>
+The third arguments (<TT>default</TT>
+and <TT>slip</TT>) are the destinations, the
+fourth argument is the gateway (router), and the final argument
+is a routing metric. All that the route command does with this
+metric is install the route with the <TT>G</TT>
+flag set if the metric is greater than 0, or without the <TT>G</TT>
+flag if the metric is 0.
+<P>
+<FONT SIZE=-1>
+Unfortunately, few systems agree on which start-up
+file contains the route commands. Under 4.4BSD and BSD/386 it
+is <TT>/etc/netstart</TT>, under SVR4 it is
+<TT>/etc/inet/rc.inet</TT>, under Solaris
+2.x it is <TT>/etc/rc2.d/S69inet</TT>, SunOS
+4.1.x uses <TT>/etc/rc.local</TT>, and AIX
+3.2.2 uses <TT>/etc/rc.net</TT>.</FONT>
+<P>
+Some systems allow a default router to be specified
+in a file such as <TT>/etc/defaultrouter</TT>,
+and this default is added to the routing table on every reboot.
+<P>
+Other ways to initialize a routing table are to run
+a routing daemon (<A HREF="dynamic.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dynamic.htm">Chapter 10</A>) or to
+use the newer router discovery protocol (<A HREF="#9_6">Section 9.6</A>).
+<H4>A More Complex Routing Table</H4>
+<P>
+The host <TT>sun</TT> is the
+default router for all the hosts on our subnet, since it has the
+dialup SLIP link that connects to the Internet (see the figure
+on the inside front cover).
+<P>
+<TABLE >
+<TR><TD WIDTH=151><A NAME="UQHTML9"><TT>sun % <B>netstat -rn</B></TT></A>
+</TD><TD WIDTH=123></TD><TD WIDTH=45></TD><TD WIDTH=50></TD><TD WIDTH=57>
+</TD><TD WIDTH=57></TD></TR>
+<TR><TD WIDTH=151><TT>Routing tables</TT></TD><TD WIDTH=123></TD>
+<TD WIDTH=45></TD><TD WIDTH=50></TD><TD WIDTH=57></TD><TD WIDTH=57>
+</TD></TR>
+<TR><TD WIDTH=151>Destination</TD><TD WIDTH=123>Gateway
+</TD><TD WIDTH=45>Flags</TD><TD WIDTH=50>Refcnt
+</TD><TD WIDTH=57>Use</TD><TD WIDTH=57>Interface
+</TD></TR>
+<TR><TD WIDTH=151><TT>140.252.13.65</TT></TD><TD WIDTH=123><TT>140.252.13.35</TT>
+</TD><TD WIDTH=45><TT>UGH</TT></TD><TD WIDTH=50><TT>0</TT></TD>
+<TD WIDTH=57><TT>171</TT></TD><TD WIDTH=57><TT>le0</TT></TD></TR>
+<TR><TD WIDTH=151><TT>127.0.0.1</TT></TD><TD WIDTH=123><TT>127.0.0.1</TT>
+</TD><TD WIDTH=45><TT>UH</TT></TD><TD WIDTH=50><TT>1</TT></TD>
+<TD WIDTH=57><TT>766</TT></TD><TD WIDTH=57><TT>lo0</TT></TD></TR>
+<TR><TD WIDTH=151><TT>140.252.1.183</TT></TD><TD WIDTH=123><TT>140.252.1.29</TT>
+</TD><TD WIDTH=45><TT>UH</TT></TD><TD WIDTH=50><TT>0</TT></TD>
+<TD WIDTH=57><TT>0</TT></TD><TD WIDTH=57><TT>sl0</TT></TD></TR>
+<TR><TD WIDTH=151><TT>default</TT></TD><TD WIDTH=123><TT>140.252.1.183</TT>
+</TD><TD WIDTH=45><TT>UG</TT></TD><TD WIDTH=50><TT>1</TT></TD>
+<TD WIDTH=57><TT>2955</TT></TD><TD WIDTH=57><TT>sl0</TT></TD>
+</TR>
+<TR><TD WIDTH=151><TT>140.252.13.32</TT></TD><TD WIDTH=123><TT>140.252.13.33</TT>
+</TD><TD WIDTH=45><TT>U</TT></TD><TD WIDTH=50><TT>8 </TT></TD>
+<TD WIDTH=57><TT>99551</TT></TD><TD WIDTH=57><TT>le0</TT></TD>
+</TR>
+</TABLE>
+<P>
+The first two entries are identical to the first
+two for the host <TT>svr4</TT>: a host-specific
+route to <TT>slip</TT> through the router
+<TT>bsdi</TT>, and the loopback route.
+<P>
+The third line is new. It is a direct route (the
+<TT>G</TT> flag is not set) to a host (the
+<TT>H</TT> flag is set) and corresponds to
+our point-to-point link, the SLIP interface. If we compare it
+to the output from the ifconfig command,
+<P>
+<TABLE >
+<TR><TD WIDTH=583><TT>sun % ifconfig sl0<BR>
+sl0: flags=1051&lt;UP,POINTOPOINT,RUNNING&gt;<BR>
+inet 140.252.1.29 -&gt; 140.252.1.183 netmask ffffff00</TT>
+</TD></TR>
+</TABLE>
+<P>
+we see that the destination address in the routing
+table is the other end of the point-to-point link (the router
+netb) and the gateway address is really the local IP address of
+the outgoing interface (140.252.1.29). (We said earlier that the
+gateway address printed by <TT>netstat</TT>
+for a direct route is the local IP address of the interface to
+use.)
+<P>
+The default entry is an indirect route (<TT>G</TT>
+flag) to a network (no <TT>H</TT> flag), as
+we expect. The gateway address is the address of the router (140.252.1.183,
+the other end of the SLIP link) and not the local IP address of
+the SLIP link (140.252.1.29). Again, this is because it is an
+indirect route, not a direct route.
+<P>
+We should also note that the third and fourth lines
+output by <TT>netstat</TT> (the ones with
+an interface of <TT>sl0</TT>) are created
+by the SLIP software being used when the SLIP line is brought
+up, and deleted when the SLIP link is brought down.
+<H4>No Route to Destination</H4>
+<P>
+All our examples so far have assumed that the search
+of the routing table finds a match, even if the match is the default
+route. What if there is no default route, and a match isn't found
+for a given destination?
+<P>
+The answer depends on whether the IP datagram being
+routed was generated on the host or is being forwarded (e.g.,
+we're acting as a router). If the datagram was generated on this
+host, an error is returned to the application that sent the datagram,
+either &quot;host unreachable&quot; or &quot;network unreachable.&quot;
+If the datagram was being forwarded, an ICMP host unreachable
+error is sent back to original sender. We examine this error in
+the following section.
+<a name="9_3"><H3>9.3 ICMP Host and Network Unreachable Errors</H3></a>
+<P>
+The ICMP &quot;host unreachable&quot; error message
+is sent by a router when it receives an IP datagram that it cannot
+deliver or forward. (<A HREF="icmp_int.htm#fig_6_10" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#fig_6_10" >Figure 6.10</A>
+shows the format of the ICMP unreachable messages.) We can see
+this easily on our network by taking down the dialup SLIP link
+on the router sun, and trying to send a packet through the SLIP
+link from any of the other hosts that specify sun as the default
+router.
+<P>
+<FONT SIZE=-1>Older implementations of the BSD TCP/IP software
+generated either a host unreachable, or a network unreachable,
+depending on whether the destination was on a local subnet or
+not. 4.4BSD generates only the host unreachable.</FONT>
+<P>
+Recall from the <TT>netstat</TT>
+output for the router <TT>sun</TT> shown in
+the previous section that the routing table entries that use the
+SLIP link are added when the SLIP link is brought up, and deleted
+when the SLIP link is brought down. This means that when the SLIP
+link is down, there is no default route on <TT>sun</TT>.
+But we don't try to change all the other host's routing tables
+on our small network, having them also remove their default route.
+Instead we count on the ICMP host unreachable generated by sun
+for any packets that it gets that it cannot forward.
+<P>
+We can see this by running <TT>ping</TT>
+on <TT>svr4</TT>, for a host on the other
+side of the dialup SLIP link (which is down):
+<P>
+<TT>svr4 % <B>ping gemini<BR>
+</B>ICMP Host Unreachable from gateway sun (140.252.13.33)
+<BR>
+ICMP Host Unreachable from gateway
+sun (140.252.13.33)<BR>
+<B>^?</B> <I>type interrupt key
+to stop</I></TT>
+<P>
+Figure 9.2 shows the tcpdump output for this example,
+run on the host bsdi.
+<a name="fig_9_2"><TABLE></a>
+<TR><TD WIDTH=26>1 <BR>
+2 </TD><TD WIDTH=113><TT>0.0<BR>
+0.00 (0.00) </TT>
+</TD><TD WIDTH=451><TT>svr4 &gt; gemini: icmp: echo request<BR>
+sun &gt; svr4: icmp: host gemini unreachable</TT>
+</TD></TR>
+<TR><TD WIDTH=26>3<BR>
+4 </TD><TD WIDTH=113><TT>0.99 (0.99)<BR>
+0.99 (0.00) </TT>
+</TD><TD WIDTH=451><TT>svr4 &gt; gemini: icmp: echo request<BR>
+sun &gt; svr4: icmp: host gemini unreachable</TT>
+</TD></TR>
+</TABLE>
+<P>
+<CENTER><B>Figure 9.2</B> ICMP
+host unreachable in response to <TT>ping</TT>.</CENTER>
+<P>
+When the router <TT>sun</TT>
+finds no route to the host <TT>gemini</TT>,
+it responds to the echo request with a host unreachable.
+<P>
+If we bring the SLIP link to the Internet up, and
+try to ping an IP address that is not connected to the Internet,
+we expect an error. What is interesting is to see how far the
+packet gets into the Internet, before the error is returned:
+<P>
+<TT>sun % <B>ping 192.82.148.1</B>
+<I>this IP address is not connected to
+the Internet<BR>
+</I>PING 192.82.148.1: 56 data bytes<BR>
+ICMP Host Unreachable from gateway
+enss142.UT.westnet.net (192.31.39.21) for icmp from sun (140.252.1.29)
+to 192.82.148.1</TT>
+<P>
+Looking at <a href="tracerou.htm#fig_8_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tracerou.htm#fig_8_5">Figure 8.5</a> we see that the packet made
+it through six routers before detecting that the IP address was
+invalid. Only when it got to the border of the NSFNET backbone
+was the error detected. This implies that the six routers that
+forwarded the packet were doing so because of default entries,
+and only when it reached the NSFNET backbone did a router have
+complete knowledge of every network connected to the Internet.
+This illustrates that many routers can operate with just partial
+knowledge of the big picture.
+<P>
+[Ford, Rekhter, and Braun 1993] define a <I>top-level
+routing domain</I> as one that maintains routing information to
+most Internet sites and does not use default routes. They note
+that five of these top-level routing domains exist on the Internet:
+the NFSNET backbone, the Commercial Internet Exchange (CIX), the
+NASA Science Internet (NSI), SprintLink, and the European IP Backbone
+(EBONE).
+<a name="9_4"><H3>9.4 To Forward or Not to Forward</H3></a>
+<P>
+We've mentioned a few times that hosts are not supposed
+to forward IP datagrams unless they have been specifically configured
+as a router. How is this configuration done?
+<P>
+Most Berkeley-derived implementations have a kernel
+variable named <TT>ipforwarding</TT>, or some
+similar name. (See <A HREF="append_e.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_e.htm" >Appendix E</A>.) Some
+systems (BSD/386 and SVR4, for example) only forward datagrams
+if this variable is nonzero. SunOS 4.1.x allows three values for
+the variable: -1 means never forward and never change the value
+of the variable, 0 means don't forward by default but set this
+variable to 1 when two or more interfaces are up, and 1 means
+always forward. Solaris 2.x changes the three values to be 0 (never
+forward), 1 (always forward), and 2 (only forward when two or
+more interfaces are up).
+<P>
+Older 4.2BSD hosts forwarded datagrams by default,
+which caused lots of problems for systems configured improperly.
+That's why this kernel option must always default to &quot;never
+forward&quot; unless the system administrator specifically enables
+forwarding.
+<a name="9_5"><H3>9.5 ICMP Redirect Errors</H3></a>
+<P>
+The ICMP redirect error is sent by a router to the
+sender of an IP datagram when the datagram should have been sent
+to a different router. The concept is simple, as we show in the
+three steps in Figure 9.3. The only time we'll see an ICMP redirect
+is when the host has a choice of routers to send the packet to.
+(Recall the earlier example of this we saw in <A HREF="pingprog.htm#fig_7_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/pingprog.htm#fig_7_6" >Figure 7.6</A>.)
+<P>
+<a name="fig_9_3"><CENTER><IMG SRC="f_9_3.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_9_3.gif"></a><BR>
+<B>Figure 9.3</B> Example of
+an ICMP redirect.</CENTER>
+<OL>
+<LI>We assume that the host sends an IP datagram
+to Rl. This routing decision is often made because Rl is the default
+router for the host.
+<LI>Rl receives the datagram and performs a lookup
+in its routing table and determines that R2 is the correct next-hop
+router to send the datagram to. When it sends the datagram to
+R2, Rl detects that it is sending it out the same interface on
+which the datagram arrived (the LAN to which the host and the
+two routers are attached). This is the clue to a router that a
+redirect can be sent to the original sender.
+<LI>Rl sends an ICMP redirect to the host, telling
+it to send future datagrams to that destination to R2, instead
+of Rl.
+</OL>
+<P>
+A common use for redirects is to let a host with
+minimal routing knowledge build up a better routing table over
+time. The host can start with only a default route (either Rl
+or R2 from our example in <a href="#fig_9_3">Figure 9.3</a>) and anytime this default
+turns out to be wrong, it'll be informed by that default router
+with a redirect, allowing the host to update its routing table
+accordingly. ICMP redirects allow TCP/IP hosts to be dumb when
+it comes to routing, with all the intelligence in the routers.
+Obviously Rl and R2 in our example have to know more about the
+topology of the attached networks, but all the hosts attached
+to the LAN can start with a default route and learn more as they
+receive redirects.
+<H4>An Example</H4>
+<P>
+We can see ICMP redirects in action on our network
+(inside front cover). Although we show only three hosts (<TT>aix</TT>,
+<TT>solaris</TT>, and <TT>gemini</TT>)
+and two routers (<TT>gateway</TT> and <TT>netb</TT>)
+on the top network, there are more than 150 hosts and 10 other
+routers on this network. Most of the hosts specify <TT>gateway</TT>
+as the default router, since it provides access to the Internet.
+<P>
+How is the author's subnet (the bottom four hosts
+in the figure) accessed from the hosts on the 140.252.1 subnet?
+First recall that if only a single host is at the end of the SLIP
+link, proxy ARP is used (<A HREF="arp_addr.htm#4_6" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#4_6" >Section 4.6</A>).
+This means nothing special is required for hosts on the top network
+(140.252.1) to access the host <TT>sun</TT>
+(140.252.1.29). The proxy ARP software in <TT>netb</TT>
+handles this.
+<P>
+When a network is at the other end of the SLIP link,
+however, routing becomes involved. One solution is for every host
+and router to know that the router <TT>netb</TT>
+is the gateway for the network 140.252.13. This could be done
+by either a static route in each host's routing table, or by running
+a routing daemon in each host. A simpler way (and the method actually
+used) is to utilize ICMP redirects.
+<P>
+Let's run the <TT>ping</TT> program
+from the host <TT>solaris</TT> on the top
+network to the host <TT>bsdi</TT> (140.252.13.35)
+on the bottom network. Since the subnet IDs are different, proxy
+ARP can't be used. Assuming a static route has not been installed,
+the first packet sent will use the default route to the router
+<TT>gateway</TT>. Here is the routing table
+before we run <TT>ping</TT>:
+<P>
+<TT>solaris % <B>netstat -rn<BR>
+</B>Routing Table:</TT>
+<TABLE>
+<TR><TD WIDTH=111>Destination</TD>
+<TD WIDTH=113>Gateway</TD>
+<TD WIDTH=47>Flags</TD>
+<TD WIDTH=38>Ref</TD>
+<TD WIDTH=57>Use</TD>
+<TD WIDTH=57><CENTER>Interface</CENTER>
+</TD></TR>
+<TR><TD WIDTH=111><TT>127.0.0.1
+<BR>
+140.252.1.0<BR>
+224.0.0.0<BR>
+default</TT>
+</TD><TD WIDTH=113><tt>127.0.0.1<BR>
+140.252.1.32<BR>
+140.252.1.32<BR>
+140.252.1.4</tt>
+</TD><TD WIDTH=47><tt>
+UH<BR>
+U<BR>
+U<BR>
+UG</tt>
+</TD><TD WIDTH=38><tt>
+0<BR>
+3<BR>
+3<BR>
+0</tt>
+</TD><TD WIDTH=57><tt>
+848<BR>
+15042<BR>
+0<BR>
+5747</tt>
+</TD><TD WIDTH=57><tt>
+lo0<BR>
+le0<BR>
+le0<BR><br>
+</tt>
+</TD></TR>
+</TABLE>
+<P>
+(The entry for 224.0.0.0 is for IP multicasting.
+We describe it in <A HREF="broadcas.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/broadcas.htm" >Chapter 12</A>.) If
+we specify the <TT>-v</TT> option to <TT>ping</TT>,
+we'll see any ICMP messages received by the host. We need to specify
+this to see the redirect message that's sent.
+<P>
+<TT>solaris % <B>ping -sv bsdi
+<BR>
+</B>PING bsdi: 56 data bytes<BR>
+ICMP Host redirect from gateway
+gateway (140.252.1.4)<BR>
+ to netb (140.252.1.183) for bsdi (140.252.13.35)<BR>
+64 bytes from bsdi (140.252.13.35): icmp_seq=0. time=383. Ms<BR>
+64 bytes from bsdi (140.252.13.35): icmp_seq=l. time=364. Ms<BR>
+64 bytes from bsdi (140.252.13.35): icmp_seq=2. time=353. Ms<BR>
+<B>^?</B></TT> <I>type interrupt key to stop
+<BR>
+</I><TT>--bsdi PING Statistics--<BR>
+4 packets transmitted, 3 packets
+received, 25% packet loss<BR>
+round-trip (ms) min/avg/max = 353/366/383</TT>
+<P>
+Before we receive the first ping response, the host
+receives an ICMP redirect from the default router <TT>gateway</TT>.
+If we then look at the routing table, we'll see that the new route
+to the host bsdi has been inserted. (This new entry is shown in
+a bolder font.)
+<P>
+Solaris % netstat -rn<BR>
+Routing Table:
+<TABLE>
+<TR><TD WIDTH=121>Destination
+</TD><TD WIDTH=123>Gateway
+</TD><TD WIDTH=57>Flags</TD>
+<TD WIDTH=38>Ref</TD><TD WIDTH=57>Use
+</TD><TD WIDTH=57>Interface
+</TD></TR>
+<TR><TD WIDTH=121><TT>127.0.0.1
+<BR>
+<B>140.252.13.35<BR>
+</B>140.252.1.0<BR>
+224.0.0.0<BR>
+default</TT>
+</TD><TD WIDTH=123><TT>127.0.0.1<BR>
+<B>140.252.1.183<BR>
+</B>140.252.1.32<BR>
+140.252.1.32<BR>
+140.252.1.4</TT>
+</TD><TD WIDTH=57><TT>UH<BR>
+<B>HGHD<BR>
+</B>U<BR>
+U<BR>
+UG</TT>
+</TD><TD WIDTH=38><TT>0<BR>
+<B>0<BR>
+</B>3<BR>
+3<BR>
+0</TT>
+</TD><TD WIDTH=57><TT>848<BR>
+<B>2<BR>
+</B>15045<BR>
+0<BR>
+5747</TT>
+</TD><TD WIDTH=57><TT>lo0<BR>
+<BR>
+le0<BR>
+le0<BR><br></TT>
+</TD></TR>
+</TABLE>
+<P>
+This is the first time we've seen the <TT>D</TT>
+flag, which means the route was installed by an ICMP redirect.
+The <TT>G</TT> flag means it's an indirect
+route to a gateway (<TT>netb</TT>), and the
+<TT>H</TT> flag means it's a host route (as
+we expect), not a network route.
+<P>
+Since this is a host route, added by a host redirect,
+it handles only the host <TT>bsdi</TT>. If
+we then access the host <TT>svr4</TT>, another
+redirect is generated, creating another host route. Similarly,
+accessing the host <TT>slip</TT> creates another
+host route. The point here is that each redirect is for a single
+host, causing a host route to be added. All three hosts on the
+author's subnet (<TT>bsdi</TT>, <TT>svr4</TT>,
+and <TT>slip</TT>) could also be handled by
+a single network route pointing to the router <TT>sun</TT>.
+But ICMP redirects create host routes, not network routes, because
+the router generating the redirect in this example (<TT>gateway</TT>)
+has no knowledge of the subnet structure on the 140.252.13 network.
+<H4>More Details</H4>
+<P>
+Figure 9.4 shows the format of the ICMP redirect
+message.
+<P>
+<a name="fig_9_4"><CENTER><IMG SRC="f_9_4.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_9_4.gif"><BR></a>
+<B>Figure 9.4</B> ICMP redirect
+message.</CENTER>
+<P>
+There are four different redirect messages, with
+different <I>code</I> values, as shown in Figure 9.5.
+<a name="fig_9_5"><TABLE></a>
+<TR><TD WIDTH=45><CENTER><I>code</I></CENTER>
+</TD><TD WIDTH=217><CENTER>Description</CENTER>
+</TD></TR>
+<TR><TD WIDTH=45>0
+<BR>
+1<BR>
+2<BR>
+3
+</TD><TD WIDTH=217>redirect for network<BR>
+redirect for host<BR>
+redirect for type-of-service and network<BR>
+redirect for type-of-service and host
+</TD></TR>
+</TABLE>
+<P>
+<CENTER><B>Figure 9.5</B> Different
+<I>code</I> values for ICMP redirect.</CENTER>
+<P>
+There are three IP addresses that the receiver of
+an ICMP redirect must look at: (1) the IP address that caused
+the redirect (which is in the IP header returned as the data portion
+of the ICMP redirect), (2) the IP address of the router that sent
+the redirect (which is the source IP address of the IP datagram
+containing the redirect), and (3) the IP address of the router
+that should be used (which is in bytes 4-7 of the ICMP message).
+<P>
+There are numerous rules about ICMP redirects. First,
+redirects are generated only by routers, not by hosts. Also, redirects
+are intended to be used by hosts, not routers. It is assumed that
+routers participate in a routing protocol with other routers,
+and the routing protocol should obviate the need for redirects.
+(This means that in <A HREF="#fig_9_1" >Figure 9.1</A> the routing
+table should be updated by either a routing daemon or redirects,
+but not by both.)
+<P>
+4.4BSD, when acting as a router, performs the following
+checks, all of which must be true before an ICMP redirect is generated.
+<OL>
+<LI>The outgoing interface must equal the incoming
+interface.
+<LI>The route being used for the outgoing datagram
+must not have been created or modified by an ICMP redirect, and
+must not be the router's default route.
+<LI>The datagram must not be source routed.
+<LI>The kernel must be configured to send redirects.
+<P>
+<FONT SIZE=-1>The kernel variable is named <TT>ip_sendredirects</TT>,
+or something similar. (See <A HREF="append_e.htm" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_e.htm" >Appendix E</A>.)
+Most current systems (4.4BSD, SunOS 4.1.x, Solaris 2.x, and AIX
+3.2.2, for example) enable this variable by default. Other systems
+such as SVR4 disable it by default.</FONT>
+</OL>
+<P>
+Additionally, a 4.4BSD host that receives an ICMP
+redirect performs some checks before modifying its routing table.
+These are to prevent a misbehaving router or host, or a malicious
+user, from incorrectly modifying a system's routing table.
+<OL>
+<LI>The new router must be on a directly connected
+network.
+<LI>The redirect must be from the current router
+for that destination.
+<LI>The redirect cannot tell the host to use itself
+as the router.
+<LI>The route that's being modified must be an indirect
+route.
+</OL>
+<P>
+Our final point about redirects is that routers should
+send only host redirects <I>(codes</I> 1 or 3 from <A HREF="#fig_9_5" >Figure 9.5</A>)
+and not network redirects. Subnetting makes it hard to specify
+exactly when a network redirect can be sent instead of a host
+redirect. Some hosts treat a received network redirect as a host
+redirect, in case a router sends the wrong type.
+<a name="9_6"><H3></a>9.6 ICMP Router Discovery Messages</H3>
+<P>
+We mentioned earlier in this chapter that one way
+to initialize a routing table is with static routes specified
+in configuration files. This is often used to set a default entry.
+A newer way is to use the ICMP router advertisement and solicitation
+messages.
+<P>
+The general concept is that after bootstrapping,
+a host broadcasts or multicasts a router solicitation message.
+One or more routers respond with a router advertisement message.
+Additionally, the routers periodically broadcast or multicast
+their router advertisements, allowing any hosts that are listening
+to update their routing table accordingly.
+<P>
+RFC 1256 [Deering 1991] specifies the format of these
+two ICMP messages. Figure 9.6 shows the format of the ICMP router
+solicitation message. Figure 9.7 shows the format of the ICMP
+router advertisement message sent by routers.
+<P>
+<CENTER><a name="fig_9_6"><IMG SRC="f_9_6.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_9_6.gif"></a><BR>
+<B>Figure 9.6</B> Format of ICMP
+router solicitation message.</CENTER>
+<P>
+<CENTER><a name="fig_9_7"><IMG SRC="f_9_7.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_9_7.gif"></a><BR>
+<B>Figure 9.7 </B>Format of ICMP
+router advertisement message.</CENTER>
+<P>
+Multiple addresses can be advertised by a router
+in a single message. <I>Number of addresses</I> is the number.
+<I>Address entry size</I> is the number of 32-bit words for each
+router address, and is always 2. <I>Lifetime is</I> the number
+of seconds that the advertised addresses can be considered valid.
+<P>
+One or more pairs of an IP address and a preference
+then follow. The IP address must be one of the sending router's
+IP addresses. The <I>preference level</I> is a signed 32-bit integer
+indicating the preference of this address as a default router
+address, relative to other router addresses on the same subnet.
+Larger values imply more preferable addresses. The preference
+level <TT>0x80000000</TT> means the corresponding
+address, although advertised, is not to be used by the receiver
+as a default router address. The default value of the preference
+is normally 0.
+<H4>Router Operation</H4>
+<P>
+When a router starts up it transmits periodic advertisements
+on all interfaces capable of broadcasting or multicasting. These
+advertisements are not exactly periodic, but are randomized, to
+reduce the probability of synchronization with other routers on
+the same subnet. The normal time interval between advertisements
+is between 450 and 600 seconds. The default lifetime for a given
+advertisement is 30 minutes.
+<P>
+Another use of the lifetime field occurs when an
+interface on a router is disabled. In that case the router can
+transmit a final advertisement on the interface with the lifetime
+set to 0.
+<P>
+In addition to the periodic, unsolicited advertisements,
+a router also listens for solicitations from hosts. It responds
+to these solicitations with a router advertisement.
+<P>
+If there are multiple routers on a given subnet,
+it is up to the system administrator to configure the preference
+level for each router as appropriate. For example, the primary
+default router would have a higher preference than a backup.
+<H4>Host Operation</H4>
+<P>
+Upon bootstrap a host normally transmits three router
+solicitations, 3 seconds apart. As soon as a valid advertisement
+is received, the solicitations stop.
+<P>
+A host also listens for advertisements from adjacent
+routers. These advertisements can cause the host's default router
+to change. Also, if an advertisement is not received for the current
+default, that default can time out.
+<P>
+As long as the normal default router stays up, that
+router will send advertisements every 10 minutes, with a lifetime
+of 30 minutes. This means the host's default entry won't time
+out, even if one or two advertisements are lost.
+<H4>Implementation</H4>
+<P>
+The router discovery messages are normally generated
+by and processed by a user process (a daemon). This adds yet another
+program updating the routing table in <A HREF="#fig_9_1" >Figure 9.1</A>,
+although it would only add or delete a default entry. The daemon
+would have to be configured to act as a router or a host.
+<P>
+<FONT SIZE=-1>These two ICMP messages are new and not supported
+by all systems. Solaris 2.x is the only system in our network
+that supports these messages (the <TT>in.rdisc.daemon</TT>).
+Although the RFC recommends using IP multicasting whenever possible,
+router discovery can work using broadcast messages also.</FONT>
+<a name="9_7"><H3>9.7 Summary</H3></a>
+<P>
+The operation of IP routing is fundamental to a system
+running TCP/IP, be it a host or router. The routing table entries
+are simple: up to 5 flag bits, a destination IP address (host,
+network, or default), a next-hop router IP address (for an indirect
+route) or a local interface IP address (for a direct route), and
+a pointer to a local interface to use. Host entries have priority
+over network entries, which have priority over default entries.
+<P>
+A search of this routing table is made for every
+IP datagram that the system generates or forwards, and can be
+updated by either a routing daemon or ICMP redirects. By default
+a system should never forward a datagram unless it has specifically
+been configured to do so. Static routes can be entered using the
+route command, and the newer ICMP router discovery messages can
+be used to initialize and dynamically update default entries.
+Hosts can start with a simple routing table that is updated dynamically
+by ICMP redirects from its default router.
+<P>
+Our discussion in this chapter has focused on how
+a single system uses its routing table. In the next chapter we
+examine how routers exchange routing information with each other.
+<H4>Exercises</H4>
+<P>
+<B>9.1</B> Why do you think both
+types of ICMP redirects-network and host-exist?
+<P>
+<B>9.2</B> In the routing table
+for <TT>svr4</TT> shown at the beginning of
+<A HREF="#9_2" >Section 9.2</A>, is a specific route to the host
+<TT>slip</TT> (140.252.13.65) necessary? What
+would change if this entry were removed from the routing table?
+<P>
+<B>9.3</B> Consider a cable with
+both 4.2BSD hosts and 4.3BSD hosts. Assume the network ID is 140.1.
+The 4.2BSD hosts only recognize a host ID of all zero bits as
+the broadcast address (140.1.0.0), while the 4.3BSD hosts normally
+send a broadcast using a host ID of all one bits (140.1.255.255).
+Also, the 4.2BSD hosts by default will try to forward incoming
+datagrams, even if they have only a single interface.
+<P>
+Describe the events that happen when the 4.2BSD hosts
+receives an IP datagram with the destination address of 140.1.255.255.
+<P>
+<B>9.4 </B>Continue the previous
+exercise, assuming someone corrects this problem by adding an
+entry to the ARP cache on one system on the 140.1 subnet (using
+the <TT>arp</TT> command) saying that the
+IP address 140.1.255.255 has a corresponding Ethernet address
+of all one bits (the Ethernet broadcast). Describe what happens
+now.
+<P>
+<B>9.5</B> Examine your system's
+routing table and describe each entry.
+</BODY>
+</HTML>

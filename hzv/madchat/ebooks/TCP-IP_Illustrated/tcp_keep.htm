@@ -1,0 +1,478 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 23. TCP Keepalive Timer</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="23_0"><H1><I>TCP Keepalive Timer</I></H1></a>
+<a name="23_1"><H3>23.1 Introduction</H3></a>
+<P>
+Many newcomers to TCP/IP are surprised to learn that
+no data whatsoever flows across an idle TCP connection. That is,
+if neither process at the ends of a TCP connection is sending
+data to the other, nothing is exchanged between the two TCP modules.
+There is no polling, for example, as you might find with other
+networking protocols. This means we can start a client process
+that establishes a TCP connection with a server, and walk away
+for hours, days, weeks or months, and the connection remains up.
+Intermediate routers can crash and reboot, phone lines may go
+down and back up, but as long as neither host at the ends of the
+connection reboots, the connection remains established.
+<P>
+This assumes that neither application-the client
+or server-has application-level timers to detect inactivity, causing
+either application to terminate. Recall at the end of <a href="dynamic.htm#10_7" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dynamic.htm#10_7">Section 10.7</a>
+that BGP sends an application probe to the other end every
+30 seconds. This is an application timer that is independent of
+the TCP keepalive timer.
+<P>
+There are times, however, when a server wants to
+know if the client's host has either crashed and is down, or crashed
+and rebooted. The <I>keepalive timer,</I> a feature of many implementations,
+provides this capability.
+<P>
+<FONT SIZE=-1>Keepalives are not part of the TCP specification.
+The Host Requirements RFC provides three reasons not to use them:
+(1) they can cause perfectly good connections to be dropped during
+transient failures, (2) they consume unnecessary bandwidth, and
+(3) they cost money on an internet that charges by the packet.
+Nevertheless, many implementations provide the keep-alive timer.</FONT>
+<P>
+The keepalive timer is a controversial feature. Many
+feel that this polling of the other end has no place in TCP and
+should be done by the application, if desired. This is one of
+the <I>religious issues,</I> because of the fervor expressed by
+some on the topic.
+<P>
+The keepalive option can cause an otherwise good
+connection between two processes to be terminated because of a
+temporary loss of connectivity in the network joining the two
+end systems. For example, if the keepalive probes are sent during
+the time that an intermediate router has crashed and is rebooting,
+TCP will think that the client's host has crashed, which is not
+what has happened.
+<P>
+The keepalive feature is intended for server applications
+that might tie up resources on behalf of a client, and want to
+know if the client host crashes. Many versions of the Telnet server
+and Rlogin server enable the keepalive option by default.
+<P>
+A common example showing the need for the keepalive
+feature nowadays is when personal computer users use TCP/IP to
+login to a host using Telnet. If they just power off the computer
+at the end of the day, without logging off, they leave a half-open
+connection. In <a href="tcp_conn.htm#fig_18_16" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_conn.htm#fig_18_16">Figure 18.16</a> we showed how sending data across
+a half-open connection caused a reset to be returned, but that
+was from the client end, where the client was sending the data.
+If the client disappears, leaving the half-open connection on
+the server's end, and the server is waiting for some data from
+the client, the server will wait forever. The keepalive feature
+is intended to detect these half-open connections from the server
+side.
+<a name="23_2"><H3>23.2 Description</H3></a>
+<P>
+In this description we'll call the end that enables
+the keepalive option the server, and the other end the client.
+There is nothing to stop a client from setting this option, but
+normally it's set by servers. It can also be set by both ends
+of a connection, if it's important for each end to know if the
+other end disappears. (In <a href="nfs_netw.htm#29_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/nfs_netw.htm#29_0">Chapter 29</a> we'll see that when NFS uses
+TCP, both the client and server set this option. But in <a href="telnet.htm#26_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/telnet.htm#26_0">Chapter 26</a>
+ with Rlogin and Telnet, only the servers set the option, not
+the clients.)
+<P>
+If there is no activity on a given connection for
+2 hours, the server sends a probe segment to the client. (We'll
+see what the probe segment looks like in the examples that follow.)
+The client host must be in one of four states.
+<OL>
+<LI>The client host is still up and running and reachable
+from the server. The client's TCP responds normally and the server
+knows that the other end is still up. The server's TCP will reset
+the keepalive timer for 2 hours in the future. If there is application
+traffic across the connection before the next 2-hour timer expires,
+the timer is reset for 2 hours in the future, following the exchange
+of data.
+<LI>The client's host has crashed and is either down
+or in the process of rebooting. In either case, its TCP is not
+responding. The server will not receive a response to its probe
+and it times out after 75 seconds. The server sends a total of
+10 of these probes, 75 seconds apart, and if it doesn't receive
+a response, the server considers the client's host as down and
+terminates the connection.
+<LI>The client's host has crashed and rebooted. Here
+the server will receive a response to its keepalive probe, but
+the response will be a reset, causing the server to terminate
+the connection.
+<LI>The client's host is up and running, but unreachable
+from the server. This is the same as scenario 2, because TCP can't
+distinguish between the two. All it can tell is that no replies
+are received to its probes.
+</OL>
+<P>
+The server does not have to worry about the client's
+host being shut down and then rebooted. (This refers to an operator
+shutdown, instead of the host crashing.) When the system is shut
+down by an operator, all application processes are terminated
+(i.e., the client process), which causes the client's TCP to send
+a FIN on the connection. Receiving the FIN would cause the server's
+TCP to report an end-of-file to the server process, allowing the
+server to detect this scenario.
+<P>
+In the first scenario the server application has
+no idea that the keepalive probes are taking place. Everything
+is handled at the TCP layer. It's transparent to the application
+until one of scenarios 2, 3, or 4 occurs. In these three scenarios
+an error is returned to the server application by its TCP. (Normally
+the server has issued a read from the network, waiting for data
+from the client. If the keepalive feature returns an error, it
+is returned to the server as the return value from the read.)
+In scenario 2 the error is something like &quot;connection timed
+out,&quot; and in scenario 3 we expect &quot;connection reset
+by peer.&quot; The fourth scenario may look like the connection
+timed out, or may cause another error to be returned, depending
+on whether an ICMP error related to the connection is received.
+We look at all four scenarios in the <a href="#23_3">next section</a>.
+<P>
+<FONT SIZE=-1>A perpetual question by people discovering the keepalive
+option is whether the 2-hour idle time value can be changed. They
+normally want it much lower, on the order of minutes. As we show
+in <a href="append_e.htm#E_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/append_e.htm#E_0">Appendix E</a>, the value can usually be changed, but in all the
+systems described in this appendix, the keepalive interval is
+a system-wide value, so changing it affects all users of the option.
+<P>
+The Host Requirements RFC says that an implementation
+may provide the keepalive feature, but it must not be enabled
+unless the application specifically says so. Also, the keepalive
+interval must be configurable, but it must default to no less
+than 2 hours.</FONT>
+<a name="23_3"><H3>23.3 Keepalive Examples</H3></a>
+<P>
+We'll now go through scenarios 2, 3, and 4 from the
+<a href="#23_2">previous section</a>, to see the packets exchanged using the keepalive
+option.
+<H4>Other End Crashes</H4>
+<P>
+Let's see what happens when the server host crashes
+and does not reboot. To simulate this we'll do the following steps:
+<UL>
+<LI>Establish a connection between a client (our
+<TT>sock</TT> program
+on the host <TT>bsdi</TT>)
+and the standard echo server on the host <TT>svr4</TT>.
+The client enables the keepalive option with the <tt>-K</tt> option.
+<LI>Verify that data can go across the connection.
+<LI>Watch the client's TCP send keepalive packets
+every 2 hours, and see them acknowledged by the server's TCP.
+<LI>Disconnect the Ethernet cable from the server,
+and leave it off until the example is complete. This makes the
+client think the server host has crashed.
+<LI>We expect the client to send 10 keepalive probes,
+75 seconds apart, before declaring the connection dead.
+</UL>
+<P>
+Here is the interactive output on the client:
+<P>
+<TABLE>
+<TR><TD WIDTH=292><TT>bsdi % <B>sock -K svr4 echo</B></TT>
+</TD><TD WIDTH=403><I>-K for keepalive option</I>
+</TD></TR>
+<TR><TD WIDTH=292><TT><B>hello, world</B></TT>
+</TD><TD WIDTH=403><I>type this at beginning, to verify connection is up</I>
+</TD></TR>
+<TR><TD WIDTH=292><TT>hello, world</TT></TD><TD WIDTH=403><I>and see this echoed</I>
+</TD></TR>
+<TR><TD WIDTH=292></TD><TD WIDTH=403><I>disconnect Ethernet cable after 4 hours</I>
+</TD></TR>
+<TR><TD WIDTH=292><TT>read error: Connection timed out</TT></TD>
+<TD WIDTH=403><I>this happens about 6 hours and 10 minutes after start</I>
+</TD></TR>
+</TABLE>
+<P>
+Figure 23.1 shows the <TT>tcpdump</TT>
+output. (We have removed the connection establishment and the
+window advertisements.)
+<P>
+<CENTER>
+<a name="fig_23_1"><TABLE></a>
+<TR><TD WIDTH=25>1</TD><TD WIDTH=225><TT>0.0 </TT>
+</TD><TD WIDTH=380><TT>bsdi.1055 &gt; bsdi.echo : P 1:14(13) ack 1</TT>
+</TD></TR>
+<TR><TD WIDTH=25>2</TD><TD WIDTH=225><TT>0.006105 ( 0.0061)</TT>
+</TD><TD WIDTH=380><TT>bsdi.echo &gt; bsdi.1055 : P 1:14(13) ack 14</TT>
+</TD></TR>
+<TR><TD WIDTH=25>3</TD><TD WIDTH=225><TT>0.093140 ( 0.0870)</TT>
+</TD><TD WIDTH=380><TT>bsdi.1055 &gt; svr4 .echo : . ack 14</TT>
+</TD></TR>
+<TR><TD WIDTH=25>4</TD><TD WIDTH=225><TT>7199.972793 (7199.8797)</TT>
+</TD><TD WIDTH=380><TT>arp who-has svr4 tell bsdi </TT></TD></TR>
+<TR><TD WIDTH=25>5</TD><TD WIDTH=225><TT>7199.974878 ( 0.0021)</TT>
+</TD><TD WIDTH=380><TT>arp reply svr4 is-at 0:0:c0: c2:9b:26</TT>
+</TD></TR>
+<TR><TD WIDTH=25>6</TD><TD WIDTH=225><TT>7199.975741 ( 0.0009)</TT>
+</TD><TD WIDTH=380><TT>bsdi.1055 &gt; bsdi.echo : . ack 14</TT>
+</TD></TR>
+<TR><TD WIDTH=25>7</TD><TD WIDTH=225><TT>7199.979843 ( 0.0041)</TT>
+</TD><TD WIDTH=380><TT>svr4 .echo &gt; bsdi.1055 : . ack 14</TT>
+</TD></TR>
+<TR><TD WIDTH=25>8</TD><TD WIDTH=225><TT>14400.134330 (7200.1545)</TT>
+</TD><TD WIDTH=380><TT>arp who-has svr4 tell bsdi </TT></TD></TR>
+<TR><TD WIDTH=25>9</TD><TD WIDTH=225><TT>14400.136452 ( 0.0021)</TT>
+</TD><TD WIDTH=380><TT>arp reply svr4 is-at 0:0:c0: c2:9b:26</TT>
+</TD></TR>
+<TR><TD WIDTH=25>10</TD><TD WIDTH=225><TT>14400.137391 ( 0.0009)</TT>
+</TD><TD WIDTH=380><TT>bsdi.1055 &gt; bsdi.echo : . ack 14</TT>
+</TD></TR>
+<TR><TD WIDTH=25>11</TD><TD WIDTH=225><TT>14400.141408 ( 0.0040)</TT>
+</TD><TD WIDTH=380><TT>bsdi.echo &gt; bsdi.1055 : . ack 14</TT>
+</TD></TR>
+<TR><TD WIDTH=25>12</TD><TD WIDTH=225><TT>21600.318309 (7200.1769)</TT>
+</TD><TD WIDTH=380><TT>arp who-has svr4 tell bsdi </TT></TD></TR>
+<TR><TD WIDTH=25>13</TD><TD WIDTH=225><TT>21675.320373 ( 75.0021)</TT>
+</TD><TD WIDTH=380><TT>arp who-has svr4 tell bsdi </TT></TD></TR>
+<TR><TD WIDTH=25>14</TD><TD WIDTH=225><TT>21750.322407 ( 75.0020)</TT>
+</TD><TD WIDTH=380><TT>arp who-has svr4 tell bsdi </TT></TD></TR>
+<TR><TD WIDTH=25>15</TD><TD WIDTH=225><TT>21825.324460 ( 75.0021)</TT>
+</TD><TD WIDTH=380><TT>arp who-has svr4 tell bsdi </TT></TD></TR>
+<TR><TD WIDTH=25>16</TD><TD WIDTH=225><TT>21900.436749 ( 75.1123)</TT>
+</TD><TD WIDTH=380><TT>arp who-has svr4 tell bsdi </TT></TD></TR>
+<TR><TD WIDTH=25>17</TD><TD WIDTH=225><TT>21975.438787 ( 75.0020)</TT>
+</TD><TD WIDTH=380><TT>arp who-has svr4 tell bsdi </TT></TD></TR>
+<TR><TD WIDTH=25>18</TD><TD WIDTH=225><TT>22050.440842 ( 75.0021)</TT>
+</TD><TD WIDTH=380><TT>arp who-has svr4 tell bsdi </TT></TD></TR>
+<TR><TD WIDTH=25>19</TD><TD WIDTH=225><TT>22125.432883 ( 74.9920)</TT>
+</TD><TD WIDTH=380><TT>arp who-has svr4 tell bsdi </TT></TD></TR>
+<TR><TD WIDTH=25>20</TD><TD WIDTH=225><TT>22200.434697 ( 75.0018)</TT>
+</TD><TD WIDTH=380><TT>arp who-has svr4 tell bsdi </TT></TD></TR>
+<TR><TD WIDTH=25>21</TD><TD WIDTH=225><TT>22275.436788 ( 75.0021)</TT>
+</TD><TD WIDTH=380><TT>arp who-has svr4 tell bsdi </TT></TD></TR>
+</TABLE>
+</CENTER><P>
+<CENTER><B>Figure 23.1</B> Keepalive
+packets that determine that a host has crashed.</CENTER>
+<P>
+Lines 1, 2, and 3 send the line &quot;hello, world&quot;
+from the client to the server and back. The first keepalive probe
+occurs 2 hours (7200 seconds) later on line 4. The first thing
+we see is an ARP request and an ARP reply, before the TCP segment
+on line 6 can be sent. The keepalive probe on line 6 elicits a
+response from the other end (line 7). The same sequence of packets
+is exchanged 2 hours later in lines 8-11.
+<P>
+If we could see all the fields in the keepalive probes,
+lines 6 and 10, we would see that the sequence number field is
+one less than the next sequence number to be sent (i.e., 13 in
+this example, when it should be 14), but because there is no data
+in the segment, <TT>tcpdump</TT> does not
+print the sequence number field. (It only prints the sequence
+number for empty segments that contain the SYN, FIN, or RST flags.)
+It is the receipt of this incorrect sequence number that forces
+the server's TCP to respond with an ACK to the keepalive probe.
+The response tells the client the next sequence number that the
+server is expecting (14).
+<P>
+<FONT SIZE=-1>Some older implementations based on 4.2BSD do not
+respond to these keepalive probes unless the segment contains
+data. Some systems can be configured to send one garbage byte
+of data in the probe to elicit the response. The garbage byte
+causes no harm, because it's not the expected byte (it's a byte
+that the receiver has previously received and acknowledged), so
+it's thrown away by the receiver. Other systems send the 4.3BSD-style
+segment (no data) for the first half of the probe period, and
+if no response is received, switch to the 4.2BSD-style segment
+for the last half.</FONT>
+<P>
+We then disconnect the cable and expect the next
+probe, 2 hours later, to fail. When this next probe takes place,
+notice that we never see the TCP segments on the cable, because
+the host is not responding to ARP requests. We can still see that
+the client sends 10 probes, spaced 75 seconds apart, before giving
+up. We can see from our interactive script that the error code
+returned to the client process by TCP gets translated into &quot;Connection
+timed out,&quot; which is what happened.
+<H4>Other End Crashes and Reboots</H4>
+<P>
+In this example we'll see what happens when the client
+crashes and reboots. The initial scenario is the same as before,
+but after we verify that the connection is up, we disconnect the
+server from the Ethernet, reboot it, and then reconnect it to
+the Ethernet. We expect the next keepalive probe to generate a
+reset from the server, because the server now knows nothing about
+this connection. Here is the interactive session:
+<P>
+<TABLE>
+<TR><TD WIDTH=331><TT>bsdi % <B>sock -K svr4 echo</B></TT>
+</TD><TD WIDTH=432><I>-K to enable keepalive option</I>
+</TD></TR>
+<TR><TD WIDTH=331><TT><B>hi there</B></TT>
+</TD><TD WIDTH=432><I>type this to verify connection is up</I>
+</TD></TR>
+<TR><TD WIDTH=331><TT>hi there</TT></TD><TD WIDTH=432><I>and this is echoed back from other end</I>
+</TD></TR>
+<TR><TD WIDTH=331></TD><TD WIDTH=432><I>here server is rebooted while disconnected from Ethernet</I>
+</TD></TR>
+<TR><TD WIDTH=331><TT>read error: Connection reset by peer</TT>
+</TD><TD WIDTH=432></TD></TR>
+</TABLE>
+<P>
+Figure 23.2 shows the <TT>tcpdump</TT>
+output. (We have removed the connection establishment and the
+window advertisements.)
+<P>
+<CENTER>
+<a name="fig_23_2"><TABLE></a>
+<TR><TD WIDTH=25>1</TD><TD WIDTH=225><TT>0.0</TT>
+</TD><TD WIDTH=460><TT>bsdi.1057 &gt; svr4.echo: P 1:10(9) ack 1</TT>
+</TD></TR>
+<TR><TD WIDTH=25>2</TD><TD WIDTH=225><TT>0.006406 ( 0.0064)</TT>
+</TD><TD WIDTH=460><TT>svr4.echo &gt; bsdi.1057: P 1:10(9) ack 10</TT>
+</TD></TR>
+<TR><TD WIDTH=25>3</TD><TD WIDTH=225><TT>0.176922 ( 0.1705)</TT>
+</TD><TD WIDTH=460><TT>bsdi.1057 &gt; svr4.echo: . ack 10</TT>
+</TD></TR>
+<TR><TD WIDTH=25>4</TD><TD WIDTH=225><TT>7200.067151 (7199.8902)</TT>
+</TD><TD WIDTH=460><TT>arp who-has svr4 tell bsdi</TT></TD></TR>
+<TR><TD WIDTH=25>5</TD><TD WIDTH=225><TT>7200.069751 ( 0.0026)</TT>
+</TD><TD WIDTH=460><TT>arp reply svr4 is-at 0:0:c0:c2:9b:26</TT>
+</TD></TR>
+<TR><TD WIDTH=25>6</TD><TD WIDTH=225><TT>7200.070468 ( 0.0007)</TT>
+</TD><TD WIDTH=460><TT>bsdi.1057 &gt; svr4.echo: . ack 10</TT>
+</TD></TR>
+<TR><TD WIDTH=25>7</TD><TD WIDTH=225><TT>7200.075050 ( 0.0046)</TT>
+</TD><TD WIDTH=460><TT>svr4.echo &gt; bsdi.1057: R 1135563275:1135563275(0)</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 23.2</B> Keepalive
+example when other host has crashed and rebooted.</CENTER>
+<P>
+We establish the connection and send 9 bytes of data
+from the client to the server (lines 1-3). Two hours later the
+first keepalive probe is sent by the client, and the response
+is a reset from the server. &quot;The client application prints
+the error &quot;Connection reset by peer,&quot; which makes sense.
+<H4>Other End Is Unreachable</H4>
+<P>
+In this example the client has not crashed, but is
+not reachable during the 10-minute period when the keepalive probes
+are sent. An intermediate router may have crashed, a phone line
+may be temporarily out of order, or something similar.
+<P>
+To simulate this example we'll establish a TCP connection
+from our host slip through our dialup SLIP link to the host <TT>vangogh.cs.berkeley.edu</TT>,
+and then<B> take </B>the link down. First, here is the interactive
+output:
+<P>
+<TABLE>
+<TR><TD COLSPAN=2 WIDTH=614><TT>slip % <B>sock -K vangogh.cs.berkeley.edu echo</B></TT>
+</TD></TR>
+<TR><TD WIDTH=295><TT><B>testing</B></TT>
+</TD><TD WIDTH=389><I>we type this line</I>
+</TD></TR>
+<TR><TD WIDTH=295><TT>testing</TT></TD><TD WIDTH=389><I>and see it echoed</I>
+</TD></TR>
+<TR><TD WIDTH=295></TD><TD WIDTH=389><I>sometime in here the dialup SLIP link is taken down</I>
+</TD></TR>
+<TR><TD WIDTH=295><TT>read error: No route to host</TT></TD><TD WIDTH=369>
+</TD></TR>
+</TABLE>
+<P>
+Figure 23.3 shows the <TT>tcpdump</TT>
+output that was collected on the router <TT>bsdi</TT>.
+(The connection establishment and window advertisements have been
+removed.)
+<P>
+<CENTER>
+<a name="fig_23_3"><TABLE></a>
+<TR><TD WIDTH=36><TT>1</TT></TD><TD WIDTH=220><TT>0.0</TT>
+</TD><TD WIDTH=380><TT>slip.1056 &gt; vangogh.echo: P 1:9(8) ack 1</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>2</TT></TD><TD WIDTH=220><TT>0.277669 0.424423</TT>
+</TD><TD WIDTH=380><TT>vangogh.echo &gt; slip.1056: P 1:9(8) ack 9</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>3</TT></TD><TD WIDTH=220><TT>0.2777) 0.1468)</TT>
+</TD><TD WIDTH=380><TT>slip. 1056 &gt; vangogh. echo: . ack 9</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>4</TT></TD><TD WIDTH=220><TT>7200.818081 (7200.3937)</TT>
+</TD><TD WIDTH=380><TT>slip. 1056 &gt; vangogh. echo: . ack 9</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>5</TT></TD><TD WIDTH=220><TT>7201.243046 ( 0.4250)</TT>
+</TD><TD WIDTH=380><TT>vangogh, echo &gt; slip. 1056: . ack 9</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT><I>6</I></TT>
+</TD><TD WIDTH=220><TT>14400.688106 (7199.4451)</TT>
+</TD><TD WIDTH=380><TT>slip.1056 &gt; vangogh.echo: . ack 9</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>7</TT></TD><TD WIDTH=220><TT>14400.689261 ( 0.0012)</TT>
+</TD><TD WIDTH=380><TT>sun &gt; slip: icmp; net vangogh unreachable</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT><I>8</I></TT>
+</TD><TD WIDTH=220><TT>14475.684360 ( 74.9951)</TT>
+</TD><TD WIDTH=380><TT>slip. 1056 &gt; vangogh. echo: . ack 9</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>9</TT></TD><TD WIDTH=220><TT>14475.685504 ( 0.0011)</TT>
+</TD><TD WIDTH=380><TT>sun &gt; slip: icmp: net vangogh unreachable</TT>
+</TD></TR>
+<TR><TD WIDTH=36></TD><TD WIDTH=220></TD><TD WIDTH=380><TT><I>14 lines deleted</I></TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>24</TT></TD><TD WIDTH=220><TT>15075.759603 (75.1008)</TT>
+</TD><TD WIDTH=380><TT>slip.1056 &gt; vangogh.echo: R 9:9(0) ack 9</TT>
+</TD></TR>
+<TR><TD WIDTH=36><TT>25</TT></TD><TD WIDTH=220><TT>15075.760761 ( 0.0012)</TT>
+</TD><TD WIDTH=380><TT>sun &gt; slip: icmp: net vangogh unreachable</TT>
+</TD></TR>
+</TABLE>
+</CENTER>
+<P>
+<CENTER><B>Figure 23.3</B> Keepalive
+example when other end is unreachable.</CENTER>
+<P>
+We start the example the same as before: lines 1-3
+verify that the connection is up. The first keepalive probe 2
+hours later is fine (lines 4 and 5), but before the next one occurs
+in another 2 hours, we bring down the SLIP connection between
+the routers <TT>sun</TT> and <TT>netb</TT>.
+(Refer to the inside front cover for the topology.)
+<P>
+The keepalive probe in line 6 elicits an ICMP network
+unreachable from the router <TT>sun</TT>.
+As we described in <a href="tcp_time.htm#21_10" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tcp_time.htm#21_10">Section 21.10</a>, this is just a soft error to
+the receiving TCP on the host slip. It records that the ICMP error
+was received, but the receipt of the error does not take down
+the connection. Nine more keepalive probes are sent, 75 seconds
+apart, before the sending host gives up. The error returned to
+the application generates a different message this time: &quot;No
+route to host.&quot; We saw in <a href="icmp_int.htm#fig_6_12" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#fig_6_12">Figure 6.12</a> that this corresponds
+to the ICMP network unreachable error.
+<a name="23_4"><H3>23.4 Summary</H3></a>
+<P>
+As we said earlier, the keepalive feature is controversial.
+Protocol experts continue to debate whether it belongs in the
+transport layer, or should be handled entirely by the application.
+<P>
+It operates by sending a probe packet across a connection
+after the connection has been idle for 2 hours. Four different
+scenarios can occur: the other end is still there, the other end
+has crashed, the other end has crashed and rebooted, or the other
+end is currently unreachable. We saw each of these scenarios with
+an example, and saw different errors returned for the last three
+conditions.
+<P>
+In the first two examples that we looked at, had
+this feature not been provided, and without any application-level
+timer, our client would never have known that the other end had
+crashed, or crashed and rebooted. In the final example, however,
+nothing was wrong with the other end, the connection between them
+was temporarily down. We must be aware of this limitation when
+using keepalives.
+<H4>Exercises</H4>
+<B>23.1</B> List some advantages
+of the keepalive feature.
+<P>
+<B>23.2</B> List some disadvantages
+of the keepalive feature.
+</BODY>
+</HTML>

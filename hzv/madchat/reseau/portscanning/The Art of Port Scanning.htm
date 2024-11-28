@@ -1,0 +1,433 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD><TITLE>The Art of Port Scanning</TITLE>
+<META content=fr http-equiv=Content-Language>
+<META content="text/html; charset=windows-1252" http-equiv=Content-Type>
+<META content="MSHTML 5.00.2920.0" name=GENERATOR>
+<META content=FrontPage.Editor.Document name=ProgId>
+<STYLE type=text/css>A:hover {
+	COLOR: #3399ff; TEXT-DECORATION: none
+}
+</STYLE>
+</HEAD>
+<BODY aLink=#000000 link=#000000 vLink=#000000>
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT 
+color=#000000><FONT face=Verdana size=2>Cet article a été traduit de l'anglais 
+par OUAH (OUAH_@hotmail.com), http://www.multimania.com/ouah. La version 
+originale est de Fyodor (fyodor@dhp.com) et peut être obtenue à <A 
+href="http://www.insecure.org/">http://www.insecure.org/</A> 
+.&nbsp;</FONT><B><FONT face=Verdana size=2><BR><BR></FONT><FONT face=Verdana 
+size=2>The Art of Port Scanning</FONT></B><FONT face=Verdana size=2> par 
+Fyodor</FONT></FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><U><FONT 
+color=#000000 face=Verdana size=2>Préface</FONT></U> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Cet article énumère plusieurs des techniques employées pour 
+déterminer quels ports (ou toute similaire abstraction de protocole) d'un hôte 
+sont en attente de connexion. Ces ports représentent des voies de transmissions 
+potentielles. Tracer leur existence facilite l'échange d'information avec l'hôte 
+et c'est ainsi assez utile pour n'importe qui, dont les hackers, souhaitant 
+explorer l'environnement du réseau. En dépit de ce que vous avez entendu des 
+médias, Internet ce n'est PAS tout ce qui a trait au port TCP 80. N'importe qui 
+comptant uniquement sur le WWW pour rassembler des informations obtiendra les 
+mêmes résultats que les mecs moyens d'AOL qui font la même chose. Ce article est 
+également sensé servir d'introduction à une documentation auxiliaire d'un projet 
+de code sur lequel j'ai travaillé. C'est un portscanner robuste et complet qui 
+(je l'espère) devrait résoudre certains des problèmes que j'ai rencontrés en 
+utilisant d'autres scanners et en faisant des scans sur d'énormes réseaux. Le 
+programme, nmap, peut faire les choses suivantes:</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- Vanilla TCP connect() scanning,<BR>- TCP SYN (half open) 
+scanning,<BR>- TCP FIN (stealth) scanning,<BR>- TCP ftp proxy (bounce attack) 
+scanning,<BR>- SYN/FIN scanning using IP fragments (bypasses packet 
+filters),<BR>- UDP recvfrom() scanning,<BR>- UDP raw ICMP port unreachable 
+scanning,<BR>- ICMP scanning (ping-sweep), et<BR>- Reverse-ident 
+scanning.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>les sources librement distribuables du code sont disponibles 
+à http://www.insecure.org/nmap/<BR>&nbsp;</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><U><FONT 
+color=#000000 face=Verdana size=2>Introduction</FONT></U> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Le scanning en tant que méthode pour découvrir des voies de 
+communications exploitables date depuis longtemps. L'idée est de sonder autant 
+de voies que possibles et de garder celles qui sont récéptives ou 
+particulièrement utiles. Plusieurs champs de la publicité sont basés sur ce 
+concept et forcer les gens à la voir en distribuant en bloc des mails est un 
+parallèle presque parfait à ce dont nous discuterons. Envoyez un message 
+seulement dans chaque mailbox et attendez les réponses pour tendre vos 
+filets.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Le scanning est entré dans l'histoire déjà avec les systèmes 
+téléphoniques. Nous avons là ce réseau global énorme de télécommunication, dont 
+tous les hôtes sont accessiblee avec des codes sur notre téléphone. Des millions 
+de numéros sont accessibles localement, pourtant nous allons seulement nous 
+intéresser à 0.5% de ceux-ci, peut-être ceux avec un répondeur au bout du 
+fil.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>La solution logique pour trouver ces numéros qui nous 
+intéressent est de tous les essayer. C'est comme ça que le "wardialing" a surgi. 
+D'excellents programmes comme Toneloc ont été développés pour faciliter le test 
+d'échanges complets et plus encore. L'idée de base st simple. Si vous composez 
+un numéro et que votre modem vous sort un CONNECT, vous le gardez. Sinon 
+l'ordinateur raccroche et compose inlassablement les prochains.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Bien que le wardialing soit encore utile, nous constatons 
+maintenant que plusieurs ordinateurs avec lesquels nous voulons communiquer sont 
+reliés par des réseaux plutôt comme Internet que comme les téléphones 
+analogiques. Scanner ces machines implique la même technique de brute forcing. 
+Nous envoyons une rafale de paquets pour différents protocoles et nous déduisons 
+des réponses reçues (ou pas reçues) quels services sont en train 
+d'écouter.<BR>&nbsp;</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><U><FONT 
+color=#000000 face=Verdana size=2>Technique</FONT></U> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Avec le temps, un certain nombre de techniques ont été 
+développées pour examiner les protocoles et les ports sur lesquels une machine 
+cible écoute. Elles offrent toutes différents avantages et problèmes. Voici une 
+énumération des plus connues:</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- TCP connect() scanning: c'est le scanning TCP le plus 
+courant. L'appel système connect() fourni par votre os est utilisé pour ouvrir 
+une connexion sur tous les ports intéressants de la machine. Si le port est en 
+train d'écoutet, connect() sera réussi, autrement le port n'est pas accessible. 
+Un grand avantage de cette technique c'est que vous n'avez besoin d'auncun 
+privilège spécial. N'importe quel utilisateur d'un ordinateur UNIX est libre 
+d'utiliser cet appel. Un autre avantage est sa vitesse. Tandis que faire en 
+série un appel connect() séparé pour chaque port cible prendrait beaucoup de 
+temps avec une connexion lente, vous pouvez accélérer le scan en utilisant 
+plusieurs sockets en parallèle. Utiliser un système I/O non-blocking vous permet 
+de définir un bas time-out et d'observer toutes les sockets immédiatement. Le 
+grand désavantage est que ce genre de scan est facilement détectable et 
+filtrable. Les logs de l'hôtes cibles montreront une masse de connexions et de 
+messages d'erreur pour les services qui ont capturées les connexions et les ont 
+ensuite immédiatement fermées.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- TCP SYN scanning: Cette technique est souvent mentionnée 
+comme scanning "demi-ouvert" parce que vous n'ouvrez pas une connexion TCP 
+complète. Vous envoyez un paquet SYN comme si vous alliez ouvrir une vraie 
+connexion et attendre une réponse. Un SYN|ACK indique que le port écoute. Un RST 
+indique que le port n'écoute pas. Si vous recevez SYN|ACK, vous lui enverrez 
+immédiatement un RST pour interrompre la connexion (en fait le kernel le fait 
+pour nous). Le grand avantage de cette technique de scan est que moins de cibles 
+la loggeront. Malheureusement il vous faut avoir les privilèges root pour 
+construire ces paquets standarts SYN. Le scanning SYN se fait avec l'option -s 
+de nmap.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- TCP FIN scanning: il arrive des fois que même le scanning 
+SYN n'est pas assez clandestin. Certains firewall et filteur de paquets écoutes 
+les SYNs sur des ports critiques et des programmes comme synlogger et Courtney 
+sont disponible pour détecter ces scans. Les paquets FIN d'autre part peuvent 
+être capables de passer tranquillement. Cette technique de scan a été décrite en 
+détail par Ureil Maimon dans le Phrack 49, article 15. L'idée est que les ports 
+fermés tentent de répondre à votre paquet FIN avec un RST propre. Les ports 
+ouverts d'autre part tentent d'ignorer le paquet en question. Comme Alan Cox 
+l'avait précisé c'est un comportement exigé de TCP/IP. Toutefois quelques 
+systèmes (notamment les systèmes Mirco$oft) sont intouchables dans ce sens. Ils 
+envoyent des RST indépendamment de l'état du port et ils ne sont ainsi pas 
+vulnérables à ce type de scan. Cela marche bien sur la plupart des autres 
+systèmes que j'ai essayés. En fait, cela est souvent utile afin de distinguer un 
+système *NIX d'un NT, et on peut l'utiliser pour ça. Le scannning FIN se fait 
+avec l'option -U (Uriel) de nmap.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- Fragmentation scanning: Ce n'est pas une méthode nouvelle 
+et indépendante de scanning mais une variation d'autres techniques. Au lien de 
+seulement envoyer le paquet espion, vous le diviser en plusieurs petits 
+fragments IP. Vous fractionnez l'en-tête TCP sur plusieurs paquets pour rendre 
+la chose plus difficile aux filtreurs de paquets et ainsi détecter ce que vous 
+en êtes en train de faire. Fais attention avec cela! Certains programmes ont de 
+la peine à manipuler d'aussi petits paquets. Mon sniffer préféré me fait un 
+segmentation fault directement après la réception du premier fragment de 
+36-bytes. Ensuite un de 24 bytes arrive! Alors que cette méthode ne marche pas 
+avec les filtreurs de paquets et les firewalls qui mettent en file d'attente 
+tous les fragments IP (comme l'option Linux CONFIG_IP_ALWAYS_DEFRAG), beaucoup 
+de réseaux n'ont pas les capacités de résoudre ce problème. Cette possibilité 
+est assez unique dans un scanner (en tout cas je n'en ai vu aucun le faire). 
+Merci à daemon9 de m'en avoir donné l'idée. L'option -f dit au scan SYN ou FIN 
+spécifié d'utiliser de petits paquets fragmentés.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- TCP reverse ident scanning: Comme l'a remarqué Dave 
+Goldsmith dans un envoi de 1996 à Bugtraq, le protocole ident (rfc 1413) permet 
+de révéler le nom de l'utilisateur propriétaire de n'importe quel processus 
+relié par TCP, même si ce processus n'as pas initié de connexion. Ainsi vous 
+pouvez par exemple vous connecter au port http et ensuite utiliser identd pour 
+savoir si le serveur est exécuté par root. Cela peut seulement être fait par une 
+connexion complète au port cible (càd l'option -t). L'option -i de nmap demande 
+à identd le propriétaire de chaque port écouté par listen().</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- FTP bounce attack: Une possibilité intéressante du 
+protocole ftp (RFC 959) est qu'il supporte des connexions ftp par "proxy". En 
+d'autres mots, je devrais pouvoir me connecter de evil.com au serveur PI 
+(protocol interpreter) ftp de target.com pour établir une connexion. Ensuite je 
+serais capable de demander que le serveur PI lance un serveur DTP (data transfer 
+process) actif pour envoyer un fichier N'IMPORTE Où sur le net! 
+Vraisemblablement à un User DTP, bien que la RFC dit spécifiquement que demander 
+à un serveur d'envoyer un fichier à un autre est permis. Bon cela a pu bien 
+marcher en 1985 quand la RFC venait d'être écrite. Mais de nos jours il ne peut 
+y avoir des gens qui hijackent des serveurs ftp et demandent que les données 
+soient renvoyer vers n'importe quels points du net. Comme *Hobbit* l'avait écrit 
+en 1995, ce défaut du protocole "peut être utilisé pour poster des mails et des 
+news pratiquement non retraçables, attaquer des serveurs depuis différents 
+endroits, remplire des diques durs, traverser des firewalls et généralement être 
+ennuyant et difficile à retrouver en même temps". Ce que nous ferons pour cela 
+(surprise surprise) c'est de scaner des ports TCP d'un serveur ftp "proxy". 
+Ainsi vous pourriez vous connecter à un serveur ftp derrière un firewall et puis 
+scanner ceux qui sont le plus probablement bloqués (le port 139 est un bon 
+exemple). Si le serveur ftp permet de lire et d'écrire sur un répertoire (comme 
+/incoming), vous pouvez envoyer n'importe quelles données sur les ports que vous 
+trouvez ouverts.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Notre technique pour le scan de port est d'utiliser la 
+commande PORT pour dire que notre "User-DTP" passif écoute le système cible sur 
+un certain de numéro de port. Ensuite nous allons essayer de LIST le répertoire 
+actuel et le résultat est envoyé par le serveur DTP. Si notre hôte cible écoute 
+sur le port spécifié, le transfert sera couronné de succès (en générant un 
+réponse 150 ou 226). Autrement nous obtiendront "425 Can't build data 
+connection: Connection refused." Ensuite nous envoyons une autre commande PORT 
+pour essayer avec un prochain port de l'autre cible. Les avantages de cette 
+méthode évidents (plus difficile à tracer, possibilité de contourner des 
+firewalls). Les principaux désavantages sont la lenteur et le fait que certains 
+serveurs FTP l'ont finalement remarquée et ont désactivée cette possibilité de 
+"proxy". Pour montrer que cela en vaut la peine voici une liste de bannières 
+d'endroit où cela a marché/pas marché:</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>* Bounce attaque qui a marchée*</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>220 xxxxxxx.com FTP server (Version wu-2.4(3) Wed Dec 14 
+...) ready.<BR>220 xxx.xxx.xxx.edu FTP server ready.<BR>220 xx.Telcom.xxxx.EDU 
+FTP server (Version wu-2.4(3) Tue Jun 11 ...) ready.<BR>220 lem FTP server 
+(SunOS 4.1) ready.<BR>220 xxx.xxx.es FTP server (Version wu-2.4(11) Sat Apr 27 
+...) ready.<BR>220 elios FTP server (SunOS 4.1) ready</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>* Bounce attaque qui a échouée*</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>220 wcarchive.cdrom.com FTP server (Version DG-2.0.39 Sun 
+May 4 ...) ready.<BR>220 xxx.xx.xxxxx.EDU Version wu-2.4.2-academ[BETA-12](1) 
+Fri Feb 7<BR>220 ftp Microsoft FTP Service (Version 3.0).<BR>220 xxx FTP server 
+(Version wu-2.4.2-academ[BETA-11](1) Tue Sep 3 ...) ready.<BR>220 xxx.unc.edu 
+FTP server (Version wu-2.4.2-academ[BETA-13](6) ...) ready.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Les 'x' sont là d'une part pour protéger ceux responsables 
+d'exécuter un serveur défectueux mais surtout pour adapter les lignes aux 80 
+colonnes. De même pour les points de suspension. L'attaque bounce se fait avec 
+l'option -b de nmap. proxy_server peut-être donné dans le format URL standart, 
+username:password@server:port avec tout mais le serveur qui est 
+optionnel.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- UDP ICMP port unreachable scanning: Cette méthode de scan 
+diffère de ce qu'il y a au-desssus parce qu'ici nous utilisons le protocole UDP 
+au lieu de TCP. Alors que ce protocole est plus simple, le scanning est 
+réellement sensiblement plus difficile. Ceci parce ce que les ports ouverts ne 
+sont pas obligés d'envoyer un acknowlegment en réponse à une demande et les 
+ports fermés ne doivent même pas renvoyer de paquet d'erreur. Heureusement, la 
+plupart des hôtes renvoyent une erreur ICMP_PORT_UNREACH quand vous envoyez un 
+paquet à un port UDP fermé. Ainsi vous pouvez savoir si un port N'est PAS ouvert 
+donc par exclusion déterminer quels ports sont ouverts. Comme il n'est garanti 
+ni que les paquets UDP, ni que les erreurs ICMP arrivent, les scanners UDP de ce 
+genre doivent aussi implémenter une retransmission des paquets qui pourraient 
+être perdus (sinon vous obtiendrez un groupe faussement positif). En outre cette 
+technique est lente en raison des machines qui appliquent la RFC 1812 section 
+4.3.2.8 pour découragez et limitez le taux d'erreurs ICMP. Par exemple, le 
+kernel Linux (dans net/ipv4/icmp.h) limite la production de message de 
+destination innaccessible à 80 chaque 4 secondes avec une pénalité de 1/4 de 
+secondes en cas de dépassement. Dans quelque temps j'ajouterai un meilleur 
+algorithme à nmap pour détecter cela. De plus vous devez être root pour accéder 
+au raw ICMP socket nécessaire pour la lecture du port inaccessible. L'option -u 
+(UDP) de nmap incorpore cette méthode de scannings pour les utilisateurs 
+root.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Certaines personnes pensent que le scanning UPD est lame et 
+inutile. Je leur rappelle généralement le récent bug rcpbind de Solaris. Rcpbind 
+peut se cacher sur un port UDP non documenté quelque part au-dessus de 32770. 
+Ainsi on s'en fout que le port 111 soit bloqué par un firewall. Mais pouvez-vous 
+trouver sur lequel des 30'000 ports plus hauts il écoute? Avec un scanner UDP 
+vous pouvez!</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- UDP recvfrom() and write() scanning: Alors que les 
+utilisateurs qui ne sont pas root ne peuvent pas lire les erreurs de ports 
+innacessibles directement, Linux est assez sympa pour informer l'utilisateur 
+indirectement quand elles ont été reçues. Par exemple un deuxième appel write() 
+à un port fermé échouera normalement. Cela arrive à beaucoup de scanners comme 
+netcat et pscan.c de Pluvius. J'ai aussi remarqué que recvfrom() sur des 
+non-blocking sockets UDP retourne EAGAIN ("Try Again", errno 13) si l'erreur 
+ICMP n'a pas été reçue et ECONNREFUSED ("Connection refused", errno 111) si elle 
+a été reçue. C'est la technique utilisée pour déterminer les ports ouverts quand 
+les utilisateurs qui ne sont pas root utilise l'option -u (UDP). Les 
+utilisateurs root peuvent aussi utiliser l'option -l (lamer UDP scan) pour 
+forcer à que cela se passe mais c'est une idée vraiment bête.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- ICMP echo scanning: ce n'est pas vraiment du portscanning 
+vu que ICMP n'a pas de port abstraction. Mais il est parfois utile de savoir 
+quels hôtes dans un réseau sont up en les pingant tous. l'option -P le fait. Le 
+scan ICMP se fait maintenant en parallèle il peut être ainsi assez rapide. Pour 
+encore plus accélérer les choses vous pouvez augmenter le nombre de ping en 
+parallèle avec l'option '-L'. Il peut être aussi utile de modifier la valeur du 
+ping timeout avec l'option '-T'. nmap supporte une notation en hôte / masque de 
+bits pour faciliter ce genre de chose. Par exemple 'nmap -P cert.org/24 
+152.148.0.0/16' scannera le réseau du CERT de classe C et toutes les entitée de 
+class B représentées par 152.148.* . Hôte/26 est intéressant pour les 
+sous-réseaux de 6-bits dans une organisation. Nmap permet maintenant aussi une 
+syntaxe plus puissante. Vous pouvez maintenant manipulez des addresses comme 
+'150.12,17,71-79.7.*' et nmap en fera ce que vous voulez. Pour chacune des 
+quatre valeurs vous pouvez soit mettre un simple nombre, soit un intervalle 
+(avec '-'), une liste d'intervalle et de nombre séparée par des virgules, ou un 
+'*' qui est synonyme de 0-255. Par défaut, les adresse de broadcast d'un réseau 
+comme .0 et .255 ne sont pas scannée mais l'option '-A' vous permet d'y remédier 
+si vous le souhaiter.<BR>&nbsp;</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><U><FONT 
+color=#000000 face=Verdana size=2>Caractéristiques</FONT></U> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Avant de coder nmap, j'ai passé beaucoup de temps avec 
+d'autres scanners à explorer le net et divers réseaux privés (remarquez mon 
+souci d'éviter le mot bizare qu'est "intranet"). J'ai utilisé la plupart des 
+meilleurs scanners qui existent aujourd'hui dont strobe de Julian Assange, 
+netcat de *Hobbit*, stcp d'Uriel Maimon, pscan de Pluvius, ident-scan de Dave 
+Goldsmith et les scanners tcp/udp de SATAN de Wietse Venema. Ce sont tous 
+d'excellents scanners! En fait j'ai arrêté de tous les utiliser en en même temps 
+comme je le faisais pour avoir les bons côtés de chacun. J'ai finalement décidé 
+de créer un scanner complètement nouveau plutôt que d'en utiliser une douzaine 
+de mon répertoire /usr/local/sbin. Nmap reprend beaucoup de bonnes idées de ses 
+prédécesseurs. J'ai également ajouté de nouvelle fonctionnalité comme le 
+fragmentation scaninng et d'autres options que j'aurais souhaité voir dans 
+d'autres scanners. Voici quelques unes des fonctionnalités (IMHO) utiles de 
+nmap:</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- calcul dynamique des délais d'attente: Certains scanners 
+ont besoin que vous donniez un délai d'attente entre l'envoi des paquets. 
+Comment savoir ce qu'il faut mettre? Je pourrais évidemment faire des pings, 
+mais c'est lourd et de plus le temps de réponse des hôtes varie nettement quand 
+ils sont floodés de requêtes. nmap essaye de vous déterminer le meilleur délai 
+d'attente. Il essaye également de maintenir des retransmissions de paquets, etc, 
+de sorte qu'il puisse modifier ce délai d'attente pendant le scan. Pour les 
+utilisateurs root, la meilleur chose à faire pour trouver un délai d'attente est 
+de chrononométrer la fonction interne "ping". Pour les utilisateurs non-root, il 
+va chronométrer une tentative de connect() sur un port fermé de la cible. Il 
+peut aussi prendre une valeur par défaut raisonnable. De plus les gens qui 
+veulent spécifier un délai eux-mêmes peuvent le faire avec l'option -w (wait), 
+mais vous ne devriez pas en avoir besoin.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- retransmission: certains scanners ne font qu'envoyer les 
+paquets espions et collecter les réponses. Mais cela peut mener à des résultats 
+faussement négatifs ou positifs dans le cas où les paquets seraient abandonnés. 
+Cela est particulièrement important pour les scans "par exclusion" comme UDP et 
+FIN où ce que vous recherchez c'est un port qui NE réponds PAS. Dans la plupart 
+des cas nmap implémente un nombre configurable de transmissions pour les ports 
+qui ne répondent pas.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- scan des port en parallèle: certains scanners scannent les 
+port simplement linérairement, un par un, jusqu'à ce que soient examinés les 
+65535 ports. Cela marche bien pour TCP dans un réseau local très rapide, mais la 
+vitesse de cette opération est innacceptable dans un réseau étendu comme 
+internet. nmap utilise le non-blocking I/O et le scan en parallèle pour tous les 
+modes TCP et UDP. Le nombre de scan en parallèles est configurable avec 
+l'options -M (Max sockets). Dans un réseau très rapide vous diminuerez 
+réellement les performances en mettant environ plus que 18. Dans les réseaux peu 
+rapides, des valeurs élevées augmentent considérablement les 
+performances.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- Spécification flexible des ports: Je ne veux pas toujours 
+scaner tous les 65535 ports. Même les scanners qui vous permettent de spécifier 
+des port de 1 à N, je trouve cela un peu limité. L'option -p vous permet de 
+spécifier un nombre arbitraire de ports et d'intervalles pour le scan. Par 
+exemple, '-p 21-25,80,113, 60000-' fera ce que vous attendez qu'il fasse (un 
+trait d'union à la fin signifie jusqu'à 65536, un trait d'union au début 
+signifie depuis 1). Vous pouvez aussi utiliser l'option -F (fast) qui va scanner 
+tous les ports enregistrés dans /etc/services (comme pour strobe).</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- Spécification flexible des cibles: Je veux souvent scanner 
+plus qu'un hôte et je n'ai certainement pas envie de les énumérer un à un pour 
+le scan d'un grand réseau. Tout ce qui n'est pas une option (ou argument 
+d'option) est considéré comme un hôte cible. Comme mentionné plus haut vous 
+pouvez optionnellement donné un hostname ou un masque d'IP pour scanner tous les 
+hôtes avec les mêmes bits initiaux de l'adresse IP 32 bits. Vous pouvez utiliser 
+la même syntaxe puissante que pour la spécification des ports pour donner des 
+cibles comme '150.12.17.71-79.7.*'. '*' est seulement un raccourci pour 0-255, 
+rappelez-vous que vous pouvez l'utiliser.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- Détection des hôtes qui sont down: Certains scanners vous 
+permettent de scanner de grands réseaux, mais perdent une quantité de temps 
+énorme en scannant 65535 ports d'un ordinateur éteint! Par défaut, nmap ping 
+chaque hôte pour vérifier qu'il est up avant de passer du temps dessus. Cela 
+aussi il le fait en parallèle pour que ce soit plus rapide. Vous pouvez 
+désactiver le ping en parallèle avec l'otion '-L' et le ping timeout avec 
+l'option '-T'. Vous pouvez éviter complètement le ping avec l'option '-D'. C'est 
+utile pour scanner des réseaux comme microsoft.com où les requêtes echo ICMP ne 
+passent pas. Nmap peut aussi déduire que certains hôtes sont downs avec des 
+erreurs étranges de scan de port. Il est aussi tolérant avec les gens qui 
+scannent accidentellement des adresses de réseaux, de broadcast, etc.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>- détection de votre adresse IP: Pour certaines raisons, 
+beaucoup de scanners vous demandent de taper votre IP comme paramètre. Bon je 
+n'ai pas envie de faire un 'ifconfig' et de calculer mon adresse IP à chaque 
+fois que je fais un scan. Bien sûr c'est toujours mieux que les scanners que 
+j'ai vus qui avaient besoin d'une recompilation à chaque fois que vous changez 
+votre adresse! nmap essaye d'abord d'obtenir votre adresse pendant la phase du 
+ping. Il utilise l'adresse de la réponse de l'echo vu que c'est l'interface à 
+travers laquelle il devrait presque toujours être routé. S'il ne peut pas le 
+faire (par exemple si vous n'avez pas activé le pinging de l'host), nmap essaye 
+de détecter votre interface principale et utiliser cette adresse. Vous pouvez 
+aussi utiliser l'option -S pour la spécifier directement mais vous ne devriez 
+pas en avoir besoin (à moins que ne vous vouliez que cela semble quelqu'un 
+d'AUTRE qui fasse un SYN ou FIN scanning sur un hôte).<BR>&nbsp;</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Quelques autres options et les options moins 
+importantes:</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>-v (verbose) : cela est hautement recommandé pour un usage 
+interactif. Parmi d'autres messages utiles, vous verrez apparaître les ports 
+comme ils sont trouvés, au lieu d'attendre le récapitulatif final.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>-r (randomizer): Ceci randomizera l'ordre dans lequel les 
+ports de l'hôte seront scannés.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>-q (quash argv): Ceci change argv[0] par FAKE_ARGV ("pine" 
+par défaut). Cela enlève aussi les autres arguments ainsi vous paraitrez moins 
+louches dans les listings de 'w' ou de 'ps'.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>-h pour un résumé des options</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>-R montre et résous tous les hôtes même ceux qui sont 
+down</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Jetez aussi un coup d'oeil à 
+http://www.dhp.com/~fyodor/nmap/ qui est l'endroit que j'ai choisi pour stocker 
+les prochaines versions et où se trouve plus d'information. En fait c'est un bon 
+conseil d'aller voir maintenant ce qu'il y a (si vous ne lisez pas simplement 
+ceci là-dessus).<BR>&nbsp;</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><U><FONT 
+color=#000000 face=Verdana size=2>Exemples d'utilisation</FONT></U> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Pour lancer un scan furtif des réseaux entiers de classe B 
+166.66.0.0 et 166.67.0.0 pour le fameux daemon exploitable imapd.</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2># nmap -Up 143 166.66.0.0/16 166.67.0.0/16</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Pour faire un scan tcp standart sur les ports réservés de 
+l'hôte &lt;target&gt;:</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>&gt; nmap target</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Pour vérifier sur quels services fameux repose warez.com 
+(avec un SYN scan fragmenté)</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2># nmap -fsp 21,22,23,25,80,110 warez.com/24</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Pour scanner le même réseau pour les services de votre 
+fichier /etc/services avec un scan tcp (très rapide)</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>&gt; nmap -F warez.com/24</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Pour scanner secret.pathetic.net avec une attaque ftp bounce 
+sur ftp.pathetic.net</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>&gt; nmap -Db ftp.pathetic.net secret.pathetic.net</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Pour trouver les hôtes qui sont up sur les classes C 
+adjacentes 193.14.12, .13, .14, .15, ... , .30:</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>&gt; nmap -P '193.14.[12-30].*'</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>Si vous ne voulez pas de cette syntaxe pour éviter des 
+confusions avec le shell, ceci aura le même effet:</FONT> 
+<P align=justify style="MARGIN-LEFT: 8px; MARGIN-RIGHT: 8px"><FONT color=#000000 
+face=Verdana size=2>&gt; nmap -P 193.14.12-30.0-255</FONT></P>
+<P>&nbsp;</P></BODY></HTML>

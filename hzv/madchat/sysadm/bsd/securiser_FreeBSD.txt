@@ -1,0 +1,3444 @@
+Securing FreeBSD step by step (for Dummies and even Geeks)
+cns at minithins.net
+
+Last Update	> 02/09/2003
+		> fix sysctl, switch to FDDL, huge clean up
+
+"A physician, a civil engineer, and a computer scientist were arguing about
+ what was the oldest profession in the world. The physician remarked, "Well, in
+ the Bible, it says that God created Eve from a rib taken out of Adam. This
+ clearly  required surgery, and so I can rightly claim that mine is the oldest
+ profession in the world." The civil engineer interrupted, and said, "But even
+ earlier in the book of Genesis, it states that God created the order of the
+ heavens and the earth from out of the chaos. This was the first and certainly
+ the most spectacular application of civil engineering. Therefore, fair doctor,
+ you are wrong : mine is the oldest profession in the world." The computer
+ scientist leaned back in her chair, smiled, and then said confidently, "Ah,
+ but who do you think created the chaos ?"
+
+Abstract
+
+Ce paper est issu comme beaucoup d'initiatives libres d'un besoin de la part
+des auteurs. Dans cet article nous souhaitons faire partager ce que nous avons
+traversé afin d'obtenir une machine FreeBSD configurée au mieux pour résister
+a toutes sortes de menaces. C'est une sorte de compilation des connaissances
+disparates dont nous avons nous même eu besoin. Comme le faisait remarquer
+Bruce Scheiner, la securité est une processus, pas un produit ; c'est pourquoi
+nous tentons dans ce document d'aborder un large panel de sujets et
+d'utilisations en nous basant sur la branche FreeBSD 4.x-STABLE.
+
+1.     burn out !
+1.1.   services
+1.2.   CVSup
+1.3.   (re)compilation et update
+
+2.     Tuning Système
+2.1.   sysctl
+2.1.1. securelevel et chflags
+2.1.2. performances
+2.2.   gestion utilisateurs
+2.2.1. adduser / rmuser / chpass / watch
+2.2.2. quotas et login.conf
+2.2.3. jail
+2.3.   intégrité
+2.4.   capabilities
+2.5.   secure shell
+2.6.   syslog
+2.7.   cron
+2.8.   ipfw et natd
+
+3.     Outils
+3.1.   TCPdump
+3.2.   Nessus
+3.3.   lsof
+3.4.   stack smashing
+3.5.   tunneling
+
+4.     Conclusion
+
+1. burn out !
+
+Nous allons partir du fait que vous avez réussi à installer correctement
+FreeBSD, et que vous êtes parvenu à une connexion Internet stable. Nous ne
+donnerons donc aucune indication quant à ces phases. Dans ce chapitre, nous
+nous concentrerons sur la configuration de base de FreeBSD, c'est-à-dire les
+premières mesures que vous appliquerez dans une optique de sécurité, peu après
+votre installation réussie.
+
+1.1. services
+
+Inetd est un super daemon qui permet de lancer plusieurs services reseau ainsi
+qu'une partie de leur configuration comme ftpd, smptd ou telnetd. Le fichier
+de configuration pour inetd est conservé dans /etc/inetd.conf. En voici un
+extrait :
+
+ftp stream tcp nowait root /usr/libexec/ftpd ftpd -l
+#shell stream tcp nowait root /usr/libexec/rshd rshd
+
+En règle générale, on place le caractere '#' devant une ligne que nous ne
+voulons pas afin de la mettre en commentaire. Si nous ne desirons offrir aucun
+de ces services - il est preferable de supprimer cette configuration de base
+laxiste afin de repartir de zero - nous pouvons retirer inetd de notre fichier
+de demarrage pour augmenter encore un peu la sécurité et la convivialité. Si
+par ailleurs vous desirez tout de meme offrir un shell distant à quelques
+utilisateurs, un chapitre entier couvre la configuration du sshd d'OpenSSH.
+Enfin, en éclipsant inetd, nous décidons d'abandonner également TCP Wrappers
+utilisé par défaut sous FreeBSD.
+
+Tout d'abord il est utile de verifier quel service tourne en ecoute sur un
+port actuellement. Pour cela nous allons utiliser l'utilitaire netstat qui
+affiche une liste des ports et connexions actives. Nous l'allions a grep pour
+preciser notre recherche.
+
+# netstat -a | grep 'listen'
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State
+tcp4       0      0 *:ssh                   *:*                     LISTEN
+tcp4       0      0 *:ftp                   *:*                     LISTEN
+tcp4       0      0 *:smtp                  *:*                     LISTEN
+udp4       0      0 *:portmap               *:*                     LISTEN
+
+Comme vous le voyez nous ne croulons pas sous les services. Mais si votre
+machine est destinee à devenir un serveur avec de multiples services, je vous
+recommande de suivre notre solution. Bref, sur le meme schema que precedemment,
+tous les services reseau que vous voudrez proposer a l'avenir tourneront sous
+la forme de stand alone daemon, c'est-a-dire des daemons autonomes augmentant
+la securite mais aussi simplifiant la configuration et ameliorant la rapidite
+de reponse de services en eliminant l'intermediaire inetd. Pour eviter 
+qu'inetd ne se lance au demarrage, nous editons le fichier /etc/rc.conf après
+avoir effectué un rapide grep permettant de savoir si nous avons
+effectivement besoin d'editer :
+
+# grep inetd /etc/rc.conf
+inetd_enable="YES"
+inetd_flags="-wW"
+
+inetd est donc lancé au demarrage avec par ailleurs les options -wW signifiant
+la capacite de filtrage des services internes et externes TCP via TCP Wrappers
+que nous n'utiliseront pas non plus. Donc, toujours dans rc.conf,
+inetd_enable="YES" devient inetd_enable="NO" et on met inetd_flags="-wW" en
+commentaire. Nous desactivons également portmapper, un outil extrêmement
+pratique dans le cadre de services RPC tels que NFS mais qui présentent un
+nombre incalculbale de vulnérabilités. Nous transformons donc la ligne
+portmap_enable="YES" en NO. Ainsi inetd etportmapper ne ne seront pas executés
+la prochaine fois que vous redemarrerez. Si vous voulez killer inetd de suite,
+vous pouvez faire :
+
+# killall inetd
+
+Notez que c'est egalement dans rc.conf que vous pourrez configurer les
+programmes ou scripts à lancer dès le demarrage. Selon le destin de votre
+machine, ça peut être une bonne idée de manipuler les champs portmap_enable,
+named_enable ou sendmail_enable.
+
+1.2 CVSup
+
+Le meilleur moyen d'obtenir un systeme securise - en plus du fait d'avoir une
+configuration betonnee et de connaitre FreeBSD sur le bout des doigts bien sur
+:) - reste de conserver les sources systeme et l'arborescence des ports a jour.
+Ainsi dès qu'une vulnerabilité ou un quelconque probleme apparait au sein du
+systeme ou encore qu'une nouvelle releases ou plutot qu'une nouvelle version
+stable est sortie, vous maintenez votre systeme à jour et donc protegé au
+mieux. Une bonne idee consécutive a l'update de votre systeme consiste a
+s'abonner a la liste freebsd-security afin d'etre tenu au courant des
+derniers patchs. Notez également la liste freebsd-questions en français utile
+à tous les utilisateurs francophones. Consultez les pages suivantes :
+
+http://lists.freebsd.org/mailman/listinfo/freebsd-security-notifications
+http://lists.freebsd.org/mailman/listinfo/freebsd-questions
+
+Maintenant nous allons voir un aspect extremement seduisant de la famille 
+*BSD : la mise à jour complete du systeme par le net. Pour cela nous
+utiliserons tout d'abord un utilitaire nomme CVSup. Il permet l'update simple
+de collections de fichiers a travers un reseau. Il peut efficacement et
+précisément mirrorer tous types de fichiers incluant sources, binaires, hard
+links, symlinks, et même des noeuds de périphériques. Le protocole de
+communication en streaming et l'architecture multithreads font très
+probablement de lui l'outil de mirroring le plus performant existant à ce
+jour. En plus de toutes ces qualités, CVSup inclut des usages et des
+optimisations spécifiquement conçues en fonction des repositories CVS. En
+d'autres termes, CVSup se relie à la base de données principale de code
+source FreeBSD et met à jour les fichiers source qui ont été modifié. Nous
+effectuons donc un simple :
+
+# cd /usr/ports/net/cvsup-bin && make install clean
+
+en tant que root afin d'installer cet utilitaire.
+Nous devons maintenant editer le cvs-upfile duquel cvsup recevra ses
+directives pour l'update.
+
+# mkdir /usr/share/cvsup/
+# cp /usr/share/examples/cvsup/ports-supfile /usr/share/cvsup/
+# cp /usr/share/examples/cvsup/doc-supfile /usr/share/cvsup/
+# cp /usr/share/examples/cvsup/cvs-supfile /usr/share/cvsup/
+# ee /usr/share/cvsup/cvs-supfile
+
+------------------------------------ SNiP -------------------------------------
+# nous allons rentrer une serie de parametres par defaut que nous utiliserons
+# a chaque invocation de cvsup.
+
+# nous rentrons ici le serveurs cvsup que nous voulons utiliser. Vous pouvez
+# en choisir sur la liste presente sur 
+# http://www.freebsd.org/handbook/mirrors.html
+*default host=cvsup.fr.FreeBSD.org
+
+# ici nous informons cvsup du repertoire ou stocker les fichiers transferes
+# plus quelques autres informations notamment celle de faire le menage apres
+# download ou encore quel version nous desirons obtenir grace au champ Tag qui
+# peut correspondre aussi bien a la version stable que current ou une version
+# precedente. Enfin nous activons la compression de part notre faible bande
+# passante.
+*default base=/usr
+*default prefix=/dist
+*default release=cvs tag=RELENG_4
+*default delete use-rel-suffix
+*default compress
+
+# ici nous decidons de mettre a jour l'ensemble de l'arborescence.
+# Notez que les sources des programmes soumis a des limitations d'exportation
+# (crypto) ne seront pas mis a jour.
+src-all
+------------------------------------ SNiP -------------------------------------
+
+Pareil pour les ports ...
+
+------------------------------------ SNiP -------------------------------------
+# nous devons maintenant selectionner les ports que nous desirons mettre a jour.
+# La collection de ports FreeBSD vous offre une multitude de programmes simples 
+# a installer et optimiser pour FreeBSD, cependant certains vous paraitront
+# d'une utilite douteuse d'ou notre choix au cas par cas et la mise en
+# commentaire de : ports-all
+
+#ports-archivers
+#ports-astro
+ports-audio
+ports-base
+#ports-benchmarks
+#ports-biology
+#ports-cad
+#ports-chinese
+#ports-comms
+#ports-converters
+ports-databases
+ports-deskutils
+ports-devel
+ports-editors
+ports-emulators
+ports-ftp
+ports-french
+#ports-games
+#ports-german
+ports-graphics
+ports-irc
+#ports-japanese
+ports-java
+#ports-korean
+ports-lang
+ports-mail
+#ports-math
+#ports-mbone
+ports-misc
+ports-net
+ports-news
+ports-palm
+ports-picobsd
+ports-print
+#ports-russian
+ports-security
+ports-shells
+ports-sysutils
+ports-textproc
+#ports-vietnamese
+ports-www
+# et on ne sait jamais, des fois que l'appel du graphisme soit trop fort...
+ports-x11
+ports-x11-clocks
+ports-x11-fm
+ports-x11-fonts
+ports-x11-servers
+ports-x11-toolkits
+ports-x11-wm
+------------------------------------ SNiP -------------------------------------
+
+... puis la doc.
+
+------------------------------------ SNiP -------------------------------------
+# pour finir nous decidons de profiter de l'excellent travail de documentation
+# issu du FreeBSD Documentation Project qui comporte notamment le FreeBSD
+# handbook, veritable bible de cet OS et même traduit en francais :)
+doc-all
+------------------------------------ SNiP -------------------------------------
+
+Nous en profitons également pour éditer le fichier /etc/make.conf afin
+de nous assurer de la presence de certaines variables.
+
+# cp /etc/default/make.conf /etc/
+# ee /etc/make.conf
+
+------------------------------------ SNiP -------------------------------------
+INSTALL=install -C -S -s
+
+PPP_NOSUID=		true
+ENABLE_SUID_SSH=	true
+ENABLE_SUID_NEWGRP=	true
+
+NO_FORTRAN=	true	# do not build g77 and related libraries
+NO_I4B=		true	# do not build isdn4bsd package
+NO_IPFILTER=	true	# do not build IP Filter package
+NO_KERBEROS=	true	# do not build and install Kerberos 5 (KTH Heimdal)
+NO_OBJC=	true	# do not build Objective C support
+NO_SENDMAIL=	true	# do not build sendmail and related programs
+NOGAMES=	true	# do not build games (games/ subdir)
+
+COMPAT1X=	no
+COMPAT20=	yes
+COMPAT21=	yes
+COMPAT22=	yes
+COMPAT3X=	yes
+
+MAKE_RSAINTL=	yes		# RSA (public key exchange)
+USA_RESIDENT=	no
+
+SUP_UPDATE=	yes
+SUP=		/usr/local/bin/cvsup
+SUPFLAGS=	-g -L 2
+SUPFILE=	/usr/share/cvsup/cvs-supfile
+PORTSSUPFILE=	/usr/share/cvsup/ports-supfile
+DOCSUPFILE=	/usr/share/cvsup/doc-supfile
+------------------------------------ SNiP -------------------------------------
+
+Vous pouvez vous amuser avec les nombreux exemples de supfile et de refuse
+disponibles dans le repertoire examples, puis, une fois votre parametrage
+effectué, il ne vous reste plus qu'à lancer une update avec en paramètre le
+module que vous souhaitez mettre à jour
+
+# cd /usr/src && make update SUPFILE
+
+Vous n'aurez qu'à éditer et spécifier DOCSUPFILE ou PORTSUPFILE afin
+d'updater le ports tree ou le documentation tree.
+
+1.3. (re)compilation et update
+
+Maintenant que nous avons une arborescence des sources et de la port collection
+correctement mis à jour, il ne nous reste plus (sic) qu'à 'construire' cette
+arborescence.
+
+Tout d'abord nous allons réellement construire l'ensemble des sources de notre
+systeme de base :
+
+# cd /usr/src && make buildworld
+
+Cette operation assez importante peut durer plusieurs heures. Sur un Celeron
+400, il aura fallu un peu plus d'une heure et demie. Bref le nombre de verres
+que vous prendrez dependra de la puissance de votre machine.
+
+Nous nous attelons maintenant à la configuration et la compilation du kernel.
+Pour les configurations ultérieures et des performances optimales, nous vous
+recommandons de sélectionner les options suivantes dans votre fichier de
+configuration kernel situé dans le répertoire /sys/votre_architecture/conf.
+Afin de pouvoir toujours revenir en arrière avec une configuration
+fonctionnelle, nous éditerons une copie de GENERIC, à partir de laquelle nous
+compilerons.
+
+# cd /sys/i386/conf && cp GENERIC LSD
+# ee LSD
+
+------------------------------------ SNiP -------------------------------------
+options 	INET
+options 	INET6
+options 	IPSEC
+options 	IPSEC_ESP
+
+options 	IPFIREWALL
+options 	IPFIREWALL_VERBOSE
+options 	IPFIREWALL_VERBOSE_LIMIT=30
+options 	IPFIREWALL_FORWARD
+options 	IPSTEALTH
+options 	BRIDGE
+options 	IPDIVERT
+options 	DUMMYNET
+#options	IPFIREWALL_DEFAULT_TO_ACCEPT
+options 	ACCEPT_FILTER_DATA
+options 	ACCEPT_FILTER_HTTP
+
+options 	NETGRAPH
+options 	NETGRAPH_ONE2MANY
+options 	NETGRAPH_PPPOE
+options 	NETGRAPH_HOLE
+options 	NETGRAPH_ECHO
+options 	NETGRAPH_TEE
+options 	NETGRAPH_TTY
+options 	NETGRAPH_ASYNC
+options 	NETGRAPH_INTERFACE
+
+options 	TCP_DROP_SYNFIN
+options 	ICMP_BANDLIM
+options 	RANDOM_IP_ID
+options 	SC_DISABLE_DDBKEY
+options 	SC_DISABLE_REBOOT
+options 	SC_NO_HISTORY
+options 	NO_LKM
+options 	NO_KLD
+
+options 	QUOTA
+options 	SOFTUPDATES
+options 	UFS_DIRHASH
+options 	COMPAT_LINUX
+options 	DDB
+options 	DEVICE_POLLING
+
+maxusers	0
+options 	HZ=1000
+options 	NMBCLUSTERS=32768
+
+pseudo-device	snp	4
+# high because of Nessus
+pseudo-device	bpf	20
+# high because of IPSec
+pseudo-device	gif	10
+pseudo-device	faith	1
+pseudo-device	stf	1
+------------------------------------ SNiP -------------------------------------
+
+Dans l'ordre, nous selectionnons le support IPv4, IPv6, IPSEC et ESP. Puis nous
+activons le support IPFW (que vous pouvez décidez de remplacer par IPFilter non
+traité dans cet article) avec l'envoi des messages à syslog limité à 30 fois la
+même occurence. Le forwarding est aussi activé ainsi que le forwarding caché
+(passant un paquet sans décroître son TTL), tout comme les divert sockets
+permettant de modifier le transit d'un paquet dans le kernel ; et enfin le
+support de dummynet, le trafic shaper basique du système. Nous activons ensuite
+les accept filters qui accélère le processus d'admission de certains types de
+connexions (comme HTTP) en les placant directement dans le kernel. Notez que
+mi-2002, Luigi Rizzo a totalement réécrit les mécanismes internes d'ipfw afin
+d'en doubler la vitesse et de le rendre facilement extensible via un jeu de
+microinstructions similaires à BPF. Ce code a été backporté sur stable et se
+trouve totalement compatible avec vos rulesets. Bien qu'encore non documenté,
+vous pouvez l'activer en placant l'option IPFW2 dans votre configuration.
+
+Après cela, nous activons la cohorte de noeuds du sous-système NetGraph qui
+permet des manipulations complexes au niveau réseau à l'aide de nodes héritant
+des particularités de leur type (hooks possibles, traitement du trafic à chaque
+hook, interprétation des messages de contrôle...) qui peuvent être chaînés à
+travers des hooks pour constituer une suite d'edges : un graphe. Plus
+d'informations et la descriptions des nodes dans la manpage netgraph(4).
+
+Nous enchaînons avec quelques sécurités réseau, d'abord, comme le rejet de
+certains paquets forgés (SYN/FIN) permettant la reconnaissance d'OS, la
+limitation, via sysctl, d'émission de paquets ICMP afin de ne pas servir de
+reflecteur lors d'un DoS, et la génération aléatoire des IP ID pour réduire les
+opportunités de scanning. Puis sécurité physique avec la désactivation des
+séquences clavier de debugging et de redémarrage, ainsi que la désactivation du
+backscrolling pour les terminaux virtuels. Enfin, sécurité système avec la
+désactivation des LKM ; et même des KLD si vous appliquez le patch suivant
+http://people.freebsd.org/~cjc/kld_stable.patch.
+
+Suivent l'activation des quotas disque, du code de compatibilité Linux via
+l'émulation de certains appels système et du debugger kernel DDB. Nous
+vérifions aussi l'activation des SoftUpdates, méthode d'écriture et de lecture
+asynchrone résolvant les problèmes liés aux metadata et à leur perte.
+L'approche de Linux est la journalisation (concept hérité des base de données)
+qui consiste à écrire les mises à jour de metadata avec leurs dépendances dans
+une partie distincte du système de fichier : le journal. Quand les metadata
+sont prêtes, elles sont effectivement écrites. Le système de fichiers de
+FreeBSD nommé UFS utilise une approche différente (inspirée de CVS) dans
+laquelle les opérations d'écriture ou de lecture sont placées dans une file
+d'attente divisées en un buffer d'attente et un buffer de vérification des
+dépendances. Si un bloc appartient à une boucle de dépendances, il est rejeté
+dans le buffer d'attente. Cette approche permettra de plus à l'avenir des
+redémarrage suite à un crash avec un fsck fonctionnant en tâche de fond.
+Pour de plus amples explications, voir http://www.di.ens.fr/~pornin/jfs.html.
+Toujours au niveau système, vous apprécierez le device polling permettant
+d'améliorer les performances kernel en limitant les interruptions et donc le
+changement de contexte et l'appel à un gestionnaire d'interruption. A la place,
+les periphériques sont sondés aux moments opportuns comme les interruptions
+d'horloge, les appels système ou pendant les périodes de non-activité.
+
+Notez enfin que le nombres maximal d'utilisateurs est placé à 0 afin qu'il soit
+calculé au moment du boot en fonction de la mémoire physique disponible. Cette
+variable ainsi que le nombre de clusters du système de fichiers sont utilisées
+pour calculer l'allocation de certains ressources mémoire. La fréquence
+d'horloge est ensuite placée à 1000 Hz pour augmenter l'accuité du device
+polling (et aussi limiter les burst si vous utilisez ALTQ). Viennent enfin les
+pseudo-devices snoop et bpf pour la surveillance respective des tty et des
+trames ethernet, et gif, faith et stf pour le tunneling v6/v4.
+
+Certaines options seront déjà présentes, nous ne faisons que les vérifier. Vous
+pouvez également réflechir à mettre en commentaire le support procfs et NFS qui
+peuvent créer d'éventuelles vulnérabilités dans le système, à moins bien sûr
+que vous n'en ayez besoin. Pour examiner l'ensemble des options kernel
+disponibles, référez vous au fichier LINT dans le même repertoire que GENERIC.
+
+Par la séquence de commandes suivantes, nous construisons successivement le
+kernel LSD puis nous l'installons et enfin nous le protégeons à l'aide des
+flags immutables tout en nettoyant le système des fichiers générés par
+l'install.
+
+# cd /usr/src && make buildkernel KERNCONF=LSD && make installkernel \
+     KERNCONF=LSD && make clean
+
+Nous en avons fini avec la première partie de la recompilation complète du
+système. Le système mis à jour est désormais fin prêt à être installé.
+Cependant pour plus de sureté il est recommandé d'effectuer la suite des
+operations en single-user mode. Pour ce faire au moment du prompt annoncant le
+boot, pressez la barre d'espace pour entrer dans le menu de boot puis tapez
+'boot -s'. Cette manoeuvre est recommandée pour chaque mise à jour ou
+manipulation entrainant une reconstruction générale du système.
+
+# reboot
+
+La commande suivante installe donc l'ensemble du système de base mis à jour.
+Le buildworld précédant correspondait à la compilation des sources (d'où sa
+durée) tandis qu'ici nous nous contentons d'installer les binaires générés
+(d'où une moindre attente).
+
+# cd /usr/src && make installworld
+
+Nous appliquons ensuite le script mergemaster, très pratique puisqu'il
+effectue une comparaison entre les anciens fichiers de configuration et ceux
+par défaut de l'installation. Tout cela afin de mettre à jour la configuration
+du nouveau système et nous éviter de recommencer un travail fastidieux.
+
+# cd /usr/src/usr.sbin/mergemaster
+# ./mergemaster -s -v -w 150 -D /etc/
+
+Voilà, le systeme est fin pret pour attaquer sa reelle configuration. Nous
+redemarrons une nouvelle fois afin de repasser en multiuser mode.
+
+# reboot
+
+Reportez vous au handbook en cas de problèmes :
+http://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/makeworld.html.
+
+2. Tuning Système
+
+Maintenant que notre systeme est comme neuf et on ne peut plus a jour, il ne
+nous reste plus qu'a entamer sa reelle securisation. Pour cela nous allons
+d'abord voir ce que nous pouvons faire par defaut avec le systeme de base afin
+d'augmenter la sécurité de notre système et de limiter se fenêtre d'exposition
+aux attaques.
+
+2.1. sysctl
+
+Sysctl est un outil extrêmement pratique au sein de FreeBSD puisqu'il va nous
+permettre de verifier ou de manipuler l'etat du kernel à chaud. Les
+informations sont stockées et affichées à travers une Management Information
+Base ou MIB selon le même modèle que SNMP. Par exemple pour afficher une liste
+des differentes variables d'etat kernel, il vous suffit d'effectuer un simple
+
+# sysctl -a
+
+de la même manière que vous utiliseriez un ls. Notez que vous pouvez prŽciser
+l'entrée de la MIB si vous la connaissez juste apres l'option afin de
+n'afficher qu'elle. Suivant le principe des MIB, vous pouvez reduire
+l'affichage en prŽcisant un champ de la MIB. Par exemple pour afficher toutes
+les entrées en rapport avec IP
+
+# sysctl net.inet.ip.*
+
+Notez aussi que certaines variables ne sont pas modifiables et que certaines
+entrées de la MIB sont sous forme de tableaux utilisés à l'occasion par ps,
+netsat ou systat. Enfin pour obtenir une liste des variables sysctl que vous
+pouvez modifier, consultez la page de manuel de sysctl.
+
+2.1.1. securelevel et chflags
+
+L'une des fonctionnalités interessantes de FreeBSD consiste en l'établissement
+de secure level au sein du systeme. Il existe ainsi 5 niveaux de securité au
+sein de FreeBSD qui peuvent pas être diminués sans relancer init. Ils peuvent
+cependant etre augmentés par un processus root via la MIB sysctl, et ce même
+en cours d'exécution. 
+
+Pour définir le securelevel mis en place par init, modifiez les lignes
+suivantes dans rc.conf :
+
+kern_securelevel_enable="YES"
+kern_securelevel="N"
+
+N représente ici l'entier correspondant à l'un des 5 entiers possibles.
+Remplacez-le par le niveau qui vous convient. Puis si vous souhaitez l'élever
+une fois votre système initialisé, modifiez l'entrée sysctl suivante :
+
+# sysctl -w kern.securelevel=N
+
+Outre des limitations inscrites dans le code kernel, donc inchangeable, propres
+à chacun d'eux, chaque level définit également les opérations possibles sur des
+file flags, attributs de fichiers permettant d'améliorer la sécurité fournie
+par les classiques permissions Unix. Ci-dessous, les 5 niveaux et leurs
+limitations :
+
+- -1 qui instaure le mode insecure (0) de maniere permanente. C'est la valeur
+  par défaut.
+- 0 indique le mode insecure dans lequel les files flags 'immutable' et
+  'system append only' peuvent être retirés et où l'on peut effectuer des
+  opérations de lecture/écriture sur tous les péripheriques avec pour seule
+  restriction les droits deja instaurés, par exemple, dans la fstab.
+- 1 indique nous sommes en secure mode dans lequel les flags 'system immutable'
+  et 'system append only' ne peuvent être désactivés. L'accès à /dev/mem et
+  /dev/kmem est interdit en écriture et les KLD ne peuvent plus être chargés ou
+  déchargés.
+- 2 instaure le highly secure mode qui est strictement le même que le secure
+  mode à la différence près que les seules operations désormais effectuées sur
+  les disques sont le montage et démontage.
+- 3 signifie l'instauration du network secure mode qui est similaire au level
+  précédent avec en plus l'impossibilite de modifier les règles ipfw ou la
+  configuration du traffic shaper basé sur ipfw dummynet.
+
+Pour une station de travail, l'utilisation devient problématique dès le
+securelevel 1. Par exemple, XFree86 peut nécessiter l'accès à /dev/mem alors
+que cela lui est interdit. Les niveaux suivants sont adaptés à des serveurs, et
+le dernier est plus particulièrement destiné à une passerelle. Notez le niveau
+2, très restrictif, qui force l'accès des disques en read-only. A ce niveau,
+même un serveur risque de se voir perturbé par les securelevel, encore plus
+si il nécessite des compilations ou modifications de configuration régulières.
+Notez que le niveau protège très bien de la plupart des backdoors basées sur
+des modules kernel. Il pourrait cependant être judicieusement de remplacer ou
+d'ajouter l'option kernel NO_LKM.
+
+Pour paramétrer les file flags sur vos fichiers en fonction de ces levels, il
+vous faudra utiliser la commande chflags. Les flags disponibles sont listés
+ci-après.
+
+- arch, uniquement utilisable par root, transforme le fichier en archive.
+- opaque, rend le fichier "opaque" à certaine lecture (utile contre la lecture
+  par d'autres applications) et modifiable uniquement par l'owner ou le root.
+- nodump, permet d'interdire un backup du fichier via l'utilitaire dump.
+  Modifiable uniquement par le owner ou le root.
+- sappnd, instaure le flag system append-only uniquement modifiable par le root
+  en securelevel supérieur à 0. Append signifie qu'on ne peut que rajouter des
+  données et non en retirer.
+- schg place le flag system immutable qui, comme son nom l'indique, est censé
+  empêcher toute évènement. Modifiable par le root uniquement en niveau 0.
+- sunlnk permet d'interdire la suppression d'un fichier, sachant que cette
+  option n'est modifiable que par le root
+- uappnd, uchg et uunlnk sont les pendant respectifs de sappnd, schg et sunlnk.
+  La différence réside dans le fait que, outre le root, le owner du fichier a
+  également le droit de modifier les file flags.
+
+La syntaxe pourra par exemple être la suivante :
+
+# chflags -RH schg /bin
+# chflags -RH schg /sbin
+# chflags -RH schg /usr/libexec
+# chflags -RH schg /usr/lib
+# chflags -RH schg /usr/share/lib
+# chflags -RH schg /boot
+# chflags -RH sappnd /var/log/*
+# chflags schg /kernel
+
+Notez qu'en effectuant un man chflags, vous decouvrez les quelques options -
+notamment la recursivité - que propose cette commande. Pour retirer un file
+flag ce sont les mêmes options avec le prefix no tel que nosappnd. Les file
+flags sont interessants à placer sur certains fichiers sensibles précis ou
+alors carrément sur un répertoire dont vous souhaitez vous assurez de
+l'integrité et qui sera rarement modifié. Dans l'exemple, R et H permettent de
+suivre les liens symboliques et ce recursivement, la commande étant appliquée à
+des répertoires entiers de binaires.
+
+Dernier detail qui n'a pas grand chose à voir avec sysctl mais qui importe
+beaucoup dans la gestion des droits et des fichiers. Vous avez le loisir de
+modifier la fstab afin de monter vos diverses partitions avec certaines
+options. Sous FreeBSD, au lieu de ne créer qu'une unique partition root /, le
+systeme crée simultanément une partition /usr et /var. Vous pouvez définir dans
+votre fstab pour l'ensemble de vos systèmes de fichiers :
+
+- les droits d'écriture avec l'option rw pour read-write, ou ro pour read-only.
+- les droits d'exécution avec l'option noexec.
+- les privilèges accordés avec l'option nosuid.
+
+# ee /etc/fstab 
+
+#device 	mountpoint	fs	options 		  dump	pass
+/dev/ad0s2b	none		swap	sw			  0	0
+/dev/ad0s2a	/		ufs	rw			  2	2
+/dev/ad0s2f	/usr		ufs	rw,nodev		  2	2
+/dev/ad0s2c	/home		ufs	rw,nosuid,nodev,userquota 2	1
+/dev/ad0s2e	/var		ufs	rw,noexec,nosuid,nodev	  2	2
+/dev/acd0c	/cdrom		cd9660	ro,noauto		  0
+
+Nous limitons ici l'exécution dans /var afin d'éviter qu'un intrus tente d'y
+placer des binaires et nous limitons la presence de binaires suid ou de devices
+dans les autres répertoires majeurs.
+
+Notez au passage que les soft updates que nous avons mis en place dans notre
+configuration kernel ne s'activent pas via la fstab mais grâce à l'utilitaire
+tunefs qui modifie directement, et de manière persistente, l'entête du système
+de fichier. Pour effectivement activer ces soft updates, suivez la ligne
+suivante :
+
+# tunefs -n enable /usr
+# tunefs -n enable /home
+
+Remplacez alors enable par disable pour désactiver cette option.
+
+2.1.3. Performances
+
+Sysctl peut également nous apporter une aide précieuse dans la configuration
+systeme et réseau à des fins de performances élevées. Il va ainsi nous
+permettre d'activer certaines capacités reseau que supporte parfaitement la
+pile TCP/IP BSD - qui est cela dit en passant certainement la plus stable, la
+plus performante et la plus standard des piles TCP/IP - mais qui ne sont pas
+activées par defaut.
+
+La première entrée intéressante est l'option log_in_vain qui va loguer à
+travers une simple entrée dans le fichier de log correspondant de syslogd,
+toute tentative d'accès à un service même si aucun service n'est à l'écoute sur
+le port de la tentative d'accès. Ceci peut nous permettre dans un environnement
+securisé, allié de préference avec un outil d'analyse de log tel que logcheck
+ou ASAX, de réperer des tentatives de network mapping même si nous avons un
+minimum de services disponibles et qui plus est un firewall. Cependant je ferai
+remarquer 2 difficultés : tout d'abord log_in_vain ne logue en réalité que les
+paquets avec un flags SYN, ce qui n'est pas assez pour réellement détecter un
+scan. Et d'autre part, dans un environnement "chaud" comme une machine servant
+de passerelle ou un serveur au sein d'une DMZ, l'utilisation de log_in_vain
+peut entrainer une quantité de log assez impressionante et capable d'occuper un
+analyste ou un administrateur sans outils d'analyse pendant des semaines. Mais
+au sein d'un réseau d'hors et deja securisé ou sur une machine critique, cette
+capacité de log peut etre intéressante. Pour l'activer il vous suffit de saisir
+
+# sysctl -w net.inet.tcp.log_in_vain=1
+# sysctl -w net.inet.udp.log_in_vain=1
+
+Les astuces suivantes sont intéressantes si votre machine doit servir de
+passerelle, de filtre ou de load balancer pour d'autres machines. La commande
+suivante vous offre la possibilité d'activer le forwarding IP et donc de
+transformer notre machine en gateway ce qui s'avérera utile pour le partage de
+connexion ou le deploiement d'une jail. Vous pouvez lui adjoindre l'entrée
+fastforwarding qui active un système de cache des routes menant à des adresses
+externes au réseau local. L'intérêt est de contourner de cette manière
+l'inspection par la couche IP pour obtenir un passage direct des trames entre
+les niveaux 2 des interfaces de la passerelle. Dans le cas d'un end host,
+activez check_interface plutôt que forwarding afin de vérifier que les paquets
+arrivant sur une interface possède une adresse IP correspondante à l'interface
+
+# sysctl -w net.inet.ip.forwarding=1
+# sysctl -w net.inet.fastforwarding=1
+# sysctl -w net.inet.ip.check_interface=1
+
+Les entrées suivantes sont particulièrement utiles dans le cadre d'un serveur
+qui necessité une haute disponibilité ou une grande fiabilité. En effet, nous
+allons apporter à notre machine le support des extensions TCP pour hautes
+performances. Ces extensions sont decrites dans la RFC 1323 que je vous
+recommande d'étudier. Elles sont constituées de 3 extensions. La première est
+le champ Window Scale qui est un facteur appliqué au champ Window Size et utile
+sur les Large Fat Network (LFN) afin d'optimiser le flux de donnees sur ces
+grands reseaux et d'apporter un meilleur controle en multipliant la Window
+Size. Nous trouvons ensuite 2 options extrêmement utiles dans le cas
+d'utilisation de load balancing en fournissant des informations aux algorithmes
+de repartition de charge. Le Round-Trip Time Mesurement (RTTM) et le Protection
+Against Wrapper Sequence Numbers (PAWS) se basent tous les 2 sur l'adjonction
+d'une option de timestamp aux segments TCP. Avec de simples verifications de
+timestamp on peut ainsi calculer le temps d'aller retour entre 2 ACK et ainsi
+optimiser le flux ou modifier la route. On peut egalement se prevenir du
+hijacking, de l'overlapping et surtout du rejeu en effectuant une double
+vérification sur le numero de sequence et le timestamp. Ces options viennent
+s'ajouter à la suite d'algorithmes NewReno, évolution de la pile Reno,
+permettant de détecter et corriger une congestion dans le réseau en jouant sur
+la perte de paquets, les délais et les tailles de fenêtre TCP. L'unique bemol
+est que ces options ne fonctionnent bien sûr qu'entre des machines les
+supportant toutes les 2 de manière similaire, or elles ne semblent pas être
+très utilisées - notez que la branche 4.x supporte la RFC 1323 par défaut
+depuis la release 4.4 - et enfin vous pourriez risquer des désagrements face à
+certains firewalls ou plugins de normalisation de trafic s'ils ne reconnaissent
+pas ces options. Cependant nous décidons de l'aborder dans cet article afin de
+faciliter sa diffusion et nous l'appliquons à notre système par acquis de
+conscience ! Vous trouverez ensuite une entrée récente qui force FreeBSD à
+calculer, pour chaque connexion TCP, la quantité de données en cours de
+transmission dans le réseau (à partir du produit delay*bw), afin de limiter
+l'envoi de paquets à même d'entraîner une surcharge non pertinente des routeurs
+et/ou switchs présent sur la route. Cette configuration rapproche alors le
+comportement de FreeBSD de la suite d'algorithmes TCP Vegas. Nous n'avons plus
+ensuite qu'à augmenter les tailles par défaut de nos buffers d'envoi et de
+reception (aussi bien pour TCP que pour UDP), qui ont une influence directe sur
+le champ TCP window size. Du fait de l'influence possible de ces valeurs sur le
+délai, il est recommandé d'expérimenter plusieurs valeurs, en suivant par
+exemple la règle wnd = bw / 8 * RTT. Par exemple, nous avons volontairement
+limité la taille des buffers pour UDP qui ne possède pas de mécanisme de
+détection et évitement de congestion et s'y trouve donc plus sensible. Nous
+avons également attribué des valeurs différentes aux buffers d'envoi et de
+réception pour TCP, la vitesse de download se trouvant souvent plus élevée que
+celle d'upload (pensez aux lignes xDSL). Pour finir, les deux dernières entrées
+sysctl indiquent de ne pas générer de paquets avec l'option source route, ni de
+les accépter, cette option IP facilitant le spoofing déjà évoqué en faisant
+remonter les paquets IP strictement par le chemin utilisé à l'aller.
+
+Pour tout cela, il vous suffit d'effectuer les commandes suivantes :
+
+# sysctl -w net.inet.tcp.rfc1323=1
+# sysctl -w net.inet.tcp.newreno=1
+# sysctl -w net.inet.tcp.inflight_enable=1
+# sysctl -w net.inet.tcp.inflight_min=6144
+# sysctl -w net.inet.tcp.sendspace=32768
+# sysctl -w net.inet.tcp.recvspace=65535
+# sysctl -w net.inet.udp.sendspace=32768
+# sysctl -w net.inet.udp.recvspace=32768
+# sysctl -w net.inet.udp.maxdgram=28672
+# sysctl -w net.inet.ip.sourceroute=0
+# sysctl -w net.inet.ip.accept_sourceroute=0
+
+Ensuite, nous activons l'implémentation de la RFC 1948 appliquant la
+recommendation de Steve Bellovin sur la génération aléatoire d'ISN selon
+l'équation ISN = M + F(localhost,localport,remotehost,remoteport) où M est un
+timestamp. Cependant, la sécurité de cette recommendation repose
+essentiellement sur le caractère aléatoire de la clé secrète et la puissance de
+l'algorithme de hashage. En effet, l'étude de Michal Zalewski
+(http://razor.bindview.com/publish/papers/tcpseq.html), concernant
+l'utilisation des attracteurs étranges à des fins de construction de spoofing
+sets répondant au problème de prédiction d'ISN TCP de manière aveugle, a
+démontré qu'avec la liberté laissée par la recommendation de ne générer une clé
+secrète qu'au démarrage seulement et avec la réutilisation des adresses IPv4,
+il est possible pour un serveur au long uptime qu'un attaquant puisse créer un
+attracteur étrange assez large pour s'assurer d'un bon taux de réussite en
+utilisant la même adresse IP source. Malgré l'absence de démonstrations
+mathématiques pour cette étude, nous activons la regénération de secret à un
+intervalle de 3600 secondes. Sachez que la phase de regénération brise le
+mécanismes de recyclage TIME_WAIT, permettant de purger avant les 240 secondes
+réglementaires les connexions TCP en cours de fermeture (état TIME_WAIT),
+allouant donc des ressources un peu plus longtemps. A titre personnel je me
+demande aussi de quel manière le projet CBOSS a concilié l'intégration des
+syncookies dans FreeBSD à partir de la release 4.5 avec le respect de la RFC
+1948. Nous rappelons enfin les différentes entrées relatives aux mécanismes de
+syncookies et de syncache limitant fortement les risques liés au SYN flood tout
+en améliorant le fonctionnement normal.
+
+# sysctl -w net.inet.tcp.strict_rfc1948=1
+# sysctl -w net.inet.tcp.isn_reseed_interval=1800
+# sysctl -w net.inet.tcp.syncookies=1
+# sysctl -w net.inet.tcp.syncache.hashsize=512
+# sysctl -w net.inet.tcp.syncache.cachelimit=15359
+# sysctl -w net.inet.tcp.syncache.bucketlimit=30
+# sysctl -w net.inet.tcp.syncache.rexmtlimit=3
+
+Nous décidons maintenant de nous proteger face a certaines tentatives de DoS
+ainsi que de diverses techniques de network mapping. A l'aide des lignes
+suivantes, vous pourrez donc notamment modifier la valeur de TTL par defaut,
+qui peut être utilisé pour identifier l'OS, ou interdire les réponses aux ICMP
+mask reply menant à une éventuelle cartographie reseau, mais aussi aux ICMP
+broadcast, très souvent source de smurf ou DoS par amplification, et de mettre
+la limite maximale de paquets ICMP en réponse à 200 par seconde. Pour TCP, nous
+activons les delayed acknowledgments, restreingnant l'inclinaison du système à
+envoyer des ACK pour chaque segment reçu. Ceci permet d'éviter le Silly Window
+Syndrome (SWS) qui tend à réduire la window size et donc d'assurer une
+meilleure efficacité (voir RFC 813, 896 et 2581). Nous activons également les
+keepalive, segments TCP permettant de vérifier si une transmission TCP est
+toujours réellement active et non pas conservée dans un état artificiel (suite
+à un SYN flood ou Naptha, par exemple). Vient ensuite l'activation des
+blackholes consistant à empêcher votre systeme d'être scanné en ne repondant ni
+par un RST pour TCP ni par un ICMP port unreachable pour UDP aux paquets
+envoyés sur un port fermé et donc transformer votre système en "trou noir". La
+dernière ligne n'est applicable que sur les hôtes finaux puisqu'elle induit la
+verification à chaque arrivée de paquets que son adresse de destination
+corresponde à une adresse de l'interface de reception.
+
+# sysctl -w net.inet.ip.ttl=128
+# sysctl -w net.inet.icmp.maskrepl=0
+# sysctl -w net.inet.icmp.bmcastecho=0
+# sysctl -w net.inet.icmp.icmplim=200
+# sysctl -w net.inet.tcp.delayed_ack=1
+# sysctl -w net.inet.tcp.always_keepalive=1
+# sysctl -w net.inet.tcp.blackhole=2
+# sysctl -w net.inet.udp.blackhole=1
+# sysctl -w net.inet.ip.check_interface=1
+
+Toujours dans les protections contre les DoS mais cette fois-ci côté ressources
+plutot que réseau. Les entrées suivantes de la MIB vont nous permettrent
+d'abord de limiter le nombre de processus par utilisateur et le nombre fichiers
+(incluant file descriptor et IPC) qu'il peut ouvrir. Nous augmentons aussi la
+taille de la queue de connexions de pair avec le nombre maximal de sockets
+(2 fois le maximum de connexion approximativement). de même que la taille
+maximal des buffers pour sockets (empiriquement 8 fois la taille de
+{recv,send}space). Enfin, nous augmentons également le nombre maximum de
+fichiers. Toutes ces valeurs paraissent élevées, mais elles ne servent en
+réalité qu'à l'allocation de ressources.
+
+# sysctl -w kern.maxprocperuid=512
+# sysctl -w kern.maxfilesperproc=1024
+# sysctl -w kern.ipc.somaxconn=4096
+# sysctl -w kern.ipc.maxsockbuf=262144
+# sysctl -w kern.maxfiles=16384
+
+Par ailleurs nous possédons également quelques astuces afin d'éviter les
+tentatives de cache poisoning en accélérant le temps de rafraichissement de la
+table de routage et de la table ARP.
+
+# sysctl -w net.inet.ip.rtexpire=60
+# sysctl -w net.inet.ip.rtminexpire=10
+# sysctl -w net.link.ether.inet.max_age=1200
+
+Finissons avec quelques modifications liées au système à modifier :
+
+# sysctl -w vfs.vmiodirenable=1
+# sysctl -w kern.coredump=1
+# sysctl -w kern.corefile=%N.sexfault
+# sysctl -w kern.ps_showallprocs=0
+
+La première entrée permet d'améliorer le traitement notamment sur des larges
+volumes de fichiers. Il concerne les fichiers unix qui seront cachés dans le
+buffer cache plutôt que directement sur le disque exploitant ainsi pleinement
+la memoire virtuelle FreeBSD par ailleurs déjà très performante. Ensuite nous
+décidons d'activer l'application savecore qui permet de conserver une trace du
+core dump associé à un kernel dans un but d'étude apres un crash par exemple
+afin d'en determiner les causes. En dernier lieu, nous faisons en sorte que
+les utilisateurs ne voient que leurs propres processus et que seul le root
+puisse voir l'ensemble.
+
+Notez que nous disposons également de quelques fonctionnalités configurables
+par l'intermédiaire du loader. Si vous disposez d'un disque IDE, la commande
+suivante permet d'activier le cache en écriture
+
+# loader set hw.ata.wc=1
+
+Si vous disposez de disques IBM DPTA ou DTLA, vous pouvez utiliser à la place
+l'entrée hw.ata.tags mais à vos risques et périls puisqu'elle est encore
+experimentale. Ces modifications doivent être répercutées sur
+/boot/loader.conf. De la même manière, les options sysctl que voudrez retrouver
+à chaque demarrage doivent se trouver dans le fichier /etc/sysctl.conf sous la
+forme 'entrée=parametre'.
+
+Ci-dessous notre sysctl.conf final.
+
+------------------------------------- SNiP ------------------------------------
+net.inet.tcp.rfc1323=1
+net.inet.tcp.newreno=1
+net.inet.tcp.inflight_enable=1
+net.inet.tcp.inflight_min=6144
+net.inet.tcp.sendspace=32768
+net.inet.tcp.recvspace=65535
+net.inet.tcp.log_in_vain=1
+net.inet.tcp.always_keepalive=1
+net.inet.tcp.blackhole=2
+net.inet.tcp.delayed_ack=1
+net.inet.tcp.strict_rfc1948=1
+net.inet.tcp.isn_reseed_interval=1800
+net.inet.tcp.syncookies=1
+net.inet.tcp.syncache.hashsize=512
+net.inet.tcp.syncache.cachelimit=15359
+net.inet.tcp.syncache.bucketlimit=30
+net.inet.tcp.syncache.rexmtlimit=3
+net.inet.icmp.maskrepl=0
+net.inet.icmp.bmcastecho=0
+net.inet.icmp.icmplim=300
+net.inet.udp.sendspace=32768
+net.inet.udp.recvspace=32768
+net.inet.udp.maxdgram=28672
+net.inet.udp.blackhole=1
+net.inet.udp.log_in_vain=1
+net.inet.ip.ttl=128
+net.inet.ip.forwarding=1 # ou check_interface=1
+net.inet.ip.sourceroute=0
+net.inet.ip.accept_sourceroute=0
+net.inet.ip.rtexpire=60
+net.inet.ip.rtminexpire=10
+net.link.ether.inet.max_age=1200
+vfs.vmiodirenable=1
+kern.coredump=1
+kern.corefile=%N.sexfault
+kern.ps_showallprocs=0
+kern.maxprocperuid=512
+kern.maxfilesperproc=1024
+kern.maxfiles=16384
+kern.ipc.somaxconn=4096
+kern.ipc.maxsockbuf=262144
+------------------------------------- SNiP ------------------------------------
+
+2.2. Gestion utilisateurs
+
+Dans un systeme multi utilisateurs, chaque utilisateur local ou distant se
+doit d'avoir un compte propre permettant de converser l'environnement de
+chacun dans l'etat desiré ainsi qu'une gestion plus claire de l'activite du
+systeme. En marge des comptes utilisateur classiques nous vous recommandons
+fortement de creer plusieurs comptes dit 'systeme' destines a executer avec un
+minimum de risque de compromission ou d'exploitation de compte compromis, les
+services reseau sensibles que vous desirez mettre en place. Parmi les plus
+interessant sur lesquels appliquer cette pratique, on trouve les serveurs DNS,
+les serveurs web ou encore les serveurs smtp et pop3/imap4. Notez aussi la
+presence du compte nobody correspondant a l'utilisateur système non privilégié
+générique, mais plus il y a de services qui utilisent nobody, plus ce compte
+acquiert de privilèges.
+
+Notez que les multiples chapitres sur sysctl, la configuration kernel, la
+gestion des utilisateurs ou la mise en place d'une jail, nous pensons pouvoir
+nous dispenser d'un chapitre supplémentaire sur les commandes basiques que sont
+chroot, chmod et chown accompagné d'une explication rapide sur les privilèges.
+Donc ne cherchez pas d'information sur ces commandes dans nos colonnes.
+
+Notez par ailleurs que l'utilisation du compte root or des operations limitees
+de maintenance est fortement deconseille pour des raisons de securite. Chaque
+manipulation du root peut entrainer des consequences importantes pour
+l'integrite du systeme ou bien si le compte est compromis, alors toute la
+machine passe sous controle de l'intrus. Bref, il est preferable de se
+constituer un compte utilisateur appartenant lui aussi au group wheel et ayant
+la capacite d'executer des commandes en root par sudo qui nous permet de rester
+sous un compte utilisateur et effectuer des operations ponctuelles necessitant
+des droits root ou encore d'intervenir dans sur d'autres comptes si besoin est.
+Par exemple nous pouvons editer l'index de notre serveur web sur le compte
+système www en utilisant l'option -u qui permet de préciser l'utilisateur dont
+on souhaite endosser les droits
+
+# sudo -u eberkut vi ~eberkut/CNS/FreeBSD.txt
+
+Bien sûr cette liberté de manipulation peut être dangereuse c'est pourquoi nous
+avons besoin d'editer et de configurer /etc/sudoers afin de limiter les accès.
+La scheme de /etc/sudoers est le suivant : vous pouvez définir des alias pour
+un ou plusieurs utilisateurs, ou encore une ou plusieurs commandes puis vous
+définissez les autorisations selon le schema WHO   WHERE=WHAT.
+
+------------------------------------ SNiP -------------------------------------
+# options
+Defaults      syslog=auth, mail_no_user, lecture, insults,\
+              syslog_badpri=alert, rootpw, passwd_timeout=3, authenticate
+Defaults:FULLTIMERS    !lecture
+
+# alias utilisateurs > root
+User_Alias     FULLTIMERS = eberkut
+User_Alias     PARTTIMERS = bindmaster,webmaster
+
+Run_alias	OP = root,named,www
+
+# alias commandes
+Cmnd_Alias    DEBUG = /usr/bin/mt,/usr/sbin/dump,/usr/sbin/restore, \
+                      /usr/sbin/dd,/usr/bin/gdb,/usr/bin/ktrace, \
+                      /usr/bin/kdump,/usr/bin/file,/usr/bin/truss, \
+                      /usr/bin/ldd,/usr/bin/objdump,/usr/bin/strings, \
+                      /usr/bin/nm,/usr/bin/size,/usr/bin/kill
+Cmnd_Alias    KILL = /usr/sbin/shutdown,/usr/sbin/halt,/usr/sbin/reboot
+Cmnd_Alias    SHELLS = /usr/bin/sh,/usr/bin/csh,/usr/local/bin/zsh, \
+                       /usr/bin/ssh,/usr/X11R6/bin/startx
+Cmnd_Alias    USER = /usr/bin/su,/usr/sbin/adduser, /usr/sbin/rmuser, \
+                     /usr/bin/chsh
+Cmnd_Alias    NET = /usr/sbin/ppp,/usr/sbin/ifconfig,/usr/sbin/ipfw
+Cmnd_Alias    DAEMON = /usr/sbin/named,/usr/local/apache,/usr/bin/sshd
+Cmnd_Alias    RIGHTS = /usr/sbin/chroot,/usr/sbin/jail,/usr/sbin/chown, \
+                       /usr/bin/chmod
+Cmnd_Alias    CDROM = /sbin/umount /cdrom, /sbin/mount_cd9660 /dev/acd0c /cdrom
+
+#directives
+root          ALL = (ALL) ALL
+FULLTIMERS    ALL = NOPASSWD: DEBUG, KILL, SHELLS, RIGHTS, USER, NET, DAEMON
+PARTTIMERS    ALL = DEBUG, NET, (OP) NOPASSWD: DAEMON
+ALL           ALL = NOPASSWD: CDROM
+------------------------------------ SNiP -------------------------------------
+
+Sudo se base sur des timestamp entre les différences commandes entrées pour
+assurer un minimum de securité en plaçant un timeout. Pour updater votre
+timestamp sans executer de commandes, vous pouvez taper sudo -v et pour le tuer
+definitivement, sudo -K.
+
+2.2.1. adduser / rmuser / chpass / watch
+
+adduser est un outil extremement utile qui nous permet d'ajouter de nouveaux
+utilisateurs de maniere tres simple. Il permet en une operation de gerer
+l'ensemble des actions necessaire a la creation d'un nouveau compte
+utilisateur. Une simple commande effectue une configuration pas a pas du compte
+ceci incluant la creation des entrees necessaire dans /etc/passwd et
+/etc/group, la creation du repertoire de l'utilisateur et la copie des fichiers
+requis par defaut jusqu'a une notification de bienvenue.
+
+Nous devons tout d'abord creer le fichier de configuration adduser par
+
+# adduser -s -config_create
+
+Puis nous lancons la creation de l'utilisateur.
+
+# adduser -v
+Use option ``-silent'' if you don't want to see all warnings and questions.
+Check /etc/shells
+Check /etc/master.passwd
+Check /etc/group
+Enter your default shell: csh date no sh tcsh zsh [sh]: sh
+Your default shell is: sh -> /usr/local/bin/sh
+Enter your default HOME partition: [/home]:
+Copy dotfiles from: /usr/share/skel no [/usr/share/skel]:
+Send message from file: /etc/adduser.message no
+[/etc/adduser.message]: no
+Do not send message
+Use passwords (y/n) [y]: y
+
+Write your changes to /etc/adduser.conf? (y/n) [n]: y
+
+Ok, let's go.
+Don't worry about mistakes. I will give you the chance later to correct any
+input.
+Enter username [a-z0-9_-]: eberkut
+Enter full name []: eberkut
+Enter shell csh date no sh tcsh zsh [zsh]:
+Enter home directory (full path) [/home/eberkut]:
+Uid [1000]:
+Enter login class []: root
+Login group wheel [wheel]:
+Login group is ``eberkut''. Invite eberkut into other groups: guest no
+[no]:
+Enter password []:
+Enter password again []:
+
+Name:     eberkut
+Password: ********
+Fullname: eberkut
+Uid:      1000
+Gid:      1000
+Class:    root
+Groups:   wheel
+HOME:     /home/eberkut
+Shell:    /usr/local/bin/zsh
+OK? (y/n) [y]: y
+Added user ``eberkut''
+Copy files from /usr/share/skel to /home/eberkut
+Add another user? (y/n) [y]: n
+Goodbye!
+
+Notez que vous pouvez facilement remarquer que nous utilisons ici add user pour
+la premiere fois puisqu'il nous a fallu creer la fichier de configuration puis
+adduser nous a demande ses valeurs par defaut. De plus pour plus de simplicite
+nous etions en mode verbose (-v). A l'avenir vous n'aurez que les informations
+de l'utilisateur a entrer et vous pourrez effectuer cette operation en mode
+silent (-s).
+
+Adduser possede un programme frere, rmuser, qui va nous permettre de maniere
+symetrique a adduser, de supprimer en une seule operation un utilisateur et
+toutes les dependances que cela suppose. Rmuser effectue ainsi la suppression
+de l'entree utilisateur dans le fichier de mots de passe, de son repertoire
+(dans /home), de son courrier en attente (dans /var/mail), de ses fichiers
+temporaires (dans /tmp), et son entree dans /etc/group voire la suppression
+du groupe si il devient vide. Mais rmuser efface egalement les entrees de
+l'utilisateur dans la crontab ou encore kill tous les processus en cours
+appartenant a l'utilisateur en question.
+
+# rmuser eberkut
+Matching password entry:
+eberkut:*:1000:1000::0:0:eberkut:/home/eberkut:/usr/local/bin/zsh
+Is this the entry you wish to remove? y
+Remove user's home directory (/home/eberkut)? y
+Updating password file, updating databases, done.
+Updating group file: trusted done.
+Removing user's incoming mail file /var/mail/jru: done.
+Removing files belonging to eberkut from /tmp: done.
+Removing files belonging to eberkut from /var/tmp: done.
+Removing files belonging to eberkut from /var/tmp/vi.recover: done.
+
+Enfin, chpass est un autre outil merveilleux de plus nous permettant de
+faciliter grandement la gestion utilisateur. Il permet de modifier les
+informations de base d'un utilisateur telles que son password, son shell ou
+des informations plus personnelles. Seul le root et l'utilisateur lui-même
+peuvent modifier les informations avec chpass. Chpass fonctionne de la même
+maniere que edquota, c'est-a-dire qu'il va ouvrir un editeur permettant de
+modifier notre configuration.
+
+# chpass eberkut
+#Changing user database information for eberkut.
+Login: eberkut
+Password: ********
+Uid [#]: 1000
+Gid [# or name]: 1000
+Change [month day year]:
+Expire [month day year]:
+Class:
+Home directory: /home/eberkut
+Shell: /usr/local/bin/zsh
+Full Name: eberkut
+Office Location:
+Office Phone:
+Home Phone:
+Other information:
+
+Lorsque vous désirez mettre en place un service, en plus de le faire
+fonctionner en stand alone comme expliquer précédemment, et si il nécessite
+certains droits, alors lui assigner un utilisateur spécifique peut permettre
+de limiter partiellement avec des mécanismes supplémentaires comme jail ou
+chroot les dégâts provoqués par une intrusion par l'intermédiaire de ce
+service. Cette remarque est vrai aussi pour BIND qui avec les bonnes options
+ne reste root que quelques instants ou pour Apache qui tourne en nobody -
+et ses scripts aussi ce qui peut donner des vulnérabilités en cas de
+misconfiguration.
+
+Enfin, lorsque un utilisateur vient à se loguer et que vous avez remarqué de sa
+part un comportement illégitime ou intrusif, les options pour les snoop device
+que nous avons placé au moment de la configuration kernel vont nous permettre
+de prendre possetion afin d'observer et même d'écrire sur le tty d'un
+utilisateur. Pour cela nous allons utiliser l'outil watch. Nous créons d'abord
+les periphériques
+
+# cd /dev
+# ./MAKEDEV snp0
+# ./MAKEDEV snp1
+# ./MAKEDEV snp2
+# ./MAKEDEV snp3
+
+Puis nous pouvons lancer watch. Avant cela nous vérifions les utilisateurs
+actifs sur le système afin de spécifier le tty device à surveiller. Nous
+placons l'option t pour obtenir un timestamp au début de l'observation, n
+pour empêcher l'utilisateur de changer de tty attaché et l'option W pour
+permettre d'écrire au sein du tty surveillé.
+
+# who
+# watch -tnW ttyp1
+
+2.2.2. quotas et limites
+
+Les quotas sont une option de FreeBSD qui vous permettant de limiter la
+quantité d'espace disque ou encore le nombre de fichiers auxquels a le droit
+un utilisateur ou tous les utilisateurs du même groupe, sur un système de
+fichiers donné. Dans un systeme multi utilisateurs avec des acces distant,
+cette methode evite qu'un seul utilisateur ne consomme tout l'espace disque.
+
+Les quotas devant etre active manuellement au sein du fichier de configuration
+du kernel et necessitant donc une recompilation, nous vous avons recommande de
+verifier la presence de l'option quotas ainsi que plusieurs autres au debut de
+ce texte. Une fois cette etape passee, vous devez activer une fois de plus les
+quotas manuellement cette fois-ci au sein du fichier /etc/rc.conf. Pour cela
+nous l'editons et y ajoutons la ligne
+
+enable_quotas="YES"
+
+Pour un controle accru, vous disposez egalement d'une seconde option mais qui
+va lancer un programme - quotacheck - qui peut considerablement ralentir le
+demarrage de votre machine. Cependant la securite primant, nous vous
+recommandons d'editer la ligne
+
+check_quotas="YES"
+
+Vous devez enfin éditer le fichier /etc/fstab pour mettre en service les quotas
+système de fichiers par système de fichiers. C'est là que vous dites si vous
+voulez des quotas d'utilisation des disques par utilisateur, par groupe ou les
+deux, pour chaque système de fichiers. 
+             
+Pour mettre en service des quotas par utilisateur, ajoutez l'option userquota à
+la zone d'options de l'entrée de /etc/fstab pour le système de fichiers sur
+lequel vous voulez des quotas. Par exemple : 
+
+/dev/ad0s1c	/home	ufs	rw,nosuid,userquota	2	2
+
+Pour des quotas par utilisateur on utilise userquota et pour des quotas par
+groups, on utilisera groupquota. Pour appliquer des quotas à la fois a
+l'utilisateur et à son groupe, on combinera les 2 commandes precedentes comme
+nous l'avons fait pour notre fichier. Il ne vous reste plus qu'à redemarrer
+afin d'activer la prise en compte de quota et la generation des fichiers
+/etc/quota.user et /etc/quota/group.
+
+Les quotas peuvent etre instaurés sur un système selon plusieurs critères. Tout
+d'abord en plus de pouvoir appliquer des quotas par utilisateur et/ou par
+groupes, vous avez la possibilité d'appliquer ces limitations selon differents
+formats soit en termes d'espace disque, les blocs, soit en terme de fichiers,
+les inodes. Par ailleurs, il faut ajouter des degrés dans les limitations :
+strictes ou souples. Les premières suivent les règles de quotas à la lettre,
+mais lorsqu'un utilisateur atteint son quota, il ne peut plus rien ajouter. Le
+second degré de limitation offre à l'utilisateur un delai - valable durant une
+semaine par defaut - lui permettant permettant de ne pas être subitement limité
+dans son travail par un quota trop strict et d'ajouter ou (surtout) retirer des
+fichiers pendant ce delai. Cependant si il n'est pas revenu à un niveau normal
+une fois le delai écoulé, la limitation devient stricte et il ne peut plus rien
+ajouter jusqu'a ce qu'il redescende en dessous de sa limitations.
+
+Pour editer nos quotas, nous utiliserons la commande edquota qui va ouvrir un
+editeur (vi par defaut) :
+
+# edquota
+Quotas for user eberkut:
+/usr/home/eberkut: blocks in use: 0, limits (soft = 80, hard = 100)
+		   inodes in use: 0, limits (soft = 40, hard = 60)
+/usr/var: blocks in use: 0, limits (soft = 80, hard = 90)
+          inodes in use: 0, limits (soft = 60, hard = 80)
+
+Pour se simplifier l'attribution de quotas, on peut appliquer un quota
+prototype à une plage d'uid par l'intermediaire de l'option -p de edquota une
+fois les quotas definis une premiere fois
+
+# edquota -p eberkut 1000-10000
+
+La commande quota peut etre utilisee afin de connaitre les quotas et
+l'utilisation de l'espace disque d'un utilisateur et/ou d'un groupe. Comme pour
+la majorite des autres commandes relatives aux informations utilisateurs, seul
+le root peut aller consulter les quotas de tous comptes et tous groupes.
+
+# quota -u eberkut
+
+Enfin "last but not least", FreeBSD possède un fichier appelé login.conf qui
+nous permet de définir certaines capacités et surtout limites d'utilisation de
+ressources. Les classes de login.conf sont divisées généralement en 3 types qui
+doivent se présenter sous une forme similaire aux entrées sysctl, c'est-à-dire
+nom=valeur qui peut toujours être en secondes pour le temps et b, kb, mb, gb,
+tb pour la taille. Notez aussi quelques booléens :
+
+o les limites de ressources
+- cputime en secondes pour limiter le temps CPU (pas de pourcentage). Option -t
+  de limits
+- filesize pour limiter la taille maximal d'un fichier (overwrité par les
+  quotas). Option -f de limits
+- datasize, stacksize et coredumpsize sur le même schéma pour les données, la
+  stack ou les fichiers de coredump. Options -d, -s et -c de limits
+- limites d'utilisation de mémoire memoryuse, memorylocked. Options -m et -l
+- nombre maximal de processus maxproc. Option -u de limits
+- nombre de fichiers ouverts par processus openfiles. Option -n de limits
+- sbzise pour la taille maximal du socketbuffer. Option -b de limits
+
+o des variables d'environnement
+- lang, pour spécifier $LANG, la variable de langage
+- manpath, pour le chemin d'accès par défaut au manpages
+- nologin est le chemin d'accès à votre fichier nologin affiché juste avant de
+  terminer une session
+- requirehome, true ou false, permet de requerir un répertoire home valide pour
+  se loguer
+- setenv, permet de spécifier une liste de variables d'environnement séparées
+  par des virgules
+- shell, permet de spécifier un shell à exécuter à la place de celui spécifier
+  dans le fichier passwd
+- term, détermine le type de terminal
+- umask spécifie la valeur du masque de création de fichier (ex : 022 = 755)
+- welcome défini le fichier contenant le message de bienvenue
+
+o les variables d'authentification
+- minpasswordlen défini la longueur minimale d'un password
+- passwd_format spécifie le format d'encryption pour les passwords (des ou md5)
+- mixpasswordcase force l'utilisateur à utiliser des majuscules ou chiffres
+  dans son password
+- times.allow et times.deny permettent de spécifier une liste d'horaires durant
+  lesquels les logins sont autorisés ou interdit
+- ttys.allow et ttys.deny permettent de spécifier une liste de tty utilisables
+  par cette classe
+- passwd_format permet de spécifier l'algorithme utilisé pour le stockage des
+  password. Par défaut ce champ est à 'des' qui est relativement faible. Vous
+  pouvez le mettre à 'md5' et plus récemment à 'blf' pour utiliser Blowfish.
+
+o limites de comptes
+- accounted, active l'accounting pour les utilisateurs de cette classe
+- daytime définis le temps maximal de login par jour
+- expireperiod, permet de déterminer une limite d'expiration pour les comptes
+  de la classe puis graceexpire permet de laisser un sursis de même que
+  gracetime pour les temps de login
+- host.accounted et host.exempt permettent de lister les hôtes depuis lesquels
+  l'accounting est ou pas activé. De même pour ttys.accounted et ttys.exempt
+  pour les tty
+- idletime, définis le temps d'inactivité avant un logout automatique
+- passwordtime permet de définir une limite d'expiration pour les passwords
+- sessiontime spécifie le temps maximum alloué par session
+- sessionlimit spécifie le nombre maximum de sessions concurrentes
+- warnexpire, warnpassword et warntime permettent de définir un moment pour
+  prévenir l'utilisateur avant expiration du compte, du password ou du temps de
+  login alloué
+
+Ci-dessus notre login.conf final.
+
+# ee /etc/login.conf
+
+------------------------------------ SNiP -------------------------------------
+default:\
+	:copyright=/etc/COPYRIGHT:\
+	:welcome=/etc/motd:\
+	:setenv=MAIL=/var/mail/$,BLOCKSIZE=K,FTP_PASSIVE_MODE=YES:\
+	:path=/sbin /bin /usr/sbin /usr/bin /usr/games
+	 /usr/local/sbin /usr/local/bin /usr/X11R6/bin ~/bin:\
+	:nologin=/var/run/nologin:\
+	:cputime=unlimited:\
+	:datasize=unlimited:\
+	:stacksize=unlimited:\
+	:memorylocked=unlimited:\
+	:memoryuse=unlimited:\
+	:filesize=unlimited:\
+	:coredumpsize=unlimited:\
+	:openfiles=unlimited:\
+	:maxproc=unlimited:\
+	:sbsize=1048576:\
+	:priority=0:\
+	:umask=022:\
+	:idletime=3600s:\
+	:minpasswordlen=8:\
+	:mixpasswordcase=true:\
+	:passwd_format=blf:\
+	:passwordtime=30d:\
+	:warnpasswordtime=2d:\
+
+# le champ tc nous permet de renvoyer un utilisateur ou un groupe à une classe
+# définie. Vous pouvez overwriter des limites de default en les rajoutant à la
+# nouvelle classe. Adduser vous permet d'ajouter un utilisateur à une classe.
+
+staff:\
+	:tc=default
+	:password_time=unlimited
+	:cputime=1h30m:\
+	:filesize=unlimited:\
+	:datasize=20M:\
+	:stacksize=10M:\
+	:coredumpsize=10M:\
+	:memoryuse=30M:\
+	:memorylocked=10M:\
+	:maxproc=32:\
+	:openfiles=24:\
+	:requirehome@:\
+------------------------------------ SNiP -------------------------------------
+
+Nous pouvons utiliser ici la commande limits afin d'ajuster ces limites de
+ressources pour une classe d'utilisateur class_login définie dans login.conf
+
+# limits -e -C classe_login -B -m 20m
+
+Pour appliquer vos capabilities login.conf, nous utilisons cap_mkdb.
+
+# cap_mkdb /etc/login.conf
+
+2.2.3. jail
+
+Jail est un mécanisme très puissant qui, comme son nom l'indique, offre la
+la possibilité d'affiner les privilèges et la gestion des utilisateurs selon
+un principe, similaire à chroot, d'emprisonnement des processus. Jail va
+cependant beaucoup plus loin puisqu'il propose la reproduction d'un
+environnement complet à l'intérieur d'un environnement parent. La fonction
+jail() se base sur une version renforcée de chroot().
+
+Construire une jail peut s'avérer très utile pour confiner un utilisateur ou
+service auquel on ne fait aucune confiance ou bien qui risque de menacer
+l'intégrité et la stabilité du système. Pour cela jail offre un environnement
+FreeBSD virtuel totalement opérationnel avec ses propres fichiers de
+configuration ou gestion des utilisateurs, le tout rattaché à un alias IP. De
+plus, un processus une fois dans la jail est comme derrière une glace sans
+teint, il évolue librement mais ne peut pas voir au-delà de son environnement
+tandis que l'hôte de la jail peut tout observer et surveiller. Ainsi, un
+processus dans la jail ne peut pas en sortir, et vous pouvez déléguer des
+comptes root au sein de chaque jail. Dans l'hypothèse d'une attaque, l'intrus
+obtiendrai par exemple d'abord un accès local par un exploit distant, puis un
+accès root par un exploit local mais se verrait confiner à sa jail
+(théoriquement, jail étant basé sur chroot(), rien n'est sûr).
+
+Jail se pose ici en précurseur du concept plus récent de honeypot, et peut très
+bien être utilisé comme tel pour inciter et surveiller des intrusions avec un
+risque limité de compromission totale de la machine, tout en conservant logs et
+informations à l'abri. Pour conserver son intégrité, une jail restraint les
+actions possibles par rapport à un environnement complet. Il est ainsi interdit
+de modifier le kernel (qui reste unique pour l'ensemble du système) et charger
+des modules kernel, modifier la configuration réseau, monter des systèmes de
+fichiers, créer des devices, utiliser des raw sockets, modifier la MIB sysctl
+ou les les securelevels. Tout ce qui n'est pas directement lié au
+fonctionnement de la jail est interdit. Nous pouvons cependant utiliser comme
+d'habitude des ports privilégiés, modifiers les permissions des fichiers et
+utilisateurs à l'intérieur de la jail, etc. afin de réellement cloner un
+environnement classique.
+
+La mise en place effective d'une jail s'effectue à l'aide de la séquence de
+commandes suivante :
+
+# ifconfig fxp0 alias $jail_IP_alias netmask 255.255.255.0
+# mkdir -p /jail/jailone
+# cd /usr/src
+# export JONE=/jail/jailone
+# make world DESTDIR=$JONE
+# cd /etc
+# make distribution DESTDIR=$JONE NO_MAKEDEV=yes
+# cd $JONE/dev
+# ./MAKEDEV jail
+# ln -sf null /boot/kernel/<kernelname>
+# touch ../etc/fstab
+
+Nous attribuons une adresse alias IP à notre jail  puis nous créons le
+répertoire /jail/jailone dans lequel sera confiner notre environnement virtuel.
+La commande make permet alors de construire un système complet avec pour
+destination la jailone, incluant binaires, fichiers de configuration et
+arborescence des devices. Notez à la fin le lien symbolique vers le kernel,
+ainsi que la création d'une fstab vide pour s'assurer du bon fonctionnement de
+certains programmes.
+
+Les jails ne sont pas encore persistantes, il est donc nécessaire de configurer
+votre rc.conf principal pour conserver la configuration ifconfig à chaque
+reboot :
+
+ifconfig_fxp0="alias $jail_IP_alias netmask 255.255.255.0"
+
+Puis il faudra copier la ligne suivante au sein de rc.local pour rendre la jail
+persistante entre deux redémarrage :
+
+# jail /jail/jailone/ $hostname $jail_IP_alias /bin/sh
+
+Si vous prévoyez d'utiliser cron ou syslog, nous vous recommandons de recréer
+entièrement votre fichier de configuration en adaptant les entrées à la jail.
+
+Pour l'utilisation de cron, nous vous recommandons de recréer entièrement votre
+fichier de configuration avec vos propres entrées. Par ailleurs tous les
+fichiers copiés le sont après configuration complète de l'environnement hôte,
+ce qui signifie que ces fichiers ont été chmodé, pensez donc à faire de même
+avec crontab, httpd.conf et named.conf
+
+En utilisant adduser et chpass comme vue précédemment, nous n'avons plus qu'à
+changer le password du root de la jail, puis à créer un utilisateur par service
+que nous souhaitons confiner. Nous prendrons comme exemple named et httpd. Si
+vous désirez autoriser l'accès à votre jail à des utilisateurs préexistants,
+il va vous falloir copier spwd.db. Pour cela nous n'allons recopier que les
+informations qui nous intéressent :
+
+# fgrep $username /etc/passwd > $JONE/etc/passwd
+# fgrep $username /etc/master.passwd > $JONE/etc/master.passwd
+# cd $JONE/etc/ && pwd_mkdb -d master.passwd
+
+Pour une sécurisation du système, en marge de fichier de configuration utiles
+que nous avons déjà copiés, vous pouvez utiliser les fonctionnalités de chmod,
+ou même les chflags, pour modifier les permissions sur les correspondants
+confinés des répertoires /bin, /sbin, /usr/lib, /usr/share/lib afin d'éviter
+toute modification ou compromission.
+
+Nous pouvons également rajouter au sysctl.conf de l'environnement hôte
+certaines variables concernant les jails. Notez que maintenant que nous avons
+mis en place une jail, nous nous referrons à la jail comme l'environnement jail
+et à la machine normale comme à l'environnement hôte. Les entrées sysctl
+suivantes permettent de décider si la jail a le droit de changer son propre nom
+de domaine, d'utiliser des IPC standards System V pour la communication inter
+processus lui permettant de communiquer et donc d'altérer des processus en
+dehors de la jail, et enfin de limiter ou pas l'accès à des types socket plus
+nombreux et non soumis aux restrictions jail :
+
+# sysctl -w jail.set_hostname_allowed=0
+# sysctl -w jail.socket_unixiproute_only=1
+# sysctl -w jail.sysvipc_allowed=0
+
+Si vous désirez configurer un nombre important de jail, comme ce sera le cas
+si vous confiner chaque service ou site hébergé indépendemment, pour à la fois
+plus de sécurité et aussi limiter la taille occupée par la jail, vous pouvez
+utilisez des pseudo-devices vn exploitant le driver vnode qui permet de traiter
+un fichier comme un device. Lorsque vous avez décidé de la taille maximale par
+jail, utilisez 'truncate' pour créer un fichier de cette taille (ici 1 Go) :
+
+# truncate 1G jailfile
+
+Puis, pour mounter ces fichiers comme des partitions sur lesquelles installer
+vos jail, utilisez 'vnconfig' pour transformer le fichier précédent en un
+device (ici vn0c). Si aucun fichier n'est spécifié, vnconfig utilisera la swap
+pour créer le device. Vous pourrez alors en spécifier la taille avec l'option
+-S suivi de la taille (en ko, mo, go et to), et la remplir de zeros avec -T,
+supplantant ainsi l'utilisation de truncate :
+
+# vnconfig -e vn0c jailfile
+
+ou, pour supprimer le recours à truncate :
+
+# vnconfig -S 1g -T vn0c
+
+Vous pouvez ensuite le monter et démonter comme d'habitude. Vous devrez
+insérer ces nouveaux périphériques dans vote fstab afin de les monter au
+démarrage en tant que partition jail (un periphérique vn par jail). L'intérêt
+en est la grande souplesse puisque vous pouvez aisément augmenter ou réduire la
+taille du fichier utilisé pour émuler des quotas. Pour retransformer votre
+device vn en fichier, exécutez :
+
+# vnconfig -u /dev/vn0c
+
+Si vous faîtes tourner plusieurs services dans vos jails, il peut arriver
+qu'une faille de sécurité soit découverte, nécessitant le patching de ce
+service. Grâce à la virtualisation de la jail, vous pourriez utiliser NFS entre
+celle-ci et l'environnement hôte. Il existe cependant une solution plus simple
+consistant à utiliser mount_null qui permet de dupliquer une partie d'un
+système de fichier afin qu'elle soit vue par un chemin différent. Comme patcher
+et recompiler nécessite l'accès à /usr/src, vous préservez votre sécurité en
+montant ce chemin en read-only du point de vue de la jail.
+
+# mount_null -o ro /usr/src $JONE/usr/src
+
+Il ne vous reste plus alors qu'à appliquer le patch et à recompiler
+normalement vos binaires userland.
+
+A noter tout de même qu'il est recommandé d'utiliser l'utilisateur named depuis
+lequel bind - qui se placera quelques instants avec les droits root pour
+récupérer les file descriptor avant de revenir à des privilèges plus
+raisonnables - sera utilisé. Avec BIND il est également fortement recommandé
+d'utiliser une clé d'authentification TSIG entre vos serveurs DNS, de limiter
+les AXFR ou transfert de zone à des serveurs DNS secondaires sûrs ou encore de
+modifier la réponse à la requête host -l chaos version.bind qui peut donner à
+l'attaquant des informations sur la version de BIND et donc d'éventuels remote
+buffer overflow possibles.
+
+Si vous utilisez Apache en tant que httpd, n'oubliez pas d'éditer httpd.conf
+afin de spécifier comme owner l'utilisateur www afin de ne pas avoir recourt à
+nobody qui plus il sera utilisé, plus il gagnera de drois. Veillez aussi à ne
+pas surcharger le système et, plus particulièrement, à ne pas atteindre trop
+facilemenent le nombre de processus maximal par utilisateur (dans un tel cas si
+le trafic est légitime passez en root jail pour adapter le paramètre par
+sysctl).
+
+Si vous êtes inquiet d'une dépendance quelconque à chroot(), et recherchez des
+capacités de configuration plus précises, vous pouvez vous tourner vers la
+réimplémentation partielle de Robert Watson : jailNG. Celle-ci fournit
+plusieurs améliorations pour ce qui est de la configuration et de la gestion de
+la jail. Il vous suffit de récupérer le patch sur
+http://www.watson.org/~robert/jailng/ et de l'appliquer de la façon suivante :
+
+# cd /usr/src && patch -p1 < jailng.1.diff
+
+Il ne reste plus qu'à recompiler votre kernel. L'utilisation s'effectue ensuite
+par l'intermédiaire de 'jailctl' disposant à l'heure actuelle de 3 commandes :
+
+- 'jailctl create' ou 'destroy' qui prennent en argument le nom de la jail
+   et permettent de créer ou supprimer une jail
+- 'jailctl join prenant en argument le nom de la jail à rejoindre, le chemin à
+  confiner avec l'option -c, et enfin une commande, telle que le lancement d'un
+  shell.
+
+Les droits de chaque jail pourra être gérer plus finement grâce à des entrées
+sysctl spécifique, de la forme jail.jail_name.entry_name, pour chacun d'entre
+elles. Ces nouvelles entrées sont les suivantes :
+
+# sysctl jail.jail_name.set_hostname_permitted=0
+# sysctl jail.jail_name.sysvipc_permitted=1
+# sysctl jail.jail_name.socket_ipv4_permitted=1
+# sysctl jail.jail_name.socket_unix_permitted=1
+# sysctl jail.jail_name.socket_route_permitted=1
+# sysctl jail.jail_name.socket_other_permitted=0
+# sysctl jail.jail_name.ipv4addr=192.168.1.1
+
+Les jails peuvent - ou non - ainsi modifier leur hostname, les processus en
+leur sein peuvent utiliser les IPC SysV, les sockets INET, les sockets UNIX,
+les sockets route, tout autre type de socket, et enfin vous pouvez paramétrer
+l'adresse IP de la jail.
+
+Une petite remarque mais de poids après cet encensement : le projet jailNG est
+déjà vieux et ne montre plus aucun signe d'activité nulle part depuis
+longtemps. Le code risque donc de provoquer de nombreux problèmes, et les
+nouvelles fonctionnalités tardent à venir, sans doute depuis que Robert Watson,
+désormais membre de la core team, est à la tête du massif projet TrustedBSD,
+visant l'implémentation du standard POSIX.1e à partir de FreeBSD 5.x, et
+l'un des instigateur du projet CBOSS qui chapeaute plusieurs développements
+open source dans le domaine de la sécurité. FreeBSD 5.0 a tout de même quelques
+maigres améliorations comme la configuration de securelevel indépendant pour
+chaque jail.
+
+2.3. intégrité
+
+Le chapitre précédent abordant une sorte de système dans le système, il sort un
+peu du chemin logique et pas à pas de cet article. N'oubliez donc pas de tenir
+compte des astuces suivantes dans la configuration de vos environnements jail
+en plus de vote environnement host. Nous nous intéressons ici à l'intégrité des
+fichiers et notamment par les permissions et privilèges accordés dans le cadre
+de l'utilisation ou de la gestion de certains fichiers.
+
+Un danger majeur de la sécurité des fichiers est représenté par le bits SUID.
+Ce bit placé sur un fichier permet de l'utiliser avec les mêmes droits que le
+propriétaire du fichier ce qui peut se révéler dangereux si le propriétaire est
+le root. Mais tout d'abord, nous recherchons les fichiers marqués SUID et SGID
+(similaire à SUID mais à l'échelle d'un group) avec find
+
+# find / -perm 02000 -o -perm 04000 print
+
+Nous obtenons une liste de tous les fichier ou repertoires avec le bit SUID ou
+SGID. Parmi tout celà, il y a des executables que nous ne voulons pas forcément
+laisser à la portée de n'importe qui ou bien que nous n'avons pas l'intention
+d'utiliser. La sélection à effectuer parmi les fichier SUID est laissée à votre
+discrétion selon votre utilisation. Cependant, il est fortement recommandé de
+ne pas laisser des procédures shell en SUID surtout appartenant au root, ceci
+pouvant éventuellement entraîner l'exécution illégitime de commandes.
+
+Pour effectuer nos modifications, nous utilisons l'utilitaire chmod qui nous
+permet de modifier les permissions allouées à un fichier. Pour calculer les
+modes que nous désirons appliquer à tel fichier, nous nous basons sur le schéma
+de permissions suivant :
+
+4000 bit SUID (SetUserID on execution) dont nous avons déjà parlé
+2000 bit SGID (Set-Group-ID-on-execution) que nous avons également abordé
+1000 sticky bit, sous freebsd ceci ne fonctionne que sur les répertoires et
+     permet aux utilisateur de supprimer ou renommer uniquement les fichiers
+     dont ils sont propriétaires
+0400 permet la lecture par le propriétaire
+0200 permet l'écriture par le propriétaire
+0100 permet l'exécution d'un fichier par le propriétaire et la recherche au
+     sein d'un repertoire
+0040 permet la lecture par les membres du group
+0020 permet l'écriture par les membres du group
+0010 permet l'exécution d'un fichier par les membres du group et la recherche
+     au sein d'un repertoire
+0004 permet la lecture par tous les autres utilisateurs
+0002 permet l'écriture par tous les autres utilisateurs
+0001 permet l'exécution d'un fichier par tous les autres utilisateurs et la
+     recherche au sein d'un répertoire
+
+Lorsque vous faites un ls, ce sont les omniprésents srwx-rwx-rwx. Vous
+trouverez plus de précisions sur les permissions et l'utilisation de chmod par
+un man 1 chmod.
+
+Nous pouvons tout d'abord décider de limiter les modifications apportées à
+certains de nos fichiers de configuration. Nous permettons donc la lecture et
+l'écriture par l'owner, la lecture par le group et aucun droit au reste des
+utilisateurs
+
+# chmod 600 /etc/fstab
+# chmod 600 /etc/rc.*
+# chmod 600 /etc/syslog.conf /etc/newsyslog.conf
+# chmod 600 /etc/ppp/ppp.conf
+# chmod 600 /etc/ssh/sshd_config
+# chmod 600 /etc/racoon.conf /etc/ipsec.conf
+# chmod 600 /etc/passwd
+# chmod -RH 640 /etc/nessus/
+
+Et vous pouvez en faire de même avec certains répertoires que vous ne souhaitez
+absolument pas voir compromis. En l'occurence nous n'autorisons la lecture,
+écriture et exécution par le root et uniquement l'exécution pour tous les
+autres. Ceci pourra entraîner à l'avenir des problèmes d'accès, dans ce cas
+un rapide chmod 755 sur le fichier ou exécutable incriminé resoudra l'affaire.
+
+# chmod -RH 755 /bin /sbin /boot
+# chmod -RH 711 /usr/libexec /usr/lib /usr/bin /usr/sbin
+# chmod -RH 711 /usr/local/libexec /usr/local/lib /usr/local/bin \
+                      /usr/local/sbin
+# chmod -RH 644 /var/log
+
+Notez que nous pouvons combiner ces opérations avec quelque chose de plus
+drastique dans le cas où nous disposons d'un securelevel assez élevé. Ainsi, si
+vous recompilez ou mettez à jour rarement vous pouvez également appliquer la
+commande chflags étudiée plus haut sur les répertoires et fichiers de votre
+choix en prenant garde aux problèmes ultérieurs en cas de compilation ou de
+configuration. Profitez également es messages d'erreurs de chmod pour vérifier
+vos bits SUID/SGID et le déselectionner sur les binaires sensibles.
+
+Nous allons ensuite nous inquiéter de l'intégrité de nos fichiers et de notre
+système. Pour cela nous allons tout d'abord nous servir de mtree. Mtree peut
+être considéré comme un vérificateur d'intégrité système intégré dans le même
+style que AIDE ou TripWire. Il va nous permettre de générer une specification
+de notre file system contre laquelle comparer régulièrement notre système afin
+de détecter d'éventuelles modifications illégitimes. Pour générer notre
+specification nous entrons la commande suivante
+
+# mtree -s 31337 -K cksum -K sha1digest -K uname -x -c -p /your/path > \
+        /etc/mtree/file.spec
+
+L'option s permet d'obtenir un unique checksum pour tous les fichiers auxquels
+on a appliqué le keyword 'cksum' et nécessite un chiffre en keyword (à
+conserver à l'abri). L'option K précise un keyword à appliquer qui sera stocké
+dans la specification et comparé plus tard sachant que par défaut on a les
+keywords flags (pour les file flags), gid (pour le group), mode (pour les
+permissions en octal), nlink (pour les hard link), size (pour la taille), link
+(pour les liens symboliques), time (pour le dernier timestamp de modification),
+et uid (pour l'owner) auxquels nous ajoutons cksum pour obtenir un checksum
+selon le schéma de la commande cksum(1), sha1digest pour obtenir une signature
+à l'aide de l'agorithme à sens unique SHA-1 et uname afin d'obtenir l'owner
+sous forme de nom. Ensuite l'option x permet de ne pas sauter les points de
+mountage, c permet de sortir les informations sur l'output standard et p
+précise le chemin. Ce qui nous donnera en pratique
+
+# mtree -s 31337 -K cksum -K sha1digest -K uname -x -c -p /bin > \
+        /etc/mtree/bin.spec
+# mtree -s 31337 -K cksum -K sha1digest -K uname -x -c -p /sbin > \
+        /etc/mtree/sbin.spec
+# mtree -s 31337 -K cksum -K sha1digest -K uname -x -c -p /usr/libexec \
+        > /etc/mtree/libexec.spec
+# mtree -s 31337 -K cksum -K sha1digest -K uname -x -c -p /usr/lib > \
+        /etc/mtree/lib.spec
+# mtree -s 31337 -K cksum -K sha1digest -K uname -x -c -p \
+        /usr/share/lib > /etc/mtree/sharelib.spec
+# mtree -s 31337 -K cksum -K sha1digest -K uname -x -c -p /boot > \
+        /etc/mtree/boot.spec
+
+Puis pour comparer nos spécifications et communiquer les résultats au root avec
+un minimum d'identation, nous n'avons plus qu'à effectuer
+
+# mtree -x -i -f file.spec | mail -s 'mtree results' root
+
+Une bonne idée est de lancer les premières commandes une fois après chaque
+recompilation du système et la vérification une fois par semaine ou bien dès
+que vous avez un doute sur l'intégrité de votre système. Tout cela bien sûr par
+l'intermediaire de cron.
+
+Vous pourrez trouver plusieurs améliorations dédiées à l'utilisation de mtree
+en tant qu'outil de verification d'intégrité - notamment son utilisation via
+/etc/periodic/security - à http://people.freebsd.org/~fanf/FreeBSD/.
+
+Un dernier outil très utile que nous allons utiliser pour nous assurer de
+l'intégrité de notre système sera KSEC pour Kernel Security Checker. KSEC ne
+fait pas parti de la distribution officielle FreeBSD et n'est pas non plus
+dans les ports. KSEC est l'adaption à FreeBSD de l'outil de sécurité
+Linux KSTAT (Kernel Security Therapy Anti Trolls) par s0ftpr0ject. Pour vous
+procurer l'un ou l'autre, rendez vous à http://www.s0ftpj.org/en/site.html.
+Ces outils fonctionnent selon une conception hautement paranoïaque du système
+et décide donc de ne prendre leurs informations que du kernel en utilisant la
+librairie KVM et en limitant les opérations sur le syscall ioctl(). Il va donc
+nous servir à détecter la présence de backdoors dans le système sous leur
+forme la plus redoutable, les modules kernel. KSEC est si poussé qu'il peut
+nous servir de remplacement à ifconfig pour la lecture. En effet, en observant
+directement les structures ifnet ou les files descriptor bpf, il peut détecter
+si une interface se trouve ou pas en mode promiscuous révélateur d'un sniffer
+et même fournir des informations et statistiques sur le trafic ou l'état des
+interfaces. Ces vérifications peuvent être effectués à travers les opérations
+suivantes pour l'interface fxp0 -- préciser 'all' pour toutes les interfaces
+disponibles :
+
+# ksec -i fxp0
+
+Mais KSEC va également nous servir à détecter une altération de notre intégrité
+système en vérifiant si les adresses indiquées dans notre syscall table sont
+effectivement les mêmes qu'annoncées par /dev/kmem. La modification de la
+syscall table est une méthode très répandue dans la conception de lkm backdoors
+mais qui devient un peu ancienne et peut se voir remplacer par des méthodes
+d'hijacking des syscall, des pointeurs vers la syscall table ou même d'un
+patching de /dev/kmem pour éviter ce type de détection. C'est sur ce dernier
+point que les securelevel en empêchant toute modification de /dev/kmem est
+judicieux. Il peut également effectuer différentes opérations de vérification
+d'intégrité des protocoles ou d'intégrité des fichiers linkés entre eux. Il ne
+nous reste plus qu'à effectuer une compilation de ces options afin d'obtenir un
+rapport complet d'intégrité système
+
+# ksec -i interface -b -k -p
+
+Par ailleurs nous vous recommandons d'essayer en cas de doutes à la suite de
+rapports mtree et ksec, d'effectuer une ultime vérification à l'aide de
+chkrootkit qui lui se base essentiellement sur des signatures connues signalant
+des fichiers trojanisés mais fournit également une petite batterie de tests
+dans un style similaire à KSEC mais moins kernel-dependant. Voir
+http://www.chkrootkit.org et les ports security pour plus d'informations.
+
+2.4. capabilities
+
+Not yet available, waiting for 5.0
+> http://www.trustedbsd.org
+> http://opensource.nailabs.com/initiatives/cboss/
+
+2.5. secure shell
+
+SSH signifie Secure Shell. A l'origine SSH est un remplacement des Berkeley r*
+commandes tels que rsh, rlogin ou rcp considérées comme très peu sûres. SSH
+utilise pour sécuriser la transmission un tunnel crypté entre les 2 machines. 
+SSH a rapidement dépassé toutes les attentes et il est devenu un remplacement
+intéressant pour telnet ou ftp lorsqu'ils sont nécessaires pour des utilisateurs
+réguliers possédant un compte sur la machine en leur offrant une méthode d'accès
+à distance hautement sécurisée et très bien supportée. En particulier OpenSSH
+est une version libre et recodée du protocole SSH et fournit un client et un
+serveur pour des nombreuses plate-formes unix. C'est lui que nous allons
+maintenant utiliser pour la configuration de SSH.
+
+Tout d'abord nous allons éditer le fichier de configuration du daemon sshd.
+
+# ee /etc/ssh/sshd_config
+
+------------------------------------ SNiP -------------------------------------
+# This is ssh server systemwide configuration file.
+
+Port 22
+# évitez SSHv1 soumis à plusieurs vulnérabilités
+Protocol 2,1
+
+# lorsque vous copierez ce fichier pour votre jail user pensez à mettre ici
+# l'alias de votre jail.
+ListenAddress 127.0.0.1, public_IP, jail_IP
+
+HostKey /etc/ssh/ssh_host_key
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_dsa_key
+ServerKeyBits 768
+LoginGraceTime 60
+KeyRegenerationInterval 3600
+RhostsAuthentication no
+RSAAuthentication yes
+PubkeyAuthentication yes
+
+# ordre de préférences des algorithmes de chiffrement et d'authentification
+Ciphers blowfish-cbc,aes256-cbc,aes192-cbc,aes128-cbc,3des-cbc,cast128-cbc,arcfour
+MACs	hmac-sha1,hmac-md5,hmac-ripemd160,hmac-sha1-96,hmac-md5-96
+
+# envoi d'un message après un intervalle donné
+# et deconnexion après plusieurs envois
+KeepAlive yes
+ClientAliveInterval 30
+ClientAliveCountMax 5
+
+# Pour eviter les similis flooding du a des tentatives de connexion repetees,
+# nous installons une sorte de quotas au niveau de la gestion des connexions.
+# 10 pour le nombre de connexions non auhentifiees, 40 pour le pourcentage de
+# refus apres le premier nombre atteint, et 50 signifiant qu'au bout de 50
+# tentative toute connexion non authentifiee est refusee.
+MaxStartups 10:40:50
+
+# ici nous eliminons les vulnerabilites lies aux fichiers ~/.rhosts et
+# ~/.shosts et a leurs relations de confiance.
+IgnoreRhosts yes
+
+# verifier permissions et ownership des fichiers et du /home avant d'accepter
+# un login
+StrictModes yes
+
+X11Forwarding no
+X11DisplayOffset 10
+PrintMotd yes
+
+# Syslog
+SyslogFacility AUTH
+LogLevel DEBUG
+
+# Ci-dessous nous privilegions l'utilisation de cles RSA et DSA pour
+# l'authentification au lieu du password
+PasswordAuthentication no
+# si vous choississez de mettre l'option precedente a yes, ajoutez celle
+# ci-dessous pour interdire les passwords vides
+# PermitEmptyPasswords no
+
+# désactive l'authentification s/key
+SkeyAuthentication no
+KbdInteractiveAuthentication yes
+ChallengeResponseAuthentication no
+
+# ces blocs sont relatifs a l'authentification kerberos
+#KerberosAuthentication no
+#KerberosOrLocalPasswd yes
+#AFSTokenPassing no
+#KerberosTicketCleanup no
+#Kerberos TGT Passing does only work with the AFS kaserver
+#KerberosTgtPassing yes
+
+PermitRootLogin no
+CheckMail yes
+UseLogin yes
+
+# nous ne le recommandons pas du fait de sa relative experimentalite mais cette
+# ligne vous permet le cas echeant d'utiliser sftp.
+#Subsystem sftp /usr/libexec/sftp-server
+------------------------------------ SNiP -------------------------------------
+
+Il ne nous reste plus maintenant qu'a editer encore une fois le fichier rc.conf
+afin de s'assurer que sshd se lancera bien au demarrage.
+Nous transformons donc la ligne sshd_enable="NO" en sshd_enable="YES" et nous
+lui adjoinions egalement la ligne sshd_flags="-4" afin de limiter l'utilisation
+a des connexions IPv4. Pour générer vos clés il vous suffira alors d'exécuter
+ssh-keygen ; bien que celui-ci soit d'hors et déjà utilisé par rc.network avec
+sshd_enable.
+
+Vous pourrez enfin décider de ne pas offrir de shell à vos utilisateurs
+distants. Ceci peut être effectuer à l'aide de chpass ou de chsh en précisant
+comme shell /sbin/nologin.
+
+# chsh -s /sbin/nologin user
+
+2.6. logging
+
+Nous allons maintenant nous pencher sur les facilites que nous offre FreeBSD
+dans le logging des diverses activites systeme et utilisateur. Nous allons plus
+particulierement etudier le system accounting, le system logging et l'analyse
+de ces logs par des moyens automatises.
+
+Sous FreeBSD, nous avons la possibilite d'activer le system accounting qui nous
+offre la possibilite d'enregistrer et de récapituler les commandes exécutées et
+nous permet de conserver des informations détaillées sur les ressources système
+utilisées, leur répartition entre les utilisateurs, et de surveiller le
+système. Pour ce faire, nous disposons de accton et de sa. Accton permet
+d'activer ou de desactiver le system accounting
+
+# accton /var/account/acct
+
+Nous specifions ici un fichier vers lequel sera redirige les donnes de
+l'accounting, pour desactiver il suffit d'executer la même commande sans le
+fichier en argument. Pour consulter les donnes de l'accounting il suffit
+d'executer sa avec un classement par utilisateur
+
+# sa -u
+
+Nous obtenons ainsi des statistiques detaillées de l'activite systeme par
+utilisateurs. Vous pouvez également vous servir de l'option rc.conf
+accounting_enable="YES" au même effet.
+
+Nous avons egalement a notre disposition la famille syslog.
+Tout d'abord nous avons syslogd qui nous permet d'enregistrer les messages
+d'erreurs et autres messages systemes dans le repertoire /var/log. Pour
+l'activer, nous editons encore une fois rc.conf pour y ajouter les entrees
+suivantes
+
+syslogd_enable="YES"
+syslogd_flags="-ss -m 0"
+
+Nous avons de plus ajoute des flags faisant en sorte que le daemon syslog
+fonctionne en secure mode sans possibilite de log ou de transmission depuis
+l'exterieur. Puis pour afiner l'enregistrement des messages, nous allons editer
+/etc/syslog.conf. Syslog.conf possede toute une syntaxe particuliere :
+
+o Les blocs de directives sont classes par programme
+o les directives sont de la forme facility.level suivi de la destination des
+  messages qui peut aussi bien etre un fichier qu'un utilisateur ou un
+  périphérique.
+
+Les differentes facility sont :
+- AUTH, rapporte les messages du systeme d'autorisation comportant des
+  programmes tel que login, su ou getty
+- AUTHPRIV, est similaire a AUTH mais permet de limiter la lecture du fichier
+  de log
+- CRON, est relatif au daemon cron aborde plus bas
+- DAEMON, est relatif au daemon systeme qui ne beneficient pas d'un champ
+  facility dedié
+- FTP, se rapporte au daemon ftpd et tftpd
+- KERN, rapporte les messages generes par le kernel en kerneland par de
+  processus kernel
+- LPR, est relatif a tous les peripheriques et outils d'impression tels que
+  lpr, lpc, lpd
+- MAIL, permet de loguer les messages relatifs aux courrier
+- NEWS, similaire a MAIL mais pour usenet
+- SECURITY, concerne les sous systemes de securite tels que IPF ou ipfw
+- SYSLOG, est relatif aux messages generés par syslogd lui-même
+- USER Messages generated by random user processes.  This is the default
+  facility identifier if none is specified.
+- UUCP, designe la facility se rapportant a la pile Unix-to-Unix Copy Program
+- local0 à local7, desigent des facility variables qui peuvent etre utilisés
+  ponctuellement par certains softs
+- * l'asterisque represente ici l'ensemble des entrees precedentes
+
+Suivis du champ level :
+- EMERG, alerte generale, generalement diffusée à tous les utilisateurs
+- ALERT, designe une alerte necessitant une attention/correction immediate
+- CRIT, conditions critiques telles que des problèmes de peripheriques
+- ERR, relatif aux messages d'erreur
+- WARNING, relatif aux messages d'alertes basiques
+- NOTICE, designe un evenement pas forcement en rapport avec un erreur mais qui
+  peut demander une gestion particuliere
+- INFO, genere de simples messages à titre d'information
+- DEBUG, se rapporte a des messages permettant d'approfondir le compréhension
+  du fonctionnement d'un logiciel et donc eventuellement de le debugger en cas
+  de probleme
+- NONE, permet de desactiver ce champ
+
+Nous pouvons egalement utiliser des operateurs de comparaison comme < (plus
+petit que), = (egal), et > (plus grand que) afin de preciser plusieurs niveaux
+de logging pour un même facility.
+
+------------------------------------ SNiP -------------------------------------
+# facility			destination
+*.=<notice			/var/log/messages
+*.=<crit			root
+
+auth,authpriv.* 		/var/log/authlog
+cron.info			/var/log/cron
+mail.info			/var/log/maillog
+kern.*				/var/log/kernel
+security.*			/var/log/security
+security.=<err			/dev/console
+
+!ppp
+*.*				/var/log/ppp.log
+!ipfw
+*.*				/var/log/ipfw.log
+!sudo
+*.*				/var/log/sudo.log
+!racoon
+*.*				/var/log/racoon.log
+!nessusd
+*.*				/var/log/nessus.log
+!argus
+*.*				/var/log/argus.log
+
+# configuration syslog à ajouter dans la jail
+#!apache
+#*.*				/var/log/access_log
+#!bind
+#*.*				/var/log/named
+------------------------------------ SNiP -------------------------------------
+
+Pour prevenir l'augmentation exponentielle des fichiers de logs mis en place
+plus haut, nous avons a notre disposition newsyslog qui permet de creer un
+nouveau fichier de log et même de l'archiver (Z pour gzip ou J pour bzip2), de
+specifier combien de fichiers de log supplementaires sont autorises (count), a
+partir de quelle taille (size en ko) ou combien de temps (time) archiver - ce
+qui peut aussi bien etre un intervale qu'une date, ou encore les droits de ses
+fichiers (mode). Nous pouvons ainsi obtenir un archivage logique au niveau de
+l'espace et du temps et plus aisément gérable par l'administrateur. Notez que
+l'heure d'archivage est encodée selon le format ISO 8601 qui nous donne :
+
+ccyymmddThhmmss
+20010915 000000 ou bien,
+le 15 septembre 2001 à minuit. Ce format pouvant être simplifier en retirant
+les champs superflus.
+
+Enfin vous avez la possibilité de spécifier un chemin pour obtenir le PID d'un
+daemon particulier ainsi que la possibilité de lui envoyer un signal (HUP par
+défaut) permettant d'éviter les conflits autour du fichier de log.
+
+------------------------------------ SNiP -------------------------------------
+# logfilename		[owner:group]	mode  count  size time flags
+/var/log/maillog			440   10     *    @T00  J
+/var/log/messages			440   15     100  *     J
+/var/account/acct			440   15     *    @T00  J
+/var/log/cron				440   10     40   *     J
+/var/log/ppp.log			440   10     40   *     J
+/var/log/nessus.log			440   10     40	  *     J
+/var/log/alias.log			440   10     40   *     J
+/var/log/authlog	root:wheel	400   10     20   @T00  J
+/var/log/security	root:wheel	400   10     20   @T00  J
+/var/log/ipfw.log	root:wheel	400   10     20   @T00  J
+/var/log/sudo.log	root:wheel	400   10     20   @T00  J
+/var/log/racoon.log	root:wheel	440   10     20   *     J
+#/var/log/access_log	www:wheel 	1440  10     40   *     J
+#/var/log/named 	named:wheel	1440  10     40   *     J
+/var/log/wtmp				440   15     *    @01T01 B
+------------------------------------ SNiP -------------------------------------
+
+Une astuce interessante à mettre en pratique mais peu utilisée consiste en une
+synchronisation NTP. NTP signifie Network Time Protocol et permet a une machine
+cliente de synchroniser son horloge sur un serveur de strate N lui même se
+synchronisant sur un serveur de strate superieure ou directement sur un serveur
+de reference. Le client peut aussi bien decider de se synchroniser a un serveur
+de reference directement. C'est cette architecture pyramidale qui caracterise
+NTP. Maintenant qu'est ce que peut bien venir faire NTP dans la configuration
+du systeme de logging ? Et bien dans un avenir tres proche la correlation de
+log a la recherche d'attaques ou d'information sur des attaques detectees par
+un NIDS se fera de maniere centralisee et dans ce cadre, une correlation
+efficace doit se baser sur un timestamp fiable et universel a une portion de
+reseau concernee. Par ailleurs les applications critiques comme les serveurs
+DNS ou les serveurs de services SMTP/NNTP fournissant une reference temporelle
+a un utilisateur se doivent d'etre a l'heure. Pour configurer notre machine
+cliente, la configuration est extremement simple sous FreeBSD. Il nous suffit
+d'editer rc.conf et d'y placer les 2 lignes suivantes
+
+ntpdate_enable="YES"
+ntpdate_flags="ntp-sop.inria.fr"
+
+Enfin, il y a un outil que ne fait pas parti du système proprement dit mais qui
+peut s'avérer grandement utile dans la surveillance et l'audit du réseau et du
+trafic, il s'agit d'Argus, un Audit Record Generation and Utilization System.
+Argus est un programme userland agissant d'une manière similaire à un sniffer
+en capturant le trafic passant sur une interface réseau et générant des
+rapports d'audit. Pour la capture du trafic, Argus se base sur TCPdump et la
+libpcap. Concernant cet outil, vous trouverez un howto intéressant sur
+http://minithins.net ou http://www.hsc.fr/ressources/breves/argus_fr.html.en.
+
+Par ailleurs, toutes ces configurations vont considérablement augmenter les
+données à analyser et auditer. C'est pourquoi nous vous recommandons de tester
+et de comparer plusieurs outils d'analyse de logs parmi lesquels :
+o ASAX, ftp://ftp.info.fundp.ac.be/pub/projects/asax
+o Abacus Logcheck, http://www.psionic.com/abacus/logcheck
+o SWATCH, http://www.oit.ucsb.edu/~eta/swatch/
+o logsurfer, http://www.cert.dfn.de/eng/logsurf/
+
+2.7. cron
+
+Cron est l'un des outils unix les plus classiques et les plus utiles qui soient
+puisqu'il va nous permettre de lancer une tâche précise à une date précise.
+Cron est de plus lancé dès le démarrage puis tourne automatiquement en mode
+daemon et se reveille toutes les minutes pour vérifier si il a une tâche à
+effectuer dans la minute à venir et, en passant, note toute modification de la
+crontab. La crontab represente le fichier depuis lequel cron va chercher les
+informations, les commandes qu'il doit exécuter. Cron cherchera cette crontab
+dans /var/cron/tab puis /etc/crontab.
+
+Nous éditons tout d'abord rc.conf afin de nous assurer que cron se lance bien.
+Nous vérifions et si besoin est ajoutons la ligne suivante :
+
+cron_enable="YES"
+
+Puis, pour ajouter de nouvelles entrées à cron, il nous suffit d'éditer la
+crontab. Cependant, même si la crontab suit une logique évidente, elle
+nécessite une certaine syntaxe.
+
+mm[0-59] hh[0-23] jour_du_mois[0-31] mois[1-12] jour_de_la_semaine[0-7]
+
+Cette syntaxe étant accompagnée de quelques options bien pratiques telles que
+l'indefinition (*), les listes (1,2,3,4) ou encore la fréquence soit au sein
+d'un champ(0-23/2) ou bien de maniere générale grace aux options :
+
+@reboot, pour le lancement é chaque démarrage
+@yearly ou @annually, pour un lancement annuel
+@monthly, pour un lancement mensuel
+@weekly, pour un lancement hebdomadaire
+@daily ou @midnight, pour un lancement quotidien
+et @hourly, pour un lancement toutes les heures.
+
+# ee /etc/crontab
+
+------------------------------------ SNiP -------------------------------------
+# vous avez la possibilite de specifier avec quel shell executer les commandes
+SHELL=/bin/sh
+# cette option permet d'indiquer a cron qui prevenir en cas de probleme
+MAILTO=root
+#
+# update des plugins Nessus chaque semaine
+@weekly			nessus-update-plugins
+# verification d'integrite mtree tous les semaines
+@weekly 		mtree -x -i -f bin.spec | mail -s 'mtree /bin \
+			results' root
+@weekly 		mtree -x -i -f sbin.spec | mail -s 'mtree /sbin \
+			results' root
+@weekly 		mtree -x -i -f libexec.spec | mail -s 'mtree \
+			/usr/libexec results' root
+@weekly 		mtree -x -i -f lib.spec | mail -s 'mtree /usr/lib \
+			results' root
+@weekly 		mtree -x -i -f sharelib.spec | mail -s 'mtree \
+			/usr/share/lib results' root
+@weekly 		mtree -x -i -f boot.spec | mail -s 'mtree /boot \
+			results' root
+# accompagnée d'une vérification des services par lsof
+@weekly 		lsof -niU
+# et d'une vérification KSEC
+@daily ksec -i interface -b -k -p
+# update ports tree uniquement pour l'environnement host
+@monthly		make update PORTSFILE
+# newsyslog
+@hourly 		newsyslog
+# ntpdate quotidiennement si vous avez des uptimes importants
+@daily			ntpdate ntp-sop.inria.fr
+# lancement de racoon au démarrage
+@reboot 		racoon -f /etc/racoon.conf
+------------------------------------ SNiP -------------------------------------
+
+Voilà, une crontab utile et de la maintenance en moins !
+
+2.8. ipfw et natd
+
+Dans ce chapitre nous allons aborder un mécanisme de sécurité extrêmement
+utilisé de nos jours, à savoir le firewalling. Le firewalling peut se traduire
+par plusieurs aspects allant du packet filtering sobre mais efficace aux
+complexes mais utiles proxies applicatifs. Afin d'illustrer nos propos et
+d'appliquer le firewalling à notre système, nous utiliseronts ipfw livré avec
+FreeBSD et que nous avons activé grâce à quelques options kernel au tout début
+de notre configuration. Beaucoup de monde se laisse séduire par IPFilter. La
+raison généralement avancée est son comportement dit stateful qui doit
+permettre de suivre une connexion afin d'effectuer un meilleur filtrage sur
+l'ensemble de cette connexion. Cependant ipfirewall est intégré directement à
+FreeBSD ce qui nous assure déjà de bonnes performances au niveau réseau. Par
+ailleurs, l'option keep-state de ipfw impliquant la création automatique d'une
+state table permettant le suivi des flux pour le filtrage de paquets. La state
+table et les règles ipfw qui vont avec, créent pour chaque paquet que 'match'
+une règle une nouvelle règle dynamique permettant de suivre - certes de manière
+moins tatillonne qu'IPFilter - et autoriser la connexion. Pour ce faire, ipfw
+utilise notamment pour la OSI 4 un mécanisme dit de lifetime qui permet de
+conserver une règle dynamique active en attente d'un nouveau paquet qui
+relancera la décrémentation de ce lifetime. Si le lifetime arrive à zero sans
+nouveau paquet, alors la règle dynamique disparaît et les paquets sont refusés.
+Les entrées sysctl suivantes vous permettent de spécifier la durée du lifetime
+correspondant à chaque état TCP, UDP et autres. Puis vous pouvez configurer la
+taille de la table hashage destinée aux règles dynamiques de votre ruleset,
+cette modification ne prenant effet qu'après un flush. Enfin, la dernière
+entrée fait suite à l'application d'un patch
+(http://people.freebsd.org/~cjc/ipfw_verbose_stable.patch) permettant
+d'augmenter encore la verbosité d'ipfw en ajoutant à l'affichage dans les logs
+des champs DiffServ, IP ID et TTL (en sus des classiques adresses et ports
+source et destination), les champs ack number, sequence number et TCP flags.
+
+# sysctl -w net.inet.ip.fw.dyn_ack_lifetime=300
+# sysctl -w net.inet.ip.fw.dyn_syn_lifetime=20
+# sysctl -w net.inet.ip.fw.dyn_fin_lifetime=10
+# sysctl -w net.inet.ip.fw.dyn_rst_lifetime=5
+# sysctl -w net.inet.ip.fw.dyn_udp_lifetime=15
+# sysctl -w net.inet.ip.fw.dyn_short_lifetime=30
+# sysctl -w net.inet.ip.fw.dyn_max=1000
+# sysctl -w net.inet.ip.fw.verbose=2
+
+Bien qu'elles ne soient pas abordées ici même, sachez qu'IPF dispose d'entrées
+similaires une fois installé, sous net.inet.ipf.* .
+
+Pour voir les règles actuellement appliquées et notamment les règles
+dynamiques, entrez :
+
+# ipfw show
+
+N'oubliez pas également d'editer rc.conf afin d'y ajouter les lignes concernant
+le firewalling telles que firewall_enable="YES", firewall_quiet="YES",
+firewall_logging="YES" et firewall_type="simple". Pour insérer des règles dans
+le ruleset, vous pouvez soit éditer la section simple de /etc/rc.firewall, soit
+utiliser la commande ipfw selon le schéma suivant
+
+ipfw command <number> action <protocol> from <host> <port> to <host> <port>
+     <ifspec>
+
+- Les commandes peuvent être 'add' pour ajouter une règle, 'delete' pour
+  supprimer une règle individuellement et 'flush' pour la totalité des règles,
+  ainsi que 'show' ou 'list' pour avoir les règles actuelles.
+  Chaque règle doit avoir un numéro unique pour éviter la confusion et les
+  règles sont classées selon l'ordre du matching.
+- Les actions peuvent être 'allow' pour laisser passer un paquet, deny pour le
+  refuser silencieusement et 'reject' pour envoyer un icmp host unreachable
+  (erreur spécifiable avec les actions 'unreach' et 'reset'), 'check-state'
+  afin de vérifier une correspondance avec les règles dynamiques, ou encore
+  'fwd' suivi de l'IP et éventuellement du port si vous possédez des IP
+  routables. Nous avons également la possibilité de logger - comme action
+  unique ou supplémentaire aux précédentes - avec 'log' auquel vous pouvez
+  ajouter 'logamount' pour overwriter l'option IPFIREWALL_VERBOSE_LIMIT.
+- Les protocoles peuvent être 'all' ou 'ip' pour faire correspondre tous les
+  protocoles, ou bien le nom ou numéro du protocole désiré en accordance avec
+  /etc/protocols.
+- Nous pouvons ensuite préciser la source après le champ 'from', la destination
+  après le champ 'to' ainsi que les ports juste après l'adresse source ou de
+  destination. Notez également la présence de 'me' permettant de récupérer l'IP
+  de notre firewall depuis ifconfig ce qui s'avère très utile en cas de
+  configuration dynamique. Enfin, pour les ports ou les adresses, IPFW supporte
+  désormais les opérateurs logiques.
+- Les mots clés ifspec nous permettant de travailler sur les interfaces. Nous
+  pouvons par exemple spécifier le matching des paquets uniquement en ingress
+  avec 'in' et en egress avec 'out', ou les interfaces vérifiées avec 'via'
+  suivi de l'interface, recv pour ne vérifier que l'interface de réception et
+  xmit pour ne vérifier que l'interface d'envoi.
+- Pour la stateful inspection, 'keep-state' annonce un suivi dynamique pour ce
+  filtre, 'setup' matche les paquets avec le flag SYN uniquement, 'etablished'
+  concerne les paquets avec les flags ACK ou RST. Mais vous pouvez également
+  préciser des 'ipoptions' (lssr, ssrr, rr, ts) ou 'tcpoptions' (mss, window,
+  cc, sack, ts) ainsi que des 'tcpflags' (fin, syn, rst, psh, ack et urg) ou
+  des 'icmptypes' (0, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18).
+  Enfin, le mot clé 'limit' a été introduit récemment (4.5-RELEASE) pour
+  permettre de limiter le nombre de connexions simultanées par association pour
+  un filtre, ceci en précisant l'adresse et/ou le port source, l'adresse et/ou
+  le port de destination puis la limite de connexions. Sachez enfin que vous
+  pouvez au niveau du firewall lui-même filtrer les utilisateurs via les
+  options 'uid' et 'gid' suivis de leur valeur.
+
+Pour obtenir la totalité des champs et notamment une description de
+l'utilisation de dummynet comme trafic shapper basique, reportez vous à la page
+de man d'ipfw. Mais dans ce domaine nous vous recommendons vraiment ALTQ
+développé dans le cadre du projet KAME (et donc régulièrement mergé)
+implémentant notamment les disciplines CBQ, WFQ/SFQ ou encore HFSC ainsi que
+les algorithmes RED et ses variantes RIO ou Blue et enfin les extensions ECN,
+RSVP (avec CBQ et HFSC) ainsi qu'un support pour le modèle DiffServ. Plus
+d'informations sur le site d'ALTQ,
+http://www.csl.sony.co.jp/person/kjc/software.html#ALTQ. L'intégration
+définitive de ALTQ au main tree FreeBSD est en cours pour la release 5.0
+
+Notez pour en finir avec les commandes ipfw qu'il existe un intéressant patch
+depuis FreeBSD 4.3 dit lifetime qui permet d'imposer une timeout à une
+transmission via une règle du firewall qui la bloquera une fois ce timeout
+atteint. Ce patch n'étant pas intégré au système de base, nous ne nous
+attarderons pas sur son utilisation. Vous pourrez trouver toutes les
+informations nécessaire à l'installation du patch et à l'utilisation du nouveau
+keyword à http://www.aarongifford.com/computers/ipfwpatch.html.
+
+Lorsque vous lancez votre machine avec les options activant le firewall pour la
+première fois, environ 200 règles basiques sont automatiquement
+générées. Nous commençons donc par purger nos règles :
+
+# ipfw flush
+
+Au début du ruleset, nous définissons quelques variables comme la commande ipfw
+avec l'option -q pour un output discret, le masque de notre réseau interne,
+l'adresse de notre jail, et nos interfaces d'entrée et de sortie.
+
+Nous rejetons ensuite sur l'interface d'entrée tous les paquets avec pour source
+une adresse reservée non routable ou bien l'adresse de notre reseau interne, et
+nous journalisons ces cas manifestes de spoofing. Ces adresses sont répertoriées
+sur le site de l'IANA et dans la RFC 1918.
+
+Puis nous faisons diverger le trafic pour passer par natd pour la translation
+d'adresses et de ports vers nos adresses privées. Cette règle est suivie de la
+vérification de chaque paquet contre la state table pour savoir si
+il appartient ou non à une connexion déjà acceptée. Nous pouvons ensuite
+rejeter tous les paquets en état TCP établi ou les fragments IP puisqu'ils
+seront assurés de ne pas faire partie d'une connexion en cours.
+
+Puis nous autorisons certaines communications comme DNS dont nous aurons repris
+les adresses dans /etc/revolv.conf, suivi de l'administration de la machine via
+SSH, et enfin nous autorisons Racoon, Argus et Nessus à communiquer. Pour les
+clients derrière le firewall, nous autorisons aussi en sortie les connexions
+ftp, smtp, ssh, http, pop3, ntp, imap ainsi que https, ircs, pop3s.
+
+Viennent ensuite les restrictions ICMP utilisé aussi bien en scanning qu'en
+DoS. Nous laissons passer depuis l'exterieur les les echo reply, destination
+unreachable, time exceeded, parameter problem, et timestamp reply. Vers
+l'exterieur, nous autorisons les echo request, time exceeded (fragment
+reassembly) et les timestamp request. Avec ceci, nous avons le minimum pour
+assurer le path discovery, la vérification de connectivité et la détection
+
+Pour appliquer maintenant un filtrage de paquets aux services fournit par une
+jail, nous faisons comme si c'était un filtrage sur l'environnement hôte,
+seulement nous y substituons l'alias privée de la jail que nous filtrons en
+passant par l'interface de loopback lo0.
+
+Lors de la création de vos règles, faites attention à l'ordre dans lequel vous
+les placez dans votre ruleset, aux interfaces sur lesquelles il faut les
+appliquer et à leur destination. Comme spécifié par les implementations notes
+de ipfw(8), le nombre de fois où un paquet est inspecté varie : de une fois
+pour les paquets ayant une extrêmité en local et pour les paquets bridgés, à
+2 fois pour les paquets dont les 2 extrêmités sont locales ou pour les paquets
+forwardés. La seule manière de changer ce comportement est à travers sysctl :
+
+# sysctl -w net.inet.ip.fw.one_pass=1
+
+Mais soyez extrêmement prudent dans ce cas lors de l'écriture de ces règles
+pour ne pas laisser entrer n'importe quel paquet construit spécialement après
+analyse des règles. Prendre en compte toutes ces informations, c'est vérifier
+qu'un paquet sera bien inspecté et au bon endroit.
+
+Pour finir, nous refusons tout autre trafic que celui expressement autoriser et
+pour plus de sureté. Voir ci-dessous le fichier /etc/rc.firewall final.
+
+------------------------------------ SNiP -------------------------------------
+# variables ...
+fwcmd="ipfw -q"
+net="192.168.0.0"
+mask="255.255.255.0"
+jail="192.168.0.2"
+intif="fxp0"
+extif="fxp1"
+
+${fwcmd} -f flush
+
+# adresses réservées
+${fwcmd} add 201 deny log all from 192.168.0.0/16,172.16.0.0/12,10.0.0.0/8,\
+  127.0.0.0/8,0.0.0.0/8,169.254.0.0/16,192.0.2.0/24,204.152.64.0/23,\
+  224.0.0.0/3,${net}:${mask} to any in via ${extif}
+
+# divert vers natd
+${fwcmd} add 300 divert 8668 all from any to any in via ${extinf}
+
+# vérification par rapport à la state table
+${fwcmd} add 400 check-state
+${fwcmd} add 401 deny tcp from any to any in established
+${fwcmd} add 402 deny ip from any to any in frag
+
+# communication DNS, SSH, Racoon, Argus et Nessus
+${fwcmd} add 403 allow udp from ${net}:${mask} to primary_DNS 53 in keep-state
+${fwcmd} add 404 allow tcp from any to me 22 keep-state setup limit src-addr 5
+${fwcmd} add 405 allow udp from any 500 to any keep-state
+${fwcmd} add 406 allow udp from any to any 500 keep-state
+${fwcmd} add 407 allow tcp from any to any 561,3001 keep-state limit dst-addr 2
+
+# communications vers des serveurs classiques
+${fwcmd} add 408 allow tcp from ${net}:${mask} to any \
+  20,21,22,25,80,110,123,143,443,994,995,6667 keep-state setup
+
+# limitations ICMP (ping, Van Jacobson's traceroute...)
+${fwcmd} add 500 allow icmp from any to ${net}:${mask} in icmptypes 0,3,11,12,13,14
+${fwcmd} add 501 allow icmp from ${net}:${mask} to any out icmptypes 1,8,11
+${fwcmd} add 502 allow udp from ${net}:${mask} to any in 33400-33500
+${fwcmd} add 503 deny log icmp from any to any
+
+# redirection services jail
+${fwcmd} add 602 allow udp from any to ${jail} 53 in keep-state via lo0
+${fwcmd} add 603 allow tcp from any to ${jail} 80,443 in keep-state setup via lo0
+
+# Restrictive stance : everything not explicitely allowed is forbidden.
+${fwcmd} add 900 deny log all from any to any
+${fwcmd} add 901 deny log all from any to ${jail} via lo0
+------------------------------------ SNiP -------------------------------------
+
+Pour que ces règles soient appliquées, vous devez soit redemarrer, soit
+relancer init qui initialisera ces règles.
+
+# kill -HUP init
+
+Le NAT pour Network Translation Adress est un mécanisme à l'origine créé pour
+palier à la pénurie d'adresses IP disponibles. Il permet d'utiliser une gateway
+qui pour chaque communication va rediriger les transmissions entre adresses
+externes routables et adresses internes non routables en réécrivant les entêtes
+correspondantes et en stockant les informations de correspondances dans une
+hash table. Ainsi nous n'utilisons qu'une seule IP routable qui est celle de la
+gateway NAT. Le NAT est un mécanisme de partage de connexion intéressant mais
+il ne fera pas l'affaire en cas de load balancing puisque sa méthode de
+queueing est basé sur un Weighted Round Robin qui sert à tour de rôle chaque
+queue en attente, or le NAT par WRR traite la priorité selon l'implémentation
+DiffServ Assured Forwarding rejetant ainsi les paquets basse priorité sous
+fortes contraintes. De plus le débit de congestion du NAT est assez bas, encore
+plus si vous utilisez natd qui est userland entraînant une copie depuis le
+kernel vers le userland. Préférez ipnat/ipf en module kernel pour de meilleures
+performances.
+
+L'autre couple étant ipfw/natd, nous allons maintenant voir une configuration
+minimale de natd afin de relayer les requêtes de notre hôte vers notre jail ou
+toute autre machine se trouvant derrière notre FreeBSD.
+
+Pour commencer, nous éditons le fichier rc.conf pour y ajouter les lignes
+suivantes
+
+gateway_enable="YES"
+natd_enable="YES"
+natd_interface="fxp0"
+natd_flags="-f /etc/natd.rules"
+
+Ainsi natd sera lancé à chaque démarrage avec comme fichier de configuration
+natd.rules, que nous allons maintenant éditer. Pour plus d'informations sur les
+règles utilisées, reportez vous à la man page. Nous ne faisons qu'une rapide
+introduction en rapport avec notre configuration securisée. Cependant, notez
+que la redirection via natd peut se faire à partir de l'adresse avec
+redirect_adress, par port avec redirect_port et par protocoles avec
+redirect_proto. Une dernière règle peut s'avérer très utile pour les
+utilisateurs d'IRC et FTP : la règle punch_fw suivi de basenumber:count
+respectivement le numéro de la règle de départ suivi du nombre de règles
+dynamiques pouvant être créées.
+
+------------------------------------ SNiP -------------------------------------
+log			yes
+deny_incoming		no
+use_sockets		yes  # alloue une socket limitant les conflits de ports
+                             # dynamiques
+same_ports		yes  # tente d'utiliser le même port pour la translation
+verbose 		no
+port			natd
+unregistered_only	yes  # NAT uniquement pour les adresses type RFC 1918
+log_ipfw_denied 	yes  # log les paquets non ré-injecté pour cause de
+                             # blocage par ipfw (utile pour debugger)
+
+# DNS
+redirect_port udp jail_IP_alias:53 public_IP_adress:53
+
+# HTTP et HTTPS
+# LSNAT > RFC 2391
+redirect_port tcp jail_IP_alias:80,443 80,443
+redirect_adress tcp www1_IP:80, www2_IP:80 jail_IP_adress:80
+
+# SSH sur la seconde jail
+redirect_port tcp jail_user_IP_alias:22
+
+# static NAT pour d'autres machines
+redirect_address internal_IP1 public_IP
+redirect_address internal_IP2 public_IP
+redirect_address internal_IP3 public_IP
+------------------------------------ SNiP -------------------------------------
+
+Notez que natd intègre naturellement des fonctionnalités de suivi de connexions.
+Donc, lorsque vous configurez une passerelle pour utiliser natd, il n'est plus
+vraiment utile d'utiliser la stateful inspection au niveau d'ipfw. Vous pouvez
+simplement configurer un firewall statique et natd s'occupe de l'inspection
+d'états pour les connexions relayées. Si vous sentez encore le besoin de
+conserver des règles keep-state, alors le mot clé skipto renvoyant à une autre
+règles peut s'avérer utile.
+
+3. Outils
+
+Nous allons nous pencher sur certains outils plus ou moins en rapport direct
+avec le systeme mais qui ne sont pas forcément disponible par defaut ou alors
+par les ports mais pas à jour, ou encore qui sont une caracteristique du
+systeme bien specifique. Ainsi nous allons ici decouvrir quelques outils
+permettant de renforcer notre securite aussi bien de maniere proactive que
+reactive.
+
+3.1. TCPdump
+
+TCPdump est l'outil ultime pour sniffer le trafic d'un réseau afin d'effectuer
+son debugging. Il nous permettra de capturer tout ou partie du trafic réseau
+local afin de nous permettre de l'analyser afin de vérifier le bon
+fonctionnement de nos configurations réseau. Pour ce faire TCPdump se base sur
+la couche système BPF pour Berkeley Packet Filter afin d'intercepter les trames
+ethernet et les paquets IP transitant par la machine en mode promiscuous (mode
+où le Network Interface Card ou NIC peut voir l'ensemble du trafic réseau)
+selon des expressions bpf similaires aux concepts d'expressions regulières.
+Cette méthode de capture par BPF est fournit par la librairie libpcap
+facilitant énormément le développement de sniffers évolués.
+
+TCPdump fournit un nombre d'options impressionnants dont nous aborderons les
+plus utiles ici. Tout d'abord à chaque capture nous vous recommandons la
+syntaxe suivante :
+
+# tcpdump -X -s 1500 -e -n -i fxp0
+
+Cette ligne de commande permet d'obtenir un dump à la fois en hexa et ascii,
+d'une longueur de 1500 octets, affichant les informations d'en-tête au niveau
+de la couche liaison qui sera généralement ethernet, nous n'effectuons pas de
+résolution de noms afin de gagner en rapidité, discrétion et facilité
+d'analyse ; et enfin nous spécifions la NIC sur laquelle écouter ce qui peut
+s'avèrer utile lorsque la console admin possède plusieurs interfaces ou sert
+de passerelle.
+
+La sortie quant à elle se présente - dans le cas d'un paquet TCP ici - sous la
+forme d'un timestamp, puis l'Initial Sequence Number suivi du numéro de
+séquence du paquet, la taille du paquet entre parenthèses, les flags TCP, le
+numéro d'acknowledgment, la window size, le flag IP renseignant sur l'etat de
+la fragmentation et enfin les options TCP. La sortie peut bien sûr varier si
+on capture un paquet UDP ou ICMP (avec dans ce dernier cas le type ICMP). Avec
+les options déjà présentées, nous obtenons également dans le dump les headers
+de la couche liaison, vous pouvez bien sûr supprimer cette option pour plus de
+simplicité.
+
+Une combinaison d'options également intéressantes et éventuellement à utiliser
+avec les options déjà vues, est la suivante :
+
+# tcpdump -i fxp0 -l > file && tail -f file
+
+Cette entrée nous permet de rediriger le trafic capturé sur l'interface
+spécifiée vers un fichier 'file' que nous pourrons ensuite voir s'actualiser
+par groupe de 10 lignes à l'aide de tail. Ceci permet une surveillance 
+
+Bien entendu, nous n'avons pas besoin de capturer la totalité des paquets
+lorsque nous ne recherchons qu'une transmission particulière afin d'effectuer
+du debugging ou autre analyse. Pour cela nous avons la possibilité d'utiliser
+les expressions BPF introduites plus haut. Elles nous permettent de tester
+un octet donné d'un paquet IP ou même de sa partie TCP/UDP/ICMP. Il est
+également possible, grâce à des expressions boolénnes de tester un ou
+plusieurs bits de chaque octet. Les expressions BPF se placent simplement à la
+fin des options de la ligne de commande TCPdump. Les expressions BPF classiques
+sont subdivisées en 3 groupes qui peuvent être combinés entre eux pour
+effectuer n'importe quel (ou presque :) matching.
+
+Le premier groupe est constitué des 'types' qui peuvent être host pour matcher
+une adresse IP ou un domaine, net pour matcher une classe réseau - ce champ
+peut être affiné en précisant un mask à sa suite - et port pour matcher un
+port. Ces types sont les opérateurs de base de la capture.
+Nous avons ensuite les 'dir' qui spécifie la direction à rechercher. Nous avons
+ici à notre disposition les mots clés src pour l'origine et dst pour la
+destination.
+Enfin, nous avons le group 'proto' qui permet de rechercher des paquets
+correspondants. Nous y trouvons ether ou fddi pour les couches liaisons
+ethernet et assimilés, arp et rarp pour les protocoles du même nom, ip et ip6
+pour les versions d'IP v4 et v6, icmp et icmp6 de manière similaire et enfin
+tcp et udp.
+A ces 3 groupes, il nous faut ajouter plusieurs expressions supplémentaires à
+savoir gateway qui permet de matcher un paquet dont l'adresse ethernet
+correspond à l'expression mais pas l'adresse IP source ni destination et donc
+d'obtenir les paquets provenant d'un certain routeur. Nous avons également less
+et greater afin de capturer les paquets inférieurs ou supérieurs à une longueur
+donnée.
+Enfin nous avons les classiques opérateurs logiques or, and et not représentant
+l'inclusion, la concaténation ou l'exclusion.
+
+ping of death
+# tcpdump -Xni fxp0 icmp greater 65535
+
+trafic HTTPS et IRCS
+# tcpdump -Xni fxp0 (tcp port 443) or (tcp port 994)
+
+Il existe également des expressions avancées permettant de réaliser des
+opérations de capture plus fines sur les paquets. La syntaxe d'une expression
+BPF est la suivante
+
+proto[offset:longueur] operation logique
+
+où proto est similaire à un des champs du groupe 'proto' cité plus haut, offset
+désigne le décalage du champ à tester, la longueur désigne la longueur du champ
+à destiner et l'opération logique le test lui-même. Ceci nécessite une
+connaissance précise des champs des différents protocoles ce qui peut se faire
+après une étude des RFC correspondantes. Pour rechercher un champ précis, il
+est bon de rappeler la structure d'un datagramme IP et d'un segment TCP en
+considérant le dump suivant :
+
+4500 003c 0a66 4000 4006 a320 c0a8 0001
+c0a8 0002 04c5 0016 801e 78e3 0000 0000
+a002 3fc4 fe70 0000 0204 05cc 0402 080a
+0014 7e59 0000 0000 0103 0300
+
+4 = IP Version
+5 = IP header length
+003c = IP total length
+0a66 = IP ID
+4000 = IP fragmentation (flags puis offset multiple de 8)
+40 = IP TTL
+06 = IP Protocol
+a320 = IP checksum
+c0a8 0001 = IP source
+c0a8 0002 = IP destination
+04c5 = TCP source port
+0016 = TCP destination port
+801e 78e3 = TCP sequence number
+a = TCP data offset
+002 = TCP Control bits (flags, ici SYN)
+3fc4 = TCP Window Size
+fe70 = TCP Checksum
+0000 = Urgent Pointer 
+0204 05cc = TCP Maximum Segment Size (only with SYN)
+0402 = TCP SackOK Permitted (only with SYN)
+080a 0014 7e59 0000 0000 = TCP Timestamp (champ reply à 0, puisque SYN)
+0103 = Padding
+0300 = TCP Window Scale (only with SYN)
+
+Pour ne pas avoir à retenir ce lourd schéma (qui est juste celui d'un flux
+classique), vous pouvez exécutez à la suite de votre commande tcpdump et après
+un pipe unix, tcpdumpx écrit par Wietse Venema qui commente précisément les
+données dumpées. Vous pourrez trouver ce prorgramme à
+ftp://ftp.porcupine.org/pub/debugging/.
+
+Ci-dessus une série de filtres prêts à l'emploi.
+
+* paquets TCP avec flags
+  SYN : tcp[13] & 2 != 0
+  ACK : tcp[13] & 16 != 0
+  FIN : tcp[13] & 1 != 0
+  RST : tcp[13] & 4 != 0
+  PSH : tcp[13] & 8 != 0
+  URG : tcp[13] & 32 != 0
+
+* Christmas Tree Scan
+  # tcpdump -Xni ed0 '(tcp[13] & 1 != 0) and (tcp[13] & 8 != 0) and
+           (tcp[13] & 32 != 0)'
+
+* capture d'icmp echo request et replies
+  # tcpdump -Xni ed0 '(icmp[0] = 8) or (icmp[0] = 0)'
+
+* paquets IP fragmentés
+  MF : ip[6] & 32 != 0
+  DF : ip[6] & 64 != 0
+  offset : ip[6:2] & 0x1fff != 0
+
+En marge de TCPdump, nous vous recommandons de jeter un oeil aux programmes
+suivants inspirés, basés sur TCPdump ou encore servant d'extensions :
+o ethereal (http://www.ethereal.org)
+o Shadow (http://www.nswc.navy.mil/ISSEC/CID/)
+o NStreams (http://www.hsc.fr/ressources/outils/nstreams/)
+
+3.2. Nessus
+
+Nessus est ce qu'on appelle un scanner de vulnérabilités (assessment scanner).
+Il a pour particularité d'effectuer réellement les tests correspondant à une
+attaque connue contre la machine, et ce en exploitant aussi bien des attaques
+logicielles classiques que des erreurs de configuration. Par ailleurs, il est
+doté d'une architecture moderne aliant modularité et modèle client-serveur. Le
+serveur nessusd effectue les tests tandis que l'interface graphique nessus -
+qui peut être GTK, Java ou même Win32 - permet de sélectionner les tests et de
+lire les rapports de scan en contrôlant le serveur. Cette architecture permet
+d'imaginer toutes les configurations comme un daemon distant pour plusieurs
+opérateurs ou un opérateur pour plusieurs daemons sur plusieurs réseaux (cette
+idée n'ayant pas echappée aux sociétés effectuant des tests d'intrusion en
+partant de nessus et en contribuant rarement). Par ailleurs, Nessus est
+modulaire, ce qui signifie que chacune des attaques est un plugin en NASL
+(Nessus Attack Script Language, un langage à la syntaxe similaire au C pour
+l'écriture de tests) ou en C appelé par nessusd pour effectuer les tests.
+Les plugins sont gérés par une Knowledge Base, véritable architecture de
+communication inter plugins dans laquelle ils se voient triés en fonction de
+leur type, dépendance, besoin ou exclusion et par laquelle ils peuvent partager
+des informations afin d'éviter la redondance de tests. Une dernière
+particularité notable est qu'à travers la KB, il ne tient pas compte du port
+scanné, mais uniquement du service évitant ainsi d'être trompé par des ports
+bindés exotiques.
+Nessus va nous servir à vérifier si nos configurations précédentes au
+niveau réseau n'ont pas entraînées la création d'erreurs exploitables par
+un intrus et également vérifier si nos services et notre système sont
+vulnérables ou pas aux centaines d'attaques que Nessus teste. Il ne nous
+restera plus ensuite qu'à prendre les mesures nécessaires comme patcher
+notre machine ou en modifier la configuration.
+Vous pouvez récupérer Nessus à http://www.nessus.org ou depuis le ports
+tree à /usr/ports/security/nessus-1.2.3. Vous pourriez avoir aussi besoin
+de Queso, Nmap ou à l'avenir Whisker ou un IDS qui parse les ruleset Snort
+comme Prelude.
+
+En premier lieu, une fois l'installation terminée, vous devez lancer la
+commande nessus-adduser afin d'ajouter un utilisateur au daemon nessus.
+
+------------------------------------ SNiP -------------------------------------
+# nessus-adduser
+Using /var/tmp as a temporary file holder
+
+Add a new nessusd user
+----------------------
+
+Login : eberkut
+Authentication (pass/cert) [pass] : pass
+Login password : foobar
+
+User rules
+----------
+nessusd has a rules system which allows you to restrict the hosts
+that astro has the right to test. For instance, you may want
+him to be able to scan his own host only.
+
+Please see the nessus-adduser(8) man page for the rules syntax
+
+Enter the rules for this user, and hit ctrl-D once you are done :
+(the user can have an empty rules set)
+^D 
+
+Login : eberkut
+Password : foobar
+DN :
+Rules :
+
+Is that ok ? (y/n) [y] y
+user added.
+------------------------------------ SNiP -------------------------------------
+
+Notez que la syntaxe des règles d'accès est plutôt simpliste puisque elle
+compte comme règles deny pour empêcher le scan, accept pour l'autoriser et
+default pour définir la policy par defaut à deny ou accept. Pour chaque règle,
+vous spécifiez une adresse IP éventuellement suivie d'un netmask en notation
+CIDR ou la variable client_ip désignant automatiquement la machine source du
+client. Vous pouvez de plus vous servir de nessusd.users pour définir des
+règles par utilisateurs (authentifiés par password ou clé). Voir nessusd(8)
+pour plus de détails.
+
+# password
+eberkut:foobar
+# rules
+accept client_ip
+default deny
+
+Ces règles ainsi que d'autres options sont encore configurables après
+nessus-adduser par l'intermédiaire de nessusd.conf que nous allons décider
+de conserver dans /etc plutôt que dans le répertoire nessus.
+
+# cp /usr/local/nessus/etc/ /etc/nessus/ && cd /etc/nessus/
+# ee nessusd.conf
+
+------------------------------------ SNiP -------------------------------------
+# chemin d'accès aux plugins
+plugins_folder = /nessus/lib/nessus/plugins
+
+# nombre de tests simultanés, doit être égal au nombre de devices bpf
+max_threads = 20
+track_iothreads = yes
+
+# log file
+logfile = syslog
+
+# log tous les détails des attaques ?
+log_whole_attack = yes
+
+# log les noms de plugins à leur chargement ?
+log_plugins_names_at_load = yes
+
+# dump file for debugging purpose
+dumpfile = /nessus/var/nessus/nessusd.dump
+
+# rules file
+rules = /etc/nessus/nessusd.rules
+
+# user database
+users = /etc/nessus/nessusd.users
+
+# CGI path
+cgi_path = /cgi-bin
+
+# espace de ports pour nmap
+port_range = 1-32768
+
+# optimize test
+optimize_test = yes
+
+# language (english or francais)
+language = francais
+
+# Crypto options
+negot_timeout = 600
+force_pubkey_auth = yes
+# peks has been deprecated, and the author of this document does'nt have any
+# box to install Nessus and update this part of the configuration file. Sorry
+peks_username = nessusd
+peks_keylen = 1024
+peks_keyfile = /etc/nessus/nessusd.private-keys
+peks_usrkeys = /etc/nessus/nessusd.user-keys
+peks_pwdfail = 3
+cookie_logpipe = /etc/nessus/nessusd.logpipe
+cookie_logpipe_suptmo = 2
+
+# optimization
+# read timeout for the test sockets
+checks_read_timeout = 15
+# espace entre 2 tests contre le même port en secondes
+delay_between_tests = 5
+------------------------------------ SNiP -------------------------------------
+
+Pour la totalité des tests impliquant l'utilisation de SSL ainsi que si vous
+avez décidé d'utiliser l'authentification client/serveur par certificats, vous
+allez devoir générer une certificat. Nessus dispose pour ce faire d'un script
+nessus-mkcert (et nessus-mkcert-client pour générer une paire certificat/clé
+pour votre client).
+
+------------------------------------ SNiP -------------------------------------
+# nessus-mkcert
+This script will now ask you the relevant information to create the SSL
+certificate of Nessus. Note that this information will *NOT* be sent to
+anybody (everything stays local), but anyone with the ability to connect to your
+Nessus daemon will be able to retrieve this information.
+
+
+CA certificate life time in days [1460]:
+Server certificate life time in days [365]:
+Your country (two letter code) [CH]: FR
+Your state or province name [none]:
+Your location (e.g. town) [Paris]:
+Your organization [Nessus Users United]: CNS
+
+Congratulations. Your server certificate was properly created.
+
+/usr/local/etc/nessus/nessusd.conf updated
+
+The following files were created :
+
+. Certification authority :
+Certificate = /usr/local/com/nessus/CA/cacert.pem
+Private key = /usr/local/var/nessus/CA/cakey.pem
+
+. Nessus Server :
+Certificate = /usr/local/com/nessus/CA/servercert.pem
+Private key = /usr/local/var/nessus/CA/serverkey.pem
+
+Press [ENTER] to exit
+------------------------------------ SNiP -------------------------------------
+
+Si vous ne désirez pas utiliser SSL, placez ssl_version à none dans
+nessusd.conf, ou bien changez les makefiles de nessus-libraries et nessus-core
+pour ajoutez -disable-cipher aux ./configure. Plus d'informations dans
+README_SSL disponibles dans nessus-core.
+
+Pour lancer le daemon nessus maintenant configuré, il ne vous reste plus qu'à
+exécuter
+
+# nessusd -c /etc/nessus/nessusd.conf -D
+
+Notez aussi l'option -L permettant de lister la base d'utilisateurs.
+
+Du côté du client, vous disposez comme expliqué précédemment de diverses
+interfaces graphiques client, à savoir une X11 en GTK, une Java et même
+2 Win32. Cependant, souvenez vous que nessusd ne fonctionne que sous unix.
+Lorsque vous lancez le client nessus pour la première fois, il va s'occuper
+de générer une paire de clés puis vous demandera une passphrase. La seconde
+fois, vous n'aurez plus qu'à rentrer votre passphrase. Vous êtes ensuite face
+à une fenêtre de login vous permettant de vous connecter à un nessusd
+distant (champs Nessusd Host, Port, Encryption et Login).
+Vous êtes ensuite dirigé vers le panel Plugins vous permettant de sélectionner
+les plugins de test. La liste supérieure classe les plugins par types, et sont
+affichés dans la liste inférieure vous permettant de les sélectionner ou non.
+Vous disposez aussi des boutons Enable All pour un scan complet, Enable all
+but dangerous plugins pour ne pas effectuer les tests comme les DoS capables
+de planter une machine faible (i.e. Windows) ou Disable All.
+Pour certains plugins, vous aurez besoin de spécifier des arguments
+supplémentaires comme pour le POP2 overflow, le FTP privilege escalation et
+surtout la configuration queso ou nmap -- peut être à l'avenir Whisker, le
+CGI scanner par Rain Forrest Puppy. Ceci peut être fait dans le panel Prefs.
+Vous avez ensuite le panel Scan options dans lequel vous pouvez configurer
+le Port Range, le nombre maximum de threads concurrents, ou le chemin
+d'accès au CGI - ceci étant déjà configuré dans le fichier configuration
+nessusd - plus quelques autres fonctionnalités et surtout les options du
+port scanning (avec nmap)
+Puis viens le panel Target Selection dans lequel vous spécifiez, sous forme
+d'IP avec ou sans netmask ou de domaine, la ou les machines que vous
+souhaitez scanner, séparées par des virgules. Vous pouvez également avoir
+des fichiers tout prêt spécifiant ces règles et les faire lire par Nessus.
+Vous trouvez ensuite le panel User dans lequel vous pouvez gérer votre clé
+ou changer votre passphrase et également spécifier ici encore des règles de
+scanning cette fois spécifique à ce scan en 'reject' les hôtes à ne pas
+scanner.
+Une fois tous ces panels passés en revue, il ne vous reste plus qu'à faire
+un start scan et à attendre les résultats qui seront présenté sous forme
+d'arbres. Vous pourrez ensuite les sauvegarder sous la forme d'un même
+report Nessus (.nsr) ou bien sous forme de fichier html avec graphiques,
+de fichier postscript ou encore de fichier LaTeX et de nombreux autres.
+Dans les versions à venir, vous pourrez même directement exporter les
+résultats sous forme de règles Snort et ainsi utilisez un IDS compatible
+comme Snort ou Prelude pour surveiller vos machines vulnérables.
+
+Nous ajouterons enfin une petite parenthèse sur quelques fonctionnalités pour
+le moment experimentales mais qui seront officiellement mises en place lors de
+la release 1.1.0. La première est la sauvegarde de Knowledge Base. En effet,
+les informations receuillies et partagées à travers la KB sont libérées de la
+mémoire après chaque scan nécessitant de refaire tout le processus
+d'information gathering à chaque fois. Si vous désirez scanner régulièrement
+votre réseau, vous pourez préférer utiliser l'option du panel KB de l'interface
+permettant d'activer la sauvegarde de la KB. Avant la version 1.1.0, cette
+option n'existe que si vous avez compilé Nessus-core avec
+
+# ./configure --enable-save-kb
+
+Dans ce même panel KB, vous pouvez ensuite spécifier si il est nécessaire de
+scanner la totalité des hôtes, uniquement ceux déjà scannés précédemment ou
+bien uniquement les hôtes nouveaux jamais scannés. Par ailleurs vous pouvez
+spécifier la réutilisation de l'ancienne KB qui sera alors rechargée en mémoire
+et avec elle préciser quels plugins vous ne voulez pas voir réexécutés : ne pas
+refaire les scans, ne pas refaire les étapes d'information gathering, ne pas
+refaire les attaques ou bien ne pas refaire les DoS. Enfin, vous avez la
+possibilité de définir une limite de temps pendant laquelle l'ancienne KB est
+valable en secondes.
+Une autre fonctionnalité expérimentale alléchante est la possibilité
+d'effectuer des scans détachés, sans intervention du client. Après l'activation
+de la sauvegarde de KB, nous disposons dans le panel Scan options de nouvelles
+entrées : detached scan signifiant que le client n'obtiendra pas les données en
+temps réel, continuous scan fait recommencer nessusd après chaque fin de tests,
+send results to this email adress permet de spécifier une adresse à laquelle
+envoyer les résultats et enfin delay between two scans défini le temps en
+secondes entre 2 scans de l'option continuous scan.
+En combinant ces 2 fonctionnalités et en placant une update des plugins dans la
+crontab, nous avons la capacité désormais d'effectuer un scan de mise à jour
+régulier sans plus nous soucier de Nessus. Pour ce faire, nous devons activer
+les options Enable KB saving, Only test hosts that have never been tested in
+the past, Reuse the knowledge bases about the hosts for the test et les 4
+options Do not execute dans le panel KB ; et enfin nous décidons que la KB sera
+valable pour une semaine soit 604800 secondes. Puis, dans le panel Scan
+options, nous cochons les options detached scan et continuous scan et plaçons
+le delai entre 2 scans à une heure, soit 3600 secondes. Vous pouvez spécifier
+l'adresse root tout simplement comme destination des rapports. Ainsi, Nessus ne
+scannera que les hôtes qui n'ont pas déjà été scanné depuis les 7 derniers
+jours, attendra une heure et recommencera qui plus est avec des plugins à jour
+grâce à l'entrée d'update dans la crontab.
+
+Si vous avez quelques talents en programmation et en sécurité et/ou que
+vous souhaitez contribuer à Nessus, vous pouvez apprendre à créer des
+plugins, qui font toutes la valeur et la puissance de Nessus, à l'adresse
+http://www.nessus.org/doc/nasl.html.
+
+3.3. lsof
+
+L'utilitaire lsof - signifiant LiSt Open File - est un remplacement avantageux
+à netstat, fstat et sockstat sous FreeBSD. Il est capable de lister tous les
+fichiers ouvertes pas tous les processus et peut donc être utilisé pour lister
+des ports et services ouverts ainsi que leurs propriétaires. Vous pouvez
+installer lsof depuis les ports à /usr/ports/sysutils/lsof.
+
+Par exemple nous pouvons lister uniquement les fichiers sockets Internet avec
+l'option -i, l'option -n permettant de ne pas resoudre les adresses.
+
+# lsof -ni
+COMMAND    PID    USER    FD   TYPE      DEVICE SIZE/OFF NODE NAME
+portmap    156    daemon  3u   IPv4  0xc3dabf00    0t0   UDP  *:sunrpc (LISTEN)
+ssh        259    root   16u   IPv4  0xc3ddcd80    0t0   TCP  *:ssh (LISTEN)
+sendmail   287    daemon  4u   IPv4  0xc3dddb60    0t0   TCP  *:smtp (LISTEN)
+
+Vous voyez que la présentation du listing permet de voir les types de sockets,
+TCP ou UDP, dans la colonne NODE puis l'adresse et le port d'écoute dans la
+colonne NAME. Les lignes correspondant à des connexions en cours sont affichées
+avec une flèche "->" séparant les adresses et ports sources et destinations.
+Les ports en écoute n'ont pas de flèche et ne comportent qu'une adresse et un
+port. Dans ce dernier cas, l'adresse peut être une étoile si le processus
+écoute sur toutes les adresses simultanément.
+
+Il est possible de demander à lsof de n'afficher qu'un port et/ou une adresse 
+IP donnée. Notez que lsof supporte aussi bien les adresses IPv4 que v6, il
+suffit d'adopter la notation correct (loopback = 127.0.0.1 et ::1)
+
+# lsof -ni proto@host:port
+
+Mais lsof offre de nombreuses autres possibilités. Nous pouvons par exemple
+lister l'ensemble des sockets quel que soit leur domaine (UNIX ou Internet)
+
+# lsof -U -n -i
+
+Ou bien lister des fichiers ouverts selon leur propriétaire par l'option -u ou
+leur PID par l'option -p ainsi que par l'options -g pour filtrer à partir du
+groupe. Nous pouvons spécifier plusieurs PID, GID et user en plaçant des
+virgules
+
+# lsof -p pid -g gid -u username
+
+Lsof possède enfin quelques fonctions bien pratiques. Tout d'abord à l'aide de
+l'option -a, nous pouvons filtrer selon plusieurs arguments similaires. Ce qui
+sur des sockets de domaine Internet, peut nous permettre de rechercher
+plusieurs services ou adresses bien spécifiques.
+
+# lsof -a -n -i proto@host:port -i proto@host:port
+
+Il faut aussi savoir que lsof peut s'effectuer en repeat mode afin d'obtenir
+une surveillance constante ou regulière. Ceci s'effectue à l'aide de l'option
++|-r temps où temps designe le temps entre chaque répétition en secondes.
+L'option paramètrée avec + au lieu de - permet d'arrêter lsof lorsqu'il ne
+liste plus rien en plus de l'arrêter par un SIGINT.
+
+# lsof -ni +r30
+
+3.4. stack smashing
+
+Nous allons ici aborder 2 outils extrêmement pratiques pour FreeBSD permettant
+d'empêcher les attaques de type buffer overflow consistant à dépasser une
+mémoire tampon statique pour écrire un code original exécuté avec les droits
+du programme dont dépend ce buffer. Nous disposons de libparanoia et du gcc
+protector patch.
+
+libparanoia est une librairie qui intercepte les appels à des fonctions
+présumées sensibles et les remplace par des fonctions similaires en tous
+points et fonctionnalités, à la seule différence que ces fonctions sont
+modifiées pour empêcher toutes tentatives de corruption de la pile mémoire
+ce qui permet de nous prévenir des failles de type stack overflow ou return-
+into-libc très documentées et largment répandues ces dernières années.
+Les fonctions ANSI C présumées sensibles sont strcpy, strcat, gets, sprintf et
+scanf qui sont connues pour être souvent exploitées à des fins illégitimes. Le
+problème essentiel vient du fait que le langage C n'inclut aucunes techniques
+natives de vérification lorsque nous manipulons des variables dans une mémoire
+tampon. Ce comportement permet, à l'occasion, d'écrire dans cette mémoire afin
+d'y faire exécuter diverses commandes - pouvant entraîner jusqu'à la
+compromission complète du système si ledit programme est exécuté avec les
+droits root. L'idée de base de libparanoia est de ne jamais exécuter de
+nouvelles instructions suite à ces fonctions si la stack a été modifié. On
+préférera alors tuer le processus ou appeler une fonction d'exit. La méthode
+peut paraître brutale mais ceci suppose une corruption de la mémoire tampon
+de ce programme et, dans ce contexte, entraver un instant le bon déroulement
+d'un programme ou d'un unique processus parait bien moins grave que de risquer
+la comprimission complète du système.
+Nous installons libparanoia par son port dans /usr/ports/security/libparanoia.
+Nous vous recommendons ensuite d'exécuter le script copy-to-libc qui permet de
+patcher directement la libc FreeBSD quelqu'en soit la version.
+
+# ./copy-to-libc
+
+Le GCC Protector Patch consiste, quant à lui, en une série de vérification
+effectuée directement par le GNU Compiler Collection lors de la compilation de
+programmes. Il tire une partie de ses techniques du travail effectué pour le
+patch StackGuard pour Immunix OS, une distribution Slackware GNU/Linux
+renforcée par une série de patchs de sécurité. Ainsi, il utilise une guard
+variable inserée juste après le pointeur de trame précédente. Comme ce guard
+se trouve plus haut dans la pile qu'un tableau ou une string susceptible d'être
+détournée, il protège les arguments, l'adresse de retour et le pointeur de
+trame précédente. La valeur de cette variable est aléatoire ainsi un
+attaquant ne peut pas la calculer pour la contourner.
+
+                    |------------------------|
+                    |       arguments        |
+                    |------------------------|
+                    |     return adress      |
+                    |------------------------|
+                    | previous frame pointer |
+                    |------------------------|
+                    |         guard          |
+                    |------------------------|
+                    |        arrays          |
+                    |------------------------|
+                    |     local variables    |
+                    |------------------------|
+
+Suivant ce modèle, les données en mémoire en dehors d'une fonction ne peuvent
+pas être endommagées lorsque la fonction retourne et les attaques sur les
+pointeurs en dehors ou au sein de la fonction ne passeront pas du fait des
+limitations d'usage de la pile. Le GCC protector patch introduit donc ici un
+modèle dit Safety Protection Model de limitations d'usage de pile.
+
+Toutes ces protections se heurtent bien sûr aux limitations du langage C, par
+exemple on ne peut protéger un pointeur faisant parti d'une structure contenant
+également un tableau puisque le réagencement est interdit. Ou encore,
+l'utilisation des options d'optimisation de GCC peut entraîner la non
+utilisation des protections du patch. Cependant, le GCC Protector Patch reste
+une option intéressante dans la lutte contre les attaques par stack overflow.
+Pour l'installer et construire FreeBSD avec cette protection, nous devons
+d'abord patcher GCC puis le construire indépendemment du système.
+
+# cd /usr
+# patch -p1 < protector.patch
+
+# cd /usr/src/gnu/lib/libgcc
+# make depend && make all install clean
+
+# cd /usr/src/gnu/usr.bin/cc
+# make depend && make all install clean
+
+Puis avant d'effectuer les opérations de recompilation de FreeBSD, nous
+définissons la variable d'environnement CFLAGS indiquant les options à passer
+au compilateur
+
+# setenv CFLAGS=-O -pipe -fstack-protector
+
+A noter que l'options -fstack-protector et son opposé -fnostack-protector
+passées à GCC permettent d'activer ou non la protection du patch.
+Nous mettons maintenant la libc à jour.
+
+# cd /usr/src/lib/libc
+# make depend && make all install clean
+
+Et nous n'avons plus qu'à recompiler le monde ! Ce patch est valable depuis
+FreeBSD 4.3 et fonctionne avec les versions de GCC 2.95.2, 2.95.3 et 3.0.
+Cependant, des problèmes peuvent apparaître à la compilation d'un programme ne
+faisant pas appel à la variable d'environnement CFLAGS comme XFree. Plus
+d'informations à http://www.trl.ibm.com/projects/security/ssp/.
+
+3.5. tunneling
+
+Nous allons maintenant étudier les differentes méthodes de tunneling
+disponibles avec FreeBSD. Le tunneling nous permet d'encapsuler des sessions
+applicatives parfois sensibles comme la manipulation de courrier (POP/SMTP),
+l'IRC, la navigation web, FTP ou toute autre transmission qui peut voir passer
+des mots de passe, au sein d'un tunnel crypté. Nous en avons retenus 2
+méthodes : OpenSSH et OpenSSL/Stunnel.
+
+Depuis la configuration de sshd plus haut, vous devez avoir OpenSSH d'or et
+deja installé. Nous allons donc nous contenter ici de développer ses options de
+tunneling. Nous exécutons la commande suivante
+
+# ssh -N -f -L localport:localhost:remoteport user@remotehost
+
+L'option -N nous met en tunnel only, l'option -f permet de faire tourner ssh en
+tache de fond et -L permet de preciser les donnees du tunnel qui sont le port
+local puis le port distant entre lesquels s'effectuera le tunnel. Il ne reste
+alors plus qu'à rentrer l'hôte distant comme d'habitude. Une fois le tunnel
+établi, toute connexion avec comme source le port local indiqué dans le tunnel
+et comme destination le port distant indiqué dans le tunnel, transitera au sein
+du tunnel SSH mis en place.
+
+La seconde solution consiste à créer et utiliser des tunnels SSL avec stunnel,
+c'est notamment la solution appliquée dans le cadre d'IRCS, le reseau IRC
+securisé. Pour ce faire, nous avons besoin d'OpenSSL qui est installé dans le
+catalogue cvsup src-all et de Stunnel que nous trouverons dans
+/usr/ports/security.
+
+# cd /usr/ports/security/stunnel && make install clean
+
+Puis pour lancer une connexion distante en mode client, nous executons la
+commande suivante
+
+# stunnel -c -d localhost:localport -r remotehost:remoteservice
+
+L'option -c precise que nous sommes en mode client effectuant ainsi un
+tunneling, et l'option -r permet de preciser les données de l'hôte distant que
+sont l'adresse distante - qui peut etre une IP ou un domaine - et le service
+distant qui peut aussi bien être un port qu'un nom de service contenu dans
+/etc/services (en passant vous pouvez faire un copier/coller depuis
+http://www.iana.org/assignments/port-numbers). Vous pouvez également preciser
+un certificat permettant d'authentifier l'hôte distant (recommandé) et le
+verifier en ajoutant les options -v2 et -A path/to/certificat.pem.
+
+Nous abordons maintenant une dernière méthode de tunneling différant des 2
+précédentes par son fonctionnement au layer OSI 3, et sa capacité à servir à la
+mise en place d'un véritable Virtual Private Network entre 2 LAN distants qu'on
+veut réunir par 2 passerelles IPSec - supposant que vous diposez à la fois d'une
+adresse publique et privée - plutôt qu'à une communication end-to-end. Nous
+allons donc maintenant étudier la configuration des options de sécurité IPSec
+avec IPv4. Sous FreeBSD, nous nous servons pour se faire de la dual stack TCP/IP
+développée dans le cadre du projet KAME et qui supporte parfaitement IPv6 et
+IPSec. Vous pouvez obtenir plus d'information sur KAME à http://www.kame.net.
+
+Nous devons tout d'abord configurer une interface gif pour le tunneling IPv6/4
+over IPv6/4 afin de créer le tunnel IPSec. Pour ne pas avoir à le retaper au
+démarrage, ajoutez une entrée ifconfig_gif0 à votre rc.conf.
+
+# ifconfig create gif0
+# ifconfig gif0 tunnel localhost_public_IP remote_public_IP
+
+Nous utilisons l'interface gif afin qu'elle gère le tunnel entre IP publique et
+nous permette donc d'utiliser nos IP privées pour la configuration des règles
+de chiffrement. De cette manière, les paquets seront bien routés au niveau de
+la routing table du kernel, et non pas via la SPD, suivant un forwarding path
+classique et les connexions apparaissent dans netstat. Avec gif, il est
+possible de filtrer et sniffer au niveau de l'interface gif. Sans gif
+(c'est-à-dire en utilisant les adresses publiques des passerelles IPSec), il
+reste possible de filtrer sur les interfaces privées et éventuellement sniffer
+via des règles tee.
+
+Pour utiliser IPSec, le kernel manipule 2 bases de données à savoir la Security
+Policy Database (SPD) qui permet de définir les règles d'application du tunnel
+IPSec avec notemment la spécification des associations de sécurité (SA) ; et la
+Security Association Database (SAD) qui contient les clés des SA
+correspondantes. L'administrateur doit tout d'abord configurer la policy de la
+SPD par l'intermediare de la commande setkey, le kernel se réfère ensuite à la
+SPD pour vérifier si un paquet requiert IPSec, si c'est le cas, il utilise la
+SA spécifiée dans la SAD. En cas d'erreur ou d'impossibilité d'obtenir la clé,
+le kernel fait appelle au daemon IKE racoon qui va effectuer l'échange de clés
+afin de permettre la SA normalement en modifiant directement la SAD. Avec une
+syntaxe et une utilisation similaire à ipfw, nous utilisons setkey pour vider
+les databases avant d'y ajouter nos nouvelles policy.
+
+# setkey -FP
+# setkey -F
+
+Puis nous entrons notre policy dans la SPD sous la forme
+action net_src net_dst upperspec -P direction action \
+protocol/mode/gw_src-gw_dst/level
+
+action peut prendre comme valeur : spdadd, spddelete ou spdflush - ce dernier
+correspondant à -FP.
+net_src et net_dst désigne les adresses privées des réseaux qu'on cherche à
+réunir.
+uppersec désigne les protocoles de la couche OSI 4 pour lequel la règle
+s'applique. Le champ peut être tcp, udp ou any.
+L'option -P spécifie la policy elle-même suivi de la direction qui peut être in
+ou out, de l'action c'est-à-dire ipsec pour appliquer ipsec, none pour faire un
+tunnel simple ou discard pour rejeter le paquet ; suivi du protocol qui peut
+être ESP (Encapsulated Security Playload) offrant ainsi confidentialité par
+encryption ou AH (Authentification Header) offrant l'authentification, ou enfin
+IPCOMP. L'intégrité et la protéction contre le rejeu des données sont assurées
+pour ESP et AH. Ensuite vient le mode qui peut être transport dans lequel IPSec
+intervient entre la couche OSI 4 et 3 ainsi le paquet final utilise des
+adresses IP claires, ou tunnel dans lequel IPSec intervient après la couche OSI
+3 en rajoutant un header et en encryptant la totalité du paquet jusqu'à la
+passerelle de destination. Nous avons ensuite l'adresse de la passerelle source
+et de la passerelle de destination et pour finir le level qui peut prendre les
+valeurs default pour utiliser les variables kernel par défaut, use pour
+utiliser une SA ou poursuivre la transmission normalement en cas d'échec, ou
+require pour imposer l'utilisation d'une SA. Les premières variables sysctl
+sont toutes mises à default, suivies d'une entrée qui nous permet de rejeter
+(discard) les paquets tentant d'utiliser le VPN sans IPSec parce qu'ils ne
+correspondent pas à la security policy. Puis, nous paramètrons une entrée
+sysctl permettant de forcer la renégociation via Racoon suite à la perte d'une
+des 2 extrêmités du tunnel (en dépréciant l'ancienne SA). Enfin, nous activons
+la compatibilité Explicit Congestion Notification pour IPSec avec le traitement
+suivant : à l'encapsulation les bits ToS sont copiés excepté l'ECN CE, à la
+décapsulation, les bits ToS sont copiés mais si l'ECN CE est présent, il est
+copié au paquet decapsulé.
+
+# sysctl -w net.inet.ipsec.esp_trans_deflev=1
+# sysctl -w net.inet.ipsec.esp_net_deflev=1
+# sysctl -w net.inet.ipsec.ah_trans_deflev=1
+# sysctl -w net.inet.ipsec.ah_net_deflev=1
+# sysctl -w net.inet.ipsec.def_policy=0
+# sysctl -w net.key.prefered_oldsa=0
+# sysctl -w net.inet.ipsec.ecn=1
+
+# setkey -c << EOF
+spdadd internal_net/24 remote_internal_net/24 any -P out ipsec \
+       esp/tunnel/localhost_public_IP-remote_public_IP/default;
+spdadd remote_internal_range/24 internal_range/24 any -P in ipsec \
+       esp/tunnel/remote_public_IP-localhost_public_IP/default;
+
+Maintenant que notre tunnel IPSec est prêt à servir, il nous reste à configurer
+Racoon afin d'assurer l'échange des clés symmétriques et SAs. Pour obtenir notre
+configuration IPSec, nous modifions rc.conf pour exécuter setkey au démarrage
+avec le fichier ipsec.conf en argument.
+
+...
+ipsec_enable="YES"
+ipsec_file="/etc/ipsec.conf"
+...
+
+------------------------------------ SNiP -------------------------------------
+flush
+spdflush
+
+# SAD entry
+# SA AH avec cle 160 bits
+add localhost_public_IP remote_public_IP ah 1500 -A hmac-sha1 123ABC456EFG789HIJ10
+add remote_public_IP localhost_public_IP ah 1600 -A hmac-sha1 123ABC456EFG789HIJ10
+# SA ESP avec cle 128 bits
+add localhost_public_IP remote_public_IP esp 1500 -E blowfish-cbc 123ABC456EFG789H
+add remote_public_IP localhost_public_IP esp 1600 -E blowfish-cbc 123ABC456EFG789H
+
+# SPD entry
+spdadd internal_net/24 remote_internal_net/24 any -P out ipsec \
+       esp/tunnel/localhost_public_IP-remote_public_IP/default;
+spdadd remote_internal_range/24 internal_range/24 any -P in ipsec \
+       esp/tunnel/remote_public_IP-localhost_public_IP/default;
+------------------------------------ SNiP -------------------------------------
+
+Nous définissons ensuite pour la configuration de racoon un fichier psk.txt
+contenant les clés utilisées pour l'identification dans la première phase de
+l'échange de clés.
+
+# cat /etc/racoon/psk.txt
+remote_public_IP	shared_key
+
+Puis nous nous occupons de racoon.conf lui-même que nous éditons à partir du
+fichier de configuration par défaut.
+
+# cp /usr/local/etc/racoon/racoon.conf.dist /etc/racoon.conf
+# ee racoon.conf
+
+------------------------------------ SNiP -------------------------------------
+path pre_shared_key "/etc/racoon/psk.txt" ;
+path certificate "/usr/local/openssl/certs/";
+
+# Padding options
+padding
+{
+	maximum_length 20;
+	randomize off;
+	strict_check on;
+	exclusive_tail off;
+}
+
+# Timing Options. Elles peuvent être modifiées par l'hôte distant.
+timer
+{
+	counter 5;
+	interval 10 sec;
+	persend 1;
+	phase1 1 min;
+	phase2 30 sec;
+}
+
+# Phase 1. anonymous signifie que cette phase est appliquée à tous les hôtes.
+# Vous pouvez configurer des phases 1 et 2 pour des hôtes particuliers.
+remote anonymous
+{
+	exchange_mode main,aggressive ;
+	# mode de negociation, aggressive est plus rapide, mais main offre
+	# un mécanisme de cookie, la protéction d'identité et la fixation du
+	# Diffie-Hellman group id
+	doi ipsec_doi;
+	situation identity_only;
+	nonce_size 16;
+	lifetime time 1 min;    # sec,min,hour
+	lifetime byte 2 MB;     # B,KB,GB
+	initial_contact on;
+	proposal_check obey;    # obey, strict ou claim
+	#support_mip6 on; # support de Mobile IPv6 (cf. snapshots KAME)
+
+	proposal
+	{
+		encryption_algorithm blowfish;
+		hash_algorithm sha1;
+		authentication_method pre_shared_key ;
+		# groupe Diffie-Hellman
+		dh_group 2 ;
+	}
+}
+
+# Phase 2.
+sainfo anonymous
+{
+	pfs_group 2;
+	lifetime time 2 hour ;
+	lifetime byte 100 MB ;
+	encryption_algorithm 3des, blowfish, rijndael, twofish ;
+	authentication_algorithm hmac_sha1, hmac_md5 ;
+	# compression IPCOMP
+	compression_algorithm deflate ;
+}
+------------------------------------ SNiP -------------------------------------
+
+Vous pouvez aussi utiliser pour plus de sécurité des certificats au format PEM
+en lieu et place des psk toujours sujettes au brute force. L'utilisation des
+certificats de type X.509v3 supportés par racoon nous permet de rester
+parfaitement interopérable en conformité avec le standard PKIX. Nous allons
+avoir besoin d'openssl qui se trouve dans la base FreeBSD pour générer une
+paire de clés privé/publique puis un certificat à signer.
+
+Commençons par générer notre paire de clés RSA à 1024 bits et stockées au
+format PEM (Privacy Enhanced Mail).
+
+# openssl genrsa -out privkey.pem 1024
+
+Une fois cette (longue) opération terminée, la commande suivante nous permet
+d'effectuer une requête PKCS#10 de certification d'une clé publique et d'un
+distinguished name voire d'une certains nombres d'attributs (voir RFC 2986).
+
+# openssl req -new -nodes -newkey rsa:1024 -sha1 -keyform PEM -keyout \
+        privkey.pem -outform PEM -out request.pem
+
+Ceci déclenche une procédure semblable à celle d'adduser où il vous faudra
+répondre à certains champs qui définirons votre certificat.
+Nous devons maintenant faire signer ce certificat soit par une autorité de
+certification en lui envoyant le résultat de la requête PKCS#10 soit en la
+signant nous-même à l'aide toujours d'openssl avec la syntaxe suivante
+
+# openssl x509 -req -in request.pem -signkey privkey.pem -out cert.pem
+
+Nous obtenons ainsi le certificat cert.pem au format pem stocké dans
+/usr/local/openssl/certs/.
+
+Maintenant pour utiliser les certificats en lieu et place des psk, nous allons
+devoir procéder à quelques modifications de racoon.conf. Tout d'abord dans la
+section remote, nous devons placer 
+
+...
+certificate_type x509 "certificat" "cle_privee";
+my_identifier user_fqdn "cns@minithins.net";
+...
+
+Spécifiant ainsi l'utilisation de certificats X.509 puis le certificat et la
+clé privée, à aller chercher dans le path openssl défini au début de
+racoon.conf. My_identifier est le nom unique utilisé pendant la requête. Puis
+dans la section proposal, nous plaçons
+
+...
+authentication_method rsasig;
+...
+
+Désignant la méthode d'authentification, qui est ici signature RSA, la seule
+disponible avec la certification X.509 pour le moment.
+
+Nous ajoutons finalement une entrée dans la crontab afin que racoon se lance à
+chaque reboot ou bien nous pouvons placer un script lançant racoon dans
+/usr/local/etc/rc.d/.
+
+4. Conclusion
+
+Voila, ce paper est desormais terminé. Vous devez maintenant être en
+possession d'une machine FreeBSD configurée de manière à réduire grandement
+les risques d'intrusion ou de compromission. Cependant n'oubliez jamais que
+la sécurité absolue n'est pas de ce monde, tout ce que nous pouvons faire
+c'est gérer le risque et mettre le plus de bâtons possibles dans les roues de
+l'attaquant. Faîtes également très attention à toutes les relations de
+confiance que vous établissez avec des hôtes distants. En effet, via ce qu'on
+appelle la contamination par métastases, vous pourriez rapidement être
+compromis si vous ne prêtez aucune attention à vos connexions et que vous avez
+toujours confiance en n'importe qui. Souvenez vous enfin que la sécurité ne
+peut pas se résumer à un programme ou une technique unique, c'est une chaîne de
+processus dont aucun maillon n'est sûr à 100% ce qui nous donne avec la theorie
+des systèmes linéaires un processus extrêmement fragile. Le but est de rendre
+la tâche de l'intrus la plus ardue possible.
+
+-------------------------------------------------------------------------------
+
+Copyright (c) 2001,2002,2003 CNS <cns at minithins.net>
+
+Free Document Dissemination Licence -- FDDL version 1
+http://pauillac.inria.fr/~lang/licence/v1/fddl.html
+
+This document may be freely read, stored, reproduced, disseminated, translated
+or quoted by any means and on any medium provided the following conditions are
+met:
+
+    * every reader or user of this document acknowledges that he his aware that
+      no guarantee is given regarding its contents, on any account, and
+      specifically concerning veracity, accuracy and fitness for any purpose;
+    * no modification is made other than cosmetic, change of representation
+      format, translation, correction of obvious syntactic errors, or as
+      permitted by the clauses below;
+    * comments and other additions may be inserted, provided they clearly
+      appear as such; translations or fragments must clearly refer to an
+      original complete version, preferably one that is easily accessed
+      whenever possible;
+    * translations, comments and other additions must be dated and their
+      author(s) must be identifiable (possibly via an alias);
+    * this licence is preserved and applies to the whole document with
+      modifications and additions (except for brief quotes), independently of
+      the representation format;
+    * whatever the mode of storage, reproduction or dissemination, anyone able
+      to access a digitized version of this document must be able to make a
+      digitized copy in a format directly usable, and if possible editable,
+      according to accepted, and publicly documented, public standards;
+    * redistributing this document to a third party requires simultaneous
+      redistribution of this licence, without modification, and in particular
+      without any further condition or restriction, expressed or implied,
+      related or not to this redistribution. In particular, in case of
+      inclusion in a database or collection, the owner or the manager of the
+      database or the collection renounces any right related to this inclusion
+      and concerning the possible uses of the document after extraction from
+      the database or the collection, whether alone or in relation with other
+      documents. 
+
+Any incompatibility of the above clauses with legal, contractual or judiciary
+decisions or constraints implies a corresponding limitation of reading, usage,
+or redistribution rights for this document, verbatim or modified.

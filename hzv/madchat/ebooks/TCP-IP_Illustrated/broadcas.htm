@@ -1,0 +1,625 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1251">
+<TITLE>Chapter 12. Broadcasting and Multicasting</TITLE>
+
+<META NAME="GENERATOR" CONTENT="Internet Assistant for Microsoft Word 2.04z">
+</HEAD>
+<BODY>
+<a name="12_0"><H1><I>Broadcasting and Multicasting</I></H1></a>
+<a name="12_1"><H3>12.1 Introduction</H3></a>
+<P>
+We mentioned in <a href="introduc.htm#1_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/introduc.htm#1_0">Chapter 1</a> that there are three kinds
+of IP addresses: <I>unicast, broadcast, </I>and <I>multicast.</I>
+In this chapter we discuss broadcasting and multicasting in more
+detail.
+<P>
+Broadcasting and multicasting only apply to UDP,
+where it makes sense for an application to send a single message
+to multiple recipients. TCP is a connection-oriented protocol
+that implies a connection between two hosts (specified by IP addresses)
+and one process on each host (specified by port numbers).
+<P>
+Consider a set of hosts on a shared network such
+as an Ethernet. Each Ethernet frame contains the source and destination
+Ethernet addresses (48-bit values). Normally each Ethernet frame
+is destined for a single host. The destination address specifies
+a single interface-called a <I>unicast.</I> In this way communication
+between any two hosts doesn't bother any of the remaining hosts
+on the cable (except for possible contention for the shared media).
+<P>
+There are times, however, when a host wants to send
+a frame to every other host on the cable-called a <I>broadcast.</I>
+We saw this with ARP and RARP. Multicasting fits between unicasting
+and broadcasting: the frame should be delivered to a set of hosts
+that belong to a multicast group.
+<P>
+To understand broadcasting and multicasting we need
+to understand that filtering takes place on each host, each time
+a frame passes by on the cable. Figure 12.1 shows a picture of
+this.
+<P>
+First, the interface card sees every frame that passes
+by on the cable and makes a decision whether to receive the frame
+and deliver it to the device driver. Normally the interface card
+receives only those frames whose destination address is either
+the hardware address of the interface or the broadcast address.
+Additionally, most interfaces can be placed into a promiscuous
+mode whereby they receive a copy of every frame. This mode is
+used by <TT>tcpdump</TT>, for example.
+<P>
+<CENTER><a name="fig_12_1"><img src="f_12_1.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_12_1.gif"></a><br>
+<B>Figure 12.1</B> Filtering
+that takes place up the protocol stack when a frame is received.</CENTER>
+<P>
+Today most interfaces can also be configured to receive
+frames whose destination address is a multicast address, or some
+subset of multicast addresses. On an Ethernet, a multicast address
+has the low-order bit of the high-order byte turned on. In hexadecimal
+this bit looks like <TT>01:00:00:00:00:00</TT>.
+(We can consider the Ethernet broadcast address, <TT>ff:ff:ff:ff:ff:ff</TT>
+as a special case of the Ethernet multicast address.)
+<P>
+If the interface card receives the frame, it is passed
+to the device driver. (One reason the interface card might discard
+the frame is if the Ethernet checksum is incorrect.) Additional
+filtering is performed by the device driver. First, the frame
+type must specify a protocol that is supported (IP, ARP, etc.).
+Second, additional multicast filtering may be performed, to check
+whether the host belongs to the addressed multicast group.
+<P>
+The device driver then passes the frame to the next
+layer, such as IP, if the frame type specifies an IP datagram.
+IP performs more filtering, based on the source and destination
+IP addresses, and passes the datagram up to the next layer (such
+as TCP or UDP) if all is well.
+<P>
+Each time UDP receives a datagram from IP, it performs
+filtering based on the destination port number, and sometimes
+the source port number too. If no process is currently using the
+destination port number, the datagram is discarded and an ICMP
+port unreachable message is normally generated. (TCP performs
+similar filtering based on its port numbers.) If the UDP datagram
+has a checksum error, UDP silently discards it.
+<P>
+The problem with broadcasting is the processing load
+that it places on hosts that aren't interested in the broadcasts.
+Consider an application that is designed to use UDP broadcasts.
+If there are 50 hosts on the cable, but only 20 are participating
+in the application, every time one of the 20 sends a UDP broadcast,
+the other 30 hosts have to process the broadcast, all the way
+up through the UDP layer, before the UDP datagram is discarded.
+The UDP datagram is discarded by these 30 hosts because the destination
+port number is not in use.
+<P>
+The intent of multicasting is to reduce this load
+on hosts with no interest in the application. With multicasting
+a host specifically joins one or more multicast groups. If possible,
+the interface card is told which multicast groups the host belongs
+to, and only those multicast frames are received.
+<a name="12_2"><H3>12.2 Broadcasting</H3></a>
+<P>
+In <a href="ip_inter.htm#fig_3_9" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#fig_3_9">Figure 3.9</a> we showed four different forms of IP
+broadcast addresses. We now describe them in more detail.
+<H4>Limited Broadcast</H4>
+<P>
+The <I>limited broadcast address</I> is 255.255.255.255.
+This can be used as the destination address of an IP datagram
+during the host configuration process, when the host might not
+know its subnet mask or even its IP address.
+<P>
+A datagram destined for the limited broadcast address
+is <I>never</I> forwarded by a router under any circumstance.
+It only appears on the local cable.
+<P>
+An unanswered question is: if a host is multihomed
+and a process sends a datagram to the limited broadcast address,
+should the datagram be sent out each connected interface that
+supports broadcasting? If not, an application that wants to broadcast
+out all interfaces must determine all the interfaces on the host
+that support broadcasting, and send a copy out each interface.
+<P>
+Most BSD systems treat 255.255.255.255 as an alias
+for the broadcast address of the first interface that was configured,
+and don't provide any way to send a datagram out all attached,
+broadcast-capable interfaces. Indeed, two applications that send
+UDP datagrams out every interface are <TT>routed</TT>
+(<a href="dynamic.htm#10_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dynamic.htm#10_3">Section 10.3</a>) and <TT>rwhod</TT> (the server
+for the BSD <TT>rwho</TT> client). Both of
+these applications go through a similar start-up procedure to
+determine all the interfaces on the host, and which ones are capable
+of broadcasting. The net-directed broadcast address corresponding
+to that interface is then used as the destination address for
+datagrams sent out the interface.
+<P>
+<FONT SIZE=-1>The Host Requirements RFC takes no stand on the issue
+of whether a multihomed host should send a limited broadcast out
+all its interfaces.</FONT>
+<H4>Net-directed Broadcast</H4>
+<P>
+The <I>net-directed broadcast address</I> has a host
+ID of all one bits. A class A net-directed broadcast address is
+netid.255.255.255, where <I>netid</I> is the class A network ID.
+<P>
+A router must forward a net-directed broadcast, but
+it must also have an option to disable this forwarding.
+<H4>Subnet-directed Broadcast</H4>
+<P>
+The <I>subnet-directed broadcast address</I> has
+a host ID of all one bits but a specific subnet ID. Classification
+of an IP address as a subnet-directed broadcast address requires
+knowledge of the subnet mask. For example, if a router receives
+a datagram destined for 128.1.2.255, this is a subnet-directed
+broadcast if the class B network 128.1 has a subnet mask of 255.255.255.0,
+but it is not a broadcast if the subnet mask is 255.255.254.0
+(<TT>0xfffffe00</TT>).
+<H4>All-subnets-directed Broadcast</H4>
+<P>
+An <I>all-subnets-directed broadcast address</I>
+also requires knowledge of the destination network's subnet mask,
+to differentiate this broadcast address from a net-directed broadcast
+address. Both the subnet ID and the host ID are all one bits.
+For example, if the destination's subnet mask is 255.255.255.0,
+then the IP address 128.1.255.255 is an all-subnets-directed broadcast.
+But if the network is not subnetted, then this is a net-directed
+broadcast.
+<P>
+Current feeling [Almquist 1993] is that this type
+of broadcast is obsolete. It is better to use multicasting than
+an all-subnets-directed broadcast.
+<P>
+<FONT SIZE=-1>[Almquist 1993] notes that RFC 922 requires that
+an all-subnets-directed broadcast be sent to all subnets, but
+no current routers do so. This is fortunate since a host that
+has been misconfigured without its subnet mask sends all its &quot;local&quot;
+broadcasts to all subnets. For example, if the host with IP address
+128.1.2.3 doesn't set a subnet mask, then its broadcast address
+normally defaults to 128.1.255.255. But if the subnet mask should
+have been set to 255.255.255.0, then broadcasts from this misconfigured
+host appear directed to all subnets.
+<P>
+The first widespread implementation of TCP/IP, the
+4.2BSD system in 1983, used a host ID of all zero bits for the
+broadcast address. One of the earliest references to the broadcast
+IP address is IEN 212 [Gurwitz and Hinden 1982], and it <I>proposed</I>
+to define the IP broadcast address as a host ID of one bits. (lENs
+are the <I>Internet Experiment Notes,</I> basically predecessors
+to the RFCs.) RFC 894 [Hornig 1984] commented that 4.2BSD used
+a nonstandard broadcast address, but RFC 906 [Finlayson 1984]
+noted that there was no Internet standard for the broadcast address.
+The RFC editor added a footnote to RFC 906 acknowledging the lack
+of a standard broadcast address, but strongly recommended that
+a host ID of all one bits be used as the broadcast address. Although
+Berkeley adopted the use of all one bits for the broadcast address
+with 4.3BSD in 1986, some operating systems (notably SunOS 4.x)
+continued to use the nonstandard broadcast address through the
+early 1990s.</FONT>
+<a name="12_3"><H3>12.3 Broadcasting Examples</H3></a>
+<P>
+How are broadcasts sent and what do routers and hosts
+do with broadcasts? Unfortunately this is a hard question to answer
+because it depends on the type of broadcast address, the application,
+the TCP/IP implementation, and possible configuration switches.
+First, the application must support broadcasting. If we execute
+<TABLE>
+<TR><TD WIDTH=461><TT>sun % <B>ping 255.255.255.255
+<BR>
+</B>/usr/etc/ping: unknown host 255.255.255.255</TT>
+</TD></TR>
+</TABLE>
+<P>
+intending to send a broadcast on the local cable,
+it doesn't work. But the problem here is a programming problem
+in the application (<TT>ping</TT>). Most applications
+that accept either a dotted-decimal IP address or a hostname call
+the function <TT>inet_addr</TT>(3) to convert
+the dotted-decimal character string to its 32-bit binary IP address,
+and if this fails, assume the character string is a hostname.
+Unfortunately this library function returns -1 to indicate an
+error (such as a character other than a digit or decimal point
+in the string), but the limited broadcast address (255.255.255.255)
+also converts into -1. Most programs then assume that the character
+string is a hostname, look it up using the DNS (<a href="dns_the.htm#14_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dns_the.htm#14_0">Chapter 14</a>), and
+end up printing an error such as &quot;unknown host.&quot;
+<P>
+If we fix this programming shortfall in the <TT>ping</TT>
+program, however, the results are often not what we expect. On
+six different systems tested by the author, only one handled this
+as expected and generated a broadcast packet on the local cable.
+Most looked up the IP address 255.255.255.255 in the routing table,
+applied the default route, and sent a unicast packet to the default
+router. Eventually the packet was thrown away
+<P>
+A subnet-directed broadcast is what we should be
+using. Indeed, in <a href="icmp_int.htm#6_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#6_3">Section 6.3</a> we sent datagrams to the IP address
+140.252.13.63 for the bottom Ethernet in our test network (inside
+front cover), and got replies from all the hosts on the Ethernet.
+The subnet-directed broadcast address associated with each interface
+is the value used with the <TT>ifconfig</TT>
+command (<a href="ip_inter.htm#3_8" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/ip_inter.htm#3_8">Section 3.8</a>). If we ping that address, the result is
+what we expect:
+<P>
+<TT>sun % <B>arp -a</B>
+<I>ARP cache is empty</I></TT>
+<P>
+<TT>sun % <B>ping 140.252.13.63
+<BR>
+</B>PING 140.252.13.63: 56 data bytes<BR>
+64 bytes from sun (140.252.13.33):
+icmp_seq=0. time=4. ms<BR>
+64 bytes frombsdi (140.252.13.35): icmp_seq=0. time=172. ms<BR>
+64 bytes from svr4 (140.252.13.34): icmp_seq=0. time=192. ms</TT>
+<P>
+<TT>64 bytes from sun (140.252.13.33): icmp_seq=l. time=1. ms
+<BR>
+64 bytes from bsdi (140.252.13.35):
+icmp_seq=l. time=52. ms<BR>
+64 bytes from svr4 (140.252.13.34): icmp_seq=l. time=90. ms</TT>
+<P>
+<TT><B>^?</B> <I>type
+interrupt key to stop<BR>
+</I>--140.252.13.63 PING Statistics--<BR>
+2 packets transmitted, 6 packets
+received, -200% packet loss<BR>
+round-trip (ms) min/avg/max = 1/85/192</TT>
+<P>
+<TT>sun % arp -a <I>check ARP cache again
+<BR>
+</I>svr4 (140.252.13.34) at 0:0:c0:c2:9b:26<BR>
+bsdi (140.252.13.35) at 0:0:c0:6f:2d:40</TT>
+<P>
+IP looks at the destination address (140.252.13.63),
+determines that it is the subnet-directed broadcast address, and
+sends the datagram to the link-layer broadcast address.
+<P>
+We mentioned in <a href="icmp_int.htm#6_3" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/icmp_int.htm#6_3">Section 6.3</a> that this type of broadcast
+means all the hosts on the local network, including the sender.
+We see here that we do get a reply from the sending host (<TT>sun</TT>)
+in addition to the other hosts on the cable.
+<P>
+In this example we've also shown the ARP cache before
+and after the <TT>ping</TT> of the broadcast
+address. This is to show the interaction between broadcasting
+and ARP. &quot;The ARP cache is empty before we execute <TT>ping</TT>,
+but full afterward. (That is, there is one entry for every other
+host on the cable that responded to the echo request.) How did
+this happen when we said that the Ethernet frame is sent to the
+link-layer broadcast address (<TT>0xffffffff</TT>)?
+The sending of these frames by sun does not require ARP.
+<P>
+If we watch <TT>ping</TT> using
+<TT>tcpdump</TT>, we see that it is the recipients
+of the broadcast frames that generate an ARP request to <TT>sun</TT>,
+before they can send their reply. This is because the reply is
+unicast. We said in <a href="arp_addr.htm#4_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/arp_addr.htm#4_5">Section 4.5</a> that the receiver of an ARP request
+(sun in this example) normally adds the requestor's IP address
+and hardware address to its ARP cache, in addition to sending
+an ARP reply. This is on the assumption that if the requestor
+is about to send us a packet, we'll probably want to send something
+back.
+<P>
+Our use of <TT>ping</TT> is somewhat
+special because the type of programming interface that it uses
+(called &quot;raw sockets&quot; on most Unix implementations)
+always allows a datagram to be sent to the broadcast address.
+What if we use an application that was not designed to support
+broadcasting, such as TFTP? (We cover TFTP in more detail in <a href="tftp_tri.htm#15_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/tftp_tri.htm#15_0">Chapter 15</a>.)
+<TABLE>
+<TR><TD WIDTH=300><TT>bsdi % <B>tftp</B></TT>
+</TD><TD WIDTH=300><I>start the client</I>
+</TD></TR>
+<TR><TD WIDTH=300><TT>tftp&gt; <B>connect 140.252.13.63</B></TT>
+</TD><TD WIDTH=300><I>specify the IP address of the server</I>
+</TD></TR>
+<TR><TD WIDTH=300><TT>tftp&gt; <B>get temp.foo</B></TT>
+</TD><TD WIDTH=300><I>and try to fetch a file from the server</I>
+</TD></TR>
+<TR><TD WIDTH=300><TT>tftp: sendto: Permission denied</TT>
+</TD><TD WIDTH=300></TD></TR>
+<TR><TD WIDTH=300><TT>tftp&gt; <B>quit</B></TT>
+</TD><TD WIDTH=300><I>terminate the client</I>
+</TD></TR>
+</TABLE>
+<P>
+Here we get an error immediately, and nothing is
+sent on the cable. What's happening here is that the sockets API
+doesn't allow a process to send a UDP datagram to the broadcast
+address unless the process specifically states that it plans to
+broadcast. This is intended to prevent users from mistakenly specifying
+a broadcast address (as we did here) when the application was
+never intended to broadcast.
+<P>
+<FONT SIZE=-1>With the sockets API the application must set the
+<TT>SO_BROADCAST</TT> socket option before
+sending a UDP datagram to a broadcast address.
+<P>
+Not all systems enforce this restriction. Some implementations
+allow any process to broadcast UDP datagrams, without requiring
+the process to say so. Others are more restrictive and require
+a process to have superuser privileges to broadcast.</FONT>
+<P>
+The next question is whether directed broadcasts
+are forwarded or not. Some kernels and routers have an option
+to enable or disable this feature. (See Appendix E.)
+<P>
+If we enable this feature on our router <TT>bsdi</TT>
+and run <TT>ping</TT> from the host <TT>slip</TT>,
+we can see if the subnet-directed broadcasts are forwarded by
+<TT>bsdi</TT>. Forwarding a directed broadcast
+means the router takes the incoming unicast datagram, determines
+that the destination address is the directed broadcast for one
+of its interfaces, and then forwards the datagram onto the appropriate
+network using a link-layer broadcast.
+<P>
+<TT>slip % <B>ping 140.252.13.63</B></TT>
+<P>
+<TT>PING 140.252.13.63 (140.252.13.63): 56 data bytes
+64 bytes<BR>
+from 140.252.13.35: icmp_seq=0 ttl=255 time=190 ms 64 bytes<BR>
+from 140.252.13.33: icmp_seq=0 ttl=254 time=280 ms (DUP!)<BR>
+64 bytes from 140.252.13.34; icmp_seq=0 ttl=254 time=360 ms (DUP!)</TT>
+<P>
+<TT>64 bytes from 140.252.13.35; icmp_seq=l ttl=255
+time=180 ms<BR>
+64 bytes from 140.252.13.33: icmp_seq=l ttl=254 time=270 ms (DUP!)
+<BR>
+64 bytes from 140.252.13.34: icmp_seq=l ttl=254 time=360 ms (DUP!)</TT>
+<P>
+<TT><B>^?</B>
+<I>type interrupt key to
+stop<BR>
+</I>- 140.252.13.63 ping statistics -<BR>
+3 packets transmitted, 2 packets received, +4 duplicates, 33%
+packet loss<BR>
+round-trip min/avg/max = 180/273/360 ms</TT>
+<P>
+We see that this does indeed work. We also see that
+the BSD <TT>ping</TT> program checks for duplicate
+sequence numbers and prints <TT>DUP!</TT>
+when this occurs. It normally means a packet was duplicated somewhere,
+but here we expect to see this, since we sent the requests to
+a broadcast address.
+<P>
+We can also run this test from a host much farther
+away from the network to which the broadcast is directed. If we
+run ping from the host <TT>vangogh.cs.berkeley.edu</TT>
+(14 hops away from our network), it still works if the router
+<TT>sun</TT> is configured to forward directed
+broadcasts. In this case the IP datagrams (carrying the ICMP echo
+requests) are forwarded by every router in the path as a normal
+datagram. None of them knows that it's really a directed broadcast.
+The next to last router, <TT>netb</TT>, thinks
+it's for the host with an ID of 63, and forwards it to <TT>sun</TT>.
+It is the router <TT>sun</TT> that detects
+that the destination IP address is really the broadcast address
+of an attached interface, and turns the datagram into a link-layer
+broadcast on that network.
+<P>
+Broadcasting is a feature that should be used with
+great care. In many cases IP multicasting will prove to be a better
+solution.
+<a name="12_4"><H3>12.4 Multicasting</H3></a>
+<P>
+IP multicasting provides two services for an application.
+<OL>
+<LI>Delivery to multiple destinations. There are
+many applications that deliver information to multiple recipients:
+interactive conferencing and dissemination of mail or news to
+multiple recipients, for example. Without multicasting these types
+of services tend to use TCP today (delivering a separate copy
+to each destination). Even with multicasting, some of these applications
+might continue to use TCP for its reliability.
+<LI>Solicitation of servers by clients. A diskless
+workstation, for example, needs to locate a bootstrap server.
+Today this is provided using a broadcast (as we'll see with BOOTP
+in <a href="bootp.htm#16_0" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/bootp.htm#16_0">Chapter 16</a>), but a multicast solution would impose less overhead
+on the hosts that don't provide the service.
+</OL>
+<P>
+In this section we'll take a look at multicast addresses,
+and the next chapter looks at the protocol used by multicasting
+hosts and routers (IGMP).
+<P>
+<H4>Multicast Group Addresses</H4>
+<P>
+Figure 12.2 shows the format of a class D IP address.
+
+<P>
+<CENTER><a name="fig_12_2"><img src="f_12_2.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_12_2.gif"></a><br>
+<B>Figure 12.2</B> Format
+of a class D IP address.</CENTER>
+<P>
+Unlike the other three classes of IP addresses (A,
+B, and C), which we showed in <a href="#introduc.htm#fig_1_5">Figure 1.5</a>, the 28 bits allocated
+for the multicast group ID have no further structure.
+<P>
+A <I>multicast group address</I> is the combination
+of the high-order 4 bits of 1110 and the multicast group ID. These
+are normally written as dotted-decimal numbers and are in the
+range 224.0.0.0 through 239.255.255.255.
+<P>
+The set of hosts listening to a particular IP multicast
+address is called a <I>host group. </I>A host group can span multiple
+networks. Membership in a host group is dynamic-hosts may join
+and leave host groups at will. There is no restriction on the
+number of hosts in a group, and a host does not have to belong
+to a group to send a message to that group.
+<P>
+Some multicast group addresses are assigned as well-known
+addresses by the IANA (Internet Assigned Numbers Authority). &quot;These
+are called <I>permanent host groups. </I>This is similar to the
+well-known TCP and UDP port numbers. Similarly, these well-known
+multicast addresses are listed in the latest Assigned Numbers
+RFC. Notice that it is the multicast address of the group that
+is permanent, not the membership of the group.
+<P>
+For example, 224.0.0.1 means &quot;all systems on
+this subnet,&quot; and 224.0.0.2 means &quot;all routers on this
+subnet.&quot; The multicast address 224.0.1.1 is for NTP, the
+Network Time Protocol, 224.0.0.9 is for RIP-2 (<a href="dynamic.htm#10_5" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/dynamic.htm#10_5">Section 10.5</a>),
+and 224.0.1.2 is for SGI's (Silicon Graphics) dogfight application.
+<H4>Converting Multicast Group Addresses to Ethernet Addresses
+</H4>
+<P>
+The IANA owns an Ethernet address block, which in
+hexadecimal is <TT>00:00:5e</TT>. This is
+the high-order 24 bits of the Ethernet address, meaning that this
+block includes addresses in the range <TT>00:00:5e:00:00:00</TT>
+through <TT>00:00:5e:ff:ff:ff</TT>. The IANA
+allocates half of this block for multicast addresses. Given that
+the first byte of any Ethernet address must be <TT>01</TT>
+to specify a multicast address, this means the Ethernet addresses
+corresponding to IP multicasting are in the range <TT>01:00:5e:00:00:00</TT>
+through <TT>01:00:5e:7f:ff:ff</TT>.
+<P>
+<FONT SIZE=-1>Our notation here uses the Internet standard bit
+order, for a CSMA/CD or token bus network, as the bits appear
+in memory. This is what most programmers and system administrators
+deal with. The IEEE documentation uses the transmission order
+of the bits. The Assigned Numbers RFC gives additional details
+on the differences between these representations.</FONT>
+<P>
+This allocation allows for 23 bits in the Ethernet
+address to correspond to the IP multicast group ID. The mapping
+places the low-order 23 bits of the multicast group ID into these
+23 bits of the Ethernet address. This is shown in Figure 12.3.
+<P>
+Since the upper 5 bits of the multicast group ID
+are ignored in this mapping, it is not unique. Thirty-two different
+multicast group IDs map to each Ethernet address. For example,
+the multicast addresses 224.128.64.32 (hex <TT>e0.80.40.20</TT>)
+and 224.0.64.32 (hex <TT>e0.00 40.20</TT>)
+both map into the Ethernet address <TT>01:00:5e:00:40:20</TT>.
+<P>
+Since the mapping is not unique, it implies that
+the device driver or the IP module in <a href="#fig_12_1">Figure 12.1</a> must perform
+filtering, since the interface card may receive multicast frames
+in which the host is really not interested. Also, if the interface
+card doesn't<BR>
+
+<P>
+<CENTER><a name="fig_12_3"><img src="f_12_3.gif" tppabs="http://www.uic.rnd.runnet.ru/doc/inet/tcp_stevens/gifs/f_12_3.gif"></a><br><B>Figure 12.3</B> Mapping
+of a class D IP address into Ethernet multicast address.</CENTER>
+<P>
+provide adequate filtering of multicast frames, the
+device driver may have to receive all multicast frames, and perform
+the filtering itself.
+<P>
+<FONT SIZE=-1>LAN interface cards tend to come in two varieties.
+One type performs multicast filtering based on the hash value
+of the multicast hardware address, which means some unwanted frames
+can always get through. The other type has a small, fixed number
+of multicast addresses to listen for, meaning that when the host
+needs to receive more multicast addresses than are supported,
+the interface must be put into a &quot;multicast promiscuous&quot;
+mode. Hence, both types of interfaces still require that the device
+driver perform checking that the received frame is really wanted.
+<P>
+Even if the interface performs perfect multicast
+filtering (based on the 48-bit hardware address), since the mapping
+from a class D IP address to a 48-bit hardware address is not
+one-to-one, filtering is still required.
+<P>
+Despite this imperfect address mapping and hardware
+filtering, multicasting is still better than broadcasting.</FONT>
+<P>
+Multicasting on a single physical network is simple.
+The sending process specifies a destination IP address that is
+a multicast address, the device driver converts this to the corresponding
+Ethernet address, and sends it. The receiving processes must notify
+their IP layers that they want to receive datagrams destined for
+a given multicast address, and the device driver must somehow
+enable reception of these multicast frames. This is called &quot;joining
+a multicast group.&quot; (The reason we use the plural &quot;receiving
+processes&quot; is because there are normally multiple receivers
+for a given multicast message, either on the same host or on multiple
+hosts, which is why we're using multicasting in the first place.)
+When a multicast datagram is received by a host, it must deliver
+a copy to all the processes that belong to that multicast group.
+This is different from UDP where a single process receives an
+incoming unicast UDP datagram. With multicasting it is possible
+for multiple processes on a given host to belong to the same multicast
+group.
+<P>
+But complications arise when we extend multicasting
+beyond a single physical network and pass multicast packets through
+routers. A protocol is needed for multicast routers to know if
+any hosts on a given physical network belong to a given multicast
+group. This protocol is called the <I>Internet Group Management
+Protocol</I> (IGMP) and is the topic of the next chapter.
+<H4>Multicasting on FDDI and Token Ring Networks</H4>
+<P>
+FDDI networks use the same mapping between the class
+D IP address and the 48-bit FDDI address [Katz 1990]. Token ring
+networks normally use a different mapping, because of limitations
+in most token ring controllers [Pusateri 1993].
+<a name="12_5"><H3>12.5 Summary</H3></a>
+<P>
+Broadcasting is sending a packet to <I>all</I> hosts
+on a network (usually a locally attached network) and multicasting
+is sending a packet to a <I>set</I> of hosts on a network. Basic
+to these two concepts is an understanding of the different types
+of filtering that occur when a received frame passes up a protocol
+stack. Each layer can discard a received packet for different
+reasons.
+<P>
+There are four types of broadcast addresses: limited,
+net-directed, subnet-directed, and all-subnets-directed. The most
+common is subnet-directed. The limited broadcast address is normally
+seen only when a system is bootstrapping.
+<P>
+Problems occur when trying to broadcast through routers,
+often because the router may not know the subnet mask of the destination
+network. The results depend on many factors: which type of broadcast
+address, configuration parameters, and so on.
+<P>
+A class D IP address is called a multicast group
+address. It is converted to an Ethernet address by placing its
+lower 23 bits into a fixed Ethernet address. The mapping is not
+unique, requiring additional filtering by one of the protocol
+modules.
+<H4>Exercises</H4>
+<P>
+<B>12.1</B> Does broadcasting
+increase the amount of network traffic?
+<P>
+<B>12.2</B> Consider 50 hosts
+on an Ethernet: 20 running TCP/IP and 30 running some other protocol
+suite. How are broadcasts from one protocol suite handled by hosts
+running the other protocol suite?
+<P>
+<B>12.3</B> You login to a Unix
+system that you've never used before and want to find the subnet-directed
+broadcast address for all attached interfaces that support broadcasting.
+How can you do this?
+<P>
+<B>12.4</B> If we <TT>ping</TT>
+the broadcast address with a large packet size, as in
+<TABLE>
+<TR><TD WIDTH=590><TT>sun % <B>ping 140.252.13.63 1472
+<BR>
+</B>PING 140.252.13.63; 1472 data bytes<BR>
+1480 bytes from sun (140.252.13.33): icmp_seq=0. time=6. ms<BR>
+1480 bytes from svr4 (140.252.13.34): icmp_seq=0. time=84. ms<BR>
+1480 bytes from bsdi (140.252.13.35): icmp_seq=0. time=128. ms</TT>
+</TD></TR>
+</TABLE>
+<P>
+it works, but increasing the packet size by 1 byte
+gives us the following error:
+<TABLE>
+<TR><TD WIDTH=0>
+<P>
+<TT>sun % <B>ping 140.252.13.63 1473<BR>
+</B>PING 140.252.13.63: 1473 data bytes<BR>
+sendto: Message too long </TT>
+</TD></TR>
+</TABLE>
+<P>
+What's going on?
+<P>
+<B>12.5</B> Redo Exercise 10.6
+assuming the eight RIP messages are multicast instead of broadcast
+(assume RIP Version 2 is being used). What changes?
+</BODY>
+</HTML>

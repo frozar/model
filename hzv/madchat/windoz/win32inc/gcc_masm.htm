@@ -1,0 +1,322 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html><head>
+  <meta name="GENERATOR" content="Namo WebEditor v2.00">
+  <style><!--
+-->
+</style><title>Gnu C and MASM (for Win32 programming)</title></head><body alink="red" bgcolor="white" link="blue" text="black" vlink="purple">
+<table border="0">
+  <tbody><tr>
+    <td width="414"><h1>
+	Gnu C and MASM&nbsp;<br>
+	(for Win32 programming)
+      </h1>
+    </td>
+    <td valign="bottom" width="183"><small>Page updated May 13, 2001</small></td>
+  </tr>
+</tbody></table>
+<p>
+Firstly, you need to understand where I'm coming from. I wrote a major Win32
+application, goosee.exe, completely in MASM code. Recently, I decided that
+I wanted to move over to C, that is, to keep working on goosee but mostly
+in C.<br>
+So, I had to keep the huge body of existing MASM code, assemble it with MASM
+(I use version 6.14), but for the new code I needed a C compiler. Each of
+these, MASM and the C compiler, will produce an object file, and I needed
+to link these together to form the final executable.
+</p><p>
+First, I tried Borland's C/C++ version 5.5, downloadable free off the Web.
+However, at the link step the two object files could not seem to find each
+other's symbols. I wondered if this had something to do with the Borland
+object file being OMF format which Microsoft's link.exe program automatically
+converted to COFF.<br>
+Maybe I should have persisted with trying to get it working, but I opted
+for another solution, that worked first go ...
+</p><h2>
+  Downloading Mingw GCC Dev-C++ and docs
+</h2>
+<p>
+Gnu GCC C/C++ is a very powerful multi-CPU and multi-operating-system
+compiler&nbsp;and totally free. You can find on-line documentation on the
+actual compiler here:
+</p><p>
+<a href="http://www.cygnus.com/pubs/gnupro/2_comp/Using_GNU_CC/gcc.html">http://www.cygnus.com/pubs/gnupro/2_comp/Using_GNU_CC/gcc.html</a>,
+or<br>
+<a href="http://gcc.gnu.org/onlinedocs/gcc-2.95.2/gcc.html">http://gcc.gnu.org/onlinedocs/gcc-2.95.2/gcc.html</a>
+</p><p>
+Anyway, there is a specific version of GCC for Win32 programming, called
+Mingw, and a complete package of the Mingw compiler with a super-nice IDE/editor
+is available, called Dev-C++ -- this is what I used. You get it from here:
+</p><p>
+<a href="http://sourceforge.net/projects/dev-cpp/">http://sourceforge.net/projects/dev-cpp/</a>,
+or<br>
+<a href="http://www.bloodshed.net/devcpp.html">http://www.bloodshed.net/devcpp.html</a>
+</p><p>
+You need to download the complete binary package, early May 2001 it was called
+devcpp4.zip.<br>
+When you install it, it will by default install into C:\dev-c++&nbsp;\ with
+various subdirectories including bin\, include\ and lib\.
+</p><p>
+Note that you can get the Mingw compiler on its own, from the Mingw site,
+but it is easier if you get the complete Dev-C++ package, as everything gets
+put into the right directories with minimal fuss. However, you may find it
+useful to look at the Mingw development site, maybe for extra docs:
+</p><p>
+<a href="http://sourceforge.net/projects/mingw">http://sourceforge.net/projects/mingw</a>,
+or<br>
+<a href="http://www.mingw.org/">http://www.mingw.org/</a>
+</p><h2>
+  Getting DEVCPP and MASM together
+</h2>
+<p>
+What I am assuming here is that you have my WINMASM.ZIP package installed.
+It contains a skeleton Win32 application and a Make file. Microsoft nmake.exe,
+ml.exe (MASM), rc.exe (resource compiler) and link.exe are including in this
+package.
+</p><p>
+To compile a C file and link it with a MASM object file, firstly you need
+to put this into your AUTOEXEC.BAT file (then reboot):
+</p>
+<pre><code>rem this is for dev-cpp/mingw/gcc c/c++ development...
+SET PATH=c:\dev-c_~1\bin;%path%
+SET COMPILER_PATH=c:\dev-c_~1\bin\
+SET LIBRARY_PATH=c:\dev-c_~1\lib\
+SET C_INCLUDE_PATH=c:\dev-c_~1\include\
+SET CPP_INCLUDE_PATH=c:\dev-c_~1\include\;c:\dev-c_~1\include\g++\</code>
+</pre>
+<p>
+gcc.exe, the C/C++ compiler, is located in c:\dev-c++\bin, hence the first
+line sets the DOS search path so it can be found. gcc.exe itself calls other
+programs, which are located by the COMPILER_PATH environment variable, while
+the library and include files are located by the other variables.
+</p><p>
+When you have done that, you can then modify the Make file (let's call it
+skeleton.mak):
+</p>
+<pre><code>#To run this Make file...
+# NMAKE /A SKELETON.MAK
+#at the DOS prompt (a DOS box inside Windows).
+fc = skeleton_c
+fn = skeleton
+linksw = /NOD 
+masmsw = /c /coff
+cflags = -mwindows
+#note, -O3 flag adds maximum code-size optimisation to gcc.<br>
+all:$(fn).EXE<br>
+$(fc).OBJ : $(fc).C
+&nbsp;gcc -c $(fc).c $(cflags) -o $(fc).obj<br>
+$(fn).OBJ : $(fn).ASM
+&nbsp;..\masm32\bin\ML $(masmsw) $(fn).ASM<br>
+$(fn).RES : $(fn).RC
+&nbsp;..\masm32\bin\RC $(fn).RC<br>
+$(fn).EXE : $(fn).OBJ $(fn).RES $(fc).OBJ
+&nbsp;..\masm32\bin\LINK $(linksw) @&lt;&lt;LinkFile
+/MACHINE:i386
+/SUBSYSTEM:WINDOWS,4.0
+/ENTRY:start
+/MAP:$(fn).map
+/OUT:$(fn).exe
+$(fn).obj
+$(fc).obj
+$(fn).res
+..\masm32\lib\USER32.LIB
+..\masm32\lib\KERNEL32.LIB
+..\masm32\lib\GDI32.LIB
+..\masm32\lib\COMDLG32.LIB
+..\masm32\lib\COMCTL32.LIB
+&lt;&lt;NOKEEP</code>
+</pre>
+<p>
+I created a C source file called skeleton_c.c (reproduced at the bottom of
+this page), and I used the nice IDE/editor provided by the Dev-C++ package
+-- it has nice C-source color-coding -- pity it can't color-code asm code!<br>
+My asm source file was called skeleton.asm.<br>
+When you run the makefile, you end up with skeleton.exe, a Win32 application.
+</p><p>
+Do note that in my case the main Windows application is the asm file, while
+the C file is just enabling me to add more functions written in C. But, you
+could quite easily reverse that -- the dev-c++ package has a nice Win32 GUI
+C skeleton application.
+</p><p>
+Note also that I placed all the Win32 API library files in ..\masm32\lib\,
+which is where I placed them, relative to the working directory. You would
+have to put there whatever path is appropriate. Ditto, I put the Microsoft
+executables into ..\masm32\bin\.&nbsp;<br>
+Actually, if you have installed my winmasm.zip, these files may be in
+..\winmasm\bin\ and ..\winmasm\lib\, relative to the skeleton\ example directory.
+</p><h2>
+  Exporting symbols between GCC and MASM
+</h2>
+<p>
+This is surprisingly easy. The GCC documentation states that C symbols must
+have a leading underscore appended when referenced in the asm file (for example,
+"var1" will be "_var1"), however, MASM does not require this. MASM exports
+public symbols with an underscore appended, at least when the ".MODEL
+FLAT,STDCALL" directive is used. Thus, GCC and MASM are able to see each
+other's symbols without having to append any underscores.
+</p><h3>
+  Calling an asm procedure from C
+</h3>
+<p>
+For example, you have a procedure in the asm file that you want to call from
+the C file:
+</p><p>
+<code>ASMPROC PROC PUBLIC USES eax ebx ecx edx esi edi ebp<br>
+&nbsp;LOCAL dummy:DWORD</code>
+</p><p>
+<code>&nbsp;ret<br>
+ASMPROC ENDP</code>
+</p><p>
+Note that it is declared "PUBLIC". You could also declare it public on a
+separate line:
+</p><p>
+<code>PUBLIC ASMPROC</code>
+</p><p>
+Umm, I think also that the way prototypes work, is they make procedures public
+by default, so instead of the above line you could put this:
+</p><p>
+<code>ASMPROC PROTO STDCALL</code>
+</p><p>
+Note also that the very beginning of the asm file has these lines:
+</p><p>
+<code>.386<br>
+.387<br>
+.MODEL FLAT,STDCALL</code>
+</p><p>
+Which means that all asm procedures will be STDCALL calling convention by
+default, including ASMPROC. STDCALL is what the Win32 API functions use,
+so it is practical to standardise on it for all asm functions. So, I guess
+I don't really need it in the "PROTO" declaration for ASMPROC as shown above,
+either.
+</p><p>
+In the C file, you will have to place the prototype, with an "extern" prefix:
+</p><p>
+<code>extern void STDCALL ASMPROC(void);</code>
+</p><p>
+Although it is possible to set a commandline switch to make the C compiler
+default all functions to STDCALL, I decided against it, as I wasn't sure
+about linking with the standard C function libraries. Therefore, wherever
+a STDCALL function is to be called, put the "STDCALL" keyword into the prototype,
+as shown above.
+</p><h3>
+  Calling a C function from asm
+</h3>
+<p>
+All you need to do in your asm file is have a prototype, and then call it:
+</p><p>
+<code>demo1 PROTO STDCALL<br>
+;<br>
+&nbsp;invoke demo1</code>
+</p><p>
+Then in your C file, all you need is the actual function code:
+</p><p>
+<code>void STDCALL demo1(void) {<br>
+&nbsp;//stuff in here<br>
+&nbsp;return;<br>
+}</code>
+</p><h3>
+  Accessing data in asm from C file
+</h3>
+<p>
+Are you getting the picture here, that this is dead simple? Same goes for
+data.
+</p><p>
+For any data that you have defined in the asm file, just declare it as public:
+</p><p>
+<code>.DATA<br>
+PUBLIC highlightedindex<br>
+highlightedindex DWORD 0&nbsp;</code>
+</p><p>
+Then over in the C file, define it with the "extern" prefix:
+</p><p>
+<code>extern unsigned int highlightedindex;</code>
+</p><h3>
+  Calling Win32 API functions from C file
+</h3>
+<p>
+Well okay, here is the first test C file that I created, called skeleton_c.c:
+</p><p>
+<code>#include &lt;windows.h&gt;<br>
+extern void STDCALL ASMPROC(void);<br>
+extern unsigned int highlightedindex;<br>
+<br>
+void STDCALL demo1(void) {<br>
+&nbsp;ASMPROC();<br>
+&nbsp;MessageBeep(-1);<br>
+&nbsp;highlightedindex=0;<br>
+&nbsp;return;<br>
+}</code>
+</p><p>
+Each line is discussed in the above sections. <br>
+MessageBeep() is a Win32 API function, and you need the prototype for it.
+For that, you include the file "windows.h".
+</p><p>
+To wind up, let me explain what the above program does. The asm file calls
+"demo1()" in the C file, which in turn&nbsp;calls "ASMPROC()" in the asm
+file, then "MessageBeep()", then accesses a variable "highlightedindex" in
+the asm file.
+</p><p>
+Great stuff!
+</p><h2>
+  Sharing structures
+</h2>
+<p>
+My situation was that I had defined and instantiated some very large structures,
+and arrays of structures, in my asm file, and I need to be able to access
+them from the C file.
+</p><p>
+It's simple enough to define the same structures in the C file, for example:
+</p><p>
+<code>struct TERSEDATA {<br>
+&nbsp; U32 nsignature; //nsignature DWORD 0 <br>
+&nbsp; U32 nversion; //nversion DWORD 10 <br>
+&nbsp; U16 nsizeobject; //nsizeobject WORD (SIZEOF OBJECT) <br>
+&nbsp; S8 szpre7[48]; //szpre7 SBYTE 48 DUP(0)<br>
+};</code>
+</p><p>
+<code>extern struct TERSEDATA *pTERSEDATA;</code>
+</p><p>
+Note that "U32" means a 32-bit unsigned number -- I use "typedef" to use
+these, for example "typedef unsigned int U32;".
+</p><p>
+The pointer "pTERSEDATA" is already setup in my asm file pointing to the
+instantiated TERSEDATA structure, and it's easy to use in the C file:
+</p><p>
+<code>pTERSEDATA-&gt;nversion=0;</code>
+</p><p>
+Well, the reason I have used a pointer to access the structure is because
+I have an array of structures.
+</p><p>
+There is, however, a problem. GCC by default performs an optimisation on
+the structure, aligning members of the structure on 32-bit address boundaries.
+I use lots of 8 and 16-bit members in my structures, and I never bothered
+to tell MASM to assemble the structures with any kind of member alignment.
+</p><p>
+So, what you have to do is add the "-fpack-struct" option to GCC, as for
+example:
+</p><p>
+<code>gcc -c -mwindows -fpack-struct demo1.c</code>
+</p><p>
+This causes all the members or fields of the structure to be packed together
+without any gaps or holes, as per default for MASM. However, the GCC
+documentation warns that there may be a problem with some C library functions
+that use structures.
+</p><h2>
+  What next?
+</h2>
+<p>
+I never need to use a debugger, but I guess the one referred to in the Dev-C++
+package would work (?). Mingw/GCC generates a COFF format object file by
+default, and MASM does so with the "/coff" switch. But I have no idea about
+compatible debugging info ... anyone interested in looking into this?
+</p><p>
+What about an IDE/editor that will nicely integrate the asm, C and makefile?
+</p><p>
+  </p><hr>
+<p>
+(c) copyright Barry Kauler 2001
+</p><p>
+&nbsp;
+</p><p>
+&nbsp;
+</p><br>
+</body></html>

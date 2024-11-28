@@ -1,0 +1,318 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML><HEAD><TITLE>Check Point Firewall 1 pour Linux, Première partie</TITLE>
+<META content="text/html; charset=windows-1252" http-equiv=Content-Type>
+<META content="MSHTML 5.00.2920.0" name=GENERATOR></HEAD>
+<BODY aLink=#0000a8 bgColor=#ffffff link=#000088 text=#000000 vLink=#7777dd>
+<H1>Check Point Firewall 1 pour Linux, Première partie</H1>Par <A 
+href="mailto:del@babel.com.au">David "Del" Elson</A> <BR>Traduit par Nightbird 
+<A href="http://www.nightbirdfr.com/">http://www.nightbirdfr.com/</A> <BR>
+<HR>
+
+<P>C'est le premier article dans une série de trois articles qui examineront 
+Check Point Firewall-1 pour Linux. Cet article se composera d'une brève vue 
+d'ensemble préliminaire de Firewall-1, et d'une discussion sur l'installation, 
+les tâches de post-installation, aussi bien pour les installations simples que 
+les installations multi-systèmes. Les articles ultérieurs de cette série se 
+concentreront sur des concepts tels que des objets de réseau, des règles de 
+pare-feu, des règles de translations d'adresses, et NAT, des fonctionnalités et 
+des limitations de Firewall-1, disposition des fichiers et des répertoires, 
+rulesets, migration d'une installation Firewall-1 existante de passer à Linux, 
+et configurations de sauvegarde et de secours.</P>
+<P><B>Vus d'ensemble</B></P>
+<P><B>Le produit</B></P>
+<P>Check Point Firewall-1 a été le système principal du marché des firewalls 
+depuis son introduction en 1994. L'avantage principal de Firewall-1 est son 
+interface complete et facile à comprendre, qui a fait de lui un système de 
+firewall de choix pour beaucoup de gestionnaires de compagnies d'informatique. 
+Firewall-1 n'est pas un produit bon marché; cependant, il est bien commercialisé 
+sur le marché et le support du produit est fourni par de nombreux constructeurs. 
+Dans une enquête Internet récente de logiciel de sécurité, IDC a estimé que 
+Check Point a une part de marché de 41 pour cent dans la catégorie de logiciel 
+de firewall, ce qui est significatif pour beaucoup de clients.</P>
+<P><B>Installer Firewall-1 </B></P>
+<P>L'installation de Firewall-1 sur Linux n'est pas un processus excessivement 
+compliqué et ne devrait pas être au delà des capacités d'aucun administrateur 
+Linux expérimenté. Le système est construit pour fonctionner sur la version 
+redhat 6,1 et 6,2 de Linux. J'ai entendu des rapports disant que Firewall-1 a 
+été installé avec succès sur d'autres plateformes Linux (par exemple: les 
+utilisateurs de Debian sont parvenus à transformer les fichiers de RPM en 
+fichiers DEB pour l'installation); cependant, j'ai eu un manque notable de 
+succès exécuter Firewall-1 sur la version redhat 7,0! En l'exécutant avec la 
+version redhat 6,2, assurez-vous que toutes les dernières mises à jour sont 
+installées (du site FTP ou de votre miroir plus proche du chapeau rouge).</P>
+<P><B>Preparation</B></P>
+<P>La pré-planification de votre installation Firewall-1 est tout à fait 
+importante. Avant que vous poursuiviez votre installation, vous devriez avoir 
+une idée a quoi ressemble votre réseau ressemble, de préférence avec des 
+diagrammes si possible.</P>
+<P>Firewall-1 est système de firewall basé sur PC, et supporte seulement des 
+interfaces Ethernet. En conséquence, si votre connexion Internet externe va par 
+l'intermédiaire d'une différente sorte d'interface (par exemple: un lien de PPP, 
+frame Relay, ou ATM) vous aurez besoin d'un routeur entre votre firewall et 
+Internet. La planification des adresses que vous utiliserez sur ce lien est 
+également importante. Vous voudrez probablement exécuter Firewall-1 sur une 
+machine consacrée a cela. D'une manière générale, un firewall aura besoin au 
+moins de deux cartes Ethernet, et si vous avez une DMZ ou d'autres réseaux 
+attachés à votre firewall alors vous aurez besoin de plus que cela. (une des 
+installations les plus récentes de Firewall-1 que j'ai terminé était sur une 
+machine avec 9 interfaces d'Ethernet!) Le PC à utiliser pour Firewall-1 devrait 
+avoir au moins 64MB de mémoire, avec 128MB recommandé. Il devrait avoir 
+suffisamment d'espace disque pour l'installation du système d'exploitation et du 
+logiciel Firewall-1, ainsi qu'une certaine quantité pour les fichiers de log et 
+de l'espace disponible. Une machine avec un 4GB ou plus grand disque dur devrait 
+suffire. <BR>Selon votre débit (et la vitesse de votre connexion Internet), les 
+conditions d'unité centrale de traitement pour Firewall-1 peuvent changer. J'ai 
+avec succès exploité et ai installé le système sur un Pentium 133MHz, bien qu'il 
+aurait fonctionné en quelque sorte plus rapidement sur un Pentium III 600MHz! 
+Pour un firewall avec un circuit 2MB vers Internet et approximativement 200 
+utilisateurs a protégés, j'ai constaté qu'un processeur Pentium II 400MHz était 
+adéquat.</P>
+<P><B>Considerations de systeme d'exploitation</B></P>
+<P>Firewall-1 pour Linux est conçu pour fonctionner sur Linux Redhat 6,1, avec 
+un noyau 2.2.x. Bien que cette distribution ne soit pas la plus recente de 
+redhat, Firewall-1 s'installe et s'exécute tout à fait convenablement sur redhat 
+6,2. Assurez-vous que vous avez les dernières mises à jour de redhat installées, 
+du site FTP ou de votre miroir le plus proche. Toutes les versions récentes et 
+en cours de Linux redhat ont des vulnérabilités qui devraient être fixées en 
+appliquant ces mises à jour avant d'installer n'importe quel logiciel tiers ou 
+relier votre serveur à Internet. <BR>J'ai essayé une installation de Firewall-1 
+sur rehat 7,0, mais c'était un echec. Je suspecte que quelques différences dans 
+le noyau ou les bibliothèques fournies avec la 7.0 ne soient pas compatibles 
+avec le logiciel Firewall-1. Notez, cependant, que j'ai installé Firewall-1 avec 
+succès et exécuté sur un système redhat 6,2 avec le noyau 2,2,16-3 fourni dans 
+les dernières mises a jour 6.2, et c'est tout à fait semblable au noyau 2,2,16 
+fourni avec rehat 7,0. Notez que le composant principal de Firewall-1 est un 
+module chargeable du noyau. Bien que de tels modules soient habituellement 
+spécifiques à une version du noyau, celle que check point a fournit semble se 
+charger dans la plupart des noyau de la série 2.2.x que j'ai essayés. Il ne 
+chargera pas dans un noyau 2.4.x!</P>
+<P>[Il convient de noter qu'après que cet article soit publié, j'ai reçu un 
+email d'un lecteur qui a énoncé:<BR>"j'ai firewall-1 4.1 sp2 fonctionnant sur 
+redhat 7.0. La seule modification exigée etait de lier un couple des 
+bibliothèques: <BR><CODE>cd /usr/lib<BR>ln -s libstdc++-libc6.2-2.so.3 
+libstdc++-libc6.1-1.so.2"</CODE> <BR>C'est l'une des choses que j'avais manqué 
+en essayant de faire fonctionner Firewall-1 sur redhat 7.0 - David Elson]</P>
+<P>Le site de Phoneboy Firewall-1 énonce: "Officiellement, Firewall-1 supporte 
+RedHat 6,0 à 6,2. Certains ont eu du succès avec SuSE 6,2, Mandrake 7,0, et 
+Debian avec un noyau 2,2,12 (le RPM a été converti en DEB)."</P>
+<P><B>Logiciel de gestion Firewall-1</B></P>
+<P>Le logiciel de gestion Check Point fournit avec Firewall-1 ne fonctionne pas 
+sur Linux. Actuellement, il fonctionne sur Windows NT, Windows 2000, et quelques 
+systèmes Unix (par exemple: Solaris) seulement. Par conséquent, pour utiliser 
+Firewall-1 vous aurez besoin d'un poste de travail supplémentaire pour mettre 
+votre station de gestion - malheureusement celle-ci doit fonctionner sur un des 
+systèmes d'exploitation ci-dessus. Le logiciel de la gestion Firewall-1 pour 
+Solaris est en fait raisonnablement pauvre, et ainsi je recommanderais à la 
+place qu'un poste de travail de Windows NT ou Windows 2000 soit utilisé pour 
+cela. Le logiciel de gestion Firewall-1 doit être installé séparément du 
+logiciel de passerelle Firewall-1, bien que tous les deux soient contenus sur le 
+même cdrom.</P>
+<P><B>Disposition des fichiers</B></P>
+<P>D'abord, une note rapide: j'installe presque tous mes systèmes Linux en 
+utilisant une construction kickstart de redhat. Ceci me permet d'installer très 
+rapidement un système redhat à partir d'un répertoire NFS contenant la dernière 
+disptribution 6.2 ou 7.0 avec toutes les mises à jour, et n'a pas besoin de 
+toucher le système pendant l'installation -- toutes les questions d'installation 
+sont répondues pour moi dans le fichier de kickstart. Pour plus d'information 
+sur des constructions kickstart de redhat, voyez la section suivante dans la 
+documentation sur le site Web <A 
+href="http://www.redhat.com/support/manuals/RHL-7-Manual/ref-guide/ch-kickstart2.html" 
+target=_blank>Red Hat</A>.</P>
+<P>D'une manière générale, un système Linux utilisé pour Firewall-1 aura besoin 
+des repertoires suivants:</P>
+<UL>
+  <LI>/ (root), qui contient le structure de base du systeme. environ 100 - 
+  200MB. 
+  <LI>Une partition de swap. Environ la taille de votre RAM. 
+  <LI>Bien qu'il quelque debat a propos de ca, je prefere avoir une partition 
+  separee pour /usr. /usr est ou la plupart de logiciel de base fournis par 
+  Redhat seront installes.C'est util d'avoir cette partition separee car c'est 
+  la plus statique (fichiers executables, librairies, fonts, ...) Prevoir 
+  environ 1GB dans /usr. 
+  <LI>Je trouve aussi util d'avoir une partition /var. C'est la partie la plus 
+  dynamique. e.g.: fichiers spool, donnees de configuration systeme, log, etc. 
+  Sur Red Hat utilisant Firewall-1, les logs Firewall-1 sont en fait stockes 
+  dans /opt, pas /var. Pour cette raison, j'aimerais avoir environ 200MB dans 
+  /var. 
+  <LI>Firewall-1 est installe dans /opt. Ce repertoire contient le logiciel 
+  Firewall-1 (environ 20MB) plus les log, fichiers de configuration, etc. Sur un 
+  systeme Firewall-1 cela doit etre votre plus grande partition.</LI></UL>Toutes 
+les repertoires ci-dessus peuvent être créées manuellement si vous installez le 
+système du CD (ou de toute autre méthode manuelle d'installation). Mon fichier 
+de kickstart (ks.cfg) pour installer les systèmes Firewall-1 a les repertoires 
+définis comme suit: <PRE>part / --size 200
+part swap --size 128
+part /usr --size 1000
+part /var --size 200
+part /opt --size 1 --grow
+</PRE>
+<P><B>Avant l'installation de Firewall-1</B></P>
+<P>Après que Linux soit avec succès installé, vous pourriez vouloir prendre 
+quelques minutes pour fixer votre système. En particulier, voici quelques choses 
+que je fais toujours sur un système redhat de Linux avant de l'exposer à 
+Internet:</P>
+<UL>
+  <LI>Éditer /etc/inetd.conf, et arrêtent tous les services non désirés. 
+  Habituellement, j'enlève l'accès à tous les services énumérés ici. Ceci inclut 
+  le telnet, que je remplace par l'utilisation d'OpenSSH (fournit dans redhat 
+  7.0 ou disponible sur http://www.openssh.com/) 
+  <LI>Utiliser ntsysv pour arrêter tous services non désirés. En particulier, 
+  votre système Firewall-1 ne devrait pas exécuter la plupart des services 
+  standard... Je laisse atd, crond, networl, random, sshd et syslogd et arrête 
+  tous les autres. Relancez votre système avec l'ensemble réduit des services, 
+  et utilisez "netstat -a" pour voir ce qui est ouvert sur votre machine (ce 
+  seront ceux marqués "LISTEN"). Vous devriez étudier si vous voyez n'importe 
+  quoi d'inattendu! 
+  <LI>Assurez-vous que toutes les cartes réseau sont installées et 
+  opérationnelles (vous pouvez vouloir utiliser "netconf" pour ceci), et que 
+  votre table de routage est correcte. En ce moment, il serait probablement 
+  utile "pinger" quelques serveurs sur votre réseau pour s'assurer que votre 
+  système est géré correctement, car ceci signifiera qu'il sera plus facile de 
+  diagnostiquer des problèmes plus tard.</LI></UL>
+<P><B>Installation Firewall-1</B></P>
+<P>Check Point fournit un script d'installation qui est compatible avec tous les 
+systèmes Unix sur lesquels Firewall-1 peut être installé. Pour installer 
+Firewall-1 en utilisant ce script, assurez-vous d'abord que vous avez le correct 
+cdrom, celui-ci devrait être "Suite d'entreprise Check Point 2000 v4.1.2". Ceci 
+inclut le service pack 2 de Firewall-1 v4.1, qui est exigé pour exécuter 
+Firewall-1 sur Linux. Des versions plus recente du cdrom de Check Point 2000 
+n'ont pas inclus ce service pack, ainsi si vous avez une version plus recente, 
+contactez votre constructeur de Check Point pour un CD de mise à niveau.</P>
+<P>Montez le cdrom dans votre lecteur:</P><COMMAND>mount /mnt/cdrom </COMMAND>
+<P>... et installer le logiciel en utilisant la commande suivante: 
+</P><COMMAND>cd /mnt/cdrom ./InstallU </COMMAND>
+<P>Le script d'installation vous prendra plusieurs étapes, incluant:</P>
+<UL>
+  <LI>Lire et recevoir l'accord de licence. 
+  <LI>Choix d'un type d'installation. Les options sont (1) VPN-1 et installation 
+  FireWall-1 stand Alone, ou (2) le VPN-1 et l'installation distribuée de 
+  FireWall-1. Pour un firewall simple, vous devriez choisir l'option (1). Là où 
+  vous avez les firewalls distribués multiples contrôlés d'une console centrale 
+  de gestion (plus à ce sujet plus tard), vous devrez choisir l'option (2). 
+  Assurez-vous que vous avez les licenses Firewall-1 suffisantes! 
+  <LI>Choix d'un module Firewall-1. Les options sont (1) VPN-1 et FireWall-1 - 
+  serveurs limités (25, 50, 100, 250), (2) VPN-1 et FireWall-1 - serveurs 
+  illimités, et (3) VPN-1 et FireWall-1 - SecureServer. Si vous avez une license 
+  illimitée d'adresses IP, vous devrez choisir l'option (2). Si vous avez (ou 
+  projetez acheter) un permis qui est limité par des adresses Ip, alors vous 
+  devriez choisir l'option (1). 
+  <LI>Souhaitez-vous demarrer VPN-1 et FireWall-1 automatiquement et à partir de 
+  /etc/rc.d/rc3.d et /etc/rc.d/rc5.d (y/n) [y]? Réponse oui à cette question. 
+  <LI>Configuration des licenses. N'ajoutez aucune license a ce moment, j'ai eu 
+  un succès limité faire ainsi. Vous feriez mieux d'utiliser la commande putlic 
+  de "FW" obtenue avec votre license, cité précédemment. 
+  <LI>Configuration des administrateurs. Vous devrez ajouter au moins un 
+  administrateur a ce moment, par exemple "fwadmin" avec un mot de passe qu'il 
+  est peu susceptible d'oublier (et d'autres qu'il est peu susceptible de 
+  deviner). Vous voudrez assigner écrire ("W") aux permissions de votre premier 
+  administrateur. 
+  <LI>Configuration des clients GUI. Vous devriez ajouter au moins un client GUI 
+  a ce moment. Ceci devra être l'IP de votre station de gestion Firewall-1. 
+  <LI>Configuration du serveur smtp. Firewall-1 a la capacité d'envoyer quelques 
+  alertes par l'intermédiaire des email. Si vous voulez utiliser ce service, 
+  alors vous pouvez vouloir configurer les valeurs dans cette section. Je 
+  n'utilise pas normalement l'avis d'alerte par email d'un firewall, car j'ai 
+  tout à fait assez d'email a lire chaque jour ouvrable moyen sans être harcelé 
+  périodiquement par mes firewalls! 
+  <LI>Configuration de l'extension SNMP. Pour la sécurité je ne recommande pas 
+  d'utiliser les extensions de SNMP de Firewall-1: cependant, dans un 
+  environnement contrôlé de réseau alors vous pouvez souhaiter faire ainsi. 
+  <LI>Configuration des groupes. Ceci vous permet d'installer des utilisateurs 
+  (dans un groupe) autre que root qui peut demarrer ou arrêter le logiciel 
+  Firewall-1. Je ne recommande pas de faire ceci. 
+  <LI>Configuration du forwarding IP. Ceci vous permet de desactiver l'option de 
+  forwarding IP au moment du demarrage. Je recommande de choisir cette option. 
+  <LI>Configuration des filtres par defaut. Ceci vous permet de demander a 
+  Firewall-1 d'installer un filtre par défaut au demarrage. J'ai eu un succès 
+  limité avec des systèmes où j'ai fait ceci, souvent ceci semble altérer la 
+  pile réseau de sorte que le système ne s'amorce pas correctement. Choisir (n). 
+
+  <LI>Configuration du Pool aleatoire. Ceci vous demande de taper quelques 
+  caractères sur votre clavier au hasard de sorte que Firewall-1 puisse 
+  initialiser le regroupement de nombre aléatoire. 
+  <LI>Demarrer Firewall-1. À condition que votre station de gestion soit 
+  opérationnelle, vous pouvez demarrer Firewall-1 a ce moment. Vous verrez 
+  probablement un message d'erreur disant "FW-1: seulement 25 serveurs internes 
+  permis". C'est parce que vous n'avez pas encore installé votre license 
+  Firewall-1. </LI></UL>
+<P><B>Taches de post-installation</B></P>
+<P>Après que Firewall-1 soit installé, vous devriez accomplir les tâches 
+suivantes:</P><UL<<LI>Immédiatement deconnectez-vous puis reconnectez-vous. Le 
+programme d'installation de Firewall-1 installe certain scripts supplémentaires 
+dans votre /etc/profile.d qui modifient votre path par défaut pour inclure 
+l'emplacement des programmes Firewall-1 exécutables (/etc/fw/bin). La 
+deconnexion puis la reconnexion font relire ce répertoire et installe votre 
+path. 
+<LI>Installez la license Firewall-1, en utilisant la commande qui a été fournit 
+dans votre certificat Firewall-1. 
+<LI>Ouvrez une session sur votre station de gestion, installez les clients de 
+gestion de Check Point (sinon déjà installé), exécutez l'éditeur de politique, 
+et connectez-vous a voter firewall. 
+<LI>Créez quelques objets et règles de réseau! 
+<UL></UL>
+<P><B>Installations simple et multi systemes</B> 
+<P>Firewall-1 a la capacité de contrôler de multiples firewalls d'un simple 
+module de gestion. Avant que je discute de ceci, j'expliquerai quelques 
+concepts:</P>
+<UL>
+  <LI>Station de Gestion. C'est le poste de travail (par exemple: fonctionnant 
+  sous Windows NT ou Windows 2000) qui exécute le logiciel de gestion de Check 
+  Point. Ceci permet à un utilisateur de visualiser, éditer, et effacer des 
+  règles de firewall, et communique ces dernieres au module de la gestion 
+  Firewall-1. 
+  <LI>Module de Gestion Firewall-1. C'est un démon appelé le "fwm" qui 
+  fonctionne sur un ou plusieurs systèmes Firewall-1. Ceci reçoit des connexions 
+  de la station de gestion, reçoit des mises à jour de règles, et distribue ces 
+  dernieres parmi un ou plusieurs modules d'application. 
+  <LI>Module d'Application. C'est un démon ("fwd") et le module du noyau 
+  ("fwmod.2.2.x") qui impose un positionnement de règles. Il fonctionne sur 
+  votre passerelle Internet. </LI></UL>
+<P>C'est une pratique normale d'exécuter le module de la gestion Firewall-1 
+(fwm), et le module d'application sur la même machine, étant votre passerelle 
+Internet. Cependant, ceci n'est pas exigé, si les passerelles, particulièrement 
+où vous avez les passerelles Internet multiples, ou peut-être multiples entre 
+des réseaux de divers niveaux de confiance.</P>
+<P>Deux types d'installation ont été présentés pendant l'ordre d'installation, 
+ceux-ci étaient:</P>
+<P>1.VPN-1 Installation FireWall-1 stand alone, ou;<BR>2.VPN-1 Installation 
+Distribuée de FireWall-1.</P>
+<P>L'installation Firewall-1 standalone installe le module de gestion et le 
+module d'application sur la même machine. L'installation distribuée vous permet 
+d'indiquer une certaine combinaison du module de gestion et du module 
+d'application (c-à-d. un ou tous les deux) à installer.</P>
+<P>Par exemple, la compagnie X a un réseau étendu couvrant les Etats-Unis. Ils 
+ont un WAN Frame Relay pour relier la plupart de leurs sites, aux bureaux dans 
+le pays. Ils ont deux sites qui ont leurs propres connexions Internet séparées, 
+une à San Francisco et une à New York. Il serait possible que eux fasse une 
+installation distribuée, avec le module d'application et le module de gestion 
+tous les deux installés à New York, mais seulement le module d'application 
+installé à San Francisco. Ils pourraient contrôler les deux firewalls d'une 
+console centrale de gestion, et se connectent seulement au firewall de New York 
+pour mettre à jour l'ensemble des règles sur les deux firewalls.</P>
+<P>Assurez-vous que vous avez le type correct d'installation choisie. 
+L'installation autonome vous donnera des messages d'erreur si vous essayez 
+d'appliquer une règle qui couvre plus d'un module d'application! Ceci pourrait 
+exiger la préplanification de votre disposition de réseau et connexions 
+Internet.</P>
+<P><B>Installer l'interface utilisateur (sous Windows)</B></P>
+<P>Le GUI Firewall-1 devrait être installé sur un système Windows avant ou juste 
+après vous ayez installé les modules de firewall sous Linux. Pour faire ceci, 
+vous devriez insérer le cdrom dans votre lecteur Windows, et suivez les 
+instructions dans le programme d'installation. Si le programme d'installation ne 
+commence pas automatiquement alors vous pouvez l'exécuter manuellement du cdrom 
+(utilisez le programme de SETUP.EXE dans le répertoire \windows\CPMgmtClnt-41 
+sur le CD).</P>
+<P><B>Dans le prochain episode</B></P>
+<P>Cet article a offert une brève vue d'ensemble de Check Point Firewall-1 pour 
+Linux, y compris des procédures d'installation, des procédures de 
+préinstallation et de post-installation. Le prochain article de cette série en 
+trois parties couvrira les concepts Firewall-1 tels que des objets de réseau, 
+des règles de firewall, des règles de translation d'adresses, et NAT, aussi bien 
+que des dispositifs et des limitations de Firewall-1. L'article final discutera 
+alors des aspects de Firewall-1 tels que la disposition des fichiers et des 
+répertoires, les rulesets, la migration d'une installation Firewall-1 existante 
+de passer à Linux, et les configurations de sauvegarde et de secours. </P><BR>
+<P>Traduit par Nightbird <A 
+href="http://www.nightbirdfr.com/">http://www.nightbirdfr.com/</A> <BR>Article 
+original 
+http://www.securityfocus.com/focus/linux/articles/checkpoint1.html</P></LI></BODY></HTML>

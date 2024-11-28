@@ -1,0 +1,461 @@
+
+A general NASM guide for TASM coders and other ASM people
+                         By Gij
+                          V0.3
+---------------------------------------------------------
+
+Generalities
+------------
+
+The basic function of any assembler it to turn asm into the equivalent
+binary code file, and that's true with both TASM and NASM.
+The differences arise in the special features each assembler offers you.
+for example the MODEL directive exists in TASM, making it easier for the
+coder to reference data variables in other segments.
+NASM does not have an equivalent directive, so you have to keep tabs of
+segment registers yourself, and put segment overrides where needed.
+This does not mean that NASM doesn't have good SEGMENT or GROUP support,
+it has both.
+
+It's a different way of coding, and it may seem to require more work,
+but after you get used to it it's easier, because you know exactly what's
+going on in your code.
+
+TASM is chock-full of directives, looking at a small reference for TASM 4.0,
+there are at least a few dozen directives TASM uses, and you have to know
+quite a bit of them by heart.
+NASM on the other hand has very few directives. Actually, you can write
+an asm file that will assemble just fine without using a single directive,
+although I doubt it will be useful in most cases.
+
+NASM is also less ambivalent towards syntax, which leaves less room for
+software bugs, but makes it more strict when assembling.
+I actually think NASM is easier to learn then TASM since it's much more
+straight-forward.
+
+Your NASM Bible is of course the accompanying docs, you can get them in
+a separate package from the same place you got the binaries for NASM.
+All in all i think you will find NASM to be just as capable as TASM if not
+more so. Although it's missing some features TASM has, you can always mail
+the author and ask for a feature, and you just might get lucky when the
+new version comes out.
+
+ASM code is usually the same in any assembler ( AT&T syntax is an exception )
+but there are a few subtleties that TASM coders should look out for.
+The accompanying NASM docs have a nice list of them, i'll mention a few:
+
+DATA offset vs DATA contents
+----------------------------
+
+TASM uses this syntax to move
+
+	mov esi, offset MyVar
+   OR
+	lea esi, MyVar
+
+LEA is used to load complex offsets like "[esi*4+ebx]" into a register, TASM
+supports LEA even when used with a simple offset like "Myvar".
+
+NASM on the other hand only supports one way of loading a simple offset into a
+register, the LEA form is only valid when using complex offsets:
+
+	mov esi, MyVar
+
+This ALWAYS means move the offest of MyVar into esi.
+On the other hand, This:
+
+	mov eax, [MyVar]
+
+Will always mean move the contents of MyVar into eax.
+
+However, using LEA to load a complex offset is valid in both TASM and NASM:
+
+	lea edi,[esi*4+EBX]	; valid in both assemblers
+
+NASM also support a SEG keyword:
+
+	mov ax,SEG MyVar
+
+This moves the segment of the variable into ax.
+
+Note: the LEA instruction is still valid for complex
+
+Segment Overrides
+-----------------
+
+TASM is more lax in it's syntax, so both of these are valid code:
+
+	mov ax,ds:[si]
+AND
+	mov ax,[ds:si]
+
+
+NASM doesn't allow this, if you specify a variable inside the square brackets
+all of the specifiers should be inside the square brackets.
+So This is the only valid option:
+
+	mov ax,[ds:si]
+
+Specifying operand size
+-----------------------
+
+TASM coders usually have lexical difficulties with NASM because
+it lacks the "ptr" keyword used extensively in TASM.
+
+TASM uses this:
+
+	mov al,  byte ptr [ds:si]
+or
+	mov ax,  word ptr [ds:si]
+or
+	mov eax, dword ptr [ds:si]
+
+For NASM This simply translates into:
+
+	mov al,  byte [ds:si]
+or
+	mov ax,  word [ds:si]
+or
+	mov eax, dword [ds:si]
+
+NASM allows these size keywords in many places, and thus gives you a lot
+of control over the generated opcodes in a unifrom way, for example These
+are all valid:
+
+	push dword 123
+	jmp  [ds: word 1234]   ; these both specify the size of the offset
+	jmp  [ds: dword 1234]  ; for tricky code when interfacing 32bit and
+                               ; 16bit segments
+
+it can get pretty hairy, but the important thing to remember is you can have
+all the control you need, when you want it.
+
+Functions
+---------
+
+TASM has special directives for declaring a procedure and ending it, why?
+a procedure is just another code label you CALL instead of JMP, NASM got it
+right.
+
+TASM uses:
+
+ProcName PROC
+	xor ax,ax
+	ret
+ProcName ENDP
+
+while NASM just uses:
+
+Procname:
+	xor ax,ax
+	ret
+
+Local Labels
+------------
+
+Those of you that know C, know that a member of a struct can be referenced
+as StructInstance.MemberName, this is rather similar to the way NASM allows
+you to use local labels. A Local Label is Denoted by preceeding a dot to
+the label name.
+
+Label1:
+	nop
+.local:
+	nop
+Label2:
+	nop
+.local:
+	nop
+
+This won't give you an error on multiple definitions of label, but you can
+still jmp to a certain label like this:
+
+	jmp Label2.local
+
+so it's local, and in a way it's also a global label.
+
+ORG directive
+--------------
+
+NASM supports the org directive, so if your coding a com you can start with:
+
+	org 0x100h
+OR
+	org 100h
+
+NASM allows both the asm and c methods of specifying hex, so both of the
+above are valid.
+
+reserving space
+---------------
+
+again, NASM uses a different syntax then that of TASM.
+
+In TASM you would declare a 100 bytes of uninitialized space like this:
+
+	Array1: db 100 dup (?)
+
+NASM uses it's own keywords to do this, these are RESB,RESW and RESD,
+for byte,word and dword respectively.
+so you would use them like this:
+
+	Array1: RESB 100
+OR
+	Array1: RESW 100/2
+OR
+	Array1: RESD 100/4
+
+Declaring initialized space is much like TASM, but arrays are different.
+
+In TASM:
+
+	Array1: db 100 dup (1)
+
+In NASM:
+	Array1: TIMES 100 db 1
+
+TIMES is a handy little directive, it instructs NASM to preform an action
+a specified number of times, in the example above I preform "db 1" a 100
+times.
+
+it can be used for virtually anything:
+
+	TIMES 69 nop
+
+will put 69 nops at the current point in the file.
+
+* the $ symbol is supported by NASM, and can be used to specify the count
+  operand to times, so this is valid:
+
+  label1:
+	mov ax,1
+	xor ax,ax
+  label2:
+  	TIMES $-label1 nop
+
+  This Will put as many one byte nops after label2, as the byte count between
+  label1 and label2.
+
+Making Structs
+--------------
+
+I fought long and hard to get structs going, the docs were a bit vauge, and
+it took a while to get it, here it is.
+
+using a struct is divided into 2 parts, declaring the prototype, and making an
+instance.
+
+struc st
+stLong resd 1
+stWord resw 1
+endstruc
+
+this declares a prototype struct named st, with 2 members, stLong which is a
+DWORD, and stWord which is a word.
+it uses the reserve directives because it's a prototype, not a real struct.
+you can use it to make a real instance you can reference as data in your code:
+
+mystruc:
+istruc st
+at stLong, dd 1
+at stWord, dw 1
+iend
+
+*Note: it's important to put the label on a different line.
+
+This creates a struct named mystruc of type st, the use of the "at" keyword
+is used to assign initial values to members of the struc.
+
+The notation for referencing members is not like in C. this is because of the
+way struct supports is implemented, each member is assigned an offset relative
+to the beginning of the struct:
+
+mystruc:
+istruc st
+at stLong, dd 1  ; offset 0
+at stWord, dw 1  ; offset 4
+iend
+
+
+The notation for referencing a memebr is therefore:
+
+ 	mov eax, [mystruc+mtLong]
+
+This is because mystruc is a constant base, and the member is a relative offset
+to it, it's similar to referencing a data array in a way.
+
+One thing I should mention, If you declare structs prototypes as above, the
+member names/labels will be global, so you will get collisions if you use the
+same member name in your code or in another struct prototype.
+To avoid this, precede the member names with a dot '.', and then reference them
+in relation to the prototype's name in the instance declaration. example:
+
+struc st
+.stLong resd 1
+.stWord resw 1
+endstruc
+
+mystruc:
+istruc st
+at st.stLong, dd 1
+at st.stWord, dw 1
+iend
+
+
+And this is how you reference the members in code:
+
+	mov eax,[mystruc+st.stWord]
+
+this may seem confusing, you should understand that "mystruc" is the base of a
+particular instance, and "st.stLong" is an offset relative to the start of the
+struct, so in pseudo-code it translates into:
+
+	mov eax,[offset mystruc + (offset stWord-offset start_of_proto]
+or
+	mov eax,[offset mystruc + 4]
+
+which gives you the correct offset for the stWord member of the "mystruc"
+struct instance.
+
+Using Macros
+------------
+
+This is a large part of the nasm docs, and a bit too much to get into in depth
+here. I'll try and cover the major issues.
+
+There are 2 types of macros, one-line and multi-line, all macro keywords are
+preceeded with a '%' character.
+
+example of a single-line macro:
+
+%define mul(a,b) (a*b)
+
+	mov eax,mul(2,3)
+
+This will be converted into:
+
+	mov eax,6
+
+you can invocate other macros from within a macro:
+
+%define fancymul(a,b) ( a * triple_mul(4) )
+%define triple_mul(a) (a*3)
+
+	mov eax,fancymul(2,3)
+
+This becomes:
+
+	mov eax, ( 2 * ( 3 * 4 ) )
+
+These are not very useful examples, but i'm sure you can see the potential.
+
+
+Multi-Line macros are much the same as single-line macros, but the syntax
+is a bit different:
+
+%macro name number_of_args
+	<body of macro>
+%endmacro
+
+so for example, if you wanted to make a small asm effort-saver you could write
+the following macro:
+
+%macro prologue 1
+	push ebp
+	mov ebp,esp
+	sub esp,%1
+%endmacro
+
+and then you can use it in your code like this:
+
+DemoFunc:
+
+	prologue 4*2
+
+	<body of function>
+
+This would setup a stack frame, and reserve room for 2 DWORD local variables.
+you'll notice that args supplied to the macro can be referenced as %1....%n .
+
+This is just a taste, there's more to be learned about NASM macros, the docs
+are your friends.
+
+Including files is easy, If you want to include .inc's into your asm file
+you can use:
+
+	%include "win32.inc"
+
+If you wish to include binary files, you must use a different keyword:
+
+	INCBIN	 "data.bin"
+
+NASM also has support for conditional assembly:
+
+%define INCLUDE_WIN32_INCS
+
+%ifdef  INCLUDE_WIN32_INCS
+	%include "win32.inc"
+	%include "toolhelp.inc"
+	%include "messages.inc"
+%endif
+
+This way you can control the inclusion of files defining on the command line:
+
+	"nasmw -dINCLUDE_WIN32_INC"
+
+or by commenting out the %define line. The body of the %ifdef will be processed
+only if a macro/define named INCLUDE_WIN32_INCS is defined.
+
+Extern's, Globals and commons
+-----------------------------
+
+When Coding a multi-source-files project,  writing a dll, or calling API
+functions you need to declare various symbols/data/functions a certain type
+to make them available to the Assembler and you.
+
+there are 3 types of symbols in NASM:
+
+EXTERN, GLOBAL and COMMON
+
+their invocation is all the same
+
+EXTERN symbol_name		; use this to define API calls for use
+GLOBAL symbol_name
+COMMON symbol_name
+
+They all must appear before the actual symbol is defined/referenced.
+If you have experience in asm/c their use should be clear.
+
+NASM 0.97 also has IMPORT/EXPORT extensions to the .obj format, for
+writing DLL's, read the docs for more info.
+
+specifying segment type
+-----------------------
+
+you can declare segments much the same as you would in TASM:
+
+	segment .data use32 CLASS=data
+or
+	segment .text use32 CLASS=code
+or
+	segment Gij use16 CLASS=code
+
+this is a good way to set segments straight for linking.
+
+output formats
+--------------
+
+Nasm supports a plethora of output formats, depending on what your trying
+to accomplish, you should read the docs for special extensions to each type.
+These are chosen using "nasm -f type", where type can be bin,obj,win32 and
+others.
+
+Each linker likes different formats, tlink likes obj for example, while 
+LCC-WIN32 likes the win32 format, investigate on your own.
+
+*tip: when assembling into the "obj" type, make sure and use the special
+      "..start:" symbol to specify the entry point for the file.
+
+
+That's all for now, If you need to reach me, my e-mail is gij <at> bigfoot.com
+Enjoy.

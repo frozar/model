@@ -1,0 +1,665 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<HTML>
+<HEAD>
+<TITLE></TITLE>
+<META NAME="generator" CONTENT="txt2html v1.28">
+</HEAD>
+<BODY>
+<P>
+FreeBSD tutorial : <BR>
+Hosting shells in a jail environment.
+
+<P>
+Author: Cl&eacute;ment Lafor&ecirc;t &lt;sheepkiller at cultdeadsheep dot org&gt;
+Version: 0.1 <BR>
+You can find the latest version of this document here : 
+<A HREF="http://www.cultdeadsheep.org/sheepkiller/FreeBSD/tutorial-jails/">http://www.cultdeadsheep.org/sheepkiller/FreeBSD/tutorial-jails/</A>
+
+
+<P>
+This tutorial aims to be a short tutorial to help you so set a shells hosting 
+environment as secure as I can ;)
+
+<P>
+I would appreciate comments and improvment :)
+
+<P>
+I. Introduction :
+
+<P>
+You can use this tutorial with any FreeBSD version but, if you want to apply the big patch 
+you should have at least FreeBSD 4.5-RELEASE. I tested it with FreeBSD 4.7-RELEASE. It seems to
+works great :)
+
+<UL>
+  <LI>Requirements :
+  <UL>
+    <LI>A box with FreeBSD 4.7-RELEASE installed
+    <LI>An internet access
+    <LI>Some cigarettes
+    <LI>Coffee
+    <LI>a mail client to thanks FreeBSD team, Oliver Fromme &lt;olli at fromme dot com&gt; and
+          Hiroaki Etoh &lt;etoh at jp dot ibm dot com&gt;. ;-)
+    <LI>a brain too :)
+
+  </UL>
+</UL>
+<P>
+The patch provided with this tutorial IS NOT written by me ! It's just a merge from this patches :
+<UL>
+  <LI>Oliver Fromme's patch which provides smart df ouput in jailed environment
+          (FreeBSD PR: <A HREF="http://www.freebsd.org/cgi/query-pr.cgi?pr=26740">http://www.freebsd.org/cgi/query-pr.cgi?pr=26740</A>)
+  <LI>Hiroaki Etoh gcc GCC extension for protecting applications from stack-smashing attacks
+          (website: <A HREF="http://www.trl.ibm.com/projects/security/ssp/">http://www.trl.ibm.com/projects/security/ssp/</A>)
+
+</UL>
+<P>
+So please don't send me any mails about how they works. Thanks.
+
+
+<OL>
+  <LI>First of all, update your sources to protects you from known security bugs
+pkg_add -r cvsup-without-gui
+wait few seconds to few minutes
+or
+cd /usr/ports/net/cvsup-without-gui
+wait few minutes to a lot ;)
+
+</OL>
+<P>
+Here my cvsup config file <BR>
+*default host=<A HREF="http://goofy.cultdeadsheep.org">goofy.cultdeadsheep.org</A>/       # CHANGE THIS TO YOUR SETTINGS
+*default base=/usr<BR>
+*default prefix=/usr<BR>
+*default release=cvs tag=RELENG_4_7<BR>
+*default delete use-rel-suffix<BR>
+*default compress       # I comment it ;)
+src-all
+
+
+<P>
+accounts# /usr/local/bin/cvsup cvsup.jail
+
+<P>
+let's go :)
+
+
+
+<P>
+Get Oliver home patch here :
+
+<P>
+accounts# cd /usr/<BR>
+accounts# fetch <A HREF="http://www.cultdeadsheep.org/sheepkiller/FreeBSD/tutorial-jails/df-patch.diff">http://www.cultdeadsheep.org/sheepkiller/FreeBSD/tutorial-jails/df-patch.diff</A>
+Receiving df-patch.diff (8116 bytes): 100%
+8116 bytes transferred in 0.0 seconds (12.25 MBps)
+accounts# patch -p0 &lt; df-patch.diff 
+
+<P>
+Hmm...  Looks like a unified diff to me...
+(Patch is indented 1 space.)<BR>
+The text leading up to this was:
+<HR>
+| --- src/sys/kern/kern_jail.c.orig     Mon Sep  3 10:17:12 2001
+| +++ src/sys/kern/kern_jail.c  Wed Feb 27 15:40:43 2002
+<HR>
+Patching file src/sys/kern/kern_jail.c using Plan A...
+Hunk #1 succeeded at 69.<BR>
+Hmm...  The next patch looks like a unified diff to me...
+(Patch is indented 1 space.)<BR>
+The text leading up to this was:
+<HR>
+| --- src/sys/kern/vfs_syscalls.c.orig  Mon Jan  7 21:47:34 2002
+| +++ src/sys/kern/vfs_syscalls.c       Wed Feb 27 13:21:06 2002
+<HR>
+Patching file src/sys/kern/vfs_syscalls.c using Plan A...
+Hunk #1 succeeded at 59.<BR>
+Hunk #2 succeeded at 73.<BR>
+Hunk #3 succeeded at 375 (offset 15 lines).
+Hunk #4 succeeded at 629 (offset 14 lines).
+Hunk #5 succeeded at 734 (offset 15 lines).
+Hunk #6 succeeded at 745 (offset 14 lines).
+Hunk #7 succeeded at 786 (offset 15 lines).
+Hunk #8 succeeded at 795 (offset 14 lines).
+Hunk #9 succeeded at 837 (offset 15 lines).
+Hunk #10 succeeded at 865 (offset 14 lines).
+Hmm...  The next patch looks like a unified diff to me...
+(Patch is indented 1 space.)<BR>
+The text leading up to this was:
+<HR>
+| --- src/sys/sys/jail.h.orig   Wed Nov  1 18:58:06 2000
+| +++ src/sys/sys/jail.h        Wed Feb 27 15:40:17 2002
+<HR>
+Patching file src/sys/sys/jail.h using Plan A...
+Hunk #1 succeeded at 30.<BR>
+Hunk #2 succeeded at 50.<BR>
+Hmm...  Ignoring the trailing garbage.<BR>
+done<BR>
+accounts# 
+
+
+<P>
+fetch <A HREF="http://www.trl.ibm.com/projects/security/ssp/freebsd44/protector4.4-1.patch">http://www.trl.ibm.com/projects/security/ssp/freebsd44/protector4.4-1.patch</A>
+
+<P>
+cd /usr/src<BR>
+fetch <A HREF="http://www.cultdeadsheep.org/sheepkiller/FreeBSD/tutorial-jails/protector4.4-1.patch">http://www.cultdeadsheep.org/sheepkiller/FreeBSD/tutorial-jails/protector4.4-1.patch</A>
+patch -p0 &lt; <A HREF="http://protector4.4-1.patch">protector4.4-1.patch</A>/
+
+<P>
+&lt;patch ouput&gt;
+<HR>
+|*** /dev/null  Thu Nov 15 09:43:48 2001
+|--- sys/libkern/stack_smash_handler.c  Fri May 18 15:22:09 2001
+<HR>
+(Creating file sys/libkern/stack_smash_handler.c...)
+Patching file sys/libkern/stack_smash_handler.c using Plan A...
+Hunk #1 succeeded at 1.<BR>
+done
+
+
+<P>
+build and install libgcc<BR>
+cd /usr/src/gnu/lib/libgcc<BR>
+make depend &amp;&amp; make all install<BR>
+build and install gcc<BR>
+cd /usr/src/gnu/usr.bin/cc/cc_int<BR>
+make depend &amp;&amp; make libcc_int.a<BR>
+cd ..<BR>
+cd cc_fbsd/<BR>
+make libcc_fbsd.a<BR>
+make depend &amp;&amp; make all install
+
+
+<P>
+ee /etc/make.conf<BR>
+CFLAGS=" -O -pipe -fstack-protector"<BR>
+COPTFLAGS=" -O -pipe -fstack-protector"
+Rebuild All your system.<BR>
+<A HREF="http://freebsd.cultdeadsheep.org/doc/handbook/makeworld.html">http://freebsd.cultdeadsheep.org/doc/handbook/makeworld.html</A>
+
+<P>
+4. edit your <A HREF="http://make.conf.jail">make.conf.jail</A>/
+
+<P>
+accounts# cp make.conf <A HREF="http://make.conf.jail">make.conf.jail</A>/<BR>
+accounts# ee <A HREF="http://make.conf.jail">make.conf.jail</A>/
+
+<P>
+here's mine :
+
+<P>
+CFLAGS=" -O -pipe -fstack-protector"<BR>
+COPTFLAGS=" -O -pipe -fstack-protector"
+<STRONG>ENABLE_SUIDPERL="NO"</STRONG><BR>
+<STRONG>MAKE_IDEA="NO"                  </STRONG><BR>
+<STRONG>MAKE_KERBEROS4="NO"</STRONG><BR>
+<STRONG>MAKE_KERBEROS5="NO"</STRONG><BR>
+<STRONG>ENABLE_SUID_K5SU="NO"</STRONG><BR>
+<STRONG>NO_BIND="TRUE"</STRONG><BR>
+<STRONG>NO_FORTRAN="TRUE"</STRONG><BR>
+<STRONG>NO_CVS="TRUE"</STRONG><BR>
+<STRONG>NO_I4B="TRUE"</STRONG><BR>
+<STRONG>NO_IPFILTER="TRUE"</STRONG><BR>
+<STRONG>NO_LPR="TRUE"                           </STRONG>
+<STRONG>NO_MAILWRAPPER="TRUE"</STRONG><BR>
+<STRONG>NO_MAKEDEV="TRUE"</STRONG><BR>
+<STRONG>NO_OBJC="TRUE"</STRONG><BR>
+<STRONG>NO_SENDMAIL="TRUE"</STRONG><BR>
+<STRONG>NO_SHAREDOCS="TRUE"</STRONG><BR>
+<STRONG>NO_X ="TRUE"</STRONG><BR>
+<STRONG>NOGAMES="TRUE"</STRONG><BR>
+<STRONG>NOINFO="TRUE"</STRONG><BR>
+<STRONG>NOUUCP="TRUE"</STRONG><BR>
+<STRONG>PERL_THREADED="TRUE"</STRONG><BR>
+<STRONG>PPP_NOSUID="TRUE"</STRONG>
+
+
+<P>
+accounts# <BR>
+rm -fr /usr/obj/<BR>
+setenv JAIL_DIR /SERVICES/JAILS/accounts
+cd /usr/src<BR>
+make clean<BR>
+mkdir -p $JAIL_DIR<BR>
+make world DESTDIR=$JAIL_DIR __MAKE_CONF="/etc/make.conf.jail"
+cd etc<BR>
+make distribution DESTDIR=$JAIL_DIR -DNO<U>MAKEDEV_RUN _</U>MAKE_CONF="/etc/make.conf.jail"
+cd $JAIL_DIR/dev<BR>
+cp /dev/MAKEDEV $JAIL_DIR/dev<BR>
+sh MAKEDEV jail<BR>
+cd $JAIL_DIR<BR>
+ln -sf dev/null kernel<BR>
+touch $JAIL_DIR/fstab<BR>
+cp /etc/resolv.conf $JAIL_DIR/etc<BR>
+setting time zone
+
+
+<P>
+You may want to know how jail is, isn't it ?
+chroot $JAIL_DIR/dev /bin/sh<BR>
+# find / | wc -l
+<P>
+   10929<BR>
+we'll clean this<BR>
+# exit<BR>
+accounts#
+
+<P>
+7. Configuring host's environement
+
+<P>
+your rc.conf :)
+
+<P>
+defaultrouter="<A HREF="telnet://192.168.0.254">192.168.0.254</A>"<BR>
+hostname="<A HREF="http://accounts.cultdeadsheep.org">accounts.cultdeadsheep.org</A>/"<BR>
+ifconfig_rl0="inet <A HREF="telnet://192.168.0.10">192.168.0.10</A>  netmask <A HREF="telnet://255.255.255.0">255.255.255.0</A>"
+ifconfig_rl0_alias0="inet <A HREF="telnet://192.168.0.11">192.168.0.11</A> netmask <A HREF="telnet://255.255.255.255">255.255.255.255</A>"
+sshd_enable="YES"<BR>
+usbd_enable="NO"<BR>
+syslogd_flags="-ss -4 -b <A HREF="telnet://192.168.0.10">192.168.0.10</A>"<BR>
+inetd_enable="NO" #if set to "YES" modofy inetd_flags !
+inetd_program="/usr/sbin/inetd"<BR>
+inetd_flags="-wW -a <A HREF="telnet://192.168.0.10">192.168.0.10</A>"    <BR>
+sendmail_enable="NONE"         # please see /etc/defaults/rc.conf for more details
+
+<HR>
+
+<P>
+<STRONG>SSH</STRONG><BR>
+accounts# ee /etc/ssh/sshd_config <BR>
+VersionAddendum shells server.  
+
+<P>
+Port 22<BR>
+#Protocol 2,1<BR>
+ListenAddress <A HREF="telnet://192.168.0.10">192.168.0.10</A>
+
+
+<P>
+reboot to test :)<BR>
+##############
+
+<P>
+accounts# ifconfig <BR>
+rl0: flags=8843&lt;UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
+<PRE>
+        inet <A HREF="telnet://192.168.0.10">192.168.0.10</A> netmask 0xffffff00 broadcast <A HREF="telnet://192.168.0.255">192.168.0.255</A>
+        inet6 fe80::260:67ff:fe76:fdef%rl0 prefixlen 64 scopeid 0x1 
+        inet <A HREF="telnet://192.168.0.11">192.168.0.11</A> netmask 0xffffffff broadcast <A HREF="telnet://192.168.0.11">192.168.0.11</A>
+        ether 00:60:67:76:fd:ef
+        media: Ethernet autoselect (100baseTX &lt;full-duplex&gt;)
+        status: active
+</PRE>
+<P>
+lp0: flags=8810&lt;POINTOPOINT,SIMPLEX,MULTICAST&gt; mtu 1500
+faith0: flags=8002&lt;BROADCAST,MULTICAST&gt; mtu 1500
+lo0: flags=8049&lt;UP,LOOPBACK,RUNNING,MULTICAST&gt; mtu 16384
+<PRE>
+        inet6 ::1 prefixlen 128 
+        inet6 fe80::1%lo0 prefixlen 64 scopeid 0x4 
+        inet <A HREF="telnet://127.0.0.1">127.0.0.1</A> netmask 0xff000000 
+</PRE>
+<P>
+ppp0: flags=8010&lt;POINTOPOINT,MULTICAST&gt; mtu 1500
+sl0: flags=c010&lt;POINTOPOINT,LINK2,MULTICAST&gt; mtu 552
+accounts# netstat -l<BR>
+Active Internet connections
+<PRE>
+Proto Recv-Q Send-Q  Local Address          Foreign Address        (state)
+tcp4       0     48  accounts.ssh           satan.50139            ESTABLISHED
+tcp4       0      0  accounts.ssh           *.*                    LISTEN
+Active UNIX domain sockets
+Address  Type   Recv-Q Send-Q    Inode     Conn     Refs  Nextref Addr
+cec13e60 stream      0      0 cec44680        0        0        0 /tmp/ssh-RlIXKrwf/agent.94
+cebeff00 dgram       0      0 cebea600        0        0        0 /var/run/log
+</PRE>
+
+<P>
+8. configuring jails
+
+<P>
+we need only a well configured daemons :)
+and ports :)
+
+<P>
+account# mount goofy:/usr/ports  /SERVICES/JAILS/accounts/usr/ports
+ee $JAIL_DIR/etc/rc.conf <BR>
+like this 
+
+<P>
+sshd_enable="YES"<BR>
+syslogd_flags="-ss -4 -b <A HREF="telnet://192.168.0.11">192.168.0.11</A>"<BR>
+inetd_enable="NO"       #if set to "YES" modofy inetd_flags !
+inetd_program="/usr/sbin/inetd"<BR>
+inetd_flags="-wW -a <A HREF="telnet://192.168.0.11">192.168.0.11</A>"<BR>
+sendmail_enable="NONE"         # please see /etc/defaults/rc.conf for more details
+portmap_enable="NO"
+
+
+<P>
+setting root password<BR>
+accounts# chroot /SERVICES/JAILS/accounts/ /bin/sh
+# passwd<BR>
+Changing local password for root.<BR>
+New password:<BR>
+Please enter a password at least 6 characters in length.
+New password:<BR>
+Retype new password:<BR>
+passwd: updating the database...<BR>
+passwd: done<BR>
+#tzsetup
+
+<P>
+quit
+
+<P>
+Configuring SSH !<BR>
+accounts# cp /etc/ssh/sshd_config /SERVICES/JAILS/accounts/etc/ssh/
+accounts# ee /SERVICES/JAILS/accounts/etc/ssh/sshd_config
+
+<P>
+Now assuming your DNS and/or /etc/hosts is up to date...
+We can load our jail for the first time :)
+mount -t procfs proc $JAIL_DIR/proc<BR>
+accounts# jail /SERVICES/JAILS/accounts/ <A HREF="telnet://shells.cultdeadsheep.org:192/">shells.cultdeadsheep.org 192</A>.168.0.11 /bin/sh /etc/rc
+
+<P>
+fstab: /etc/fstab:0: No such file or directory
+Skipping disk checks ...<BR>
+fstab: /etc/fstab:0: No such file or directory
+adjkerntz[141]: sysctl(set_disrtcset): Operation not permitted
+Doing initial network setup:.<BR>
+ifconfig: ioctl (SIOCDIFADDR): permission denied
+lo0: flags=8049&lt;UP,LOOPBACK,RUNNING,MULTICAST&gt; mtu 16384
+Additional routing options: TCP keepalive=YESsysctl: <A HREF="http://net.inet.tcp.always">net.inet.tcp.always</A>/_keepalive: Operation not permitted
+.<BR>
+Routing daemons:.<BR>
+Additional daemons: syslogd.<BR>
+Doing additional network setup:.<BR>
+Starting final network daemons: creating ssh1 RSA host key
+Generating public/private rsa1 key pair.
+Your identification has been saved in /etc/ssh/ssh_host_key.
+Your public key has been saved in /etc/ssh/ssh_host_key.pub.
+The key fingerprint is:<BR>
+fb:b1:59:76:c6:7f:a5:e1:57:40:be:85:e5:38:6c:b2 <A HREF="mailto:root@shells.cultdeadsheep.org">root@shells.cultdeadsheep.org</A>
+ creating ssh2 RSA host key<BR>
+Generating public/private rsa key pair.
+Your identification has been saved in /etc/ssh/ssh_host_rsa_key.
+Your public key has been saved in /etc/ssh/ssh_host_rsa_key.pub.
+The key fingerprint is:<BR>
+99:d3:ce:53:fa:20:fb:6e:eb:a3:72:c7:10:07:7a:82 <A HREF="mailto:root@shells.cultdeadsheep.org">root@shells.cultdeadsheep.org</A>
+ creating ssh2 DSA host key<BR>
+Generating public/private dsa key pair.
+Your identification has been saved in /etc/ssh/ssh_host_dsa_key.
+Your public key has been saved in /etc/ssh/ssh_host_dsa_key.pub.
+The key fingerprint is:<BR>
+f7:4f:ad:0b:de:0a:cb:eb:49:24:0f:6b:94:70:9c:ef <A HREF="mailto:root@shells.cultdeadsheep.org">root@shells.cultdeadsheep.org</A>
+.<BR>
+ELF ldconfig path: /usr/lib /usr/lib/compat
+a.out ldconfig path: /usr/lib/aout /usr/lib/compat/aout
+Starting standard daemons: cron sshd.<BR>
+Initial rc.i386 initialization:.<BR>
+Configuring syscons: blanktime/etc/rc.syscons: cannot open /dev/ttyv0: no such file
+.<BR>
+Additional ABI support:.<BR>
+Local package initialization:.<BR>
+Additional TCP options:.
+
+<P>
+Sat Nov 30 02:55:09 CET 2002<BR>
+accounts# 
+
+<P>
+[root@goofy|(514)| root]# ssh root@shells
+The authenticity of host '<A HREF="http://shells.cultdeadsheep.org">shells.cultdeadsheep.org</A>/ (<A HREF="telnet://192.168.0.11">192.168.0.11</A>)' can't be established.
+DSA key fingerprint is f7:4f:ad:0b:de:0a:cb:eb:49:24:0f:6b:94:70:9c:ef.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added '<A HREF="http://shells.cultdeadsheep.org">shells.cultdeadsheep.org</A>/' (DSA) to the list of known hosts.
+<A HREF="mailto:root@shells.cultdeadsheep.org">root@shells.cultdeadsheep.org</A>'s password: 
+Copyright (c) 1980, 1983, 1986, 1988, 1990, 1991, 1993, 1994
+<P>
+        The Regents of the University of California.  All rights reserved.
+
+<P>
+FreeBSD 4.7-RELEASE-p2 (GENERIC) #0: Sat Nov 30 00:02:25 GMT 2002
+
+<P>
+Welcome to FreeBSD!
+
+<P>
+Before seeking technical support, please use the following resources:
+
+<UL>
+  <LI>Security advisories and updated errata information for all releases are
+   at <A HREF="http://www.FreeBSD.org/releases/">http://www.FreeBSD.org/releases/</A> - always consult the ERRATA section
+   for your release first as it's updated frequently.
+
+  <LI>The Handbook and FAQ documents are at <A HREF="http://www.FreeBSD.org/">http://www.FreeBSD.org/</A> and,
+   along with the mailing lists, can be searched by going to
+   <A HREF="http://www.FreeBSD.org/search/">http://www.FreeBSD.org/search/</A>.  If the doc distribution has
+   been installed, they're also available formatted in /usr/share/doc.
+
+</UL>
+<P>
+If you still have a question or problem, please take the output of
+`uname -a', along with any relevant error messages, and email it
+as a question to the <A HREF="mailto:questions@FreeBSD.org">questions@FreeBSD.org</A> mailing list.  If you are
+unfamiliar with FreeBSD's directory layout, please refer to the hier(7)
+man page.  If you are not familiar with man pages, type `man man'.
+
+<P>
+You may also use /stand/sysinstall to re-enter the installation and
+configuration utility.  Edit /etc/motd to change this login announcement.
+
+<P>
+shells#
+
+<P>
+accounts# ps aux<BR>
+<STRONG>USER   PID %CPU %MEM   VSZ  RSS  TT  STAT STARTED      TIME COMMAND</STRONG>
+root   208  0.0  0.1   416  216  p0  R+    1:56AM   0:00.00 ps aux
+<PRE>
+root     1  0.0  0.1   556  308  ??  ILs   1:36AM   0:00.01 /sbin/init --
+root     2  0.0  0.0     0    0  ??  DL    1:36AM   0:00.00  (pagedaemon)
+root     3  0.0  0.0     0    0  ??  DL    1:36AM   0:00.00  (vmdaemon)
+root     4  0.0  0.0     0    0  ??  DL    1:36AM   0:00.01  (bufdaemon)
+root     5  0.0  0.0     0    0  ??  DL    1:36AM   0:00.01  (vnlru)
+root     6  0.0  0.0     0    0  ??  DL    1:36AM   0:00.15  (syncer)
+</PRE>
+<P>
+root    62  0.0  0.2   960  620  ??  Ss    1:36AM   0:00.16 /usr/sbin/syslogd -ss -4 -b <A HREF="telnet://192.168.0.10">192.168.0.10</A>
+root    69  0.0  0.3  1044  756  ??  Ss    1:36AM   0:00.01 /usr/sbin/cron
+root    71  0.0  0.6  2380 1816  ??  Is    1:36AM   0:00.16 /usr/sbin/sshd
+root    86  0.0  0.2   968  664  v0  Is+   1:36AM   0:00.00 /usr/libexec/getty Pc ttyv0
+root    87  0.0  0.2   968  664  v1  Is+   1:36AM   0:00.00 /usr/libexec/getty Pc ttyv1
+root    88  0.0  0.2   968  664  v2  Is+   1:36AM   0:00.00 /usr/libexec/getty Pc ttyv2
+root    89  0.0  0.2   968  664  v3  Is+   1:36AM   0:00.00 /usr/libexec/getty Pc ttyv3
+root    90  0.0  0.2   968  664  v4  Is+   1:36AM   0:00.00 /usr/libexec/getty Pc ttyv4
+root    91  0.0  0.2   968  664  v5  Is+   1:36AM   0:00.00 /usr/libexec/getty Pc ttyv5
+root    92  0.0  0.2   968  664  v6  Is+   1:36AM   0:00.00 /usr/libexec/getty Pc ttyv6
+root    93  0.0  0.2   968  664  v7  Is+   1:36AM   0:00.00 /usr/libexec/getty Pc ttyv7
+root    94  0.0  0.7  2532 2068  ??  S     1:36AM   0:00.33 sshd: root@ttyp0 (sshd)
+root    96  0.0  0.4  1344 1012  p0  Ss    1:36AM   0:00.10 -csh (csh)
+root   175  0.0  0.2   960  632  ??  SsJ   1:55AM   0:00.00 /usr/sbin/syslogd -ss -4 -b <A HREF="telnet://192.168.0.11">192.168.0.11</A>
+root   185  0.0  0.3  1020  744  ??  SsJ   1:55AM   0:00.00 /usr/sbin/cron
+root   187  0.0  0.8  2912 2180  ??  SsJ   1:55AM   0:00.28 /usr/sbin/sshd
+root   204  0.0  0.8  3064 2428  ??  SJ    1:55AM   0:00.16 sshd: root@ttyp1 (sshd)
+root   205  0.0  0.3  1276  904  p1  Ss+J  1:55AM   0:00.02 -csh (csh)
+root     0  0.0  0.0     0    0  ??  DLs   1:36AM   0:00.00  (swapper)
+
+
+<P>
+accounts# accounts# ps aux | awk '$8 ~ /.*J/;'
+root   175  0.0  0.2   960  632  ??  SsJ   1:55AM   0:00.00 /usr/sbin/syslogd -ss -4 -b <A HREF="telnet://192.168.0.11">192.168.0.11</A>
+root   185  0.0  0.3  1020  744  ??  IsJ   1:55AM   0:00.00 /usr/sbin/cron
+root   187  0.0  0.8  2912 2180  ??  IsJ   1:55AM   0:00.28 /usr/sbin/sshd
+root   204  0.0  0.8  3064 2428  ??  IJ    1:55AM   0:00.16 sshd: root@ttyp1 (sshd)
+root   205  0.0  0.3  1276  904  p1  Is+J  1:55AM   0:00.02 -csh (csh)
+
+<P>
+to see process in the jail :)
+
+<P>
+Filesystem       1K-blocks     Used   Avail Capacity  Mounted on
+goofy:/usr/ports  34971108 24545329 7628091    76%    /usr/ports
+procfs                   4        4       0   100%    /proc
+
+<P>
+A little bit buggy ;)
+
+
+<P>
+So now I say backup :)
+
+<P>
+Ok... that's great I've my jails !
+
+
+<P>
+9. test !<BR>
+playing with the jails :)
+
+<P>
+shells# ping goofy<BR>
+ping: socket: Operation not permitted<BR>
+shells# traceroute linuxfr.org<BR>
+traceroute: icmp socket: Operation not permitted
+shells# 
+
+
+<P>
+10. managing jail
+
+<P>
+removing useless software<BR>
+First of all :<BR>
+suid/sgid program
+
+<P>
+shells# find . -type f -a \( -perm -2000 -o -perm -4000 \) -print
+./bin/rcp<BR>
+./sbin/ccdconfig<BR>
+./sbin/ping<BR>
+./sbin/ping6<BR>
+./sbin/route<BR>
+./sbin/shutdown<BR>
+./usr/bin/man<BR>
+./usr/bin/k5su<BR>
+./usr/bin/at<BR>
+./usr/bin/atq<BR>
+./usr/bin/atrm<BR>
+./usr/bin/batch<BR>
+./usr/bin/chpass<BR>
+./usr/bin/chfn<BR>
+./usr/bin/chsh<BR>
+./usr/bin/ypchpass<BR>
+./usr/bin/ypchfn<BR>
+./usr/bin/ypchsh<BR>
+./usr/bin/fstat<BR>
+./usr/bin/ipcs<BR>
+./usr/bin/keyinfo<BR>
+./usr/bin/keyinit<BR>
+./usr/bin/lock<BR>
+./usr/bin/login<BR>
+./usr/bin/netstat<BR>
+./usr/bin/opieinfo<BR>
+./usr/bin/opiepasswd<BR>
+./usr/bin/passwd<BR>
+./usr/bin/yppasswd<BR>
+./usr/bin/quota<BR>
+./usr/bin/rlogin<BR>
+./usr/bin/rsh<BR>
+./usr/bin/su<BR>
+./usr/bin/systat<BR>
+./usr/bin/top<BR>
+./usr/bin/vmstat<BR>
+./usr/bin/wall<BR>
+./usr/bin/write<BR>
+./usr/bin/crontab<BR>
+./usr/sbin/iostat<BR>
+./usr/sbin/mrinfo<BR>
+./usr/sbin/mtrace<BR>
+./usr/sbin/pppd<BR>
+./usr/sbin/pstat<BR>
+./usr/sbin/swapinfo<BR>
+./usr/sbin/sliplogin<BR>
+./usr/sbin/timedc<BR>
+./usr/sbin/traceroute<BR>
+./usr/sbin/traceroute6<BR>
+./usr/sbin/trpt
+
+<P>
+shells# rm /bin/rcp /sbin/ccdconfig ./sbin/ping ./sbin/ping6 ./sbin/route ./sbin/shutdown ./usr/bin/k5su ./usr/bin/yppasswd ./usr/bin/quota ./usr/bin/rlogin ./usr/bin/rsh ./usr/sbin/pppd ./usr/sbin/sliplogin ./usr/sbin/timedc ./usr/sbin/mrinfo ./usr/sbin/mtrace
+override r-sr-xr-x  root/wheel schg for /bin/rcp? y
+rm: /bin/rcp: Operation not permitted<BR>
+override r-sr-xr-x  root/wheel schg for ./usr/bin/k5su? y
+rm: ./usr/bin/k5su: Operation not permitted
+override r-sr-xr-x  root/wheel schg for ./usr/bin/yppasswd? y
+rm: ./usr/bin/yppasswd: Operation not permitted
+override r-sr-xr-x  root/wheel schg for ./usr/bin/rlogin? y
+rm: ./usr/bin/rlogin: Operation not permitted
+override r-sr-xr-x  root/wheel schg for ./usr/bin/rsh? y
+rm: ./usr/bin/rsh: Operation not permitted
+override r-sr-x---  root/network schg for ./usr/sbin/sliplogin? y
+rm: ./usr/sbin/sliplogin: Operation not permitted
+
+<P>
+shells# chflags noschg ./usr/sbin/sliplogin
+chflags: ./usr/sbin/sliplogin: Operation not permitted
+shells#
+
+
+<P>
+Great isn't it ? :)
+
+<P>
+accounts#  chflags noschg .//bin/rcp ./usr/bin/k5su ./usr/bin/yppasswd ./usr/bin/rlogin ./usr/bin/rsh ./usr/sbin/sliplogin
+accounts# rm .//bin/rcp ./usr/bin/k5su ./usr/bin/yppasswd ./usr/bin/rlogin ./usr/bin/rsh ./usr/sbin/sliplogin
+
+
+<P>
+As I don't use yp opie and co :<BR>
+accounts# chflags noschg ./usr/bin/opie* ./usr/bin/yp*
+accounts# rm ./usr/bin/opie* ./usr/bin/yp*
+
+
+<P>
+Restricting access to software<BR>
+shells# sh<BR>
+# for i in $(find . -type f -a \( -perm -2000 -o -perm -4000 \) -print); do chmod 750 $i ; done
+chmod: ./usr/bin/man: Operation not permitted
+chmod: ./usr/bin/login: Operation not permitted
+chmod: ./usr/bin/su: Operation not permitted
+chmod: ./usr/bin/crontab: Operation not permitted
+# exit<BR>
+shells#
+
+<P>
+just what we need :)
+
+
+
+
+<P>
+kern.ps_showallprocs: 1 -&gt; 0
+
+</BODY>
+</HTML>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<body>
+<font face="Courier New, Courier, monospace" size="-2"><br>
+</font>
+<center><br>
+<font face="Courier New, Courier, monospace" size="-2">Copyright 2000-2003
+The Cult Of The Dead Sheep</font><br>
+<font face="Courier New, Courier, monospace" size="-2">Dessins et images
+: © Clément Laforêt 2000-2002 </font><br>
+<font face="Courier New, Courier, monospace" size="-2">Logo : © <a
+ href="http://jojoprod.free.fr">JOJOProd'</a> 2002 - All Rights Reserved</font><br>
+</center>
+</layer>
+</body>
+</html>
